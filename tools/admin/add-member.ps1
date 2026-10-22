@@ -32,4 +32,10 @@ if ($LASTEXITCODE -ne 0) { Stop-Team "GitHub ユーザー '$User' が見つか�
 
 gh api -X PUT "repos/$full/collaborators/$User" -f "permission=$perm" | Out-Null
 if ($LASTEXITCODE -ne 0) { Stop-Team "$User を招待できませんでした。" }
-Write-Ok "$User を${role}として招待しました（本人がメールか https://github.com/$full/invitations で承認すると有効）。"
+# 組織のメンバーは招待なしですぐ追加される。招待中の一覧にいるかで分ける
+$invited = @(gh api "repos/$full/invitations" --jq ".[].invitee.login" 2>$null) | Where-Object { $_ -eq $User }
+if ($invited) {
+    Write-Ok "$User を${role}として招待しました（本人がメールか https://github.com/$full/invitations で承認すると有効）。"
+} else {
+    Write-Ok "$User を${role}として追加しました（すぐ使えます）。"
+}

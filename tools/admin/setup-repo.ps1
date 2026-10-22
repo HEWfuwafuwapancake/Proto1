@@ -17,6 +17,10 @@ param(
 . "$PSScriptRoot\..\common.ps1"
 Set-Location $RepoRoot
 
+# powershell -File で起動すると「-Members a,b」が "a,b" という1つの文字列で届くので、カンマで分けておく
+$Admins  = @($Admins  | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+$Members = @($Members | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+
 # ---------------------------------------------------------------
 Write-Step "1. 準備の確認"
 foreach ($c in "git", "gh") {
