@@ -1,6 +1,7 @@
 ﻿#include "core/dx11.h"
 #include "core/shader.h"
 #include "game/field.h"
+#include "core/mathutil.h"
 #include <vector>
 
 
@@ -16,22 +17,6 @@ static constexpr int   INDEX_COUNT = FIELD_DIVISION * FIELD_DIVISION * 6;
 static constexpr float LAKE_RADIUS = 12.0f;			// 湖の半径
 static constexpr float LAKE_BOTTOM = -3.0f;			// 湖のいちばん深いところの高さ
 static constexpr float SHORE_HEIGHT = 0.6f;			// 岸の高さ
-
-
-static float Saturate(float v)
-{
-	return v < 0.0f ? 0.0f : (v > 1.0f ? 1.0f : v);
-}
-
-static float SmoothStep01(float t)
-{
-	return t * t * (3.0f - 2.0f * t);
-}
-
-static float Lerp(float a, float b, float t)
-{
-	return a + (b - a) * t;
-}
 
 
 float FieldGetHeight(float x, float z)
