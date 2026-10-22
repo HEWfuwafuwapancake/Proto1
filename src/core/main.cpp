@@ -3,15 +3,15 @@
 #include <Windows.h>
 #include <mmsystem.h>
 #include <stdio.h>
-#include "dx11.h"
-#include "main.h"
-#include "shader.h"
-#include "keyboard.h"
-#include "mouse.h"
-#include "camera.h"
-#include "field.h"
-#include "cube.h"
-#include "polygon2D.h"
+#include "core/dx11.h"
+#include "core/main.h"
+#include "core/shader.h"
+#include "input/keyboard.h"
+#include "input/mouse.h"
+#include "game/camera.h"
+#include "game/field.h"
+#include "game/cube.h"
+#include "render/polygon2D.h"
 
 #pragma comment (lib, "winmm.lib")
 

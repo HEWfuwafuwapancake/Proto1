@@ -76,6 +76,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -90,6 +91,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -102,6 +104,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -116,6 +119,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -123,40 +127,40 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="camera.cpp" />
-    <ClCompile Include="cube.cpp" />
-    <ClCompile Include="debug_ostream.cpp" />
-    <ClCompile Include="dx11.cpp" />
-    <ClCompile Include="field.cpp" />
-    <ClCompile Include="keyboard.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="mouse.cpp" />
-    <ClCompile Include="polygon2D.cpp" />
-    <ClCompile Include="shader.cpp" />
+    <ClCompile Include="src\game\camera.cpp" />
+    <ClCompile Include="src\game\cube.cpp" />
+    <ClCompile Include="src\core\debug_ostream.cpp" />
+    <ClCompile Include="src\core\dx11.cpp" />
+    <ClCompile Include="src\game\field.cpp" />
+    <ClCompile Include="src\input\keyboard.cpp" />
+    <ClCompile Include="src\core\main.cpp" />
+    <ClCompile Include="src\input\mouse.cpp" />
+    <ClCompile Include="src\render\polygon2D.cpp" />
+    <ClCompile Include="src\core\shader.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="camera.h" />
-    <ClInclude Include="cube.h" />
-    <ClInclude Include="debug_ostream.h" />
-    <ClInclude Include="dx11.h" />
-    <ClInclude Include="field.h" />
-    <ClInclude Include="keyboard.h" />
-    <ClInclude Include="main.h" />
-    <ClInclude Include="mouse.h" />
-    <ClInclude Include="polygon2D.h" />
-    <ClInclude Include="shader.h" />
+    <ClInclude Include="src\game\camera.h" />
+    <ClInclude Include="src\game\cube.h" />
+    <ClInclude Include="src\core\debug_ostream.h" />
+    <ClInclude Include="src\core\dx11.h" />
+    <ClInclude Include="src\game\field.h" />
+    <ClInclude Include="src\input\keyboard.h" />
+    <ClInclude Include="src\core\main.h" />
+    <ClInclude Include="src\input\mouse.h" />
+    <ClInclude Include="src\render\polygon2D.h" />
+    <ClInclude Include="src\core\shader.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="shaderCommon.hlsli" />
+    <None Include="shaders\shaderCommon.hlsli" />
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="shaderVertex3D.hlsl">
+    <FxCompile Include="shaders\shaderVertex3D.hlsl">
       <ShaderType>Vertex</ShaderType>
       <ShaderModel>5.0</ShaderModel>
       <EntryPointName>main</EntryPointName>
       <ObjectFileOutput>$(ProjectDir)%(Filename).cso</ObjectFileOutput>
     </FxCompile>
-    <FxCompile Include="shaderPixel3D.hlsl">
+    <FxCompile Include="shaders\shaderPixel3D.hlsl">
       <ShaderType>Pixel</ShaderType>
       <ShaderModel>5.0</ShaderModel>
       <EntryPointName>main</EntryPointName>

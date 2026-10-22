@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include "dx11.h"
+#include "core/dx11.h"
 
 /// @file cube.h
 /// @brief 立方体（3D描画のサンプル。インデックスバッファを使った描画）

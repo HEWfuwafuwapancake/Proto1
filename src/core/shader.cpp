@@ -7,8 +7,8 @@
    授業のひな形（DX21）をもとに、3D用に World / View / Projection・
    マテリアル・ライトを渡せるように拡張したもの
 ==============================================================================*/
-#include "shader.h"
-#include "debug_ostream.h"
+#include "core/shader.h"
+#include "core/debug_ostream.h"
 #include <fstream>
 #include <vector>
 

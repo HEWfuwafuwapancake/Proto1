@@ -1,5 +1,5 @@
 ﻿#include <Windows.h>
-#include "keyboard.h"
+#include "input/keyboard.h"
 
 
 static BYTE g_KeyState[256] = {};		// 今のフレームのキーの状態

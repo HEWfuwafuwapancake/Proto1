@@ -1,6 +1,6 @@
-﻿#include "dx11.h"
-#include "shader.h"
-#include "cube.h"
+﻿#include "core/dx11.h"
+#include "core/shader.h"
+#include "game/cube.h"
 
 
 static ID3D11Buffer* g_pVertexBuffer = nullptr;	// 頂点バッファ
