@@ -1,0 +1,31 @@
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.VC.db
+*.VC.opendb
+*.aps
+*.ipch
+ipch/
+
+# ビルド結果
+x64/
+x86/
+[Dd]ebug/
+[Rr]elease/
+*.pdb
+*.ilk
+*.idb
+*.tlog
+*.iobj
+*.ipdb
+*.exp
+*.lib.recipe
+
+# シェーダーのコンパイル結果（ビルドで作られる）
+*.cso
+
+# その他
+*.log
+Thumbs.db
+Desktop.ini
