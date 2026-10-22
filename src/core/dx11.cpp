@@ -1,5 +1,5 @@
 ﻿
-#include "dx11.h"
+#include "core/dx11.h"
 
 //スタティックリンクライブラリのリンク
 #pragma comment (lib, "d3d11.lib")

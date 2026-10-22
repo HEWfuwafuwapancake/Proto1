@@ -1,7 +1,7 @@
-﻿#include "main.h"
-#include "dx11.h"
-#include "shader.h"
-#include "polygon2D.h"
+﻿#include "core/main.h"
+#include "core/dx11.h"
+#include "core/shader.h"
+#include "render/polygon2D.h"
 
 
 static ID3D11Buffer* g_pVertexBuffer = nullptr; // 頂点バッファ

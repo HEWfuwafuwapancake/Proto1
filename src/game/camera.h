@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include "dx11.h"
+#include "core/dx11.h"
 
 /// @file camera.h
 /// @brief カメラ（ワールドの中を自由に動けるカメラ）

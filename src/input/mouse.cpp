@@ -1,4 +1,4 @@
-﻿#include "mouse.h"
+﻿#include "input/mouse.h"
 
 
 static HWND g_hWnd = NULL;

@@ -24,13 +24,30 @@ DX11 の土台は `HEW2026GitTest` から持ってきた（水のレイトレー
 - develop / main へのマージ、release / hotfix、タグ付けは **管理者だけ**（`tools/admin/`）。ユーザーが管理者かどうか分からなければ聞く。
 - 画像・モデル・音声は Git LFS（`.gitattributes`）。新しい種類の素材ファイルを入れるときは `.gitattributes` に追加する。
 
+## コードの構成（フォルダ分け）
+| フォルダ | 入れるもの |
+|---|---|
+| `src/core/` | ウィンドウ・メインループ（`main`）、DX11（`dx11`）、シェーダーの読み込み（`shader`）、時間、デバッグ出力 |
+| `src/input/` | キーボード・マウス・パッド、入力を「行動」に変える仕組み |
+| `src/render/` | 形（箱・球・カプセル）・2D・数字の表示など、描画の部品 |
+| `src/game/` | プレイヤー・カメラ・ステージ・敵・触腕・試合の流れ（ゲームの中身） |
+| `src/physics/` | 当たり判定・吹っ飛びの計算（**DirectX を使わない**。単体テストする） |
+| `shaders/` | `.hlsl` / `.hlsli` |
+| `tests/` | 単体テストのプロジェクト |
+
+- `#include` は **`src` からのパス**で書く（例：`#include "core/dx11.h"`、`#include "game/cube.h"`）。同じフォルダのファイルでも省略しない。
+- 新しいフォルダを作るときは、この表と `docs/dev/01_DX11基盤の構成.md` に追記し、`.vcxproj.filters` にも同じ名前のフィルターを作る。
+- **ゲームの計算（当たり判定・吹っ飛び・スコアなど）は、DirectX を使わないファイルに分ける。** 描画するファイルは、計算した結果を使って描くだけにする。
+- 依存の向き：`game` は `core`・`input`・`render`・`physics` を使ってよい。`core`・`input`・`render`・`physics` は `game` を使わない（`main.cpp` だけは全体をまとめるので例外）。
+- 調整する値（速さ・強さ・時間など）は、各ファイルの上の「調整用の値」に `static constexpr` でまとめる。
+
 ## コードの約束
 - 授業（DX21）のひな形をもとにした DX11 基盤。構成は `docs/dev/01_DX11基盤の構成.md`。書き方はひな形に合わせる（`〇〇Initialize / Finalize / Update / Draw`）。
 - ヘッダーで公開する関数・構造体には **Doxygen 形式の日本語コメント**（`/// @brief` など）を付ける。bool を受け取る関数は「〜を設定する（true：〜、false：〜）」と書き、構造体はメンバーを1つも残さず説明する。
 - C++（`.cpp` / `.h`）は **BOM付きUTF-8・CRLF**。シェーダー（`.hlsl` / `.hlsli`）は **BOMなしUTF-8**（fxc は BOM があると `X3000` で失敗する）。
 - 文字セットは **マルチバイト**（ひな形が `char` 文字列のため）。`/utf-8` オプションは付けない。サブシステムは Windows。
-- 定数バッファは `shader.h` / `shader.cpp` の構造体と `shaderCommon.hlsli`（b0〜b4）の並び・番号をそろえる。
-- 地形の式（高さ・法線・色）は `field.cpp` にある。地面の上に物を置くときは `FieldGetHeight(x, z)` で高さを調べる。
+- 定数バッファは `src/core/shader.h` / `shader.cpp` の構造体と `shaders/shaderCommon.hlsli`（b0〜b4）の並び・番号をそろえる。
+- 地形の式（高さ・法線・色）は `src/game/field.cpp` にある。地面の上に物を置くときは `FieldGetHeight(x, z)` で高さを調べる。
 - ファイルを足したら `.vcxproj` と `.vcxproj.filters` にも追加する（`save-work.ps1` も登録漏れを止める）。
 - ビルド確認：
   `& "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe" Proto1.vcxproj /p:Configuration=Debug /p:Platform=x64 /v:minimal /nologo`

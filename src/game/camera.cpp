@@ -1,9 +1,9 @@
-﻿#include "camera.h"
-#include "shader.h"
-#include "keyboard.h"
-#include "mouse.h"
-#include "field.h"
-#include "cube.h"
+﻿#include "game/camera.h"
+#include "core/shader.h"
+#include "input/keyboard.h"
+#include "input/mouse.h"
+#include "game/field.h"
+#include "game/cube.h"
 
 
 //------------------------------------------------------------------------------

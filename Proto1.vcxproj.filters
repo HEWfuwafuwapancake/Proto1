@@ -1,98 +1,100 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="ソース ファイル">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    <Filter Include="src">
+      <UniqueIdentifier>{6AB8FF66-9564-5941-8032-89F93F5B1616}</UniqueIdentifier>
     </Filter>
-    <Filter Include="ヘッダー ファイル">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    <Filter Include="src\core">
+      <UniqueIdentifier>{1BAC275A-DF2C-5754-BF8A-C37F87AA3AE4}</UniqueIdentifier>
     </Filter>
-    <Filter Include="リソース ファイル">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    <Filter Include="src\input">
+      <UniqueIdentifier>{AA8F17BB-6B1C-5A04-BBDE-07315980EFAA}</UniqueIdentifier>
     </Filter>
-    <Filter Include="シェーダー">
-      <UniqueIdentifier>{B6F3E0A2-5C1D-4E8B-9A7F-2D4C6E8F0A13}</UniqueIdentifier>
-      <Extensions>hlsl;hlsli;fx</Extensions>
+    <Filter Include="src\render">
+      <UniqueIdentifier>{CC9975C5-F748-5E87-86AF-C727DF58AEC5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\game">
+      <UniqueIdentifier>{53AE659C-974C-5E22-A574-73C96B01F0E4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="shaders">
+      <UniqueIdentifier>{99D17477-4D96-57CB-A6F0-36CA83AA5DE4}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="mouse.cpp">
-      <Filter>ソース ファイル</Filter>
+    <ClCompile Include="src\core\debug_ostream.cpp">
+      <Filter>src\core</Filter>
     </ClCompile>
-    <ClCompile Include="camera.cpp">
-      <Filter>ソース ファイル</Filter>
+    <ClCompile Include="src\core\dx11.cpp">
+      <Filter>src\core</Filter>
     </ClCompile>
-    <ClCompile Include="cube.cpp">
-      <Filter>ソース ファイル</Filter>
+    <ClCompile Include="src\core\main.cpp">
+      <Filter>src\core</Filter>
     </ClCompile>
-    <ClCompile Include="debug_ostream.cpp">
-      <Filter>ソース ファイル</Filter>
+    <ClCompile Include="src\core\shader.cpp">
+      <Filter>src\core</Filter>
     </ClCompile>
-    <ClCompile Include="dx11.cpp">
-      <Filter>ソース ファイル</Filter>
+    <ClCompile Include="src\game\camera.cpp">
+      <Filter>src\game</Filter>
     </ClCompile>
-    <ClCompile Include="field.cpp">
-      <Filter>ソース ファイル</Filter>
+    <ClCompile Include="src\game\cube.cpp">
+      <Filter>src\game</Filter>
     </ClCompile>
-    <ClCompile Include="keyboard.cpp">
-      <Filter>ソース ファイル</Filter>
+    <ClCompile Include="src\game\field.cpp">
+      <Filter>src\game</Filter>
     </ClCompile>
-    <ClCompile Include="main.cpp">
-      <Filter>ソース ファイル</Filter>
+    <ClCompile Include="src\input\keyboard.cpp">
+      <Filter>src\input</Filter>
     </ClCompile>
-    <ClCompile Include="polygon2D.cpp">
-      <Filter>ソース ファイル</Filter>
+    <ClCompile Include="src\input\mouse.cpp">
+      <Filter>src\input</Filter>
     </ClCompile>
-    <ClCompile Include="shader.cpp">
-      <Filter>ソース ファイル</Filter>
+    <ClCompile Include="src\render\polygon2D.cpp">
+      <Filter>src\render</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="mouse.h">
-      <Filter>ヘッダー ファイル</Filter>
+    <ClInclude Include="src\core\debug_ostream.h">
+      <Filter>src\core</Filter>
     </ClInclude>
-    <ClInclude Include="camera.h">
-      <Filter>ヘッダー ファイル</Filter>
+    <ClInclude Include="src\core\dx11.h">
+      <Filter>src\core</Filter>
     </ClInclude>
-    <ClInclude Include="cube.h">
-      <Filter>ヘッダー ファイル</Filter>
+    <ClInclude Include="src\core\main.h">
+      <Filter>src\core</Filter>
     </ClInclude>
-    <ClInclude Include="debug_ostream.h">
-      <Filter>ヘッダー ファイル</Filter>
+    <ClInclude Include="src\core\shader.h">
+      <Filter>src\core</Filter>
     </ClInclude>
-    <ClInclude Include="dx11.h">
-      <Filter>ヘッダー ファイル</Filter>
+    <ClInclude Include="src\game\camera.h">
+      <Filter>src\game</Filter>
     </ClInclude>
-    <ClInclude Include="field.h">
-      <Filter>ヘッダー ファイル</Filter>
+    <ClInclude Include="src\game\cube.h">
+      <Filter>src\game</Filter>
     </ClInclude>
-    <ClInclude Include="keyboard.h">
-      <Filter>ヘッダー ファイル</Filter>
+    <ClInclude Include="src\game\field.h">
+      <Filter>src\game</Filter>
     </ClInclude>
-    <ClInclude Include="main.h">
-      <Filter>ヘッダー ファイル</Filter>
+    <ClInclude Include="src\input\keyboard.h">
+      <Filter>src\input</Filter>
     </ClInclude>
-    <ClInclude Include="polygon2D.h">
-      <Filter>ヘッダー ファイル</Filter>
+    <ClInclude Include="src\input\mouse.h">
+      <Filter>src\input</Filter>
     </ClInclude>
-    <ClInclude Include="shader.h">
-      <Filter>ヘッダー ファイル</Filter>
+    <ClInclude Include="src\render\polygon2D.h">
+      <Filter>src\render</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="shaderCommon.hlsli">
-      <Filter>シェーダー</Filter>
+    <None Include="shaders\shaderCommon.hlsli">
+      <Filter>shaders</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="shaderVertex3D.hlsl">
-      <Filter>シェーダー</Filter>
+    <FxCompile Include="shaders\shaderPixel3D.hlsl">
+      <Filter>shaders</Filter>
     </FxCompile>
-    <FxCompile Include="shaderPixel3D.hlsl">
-      <Filter>シェーダー</Filter>
+    <FxCompile Include="shaders\shaderVertex3D.hlsl">
+      <Filter>shaders</Filter>
     </FxCompile>
   </ItemGroup>
-</Project>
+</Project>

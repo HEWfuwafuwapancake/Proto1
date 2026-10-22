@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include "dx11.h"
+#include "core/dx11.h"
 
 /// @file field.h
 /// @brief 地面（くぼ地のある地形）

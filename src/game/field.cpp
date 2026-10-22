@@ -1,6 +1,6 @@
-﻿#include "dx11.h"
-#include "shader.h"
-#include "field.h"
+﻿#include "core/dx11.h"
+#include "core/shader.h"
+#include "game/field.h"
 #include <vector>
 
 
