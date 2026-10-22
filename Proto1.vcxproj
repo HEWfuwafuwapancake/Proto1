@@ -146,6 +146,7 @@
     <ClInclude Include="src\game\field.h" />
     <ClInclude Include="src\input\keyboard.h" />
     <ClInclude Include="src\core\main.h" />
+    <ClInclude Include="src\core\mathutil.h" />
     <ClInclude Include="src\input\mouse.h" />
     <ClInclude Include="src\render\polygon2D.h" />
     <ClInclude Include="src\core\shader.h" />

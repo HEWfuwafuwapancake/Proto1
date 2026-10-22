@@ -52,6 +52,14 @@ DX11 の土台は `HEW2026GitTest` から持ってきた（水のレイトレー
 - ビルド確認：
   `& "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe" Proto1.vcxproj /p:Configuration=Debug /p:Platform=x64 /v:minimal /nologo`
   （Visual Studio のエディション／パスはPCによって違う場合がある）
+  scratchpad など **一時フォルダ（%TEMP%）の中でビルドするときは `/t:Rebuild`** を付ける（一時フォルダではヘッダーの変更が追跡されず、古いままのビルドになることがある。警告 MSB8029）。
+
+## 単体テスト
+- テストのプロジェクトは `tests/Proto1Tests/`（Visual Studio 標準の C++ 単体テスト）。テストのファイルは `〇〇_test.cpp`。
+- 実行：`.\tools\run-tests.ps1`（Debug）／`.\tools\run-tests.ps1 -Release`。毎回作り直してから実行する。Visual Studio のテスト エクスプローラーからも実行できる。
+- **テストするのは DirectX を使わないファイル**（`src/physics/`、`src/core/mathutil.h` など）。テストのプロジェクトからは、そのファイルの `.cpp` だけを「既存の項目」で追加してコンパイルする（ゲーム本体の `.cpp` をまるごと入れない）。
+- 計算（当たり判定・吹っ飛び・スコア）を足したり変えたりしたら、テストも足す。PR の前に `run-tests.ps1` が全部通ること。
+- テストを足したら、一度わざと計算を壊して、そのテストが失敗することを確かめる（失敗しないテストは意味がない）。
 
 ## ドキュメント
 - `docs/plan/`（企画書。ゲームの目的・確かめたいこと・仕様）

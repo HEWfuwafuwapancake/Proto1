@@ -29,3 +29,8 @@ x86/
 *.log
 Thumbs.db
 Desktop.ini
+
+# 単体テストの出力と結果
+tests/**/bin/
+tests/**/obj/
+TestResults/

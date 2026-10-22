@@ -62,6 +62,9 @@
     <ClInclude Include="src\core\main.h">
       <Filter>src\core</Filter>
     </ClInclude>
+    <ClInclude Include="src\core\mathutil.h">
+      <Filter>src\core</Filter>
+    </ClInclude>
     <ClInclude Include="src\core\shader.h">
       <Filter>src\core</Filter>
     </ClInclude>
