@@ -3,20 +3,20 @@
 #include "core/dx11.h"
 
 /// @file camera.h
-/// @brief カメラ（ワールドの中を自由に動けるカメラ）
+/// @brief カメラ（仮：プレイヤーの後ろ上から追いかける。きちんとした TPS カメラは No.9 で作る）
 /// @details
-///   - マウス：見回す（感度は camera.cpp の MOUSE_SENSITIVITY）
-///   - W/A/S/D：前後左右に移動  Space：上昇  Ctrl：下降  Shift：速く動く
-///   - ←→↑↓：キーボードで見回す
+///   - マウス・矢印キー・右スティック：プレイヤーのまわりを回る（感度は action.cpp の「調整用の値」）
+///   - 位置はプレイヤーの頭のあたりから、見ている向きの反対へ一定の距離だけ下がったところ（camera.cpp の FOLLOW_DISTANCE）
+///   - 浮島やほかの物とはぶつからない（めり込むことがある）
 
-/// @brief カメラの位置と向きを最初の状態にする
+/// @brief カメラの向きを最初の状態にし、プレイヤーの後ろに置く（PlayerInitialize のあとに呼ぶ）
 void CameraInitialize(void);
 
 /// @brief カメラの終了処理（今は何もしない）
 void CameraFinalize(void);
 
-/// @brief キーボードとマウスの入力でカメラを動かす
-/// @details 立方体からの押し出しと、ワールドの端の制限もここで行う（地面はないので上下には制限しない）。毎フレーム、KeyboardUpdate / MouseUpdate のあとに呼ぶ
+/// @brief 「カメラを回す」行動で向きを変え、プレイヤーの後ろ上に置く
+/// @details 毎フレーム、PlayerUpdate のあとに呼ぶ（動いたあとのプレイヤーを追いかける）
 void CameraUpdate(void);
 
 /// @brief ビュー行列とプロジェクション行列をシェーダーに設定する
@@ -26,3 +26,7 @@ void CameraDraw(void);
 /// @brief カメラの位置を取得する
 /// @return カメラの位置（ワールド座標）
 XMFLOAT3 CameraGetPosition(void);
+
+/// @brief カメラの左右の向きを取得する（プレイヤーの移動の向きに使う）
+/// @return 左右の向き（ラジアン。0 で +Z 方向、プラスで右回り）
+float CameraGetYaw(void);

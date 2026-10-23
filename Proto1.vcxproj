@@ -128,7 +128,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\game\camera.cpp" />
-    <ClCompile Include="src\game\cube.cpp" />
     <ClCompile Include="src\core\debug_ostream.cpp" />
     <ClCompile Include="src\core\dx11.cpp" />
     <ClCompile Include="src\game\field.cpp" />
@@ -144,11 +143,13 @@
     <ClCompile Include="src\core\shader.cpp" />
     <ClCompile Include="src\game\stage.cpp" />
     <ClCompile Include="src\physics\stagecalc.cpp" />
+    <ClCompile Include="src\physics\playercalc.cpp" />
+    <ClCompile Include="src\game\player.cpp" />
+    <ClCompile Include="src\render\shape.cpp" />
     <ClCompile Include="src\core\timer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\game\camera.h" />
-    <ClInclude Include="src\game\cube.h" />
     <ClInclude Include="src\core\debug_ostream.h" />
     <ClInclude Include="src\core\dx11.h" />
     <ClInclude Include="src\game\field.h" />
@@ -165,6 +166,9 @@
     <ClInclude Include="src\core\shader.h" />
     <ClInclude Include="src\game\stage.h" />
     <ClInclude Include="src\physics\stagecalc.h" />
+    <ClInclude Include="src\physics\playercalc.h" />
+    <ClInclude Include="src\game\player.h" />
+    <ClInclude Include="src\render\shape.h" />
     <ClInclude Include="src\core\timer.h" />
   </ItemGroup>
   <ItemGroup>
