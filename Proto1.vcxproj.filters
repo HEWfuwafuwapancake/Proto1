@@ -16,6 +16,9 @@
     <Filter Include="src\game">
       <UniqueIdentifier>{53AE659C-974C-5E22-A574-73C96B01F0E4}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\physics">
+      <UniqueIdentifier>{3F6C2B8E-7D41-5A9C-B2E5-8C1D4F7A6E30}</UniqueIdentifier>
+    </Filter>
     <Filter Include="shaders">
       <UniqueIdentifier>{99D17477-4D96-57CB-A6F0-36CA83AA5DE4}</UniqueIdentifier>
     </Filter>
@@ -47,6 +50,12 @@
     </ClCompile>
     <ClCompile Include="src\game\field.cpp">
       <Filter>src\game</Filter>
+    </ClCompile>
+    <ClCompile Include="src\game\stage.cpp">
+      <Filter>src\game</Filter>
+    </ClCompile>
+    <ClCompile Include="src\physics\stagecalc.cpp">
+      <Filter>src\physics</Filter>
     </ClCompile>
     <ClCompile Include="src\input\action.cpp">
       <Filter>src\input</Filter>
@@ -100,6 +109,12 @@
     </ClInclude>
     <ClInclude Include="src\game\field.h">
       <Filter>src\game</Filter>
+    </ClInclude>
+    <ClInclude Include="src\game\stage.h">
+      <Filter>src\game</Filter>
+    </ClInclude>
+    <ClInclude Include="src\physics\stagecalc.h">
+      <Filter>src\physics</Filter>
     </ClInclude>
     <ClInclude Include="src\input\action.h">
       <Filter>src\input</Filter>

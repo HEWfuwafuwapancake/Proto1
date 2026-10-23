@@ -2,7 +2,6 @@
 #include "core/shader.h"
 #include "input/action.h"
 #include "input/keyboard.h"
-#include "game/field.h"
 #include "game/cube.h"
 
 
@@ -12,7 +11,6 @@
 // マウス感度・矢印キーで回る速さは action.cpp の「調整用の値」にある
 static constexpr float MOVE_SPEED = 0.15f;							// 1フレームに進む距離
 static constexpr float RUN_MULTIPLIER = 3.0f;						// Shift を押したときの速さの倍率
-static constexpr float EYE_MIN_HEIGHT = 0.5f;						// 地面からこれ以上は下がらない
 static constexpr float COLLISION_RADIUS = 0.25f;						// カメラの当たり判定を球として扱う半径
 static constexpr float WORLD_LIMIT = 48.0f;							// ワールドの端（これより外へは行けない）
 
@@ -26,16 +24,13 @@ static float g_Yaw;				// 左右の向き（ラジアン。0 で +Z 方向を見
 static float g_Pitch;			// 上下の向き（ラジアン。プラスで上を見る）
 
 
-// ワールドの端から出ない・地面にもぐらない
+// ワールドの端から出ない（地面はないので、上下には制限しない。浮島の下へ降りて場外を試せる）
 static void ClampToWorld(XMFLOAT3& p)
 {
 	if (p.x > WORLD_LIMIT)  p.x = WORLD_LIMIT;
 	if (p.x < -WORLD_LIMIT) p.x = -WORLD_LIMIT;
 	if (p.z > WORLD_LIMIT)  p.z = WORLD_LIMIT;
 	if (p.z < -WORLD_LIMIT) p.z = -WORLD_LIMIT;
-
-	float ground = FieldGetHeight(p.x, p.z);
-	if (p.y < ground + EYE_MIN_HEIGHT) p.y = ground + EYE_MIN_HEIGHT;
 }
 
 // 横（XZ）に distance だけずらして、ワールドの制限をかけた位置
@@ -56,7 +51,7 @@ static void ResolvePosition(XMFLOAT3& p)
 		return;
 	}
 
-	// 押し出しを、地面の制限が取り消した（傾いた立方体の底と地面にはさまれた）
+	// 押し出しを、ワールドの制限が取り消した（ワールドの端と立方体にはさまれた）
 	// → 上下ではなく横（XZ）に、立方体の中心から離れる向きへずらして抜ける
 	XMFLOAT3 cube = CubeGetPosition();
 	float dirX = p.x - cube.x;
@@ -109,7 +104,7 @@ void CameraUpdate(void)
 	if (g_Pitch < -PITCH_LIMIT) g_Pitch = -PITCH_LIMIT;
 
 	// ---- 移動 ----
-	// 前と右（上下には傾けない。下を見ながら W を押しても地面にもぐらないように）
+	// 前と右（上下には傾けない。下を見ながら W を押しても高さが変わらないように）
 	XMFLOAT3 forward = { sinf(g_Yaw), 0.0f, cosf(g_Yaw) };
 	XMFLOAT3 right = { cosf(g_Yaw), 0.0f, -sinf(g_Yaw) };
 
