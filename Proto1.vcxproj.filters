@@ -48,6 +48,12 @@
     <ClCompile Include="src\game\field.cpp">
       <Filter>src\game</Filter>
     </ClCompile>
+    <ClCompile Include="src\input\action.cpp">
+      <Filter>src\input</Filter>
+    </ClCompile>
+    <ClCompile Include="src\input\actioncalc.cpp">
+      <Filter>src\input</Filter>
+    </ClCompile>
     <ClCompile Include="src\input\keyboard.cpp">
       <Filter>src\input</Filter>
     </ClCompile>
@@ -88,6 +94,12 @@
     </ClInclude>
     <ClInclude Include="src\game\field.h">
       <Filter>src\game</Filter>
+    </ClInclude>
+    <ClInclude Include="src\input\action.h">
+      <Filter>src\input</Filter>
+    </ClInclude>
+    <ClInclude Include="src\input\actioncalc.h">
+      <Filter>src\input</Filter>
     </ClInclude>
     <ClInclude Include="src\input\keyboard.h">
       <Filter>src\input</Filter>
