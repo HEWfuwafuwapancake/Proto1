@@ -35,12 +35,17 @@ void TentacleInitialize(void)
 	for (TENTACLE& arm : g_Arms) TentacleCalcReset(arm);
 }
 
-void TentacleFinalize(void)
+void TentacleReset(void)
 {
 	for (TENTACLE& arm : g_Arms) {
 		DummyRelease(arm.Target, false, {}, 0.0f, 0.0f);
 		TentacleCalcReset(arm);
 	}
+}
+
+void TentacleFinalize(void)
+{
+	TentacleReset();
 }
 
 void TentacleUpdate(void)

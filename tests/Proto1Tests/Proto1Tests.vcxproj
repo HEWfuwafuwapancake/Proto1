@@ -99,6 +99,8 @@
     <ClCompile Include="stagecalc_test.cpp" />
     <ClCompile Include="timer_test.cpp" />
     <ClCompile Include="tentaclecalc_test.cpp" />
+    <ClCompile Include="matchcalc_test.cpp" />
+    <ClCompile Include="..\..\src\physics\matchcalc.cpp" />
     <ClCompile Include="..\..\src\physics\tentaclecalc.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
