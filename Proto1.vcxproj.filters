@@ -69,6 +69,12 @@
     <ClCompile Include="src\input\mouse.cpp">
       <Filter>src\input</Filter>
     </ClCompile>
+    <ClCompile Include="src\input\pad.cpp">
+      <Filter>src\input</Filter>
+    </ClCompile>
+    <ClCompile Include="src\input\padcalc.cpp">
+      <Filter>src\input</Filter>
+    </ClCompile>
     <ClCompile Include="src\render\polygon2D.cpp">
       <Filter>src\render</Filter>
     </ClCompile>
@@ -120,6 +126,12 @@
       <Filter>src\input</Filter>
     </ClInclude>
     <ClInclude Include="src\input\mouse.h">
+      <Filter>src\input</Filter>
+    </ClInclude>
+    <ClInclude Include="src\input\pad.h">
+      <Filter>src\input</Filter>
+    </ClInclude>
+    <ClInclude Include="src\input\padcalc.h">
       <Filter>src\input</Filter>
     </ClInclude>
     <ClInclude Include="src\render\polygon2D.h">

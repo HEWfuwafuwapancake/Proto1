@@ -10,6 +10,7 @@
 #include "input/action.h"
 #include "input/keyboard.h"
 #include "input/mouse.h"
+#include "input/pad.h"
 #include "game/camera.h"
 #include "game/stage.h"
 #include "game/cube.h"
@@ -172,9 +173,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		PostQuitMessage(0); // WM_QUITメッセージの送信
 		break;
 
-	case WM_INPUT: // マウスの移動量（Raw Input）
+	case WM_INPUT: // マウスの移動量・パッドの状態（Raw Input。それぞれ自分の分だけ読む）
 		MouseOnRawInput(lParam);
+		PadOnRawInput(lParam);
 		return DefWindowProc(hWnd, uMsg, wParam, lParam);
+
+	case WM_INPUT_DEVICE_CHANGE: // パッドをつないだ・外した
+		PadOnDeviceChange(wParam, lParam);
+		break;
 
 	case WM_ACTIVATE: // ウィンドウが選ばれた／選ばれなくなった
 		// 選ばれている間だけマウスでカメラを回す（終了確認のメッセージボックスが出たときなどは自動で解除）
@@ -227,6 +233,9 @@ bool Initialize(HWND hWnd)
 	//マウス初期化
 	MouseInitialize(hWnd);
 
+	//パッド（PS4 コントローラー）初期化
+	PadInitialize(hWnd);
+
 	//行動（入力を「ジャンプ」「つかむ」などに変える仕組み）初期化
 	ActionInitialize();
 
@@ -253,6 +262,7 @@ void Finalize(void)
 	StageFinalize();
 
 	CameraFinalize();
+	PadFinalize();
 	MouseFinalize();
 
 	//シェーダー終了処理
@@ -276,6 +286,7 @@ void Update(void)
 	//入力は時間の次に更新する
 	KeyboardUpdate();
 	MouseUpdate();
+	PadUpdate();
 
 	//Tab でマウスのロック（カーソルを隠してカメラを回す）を切り替える
 	if (KeyboardIsTrigger(VK_TAB)) {

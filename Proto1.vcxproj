@@ -138,6 +138,8 @@
     <ClCompile Include="src\input\keyboard.cpp" />
     <ClCompile Include="src\core\main.cpp" />
     <ClCompile Include="src\input\mouse.cpp" />
+    <ClCompile Include="src\input\pad.cpp" />
+    <ClCompile Include="src\input\padcalc.cpp" />
     <ClCompile Include="src\render\polygon2D.cpp" />
     <ClCompile Include="src\core\shader.cpp" />
     <ClCompile Include="src\game\stage.cpp" />
@@ -157,6 +159,8 @@
     <ClInclude Include="src\core\main.h" />
     <ClInclude Include="src\core\mathutil.h" />
     <ClInclude Include="src\input\mouse.h" />
+    <ClInclude Include="src\input\pad.h" />
+    <ClInclude Include="src\input\padcalc.h" />
     <ClInclude Include="src\render\polygon2D.h" />
     <ClInclude Include="src\core\shader.h" />
     <ClInclude Include="src\game\stage.h" />
