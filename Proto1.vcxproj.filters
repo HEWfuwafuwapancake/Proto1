@@ -203,10 +203,22 @@
     <ClCompile Include="src\physics\tentaclecalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
+    <ClCompile Include="src\game\match.cpp">
+      <Filter>src\game</Filter>
+    </ClCompile>
+    <ClCompile Include="src\physics\matchcalc.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
     <ClInclude Include="src\game\tentacle.h">
       <Filter>src\game</Filter>
     </ClInclude>
     <ClInclude Include="src\physics\tentaclecalc.h">
+      <Filter>src\physics</Filter>
+    </ClInclude>
+    <ClInclude Include="src\game\match.h">
+      <Filter>src\game</Filter>
+    </ClInclude>
+    <ClInclude Include="src\physics\matchcalc.h">
       <Filter>src\physics</Filter>
     </ClInclude>
   </ItemGroup>
