@@ -45,14 +45,17 @@
     <ClCompile Include="src\game\camera.cpp">
       <Filter>src\game</Filter>
     </ClCompile>
-    <ClCompile Include="src\game\cube.cpp">
+    <ClCompile Include="src\game\field.cpp">
       <Filter>src\game</Filter>
     </ClCompile>
-    <ClCompile Include="src\game\field.cpp">
+    <ClCompile Include="src\game\player.cpp">
       <Filter>src\game</Filter>
     </ClCompile>
     <ClCompile Include="src\game\stage.cpp">
       <Filter>src\game</Filter>
+    </ClCompile>
+    <ClCompile Include="src\physics\playercalc.cpp">
+      <Filter>src\physics</Filter>
     </ClCompile>
     <ClCompile Include="src\physics\stagecalc.cpp">
       <Filter>src\physics</Filter>
@@ -76,6 +79,9 @@
       <Filter>src\input</Filter>
     </ClCompile>
     <ClCompile Include="src\render\polygon2D.cpp">
+      <Filter>src\render</Filter>
+    </ClCompile>
+    <ClCompile Include="src\render\shape.cpp">
       <Filter>src\render</Filter>
     </ClCompile>
   </ItemGroup>
@@ -104,14 +110,17 @@
     <ClInclude Include="src\game\camera.h">
       <Filter>src\game</Filter>
     </ClInclude>
-    <ClInclude Include="src\game\cube.h">
+    <ClInclude Include="src\game\field.h">
       <Filter>src\game</Filter>
     </ClInclude>
-    <ClInclude Include="src\game\field.h">
+    <ClInclude Include="src\game\player.h">
       <Filter>src\game</Filter>
     </ClInclude>
     <ClInclude Include="src\game\stage.h">
       <Filter>src\game</Filter>
+    </ClInclude>
+    <ClInclude Include="src\physics\playercalc.h">
+      <Filter>src\physics</Filter>
     </ClInclude>
     <ClInclude Include="src\physics\stagecalc.h">
       <Filter>src\physics</Filter>
@@ -135,6 +144,9 @@
       <Filter>src\input</Filter>
     </ClInclude>
     <ClInclude Include="src\render\polygon2D.h">
+      <Filter>src\render</Filter>
+    </ClInclude>
+    <ClInclude Include="src\render\shape.h">
       <Filter>src\render</Filter>
     </ClInclude>
   </ItemGroup>

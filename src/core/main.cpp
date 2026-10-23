@@ -12,9 +12,10 @@
 #include "input/mouse.h"
 #include "input/pad.h"
 #include "game/camera.h"
+#include "game/player.h"
 #include "game/stage.h"
-#include "game/cube.h"
 #include "render/polygon2D.h"
+#include "render/shape.h"
 
 #pragma comment (lib, "winmm.lib")
 
@@ -239,12 +240,13 @@ bool Initialize(HWND hWnd)
 	//行動（入力を「ジャンプ」「つかむ」などに変える仕組み）初期化
 	ActionInitialize();
 
-	//カメラ初期化
-	CameraInitialize();
+	//形（箱・球・カプセル）の描画の部品の初期化
+	ShapeInitialize();
 
-	//3Dオブジェクト初期化
+	//3Dオブジェクト初期化（プレイヤーは浮島の上に立たせるのでステージのあと、カメラはプレイヤーの後ろに置くのでプレイヤーのあと）
 	StageInitialize();
-	CubeInitialize();
+	PlayerInitialize();
+	CameraInitialize();
 
 	//2Dポリゴン初期化
 	Polygon2DInitialize();
@@ -258,10 +260,11 @@ void Finalize(void)
 	//初期化と逆の順番で終了処理をする
 	Polygon2DFinalize();
 
-	CubeFinalize();
-	StageFinalize();
-
 	CameraFinalize();
+	PlayerFinalize();
+	StageFinalize();
+	ShapeFinalize();
+
 	PadFinalize();
 	MouseFinalize();
 
@@ -296,9 +299,10 @@ void Update(void)
 	//キーボード・マウスの状態を「行動」に変える（ロックの切り替えのあとなので、切り替えた瞬間はマウスの移動量が 0）
 	ActionUpdate();
 
-	CameraUpdate();
+	//プレイヤーを動かしてから、カメラがそれを追いかける
 	StageUpdate();
-	CubeUpdate();
+	PlayerUpdate();
+	CameraUpdate();
 	Polygon2DUpdate();
 }
 
@@ -321,7 +325,7 @@ void Draw(void)
 	Shader_SetLight(light);
 
 	StageDraw();
-	CubeDraw();
+	PlayerDraw();
 
 	// ---- 2D描画（UI）：3Dの上に重ねるので最後に描く ----
 	SetDepthEnable(false);
