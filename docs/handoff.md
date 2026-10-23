@@ -4,7 +4,7 @@
 **作業を始めるときに読み、作業を終えるときに更新します。** タスクの一覧は [tasks.md](tasks.md)、同じ内容を Notion の
 「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」データベースでも管理しています。
 
-- 最終更新：2026-10-23（Visual Studio Enterprise の PC の Claude Code。No.14 まで）
+- 最終更新：2026-10-23（Visual Studio Enterprise の PC の Claude Code。No.14 まで・No.15 のプラン承認済み）
 
 ---
 
@@ -20,14 +20,72 @@
   - 触腕の左右の連続操作・場外からの復活・吹っ飛びの数字（仮。No.19 で調整）
 - **メインPC でまだやっていないこと**：Claude に許可を足す設定（下の「3. 決まったこと」の「Claude の許可」）。
 
-## 2. 次にやること：No.15 画面表示（プランを出す）
+## 2. 次にやること：No.15 画面表示（プラン承認済み。実装する）
 
-プランを出し、管理者の確認後に実装する。プランに入れること：
-- 表示するもの：残り時間・スコア・敵のダメージ%（`DummyGetPercent` のような取得関数が要る。今は無いので足す）。時間切れの表示と「R で再開」の案内
-- 値の取り方：`MatchGetRemainingSeconds()`・`MatchGetScore()`・`MatchGetState()`（`game/match.h`）。タイトルバーの仮の表示（`main.cpp` の `RefreshTitle`）は、画面に出せたら消す
-- 四角を組み合わせた数字（7セグ風）を `src/render/` に作る。フォントの読み込みはしない。2D の描画は `polygon2D`（`Draw` の 2D の部分）を見本にする
-- 数字や位置を決める計算は DirectX なしで分けてテストする（どの四角を点けるか など）
-- 見た目が変わるので、画面を撮る確認をする（残り時間・スコア・時間切れの3場面）
+2026-10-23 に管理者が承認した（決めることはすべておすすめの案）。作業名は `hud-display`（`.\tools\start-work.ps1 hud-display`）。
+
+### 決まったこと
+- 残り時間は**秒だけ**（`90`→`0`）。分:秒にはしない
+- ダミーの % は**各ダミーの頭の上**に出す（3体とも同じ色なので、画面の下に並べるとどれか分からない）
+- 「時間切れ」と「R で再開」は、**英字を 5×7 のドット**で出す（使う文字だけ。`TIME UP`・`PRESS R / OPTIONS`）。フォントは読み込まない
+- 見本の `polygon2D`（左上の半透明の黒い四角）は**消す**（ファイルも）。新しい 2D の部品が見本の代わりになる
+- 色は白（時間切れのおおいだけ半透明の黒）。残り時間で色を変えるなどの演出は入れない
+
+### 画面
+- 上の真ん中：残り秒数（大きい 7 セグ）／左上：スコア（7 セグ）
+- 各ダミーの頭の上：`12%`（数字は 7 セグ、`%` はドット）。復活待ちのときと、カメラの後ろにいるときは出さない
+- 時間切れ：画面全体に半透明の黒 → 真ん中に `TIME UP`、その下に大きくスコア、いちばん下に `PRESS R / OPTIONS`。上の秒数は `0` のまま出す
+
+### ファイルごとの作業
+1. **新規 `src/render/glyphcalc.h / .cpp`**（DirectX なし・単体テストあり。数字と文字を「点ける四角の一覧」に変える）
+   ```cpp
+   struct RECT2D { float X, Y, Width, Height; };   // 画面の四角（左上が原点、ピクセル）
+   enum GLYPH_ALIGN { GLYPH_ALIGN_LEFT, GLYPH_ALIGN_CENTER, GLYPH_ALIGN_RIGHT };
+   int  GlyphCalcSplitDigits(int value, int minDigits, int digits[], int maxDigits); // 桁に分ける。負は 0、入りきらなければ全部 9。桁数を返す
+   unsigned char GlyphCalcSegments(int digit);      // 0〜9 → 点ける 7 セグ（bit0=a 上, b 右上, c 右下, d 下, e 左下, f 左上, bit6=g 真ん中）。範囲外は 0
+   RECT2D GlyphCalcSegmentRect(int segment, float x, float y, float digitWidth);   // 1桁の左上 (x,y) から見た1本の棒の四角
+   int  GlyphCalcNumberRects(int value, int minDigits, float x, float y, float digitWidth,
+                             GLYPH_ALIGN align, RECT2D out[], int maxRects);       // 数字全体の四角。数を返す（maxRects を超えて書かない）
+   unsigned char GlyphCalcLetterRow(char c, int row);  // 5×7 ドットの1行（下位5ビット、bit4 が左端）。A E I M N O P R S T U % / と空白。それ以外は空白
+   int  GlyphCalcTextRects(const char* text, float x, float y, float dotSize,
+                           GLYPH_ALIGN align, RECT2D out[], int maxRects);         // 文字列の四角。数を返す
+   int  GlyphCalcDisplayPercent(float percent);        // 表示する %（四捨五入、0〜999）
+   ```
+   - 1桁は「幅 W・高さ 2W・棒の太さ 0.2W・桁の間 0.3W」。比は「調整用の値」。文字は 5×7 ドットで、文字の間は1ドット。`x` は align に応じて左端・真ん中・右端
+2. **新規 `src/render/number2d.h / .cpp`**（描画。`polygon2D.cpp` が見本）
+   - `Number2DInitialize / Finalize`：動的な頂点バッファ（四角 512 個 × 6 頂点の三角形リスト）
+   - `Number2DDrawRects(const RECT2D rects[], int count, const XMFLOAT4& color)`：Map（DISCARD）→ 頂点を書く → `Draw` 1回
+   - `Number2DDrawNumber(int value, int minDigits, float x, float y, float digitWidth, GLYPH_ALIGN align, const XMFLOAT4& color)`
+   - `Number2DDrawText(const char* text, float x, float y, float dotSize, GLYPH_ALIGN align, const XMFLOAT4& color)`
+   - `Number2DDrawBox(const RECT2D& rect, const XMFLOAT4& color)`（時間切れのおおい用）
+   - 描く前に `Shader_Set2DMatrix()`、マテリアルは白、色は頂点カラー。三角形は時計回り（カリングがある）
+3. **`src/game/camera.h / .cpp`**：`bool CameraWorldToScreen(const XMFLOAT3& world, XMFLOAT2* screen)` を足す（画面のピクセル位置。カメラの後ろ（w ≤ 0）なら false）。
+   ビュー・プロジェクション行列を作る処理は `CameraDraw` と共通の static 関数にまとめる
+4. **`src/game/dummy.h / .cpp`**：`float DummyGetPercent(int index)` を足す（無効な番号は 0）。
+   頭の位置は今ある `DummyGetTarget(i).Body` から（`max(Start.y, End.y) + Radius`）、見えるかは `DummyIsActive`。この2つは足さない
+5. **新規 `src/game/hud.h / .cpp`**：`HudInitialize / Finalize / Update / Draw`（Update は空）。置き場所・大きさ・色は「調整用の値」
+   （例：秒の桁の幅 40、スコア 28、% 14、頭の上 0.4、おおい `{0,0,0,0.6}`）。値は `MatchGetRemainingSeconds()`・`MatchGetScore()`・`MatchGetState()`・`DummyGetPercent()`
+6. **`src/core/main.cpp`**：`Polygon2D〇〇` を `Number2DInitialize` → `HudInitialize`（終了は逆の順）と `HudDraw` に置き換える。
+   `RefreshTitle` は FPS だけに戻す（残り時間・スコア・R で再開を消す。要らなくなった include も消す）
+7. **削除 `src/render/polygon2D.h / .cpp`**
+8. **プロジェクト**：`Proto1.vcxproj` / `.filters` に足す・polygon2D を消す（フィルター名は `src\render`・`src\game`）。
+   `tests/Proto1Tests/Proto1Tests.vcxproj` に `..\..\src\render\glyphcalc.cpp` と `glyphcalc_test.cpp`
+9. **ドキュメント**：`docs/dev/01_DX11基盤の構成.md` のファイルの役割の表（polygon2D の行を差し替え）・「描画の順番」・「試合の流れ」の最後の行（タイトルバーの話）を直し、
+   「画面表示（No.15）」の節を最後に足す
+
+### テスト（`tests/Proto1Tests/glyphcalc_test.cpp`）
+- 桁：`0`→[0]、`90`→[9,0]、`7` を2桁→[0,7]、負→[0]、`1234` を3桁まで→[9,9,9]
+- 7 セグ：`8`=7本、`1`=b・c、`7`=a・b・c、`0` は g が消えている、範囲外は 0
+- 棒の位置：a は一番上で横長、g は縦の真ん中、d の下の端は 2W
+- 数字の四角：`90` は 12 個。右寄せは一番右の四角の右端が x、中央寄せは全体の幅の半分だけ左。maxRects を超えない
+- 文字：`T` の1行目は 0b11111、知らない文字は 0、`"TIME UP"` の四角の数はドットの数の合計と同じ
+- %：12.4→12、12.5→13、-1→0、5000→999
+- わざと壊す確認は `glyphcalc.cpp` だけを1回で（`8` のマスク・四捨五入・右寄せのずれを壊す → 失敗を確かめて戻す）
+
+### 画面を撮る確認（3場面）
+1. 始めたところ：上に `90`、左上に `0`、ダミー3体の頭に `0%`
+2. つかんで投げたあと：投げたダミーの % が増え、1体を場外に落としてスコア `1`、秒数が減っている
+3. 時間切れ：90 秒待つ（制限時間を一時的に短くはしない。間違えてコミットしないため）。おおい・`TIME UP`・スコア・`PRESS R / OPTIONS`。R で `90` に戻る
 
 No.14 の記録は `docs/dev/01_DX11基盤の構成.md` の「試合の流れ」。
 
