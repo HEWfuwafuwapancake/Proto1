@@ -23,7 +23,8 @@ Claude と Codex は同じ「引き継ぎメモ」を使って、どちらでも
 - **Notion**：Codex から Notion を書き換えられないときは、`docs/tasks.md` と `docs/handoff.md` だけを更新し、
   最後に「Notion の No.〇 を〇〇にしてください」と管理者に伝える（次に Claude が始めるときにも、`tasks.md` とのずれを確かめて直す）。
 - **ビルド**：MSBuild のパスは PC によって違うので、`vswhere.exe` で探してから使う（`docs/lessons.md` 参照）。テストは `.\tools\run-tests.ps1`。
-- **マージ**：Codex が出した PR を、管理者に聞かずにマージしてよいかは決まっていない。管理者に聞いてから `gh pr merge` する。
+- **マージ**：Codex がこの流れで出した PR は、テスト（`run-tests.ps1`）とビルド（Debug / Release、警告 0）が通れば、管理者に聞かずに
+  `gh pr merge <番号> --merge --admin --delete-branch` でマージしてよい（2026-10-23、管理者が決めた。Claude と同じ）。他の人の PR はマージしない。
 - `docs/handoff.md` の「Claude の許可」（`.claude/settings.local.json`）は Claude Code だけの設定なので、Codex は気にしなくてよい。
 
 ## Codex だけのこと
