@@ -34,3 +34,6 @@ Desktop.ini
 tests/**/bin/
 tests/**/obj/
 TestResults/
+
+# Claude Code の PC ごとの設定（許可の決まりなど。GitHub には送らない）
+.claude/settings.local.json
