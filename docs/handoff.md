@@ -20,9 +20,9 @@
 | 10 | 当たり判定の共通部品（`src/physics/collision`・`src/physics/vec3.h`） | ✅ 完了 | [#13](https://github.com/HEWfuwafuwapancake/Proto1/pull/13) |
 | 11 | ダミーの敵3体（`src/game/dummy`・`src/physics/dummycalc`）。プレイヤーが押せる・場外から復活 | ✅ 完了 | [#14](https://github.com/HEWfuwafuwapancake/Proto1/pull/14) |
 | 12 | ダメージ%と吹っ飛び（`src/physics/knockbackcalc`・`DummyHit`）。F1 の仮攻撃は No.13 で削除 | ✅ 完了 | `tasks.md`・Notion を参照 |
-| **13** | **触腕：伸ばして敵をつかみ、向いた方へ投げる** | **✅ 実装・検証完了** | — |
+| **13** | **触腕：伸ばして敵をつかみ、向いた方へ投げる** | **✅ 実装・検証完了** | [#18](https://github.com/HEWfuwafuwapancake/Proto1/pull/18) |
 
-- No.13 は `feature/tentacle-grab-throw`。PR の状態は GitHub を確認する。
+- No.13 は [PR #18](https://github.com/HEWfuwafuwapancake/Proto1/pull/18)。マージ状態は GitHub を確認する。
 - ゲームは起動すると、空に浮かぶ浮島（30 × 30）の真ん中に赤いカプセルのプレイヤー、前と左右の奥に青いカプセルのダミーが3体立っている（FPS 60）。
   W/A/S/D・左スティックで歩き、Space・×でジャンプ。ダミーにぶつかると押せる。**左右クリック／L1・R1でつかみ、再入力で投げられる**（投げで12%ずつ）、% が高いほど遠くへ吹っ飛ぶ（飛ばされている間は黄色）。
   場外に落ちたダミーは 2 秒後に最初の場所に 0% で戻る。カメラは TPS カメラ。単体テストは Debug / Release とも103個すべて通る。両構成のゲームビルドは警告0。投げ判定を壊したとき追加テストが失敗することも確認済み。
@@ -44,6 +44,7 @@ No.13 の記録：`docs/plan/02_触腕の実装プラン.md`。左右独立、�
 画面では60 FPSでの起動・保持中の表示を確認。左右連続操作や場外復活などの網羅的な手動試遊、PS4 パッド実機確認は未実施（計算は単体テスト済み）。
 ゲーム画面でユーザー操作が検出されたため、入力を止めてゲームを開いたままにした。最終 Debug ビルドは `x64/VerifyDebug/`、Release は通常の出力先。
 共有の `source/repos/Proto1` を使う。隣の `Proto1-codex` は未使用で残してある。
+
 ## 3. これまでに決まったこと（会話の中で決めたこと）
 
 - **共有フォルダ**：Claude と Codex は同じ `Proto1` を交代で使う。同時には作業しない。切り替える前にコミット・push と引き継ぎメモ更新を行う（2026-10-23、管理者の指示）。
