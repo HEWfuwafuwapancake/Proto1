@@ -3,11 +3,12 @@
 #include "core/dx11.h"
 
 /// @file camera.h
-/// @brief カメラ（仮：プレイヤーの後ろ上から追いかける。きちんとした TPS カメラは No.9 で作る）
+/// @brief TPS カメラ（プレイヤーの背後から追いかける）
 /// @details
-///   - マウス・矢印キー・右スティック：プレイヤーのまわりを回る（感度は action.cpp の「調整用の値」）
-///   - 位置はプレイヤーの頭のあたりから、見ている向きの反対へ一定の距離だけ下がったところ（camera.cpp の FOLLOW_DISTANCE）
-///   - 浮島やほかの物とはぶつからない（めり込むことがある）
+///   - マウス・矢印キー・右スティック：プレイヤーのまわりを回る（感度は action.cpp の「調整用の値」）。歩いても自動では回り込まない
+///   - 見ている点（プレイヤーの頭のあたり）は、プレイヤーを少し遅れてなめらかに追う（camera.cpp の FOLLOW_SPEED）
+///   - カメラは見ている点から、見ている向きの反対へ FOLLOW_DISTANCE 下がったところ。浮島にめり込むときは手前まで近づく
+///   - 計算は physics/cameracalc.h
 
 /// @brief カメラの向きを最初の状態にし、プレイヤーの後ろに置く（PlayerInitialize のあとに呼ぶ）
 void CameraInitialize(void);
@@ -15,8 +16,8 @@ void CameraInitialize(void);
 /// @brief カメラの終了処理（今は何もしない）
 void CameraFinalize(void);
 
-/// @brief 「カメラを回す」行動で向きを変え、プレイヤーの後ろ上に置く
-/// @details 毎フレーム、PlayerUpdate のあとに呼ぶ（動いたあとのプレイヤーを追いかける）
+/// @brief 「カメラを回す」行動で向きを変え、見ている点をプレイヤーへ近づけてから、カメラを置く
+/// @details 毎フレーム、PlayerUpdate のあとに呼ぶ（動いたあとのプレイヤーを追いかける）。浮島にめり込むときは手前まで近づける
 void CameraUpdate(void);
 
 /// @brief ビュー行列とプロジェクション行列をシェーダーに設定する

@@ -1,4 +1,5 @@
 ﻿#include <Windows.h>
+#include "core/gametime.h"
 #include "input/action.h"
 #include "input/keyboard.h"
 #include "input/mouse.h"
@@ -42,8 +43,8 @@ static constexpr int MOVE_KEY_RIGHT = 'D';
 static constexpr float MOUSE_SENSITIVITY = 0.00125f;
 static constexpr bool  MOUSE_INVERT_Y = false;			// true にすると上下が逆になる
 
-static constexpr float KEY_LOOK_SPEED = 2.0f * 3.14159265f / 180.0f;	// 矢印キーで1フレームに回る角度（2度）
-static constexpr float PAD_LOOK_SPEED = 3.0f * 3.14159265f / 180.0f;	// 右スティックを端まで倒したときに1フレームに回る角度（3度）
+static constexpr float KEY_LOOK_SPEED = 120.0f * 3.14159265f / 180.0f;	// 矢印キーで1秒に回る角度（120度）
+static constexpr float PAD_LOOK_SPEED = 180.0f * 3.14159265f / 180.0f;	// 右スティックを端まで倒したときに1秒に回る角度（180度）
 
 
 static bool g_Press[ACTION_COUNT] = {};		// 今のフレームで押しているか
@@ -96,16 +97,19 @@ void ActionUpdate(void)
 	g_Look.X = (float)MouseGetDeltaX() * MOUSE_SENSITIVITY;
 	g_Look.Y = -(float)MouseGetDeltaY() * MOUSE_SENSITIVITY * (MOUSE_INVERT_Y ? -1.0f : 1.0f);
 
+	// 矢印キーと右スティックは「1秒に回る角度 × 1フレームの秒数」（マウスは動かした量そのままなので dt を掛けない）
+	const float dt = GameTimeGetDeltaTime();
+
 	// 矢印キー（マウスと足し合わせる）
-	if (KeyboardIsPress(VK_LEFT))  g_Look.X -= KEY_LOOK_SPEED;
-	if (KeyboardIsPress(VK_RIGHT)) g_Look.X += KEY_LOOK_SPEED;
-	if (KeyboardIsPress(VK_UP))    g_Look.Y += KEY_LOOK_SPEED;
-	if (KeyboardIsPress(VK_DOWN))  g_Look.Y -= KEY_LOOK_SPEED;
+	if (KeyboardIsPress(VK_LEFT))  g_Look.X -= KEY_LOOK_SPEED * dt;
+	if (KeyboardIsPress(VK_RIGHT)) g_Look.X += KEY_LOOK_SPEED * dt;
+	if (KeyboardIsPress(VK_UP))    g_Look.Y += KEY_LOOK_SPEED * dt;
+	if (KeyboardIsPress(VK_DOWN))  g_Look.Y -= KEY_LOOK_SPEED * dt;
 
 	// 右スティック（倒した分だけ回る。マウス・矢印キーと足し合わせる）
 	const ACTION_AXIS rightStick = PadGetRightStick();
-	g_Look.X += rightStick.X * PAD_LOOK_SPEED;
-	g_Look.Y += rightStick.Y * PAD_LOOK_SPEED;
+	g_Look.X += rightStick.X * PAD_LOOK_SPEED * dt;
+	g_Look.Y += rightStick.Y * PAD_LOOK_SPEED * dt;
 }
 
 bool ActionIsPress(ACTION action)
