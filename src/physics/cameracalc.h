@@ -4,7 +4,7 @@
 #include "physics/vec3.h"
 
 /// @file cameracalc.h
-/// @brief TPS カメラの計算（向きと距離から位置を出す・浮島にめり込まないようにする・なめらかに追う）
+/// @brief TPS カメラの計算（位置・浮島との接触・フォーカス・左右角の補助・視点の範囲）
 /// @details DirectX と Windows を使わないので、単体テスト（tests/Proto1Tests）からそのまま使える
 
 /// @brief 見ている点のまわりを回るカメラの位置を出す
@@ -34,3 +34,31 @@ VEC3 CameraCalcClipToStage(const VEC3& target, const VEC3& camera, const STAGE& 
 /// @param dt 1フレームの秒数
 /// @return 近づけたあとの点
 VEC3 CameraCalcSmooth(const VEC3& current, const VEC3& target, float speed, float dt);
+
+/// @brief フォーカス候補（配列の添字がダミー番号）
+struct CAMERA_FOCUS_TARGET
+{
+	VEC3 Position; ///< 敵の中心位置
+	bool Available; ///< true：選べる、false：選べない
+};
+
+/// @brief from から to への水平角を返す（水平距離がほぼ0なら fallbackYaw）
+float CameraCalcYawTo(const VEC3& from, const VEC3& to, float fallbackYaw);
+/// @brief 最短方向へ毎秒 speed ラジアンまで回す（dt は秒、0以下なら動かない）
+float CameraCalcTurnYaw(float current, float target, float speed, float dt);
+/// @brief yaw から maxAngle ラジアン・3D距離 maxDistance 以内の最も中央の敵を選ぶ。current は bonus ラジアン優先（なしは -1）
+int CameraCalcPickFocus(float yaw, const VEC3& player, const CAMERA_FOCUS_TARGET* targets,
+	int count, int current, float maxAngle, float maxDistance, float bonus);
+/// @brief player から enemy へ rate の割合だけ視点をずらす。縦横の視野とプレイヤーを囲む半径で上限を決める
+/// @param player プレイヤーの注視点（頭付近）
+/// @param enemy 敵の中心
+/// @param yaw 左右角（ラジアン）
+/// @param pitch 上下角（ラジアン）
+/// @param distance カメラ距離
+/// @param fov 縦視野角（ラジアン）
+/// @param aspect 画面の横幅/高さ
+/// @param margin 画面端に残す割合（0〜1、各半画面に対する割合）
+/// @param radius 注視点を中心にプレイヤー全身を囲む半径
+/// @param rate 敵へずらす割合（0〜1）
+VEC3 CameraCalcFocusPoint(const VEC3& player, const VEC3& enemy, float yaw, float pitch,
+	float distance, float fov, float aspect, float margin, float radius, float rate);

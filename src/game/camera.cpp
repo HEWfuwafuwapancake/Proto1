@@ -2,6 +2,8 @@
 #include "core/shader.h"
 #include "game/camera.h"
 #include "game/player.h"
+#include "game/dummy.h"
+#include "game/tentacle.h"
 #include "game/stage.h"
 #include "input/action.h"
 #include "physics/cameracalc.h"
@@ -13,10 +15,16 @@
 // マウス感度・矢印キー・右スティックで回る速さは action.cpp の「調整用の値」にある
 static constexpr float FOLLOW_DISTANCE = 8.0f;						// 見ている点からカメラまでの距離
 static constexpr float TARGET_HEIGHT_RATE = 0.8f;					// 見ている点の高さ（プレイヤーの高さに対する割合。0.8 で頭のあたり）
-static constexpr float FOLLOW_SPEED = 10.0f;						// 見ている点がプレイヤーに追いつく速さ（大きいほどぴったり。小さいほどゆっくり遅れてついてくる）
+static constexpr float FOCUS_ANGLE = XMConvertToRadians(25.0f); // 中央から選べる角度
+static constexpr float FOCUS_DISTANCE = 18.0f; // 選べる距離
+static constexpr float FOCUS_BONUS = XMConvertToRadians(4.0f); // 今の敵の優先
+static constexpr float SWAY_SPEED = XMConvertToRadians(35.0f); // 毎秒の補助角度
+static constexpr float MANUAL_SWAY_RATE = 0.15f; // 手動操作中の補助倍率
+static constexpr float FOCUS_POINT_RATE = 0.25f; // 注視点を敵へずらす割合
+static constexpr float PLAYER_SCREEN_MARGIN = 0.15f; // 各半画面の端に残す割合
 static constexpr float STAGE_MARGIN = 0.3f;							// 浮島の面から、カメラをこれだけ離す（めり込んで見えないように）
-static constexpr float PITCH_MIN = XMConvertToRadians(-70.0f);		// いちばん下を向いたとき（上から見下ろす）
-static constexpr float PITCH_MAX = XMConvertToRadians(30.0f);		// いちばん上を向いたとき（下から見上げる。浮島に当たったら近づく）
+static constexpr float PITCH_MIN = XMConvertToRadians(-35.0f);		// いちばん下を向いたとき（上から見下ろす）
+static constexpr float PITCH_MAX = XMConvertToRadians(0.0f);		// いちばん上を向いたとき（水平まで）
 static constexpr float START_PITCH = XMConvertToRadians(-20.0f);	// 最初の上下の向き（少し見下ろす）
 
 static constexpr float FOV = XMConvertToRadians(60.0f);				// 視野角（縦）
@@ -25,7 +33,8 @@ static constexpr float FAR_Z = 1000.0f;								// これより遠いものは描
 
 
 static XMFLOAT3 g_Position;		// カメラの位置
-static VEC3 g_Target;	// 見ている点（プレイヤーの頭のあたりを、なめらかに追いかける）
+static VEC3 g_Target;	// 見ている点（遅れず追従し、フォーカス時だけ敵側へずらす）
+static int g_FocusTarget = -1;
 static float g_Yaw;				// 左右の向き（ラジアン。0 で +Z 方向を見る）
 static float g_Pitch;			// 上下の向き（ラジアン。プラスで上を見る）
 
@@ -48,6 +57,7 @@ static void PlaceCamera(void)
 
 void CameraInitialize(void)
 {
+	g_FocusTarget = -1;
 	g_Yaw = 0.0f;
 	g_Pitch = START_PITCH;
 	g_Target = PlayerHead();
@@ -69,9 +79,26 @@ void CameraUpdate(void)
 	if (g_Pitch > PITCH_MAX) g_Pitch = PITCH_MAX;
 	if (g_Pitch < PITCH_MIN) g_Pitch = PITCH_MIN;
 
-	// ---- 位置 ----
-	// 見ている点だけをなめらかに追わせる（カメラの位置ごと遅らせると、回したときに画面が揺れるため）
-	g_Target = CameraCalcSmooth(g_Target, PlayerHead(), FOLLOW_SPEED, GameTimeGetDeltaTime());
+	// プレイヤーの現在位置を基準に選ぶ。保持中のダミー・復活待ちは候補から外す。
+	const VEC3 head = PlayerHead();
+	CAMERA_FOCUS_TARGET targets[DUMMY_COUNT];
+	for (int i = 0; i < DUMMY_COUNT; ++i) {
+		const TENTACLE_TARGET target = DummyGetTarget(i);
+		targets[i] = { Vec3Scale(Vec3Add(target.Body.Start, target.Body.End), 0.5f), target.Available };
+	}
+	g_FocusTarget = CameraCalcPickFocus(g_Yaw, head, targets, DUMMY_COUNT, g_FocusTarget,
+		FOCUS_ANGLE, FOCUS_DISTANCE, FOCUS_BONUS);
+	g_Target = head;
+	if (g_FocusTarget >= 0 && !TentacleIsHolding()) {
+		const bool manual = look.X != 0.0f || look.Y != 0.0f;
+		const float strength = manual ? MANUAL_SWAY_RATE : 1.0f;
+		const VEC3 enemy = targets[g_FocusTarget].Position;
+		g_Yaw = CameraCalcTurnYaw(g_Yaw, CameraCalcYawTo(head, enemy, g_Yaw),
+			SWAY_SPEED * strength, GameTimeGetDeltaTime());
+		g_Target = CameraCalcFocusPoint(head, enemy, g_Yaw, g_Pitch, FOLLOW_DISTANCE,
+			FOV, (float)SCREEN_WIDTH / SCREEN_HEIGHT, PLAYER_SCREEN_MARGIN,
+			PlayerGetHeight() * TARGET_HEIGHT_RATE, FOCUS_POINT_RATE);
+	}
 	PlaceCamera();
 }
 
@@ -130,4 +157,9 @@ float CameraGetYaw(void)
 XMFLOAT3 CameraGetDirection(void)
 {
 	return { cosf(g_Pitch) * sinf(g_Yaw), sinf(g_Pitch), cosf(g_Pitch) * cosf(g_Yaw) };
+}
+
+int CameraGetFocusTarget(void)
+{
+	return g_FocusTarget;
 }

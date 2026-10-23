@@ -68,3 +68,62 @@ VEC3 CameraCalcSmooth(const VEC3& current, const VEC3& target, float speed, floa
 		current.Z + (target.Z - current.Z) * rate,
 	};
 }
+
+static float WrapYaw(float yaw)
+{
+	return atan2f(sinf(yaw), cosf(yaw));
+}
+
+float CameraCalcYawTo(const VEC3& from, const VEC3& to, float fallbackYaw)
+{
+	const VEC3 delta = Vec3Sub(to, from);
+	if (delta.X * delta.X + delta.Z * delta.Z < 1.0e-8f) return fallbackYaw;
+	return atan2f(delta.X, delta.Z);
+}
+
+float CameraCalcTurnYaw(float current, float target, float speed, float dt)
+{
+	if (dt <= 0.0f || speed <= 0.0f) return current;
+	const float delta = WrapYaw(target - current);
+	const float step = speed * dt;
+	return WrapYaw(current + fmaxf(-step, fminf(step, delta)));
+}
+
+int CameraCalcPickFocus(float yaw, const VEC3& player, const CAMERA_FOCUS_TARGET* targets,
+	int count, int current, float maxAngle, float maxDistance, float bonus)
+{
+	int best = -1;
+	float bestScore = maxAngle + 1.0f;
+	for (int i = 0; i < count; ++i) {
+		const VEC3 delta = Vec3Sub(targets[i].Position, player);
+		if (!targets[i].Available || Vec3LengthSq(delta) > maxDistance * maxDistance) continue;
+		// 真上・真下の敵には水平の狙いが定まらない。
+		if (delta.X * delta.X + delta.Z * delta.Z < 1.0e-8f) continue;
+		const float angle = fabsf(WrapYaw(CameraCalcYawTo(player, targets[i].Position, yaw) - yaw));
+		if (angle > maxAngle) continue;
+		const float score = angle - (i == current ? bonus : 0.0f);
+		if (score < bestScore) { bestScore = score; best = i; }
+	}
+	return best;
+}
+
+VEC3 CameraCalcFocusPoint(const VEC3& player, const VEC3& enemy, float yaw, float pitch,
+	float distance, float fov, float aspect, float margin, float radius, float rate)
+{
+	const VEC3 delta = Vec3Sub(enemy, player);
+	const VEC3 forward{ cosf(pitch) * sinf(yaw), sinf(pitch), cosf(pitch) * cosf(yaw) };
+	const VEC3 right{ cosf(yaw), 0.0f, -sinf(yaw) };
+	const VEC3 up{ -sinf(pitch) * sinf(yaw), cosf(pitch), -sinf(pitch) * cosf(yaw) };
+	const float tanY = tanf(fov * 0.5f) * (1.0f - margin);
+	const float limits[2]{ tanY * aspect, tanY };
+	const float sides[2]{ fabsf(Vec3Dot(delta, right)), fabsf(Vec3Dot(delta, up)) };
+	float shift = fmaxf(0.0f, fminf(1.0f, rate));
+	for (int axis = 0; axis < 2; ++axis) {
+		// 球全体が視錐台の内側に入る条件。敵側への奥行きのずれも考慮する。
+		const float room = distance * limits[axis] - radius * sqrtf(1.0f + limits[axis] * limits[axis]);
+		const float cost = sides[axis] + limits[axis] * Vec3Dot(delta, forward);
+		if (room <= 0.0f) return player;
+		if (cost > 0.0f) shift = fminf(shift, room / cost);
+	}
+	return Vec3Add(player, Vec3Scale(delta, shift));
+}

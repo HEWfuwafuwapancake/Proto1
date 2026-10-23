@@ -6,10 +6,10 @@
 XMFLOAT3 CameraGetDirection(void);
 
 /// @file camera.h
-/// @brief TPS カメラ（プレイヤーの背後から追いかける）
+/// @brief TPS カメラ（プレイヤーに遅れず追従し、フォーカス中だけ敵へ寄せる）
 /// @details
-///   - マウス・矢印キー・右スティック：プレイヤーのまわりを回る（感度は action.cpp の「調整用の値」）。歩いても自動では回り込まない
-///   - 見ている点（プレイヤーの頭のあたり）は、プレイヤーを少し遅れてなめらかに追う（camera.cpp の FOLLOW_SPEED）
+///   - マウス・矢印キー・右スティック：プレイヤーのまわりを回る（上下は -35°〜0°。感度は action.cpp の「調整用の値」）。歩いても自動では回り込まない
+///   - プレイヤーに遅れず追従。中央付近の敵をフォーカスし、ゆっくり左右角と注視点を寄せる（sway）。保持中は寄せない
 ///   - カメラは見ている点から、見ている向きの反対へ FOLLOW_DISTANCE 下がったところ。浮島にめり込むときは手前まで近づく
 ///   - 計算は physics/cameracalc.h
 
@@ -19,7 +19,7 @@ void CameraInitialize(void);
 /// @brief カメラの終了処理（今は何もしない）
 void CameraFinalize(void);
 
-/// @brief 「カメラを回す」行動で向きを変え、見ている点をプレイヤーへ近づけてから、カメラを置く
+/// @brief 手動操作とフォーカス補助で向きを変え、現在のプレイヤー位置からカメラを置く
 /// @details 毎フレーム、PlayerUpdate のあとに呼ぶ（動いたあとのプレイヤーを追いかける）。浮島にめり込むときは手前まで近づける
 void CameraUpdate(void);
 
@@ -40,3 +40,6 @@ XMFLOAT3 CameraGetPosition(void);
 /// @brief カメラの左右の向きを取得する（プレイヤーの移動の向きに使う）
 /// @return 左右の向き（ラジアン。0 で +Z 方向、プラスで右回り）
 float CameraGetYaw(void);
+
+/// @brief 今フォーカスしているダミー番号を取得する（なしは -1）
+int CameraGetFocusTarget(void);

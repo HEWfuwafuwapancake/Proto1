@@ -50,8 +50,8 @@ void TentacleFinalize(void)
 
 void TentacleUpdate(void)
 {
-	const XMFLOAT3 direction = CameraGetDirection();
-	const VEC3 aim{ direction.x, direction.y, direction.z };
+	const float yaw = CameraGetYaw();
+	const VEC3 aim{ sinf(yaw), 0.0f, cosf(yaw) };
 	for (int hand = 0; hand < 2; ++hand) {
 		TENTACLE& arm = g_Arms[hand];
 		// 左腕がつかんだ状態を右腕へ反映するため、候補は各腕の直前に取得する。
@@ -84,4 +84,12 @@ void TentacleDraw(void)
 			ShapeDrawSphere({ p.X, p.Y, p.Z }, PARAMS.Radius, color);
 		}
 	}
+}
+
+bool TentacleIsHolding(void)
+{
+	for (const TENTACLE& arm : g_Arms) {
+		if (arm.State == TENTACLE_HOLDING) return true;
+	}
+	return false;
 }

@@ -1,5 +1,6 @@
 ﻿// physics/cameracalc.h（TPS カメラの位置・浮島にめり込まない・なめらかに追う）の単体テスト
 #include <math.h>
+#include <initializer_list>
 #include "CppUnitTest.h"
 #include "physics/cameracalc.h"
 
@@ -112,6 +113,69 @@ namespace Proto1Tests
 			Assert::AreEqual(1.0f, pos.X, CAMERA_EPSILON);
 			Assert::AreEqual(2.0f, pos.Y, CAMERA_EPSILON);
 			Assert::AreEqual(3.0f, pos.Z, CAMERA_EPSILON);
+		}
+		TEST_METHOD(Focus_ChoosesClosestAngleAndKeepsSmallPriority)
+		{
+			CAMERA_FOCUS_TARGET targets[]{ {{2, 0, 10}, true}, {{1.5f, 0, 10}, true} };
+			Assert::AreEqual(1, CameraCalcPickFocus(0, {}, targets, 2, -1, 0.5f, 20, 0.06f));
+			Assert::AreEqual(0, CameraCalcPickFocus(0, {}, targets, 2, 0, 0.5f, 20, 0.06f));
+			targets[1].Position.X = 0;
+			Assert::AreEqual(1, CameraCalcPickFocus(0, {}, targets, 2, 0, 0.5f, 20, 0.06f));
+		}
+		TEST_METHOD(Focus_RejectsAngleDistanceUnavailableAndEmpty)
+		{
+			CAMERA_FOCUS_TARGET targets[]{ {{8, 0, 1}, true}, {{0, 0, 30}, true}, {{0, 0, 5}, false} };
+			Assert::AreEqual(-1, CameraCalcPickFocus(0, {}, targets, 3, 0, 0.5f, 20, 2));
+			Assert::AreEqual(-1, CameraCalcPickFocus(0, {}, nullptr, 0, -1, 0.5f, 20, 0));
+			targets[1].Position = {0, 30, 1};
+			Assert::AreEqual(-1, CameraCalcPickFocus(0, {}, targets, 3, 1, 0.5f, 20, 2));
+		}
+		TEST_METHOD(Focus_WrapsAngleAndIgnoresCoincidentTarget)
+		{
+			CAMERA_FOCUS_TARGET targets[]{ {{0.01f, 0, -10}, true}, {{0, 1, 0}, true} };
+			Assert::AreEqual(0, CameraCalcPickFocus(-CAMERA_PI + 0.01f, {}, targets, 2, -1, 0.05f, 20, 0));
+		}
+		TEST_METHOD(YawTo_UsesHorizontalDirectionAndNearFallback)
+		{
+			Assert::AreEqual(CAMERA_PI * 0.5f, CameraCalcYawTo({}, {10, 7, 0}, 0), CAMERA_EPSILON);
+			Assert::AreEqual(1.2f, CameraCalcYawTo({}, {0.00001f, 10, 0}, 1.2f), CAMERA_EPSILON);
+		}
+		TEST_METHOD(Turn_LimitsSpeedAndCrossesPiByShortestPath)
+		{
+			Assert::AreEqual(0.1f, CameraCalcTurnYaw(0, 1, 0.2f, 0.5f), CAMERA_EPSILON);
+			Assert::AreEqual(-CAMERA_PI + 0.05f,
+				CameraCalcTurnYaw(CAMERA_PI - 0.05f, -CAMERA_PI + 0.2f, 0.1f, 1), CAMERA_EPSILON);
+			Assert::AreEqual(CAMERA_PI - 0.05f,
+				CameraCalcTurnYaw(-CAMERA_PI + 0.05f, CAMERA_PI - 0.2f, 0.1f, 1), CAMERA_EPSILON);
+		}
+		TEST_METHOD(Turn_DoesNotOvershootOrMoveAtZeroDt)
+		{
+			Assert::AreEqual(0.2f, CameraCalcTurnYaw(0, 0.2f, 2, 1), CAMERA_EPSILON);
+			Assert::AreEqual(0.3f, CameraCalcTurnYaw(0.3f, 1, 2, 0), CAMERA_EPSILON);
+		}
+		TEST_METHOD(FocusPoint_UsesRequestedRateForNearbyEnemy)
+		{
+			const VEC3 p = CameraCalcFocusPoint({1,2,3}, {3,2,5}, 0, 0, 8, CAMERA_PI/3, 1.7f, 0.15f, 1.5f, 0.25f);
+			Assert::AreEqual(1.5f, p.X, CAMERA_EPSILON);
+			Assert::AreEqual(2.0f, p.Y, CAMERA_EPSILON);
+			Assert::AreEqual(3.5f, p.Z, CAMERA_EPSILON);
+		}
+		TEST_METHOD(FocusPoint_KeepsWholePlayerInsideBothScreenAxes)
+		{
+			for (float aspect : {0.6f, 1.777f}) {
+				for (VEC3 enemy : {VEC3{100, 0, 10}, VEC3{0, 60, 100}, VEC3{-80, -40, 100}}) {
+					const float pitch = -0.6f, radius = 1.6f, distance = 8;
+					const VEC3 point = CameraCalcFocusPoint({}, enemy, 0, pitch, distance, CAMERA_PI/3, aspect, 0.15f, radius, 0.4f);
+					Assert::IsTrue(Vec3Length(point) < Vec3Length(enemy) * 0.4f);
+					const VEC3 eye = CameraCalcOrbitPosition(point, 0, pitch, distance);
+					const VEC3 relative = Vec3Scale(eye, -1);
+					const float depth = relative.Y * sinf(pitch) + relative.Z * cosf(pitch);
+					const float vertical = relative.Y * cosf(pitch) - relative.Z * sinf(pitch);
+					const float tanY = tanf(CAMERA_PI/6) * 0.85f;
+					Assert::IsTrue(fabsf(relative.X) + radius * sqrtf(1 + tanY*tanY*aspect*aspect) <= depth*tanY*aspect + CAMERA_EPSILON);
+					Assert::IsTrue(fabsf(vertical) + radius * sqrtf(1 + tanY*tanY) <= depth*tanY + CAMERA_EPSILON);
+				}
+			}
 		}
 	};
 }

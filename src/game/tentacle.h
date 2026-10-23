@@ -13,3 +13,6 @@ void TentacleFinalize(void);
 void TentacleUpdate(void);
 /// @brief 球を並べて左右の触腕を描く
 void TentacleDraw(void);
+
+/// @brief どちらかの腕が敵をつかんでいるか返す（カメラ補助の停止に使う）
+bool TentacleIsHolding(void);
