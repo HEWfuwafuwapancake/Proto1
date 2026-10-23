@@ -79,6 +79,8 @@
   <ItemGroup>
     <ClCompile Include="..\..\src\core\gametime.cpp" />
     <ClCompile Include="..\..\src\core\timer.cpp" />
+    <ClCompile Include="..\..\src\input\actioncalc.cpp" />
+    <ClCompile Include="actioncalc_test.cpp" />
     <ClCompile Include="gametime_test.cpp" />
     <ClCompile Include="mathutil_test.cpp" />
     <ClCompile Include="timer_test.cpp" />

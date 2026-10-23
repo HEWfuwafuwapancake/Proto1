@@ -1,7 +1,7 @@
 ﻿#include "game/camera.h"
 #include "core/shader.h"
+#include "input/action.h"
 #include "input/keyboard.h"
-#include "input/mouse.h"
 #include "game/field.h"
 #include "game/cube.h"
 
@@ -9,12 +9,7 @@
 //------------------------------------------------------------------------------
 //	調整用の値
 //------------------------------------------------------------------------------
-// マウス感度：マウスを1カウント動かしたときに回る角度（ラジアン）
-// 大きくすると速く回る。0.001f（ゆっくり）〜 0.005f（速い）くらいが目安
-static constexpr float MOUSE_SENSITIVITY = 0.00125f;
-static constexpr bool  MOUSE_INVERT_Y = false;							// true にすると上下が逆になる
-
-static constexpr float KEY_ROTATE_SPEED = XMConvertToRadians(2.0f);	// 矢印キーで1フレームに回る角度
+// マウス感度・矢印キーで回る速さは action.cpp の「調整用の値」にある
 static constexpr float MOVE_SPEED = 0.15f;							// 1フレームに進む距離
 static constexpr float RUN_MULTIPLIER = 3.0f;						// Shift を押したときの速さの倍率
 static constexpr float EYE_MIN_HEIGHT = 0.5f;						// 地面からこれ以上は下がらない
@@ -103,18 +98,10 @@ void CameraFinalize(void)
 void CameraUpdate(void)
 {
 	// ---- 向き ----
-	// マウス
-	if (MouseIsLocked()) {
-		float dy = (float)MouseGetDeltaY() * (MOUSE_INVERT_Y ? -1.0f : 1.0f);
-		g_Yaw += (float)MouseGetDeltaX() * MOUSE_SENSITIVITY;
-		g_Pitch -= dy * MOUSE_SENSITIVITY;
-	}
-
-	// 矢印キー
-	if (KeyboardIsPress(VK_LEFT))  g_Yaw -= KEY_ROTATE_SPEED;
-	if (KeyboardIsPress(VK_RIGHT)) g_Yaw += KEY_ROTATE_SPEED;
-	if (KeyboardIsPress(VK_UP))    g_Pitch += KEY_ROTATE_SPEED;
-	if (KeyboardIsPress(VK_DOWN))  g_Pitch -= KEY_ROTATE_SPEED;
+	// 「カメラを回す」行動（マウス ＋ 矢印キー。感度は action.cpp の調整用の値）
+	const ACTION_AXIS look = ActionGetLook();
+	g_Yaw += look.X;
+	g_Pitch += look.Y;
 
 	// 真上・真下を越えると上下が反転するので止める
 	const float PITCH_LIMIT = XMConvertToRadians(89.0f);

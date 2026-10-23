@@ -7,6 +7,7 @@
 #include "core/gametime.h"
 #include "core/main.h"
 #include "core/shader.h"
+#include "input/action.h"
 #include "input/keyboard.h"
 #include "input/mouse.h"
 #include "game/camera.h"
@@ -226,6 +227,9 @@ bool Initialize(HWND hWnd)
 	//マウス初期化
 	MouseInitialize(hWnd);
 
+	//行動（入力を「ジャンプ」「つかむ」などに変える仕組み）初期化
+	ActionInitialize();
+
 	//カメラ初期化
 	CameraInitialize();
 
@@ -277,6 +281,9 @@ void Update(void)
 	if (KeyboardIsTrigger(VK_TAB)) {
 		MouseSetLock(!MouseIsLocked());
 	}
+
+	//キーボード・マウスの状態を「行動」に変える（ロックの切り替えのあとなので、切り替えた瞬間はマウスの移動量が 0）
+	ActionUpdate();
 
 	CameraUpdate();
 	FieldUpdate();
