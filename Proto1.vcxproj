@@ -147,6 +147,7 @@
     <ClCompile Include="src\physics\cameracalc.cpp" />
     <ClCompile Include="src\physics\collision.cpp" />
     <ClCompile Include="src\physics\dummycalc.cpp" />
+    <ClCompile Include="src\physics\knockbackcalc.cpp" />
     <ClCompile Include="src\game\dummy.cpp" />
     <ClCompile Include="src\game\player.cpp" />
     <ClCompile Include="src\render\shape.cpp" />
@@ -174,6 +175,7 @@
     <ClInclude Include="src\physics\cameracalc.h" />
     <ClInclude Include="src\physics\collision.h" />
     <ClInclude Include="src\physics\dummycalc.h" />
+    <ClInclude Include="src\physics\knockbackcalc.h" />
     <ClInclude Include="src\game\dummy.h" />
     <ClInclude Include="src\physics\vec3.h" />
     <ClInclude Include="src\game\player.h" />
