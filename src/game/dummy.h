@@ -45,6 +45,11 @@ void DummyMoveHeld(int index, const VEC3& center);
 /// @brief 保持を解除する。throwTarget が true なら指定した3D方向へ投げ、false ならダメージなしで離す
 void DummyRelease(int index, bool throwTarget, const VEC3& direction, float damage, float power);
 
+/// @brief ダミーのダメージ%を取得する（画面表示に使う）
+/// @param index ダミーの番号（0〜DUMMY_COUNT-1）
+/// @return ダメージ%（無効な番号なら 0）
+float DummyGetPercent(int index);
+
 /// @brief ダミー全員が場外に落ちた回数の合計を取得する（No.14 のスコアに使う）
 /// @return 落ちた回数の合計
 int DummyGetTotalOutCount(void);
