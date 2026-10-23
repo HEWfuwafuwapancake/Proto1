@@ -15,6 +15,7 @@
 #include "game/dummy.h"
 #include "game/player.h"
 #include "game/stage.h"
+#include "game/tentacle.h"
 #include "render/polygon2D.h"
 #include "render/shape.h"
 
@@ -249,6 +250,7 @@ bool Initialize(HWND hWnd)
 	PlayerInitialize();
 	DummyInitialize();
 	CameraInitialize();
+	TentacleInitialize();
 
 	//2Dポリゴン初期化
 	Polygon2DInitialize();
@@ -262,6 +264,7 @@ void Finalize(void)
 	//初期化と逆の順番で終了処理をする
 	Polygon2DFinalize();
 
+	TentacleFinalize();
 	CameraFinalize();
 	DummyFinalize();
 	PlayerFinalize();
@@ -307,6 +310,7 @@ void Update(void)
 	PlayerUpdate();
 	DummyUpdate();
 	CameraUpdate();
+	TentacleUpdate();
 	Polygon2DUpdate();
 }
 
@@ -331,6 +335,7 @@ void Draw(void)
 	StageDraw();
 	PlayerDraw();
 	DummyDraw();
+	TentacleDraw();
 
 	// ---- 2D描画（UI）：3Dの上に重ねるので最後に描く ----
 	SetDepthEnable(false);

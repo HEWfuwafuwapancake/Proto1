@@ -11,43 +11,29 @@ Claude と Codex の2つの AI で、**片方が実装して、もう片方が�
 
 ## 1. PC ごとの準備（1回だけ）
 
-AI ごとに作業フォルダを分けます。同じフォルダで2つの AI が同時に動くと、ブランチの切り替えや
-`save-work.ps1`（`git add -A`）で相手の作業途中のファイルを巻き込んでしまうためです。
+Claude と Codex は同じ `Proto1` フォルダを交代で使います（2026-10-23、管理者の指示）。
+同時には作業しません。切り替える前に変更をコミット・push し、`docs/handoff.md` を更新します。
+引き継ぐ AI は最初に `git status` と引き継ぎメモを確認し、同じ作業ブランチで続きを進めてかまいません。
+レビューだけを担当する場合は、相手の実装にコミットせず指摘を残します。
 
-| フォルダ | 使う AI |
-|---|---|
-| `Documents\GitHub\Proto1`（PC によっては `source\repos\Proto1`） | Claude（Claude Code） |
-| `Documents\GitHub\Proto1-codex`（Claude のフォルダと同じ場所に `-codex` を付けて作る） | Codex |
-
-レビューだけでなく、Codex が開発の続き（次のタスクの実装）をするときも、この Codex 用のフォルダを使います。
-始め方は `AGENTS.md` の「開発の続きをするとき」と、`docs/handoff.md`（引き継ぎメモ）に書いてあります。
-
-Codex 用のフォルダを作る：
-
-```powershell
-git clone https://github.com/HEWfuwafuwapancake/Proto1.git "$HOME\Documents\GitHub\Proto1-codex"
-Set-Location "$HOME\Documents\GitHub\Proto1-codex"
-git lfs pull
-.\tools\fetch-latest.ps1
-```
-
-2台目の PC でも同じことをします。この手順書や `AGENTS.md` は Git に入っているので、`fetch-latest.ps1` で届きます。
+Notion の「委譲先」「レビュー担当」は当面、作業の制約にしません。
+実装・レビューの分担は、管理者が指定したときに以下の手順を使います。
 
 ## 2. 1つのタスクの流れ
 
 ### 実装する AI
-1. 自分のフォルダで `.\tools\start-work.ps1 <作業名>`
+1. 共有の `Proto1` フォルダで `.\tools\start-work.ps1 <作業名>`
 2. 実装して、Debug / Release でビルドが通ることと、起動して動くことを確かめる
 3. `.\tools\save-work.ps1 "やったこと"` → `.\tools\submit-pr.ps1`
 4. PR の説明の「見てほしいところ」に、**`実装：Claude／レビュー：Codex`**（またはその逆）と書く
 
 ### レビューする AI
-1. 自分のフォルダで PR を取ってくる：`gh pr checkout <PR番号>`
+1. もう一方の AI の作業終了と変更の保存を確認し、共有フォルダで PR を取ってくる：`gh pr checkout <PR番号>`
 2. 下の「3. レビューで見ること」に沿って読み、必要ならビルドして動かす
 3. 指摘を PR にコメントする
    - **Claude がレビューするとき**：Claude Code で `/code-review <PR番号> --comment`
      （`--comment` を付けないと、PR には書かずに会話の中で結果を返す）
-   - **Codex がレビューするとき**：Codex 用フォルダで Codex を開き、`/review` を使う。
+   - **Codex がレビューするとき**：共有の `Proto1` フォルダで Codex を開き、`/review` を使う。
      PR にコメントとして残したいときは、結果を `gh pr comment <PR番号> --body-file <ファイル>` で書く
 4. 指摘には重さを付ける：**必須**（直さないとマージできない）／**推奨**（直したほうがよい）／**質問**
 5. 相手のブランチには**コミットしない**（直すのは実装した AI）

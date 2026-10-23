@@ -149,6 +149,8 @@
     <ClCompile Include="src\physics\dummycalc.cpp" />
     <ClCompile Include="src\physics\knockbackcalc.cpp" />
     <ClCompile Include="src\game\dummy.cpp" />
+    <ClCompile Include="src\game\tentacle.cpp" />
+    <ClCompile Include="src\physics\tentaclecalc.cpp" />
     <ClCompile Include="src\game\player.cpp" />
     <ClCompile Include="src\render\shape.cpp" />
     <ClCompile Include="src\core\timer.cpp" />
@@ -177,6 +179,8 @@
     <ClInclude Include="src\physics\dummycalc.h" />
     <ClInclude Include="src\physics\knockbackcalc.h" />
     <ClInclude Include="src\game\dummy.h" />
+    <ClInclude Include="src\game\tentacle.h" />
+    <ClInclude Include="src\physics\tentaclecalc.h" />
     <ClInclude Include="src\physics\vec3.h" />
     <ClInclude Include="src\game\player.h" />
     <ClInclude Include="src\render\shape.h" />

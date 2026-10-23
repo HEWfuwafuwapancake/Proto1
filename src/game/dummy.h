@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "core/dx11.h"
+#include "physics/tentaclecalc.h"
 
 /// @file dummy.h
 /// @brief ダミーの敵（その場に立つだけのカプセルが3体。動かない・攻撃しない）
@@ -18,7 +19,6 @@ void DummyInitialize(void);
 void DummyFinalize(void);
 
 /// @brief ダミーを1フレーム分動かす（重力・着地・プレイヤーに押される・吹っ飛ばされている間の動き・場外と復活）
-/// @details Debug ビルドでは、F1 キーでプレイヤーにいちばん近いダミーを殴る（確かめ用。No.13 の触腕ができたら消す）
 /// @details 毎フレーム、PlayerUpdate のあとに呼ぶ（動いたあとのプレイヤーに押される）
 void DummyUpdate(void);
 
@@ -33,6 +33,17 @@ void DummyDraw(void);
 /// @param damage ダメージ（%）
 /// @param power 攻撃の強さ（1 でふつう。大きいほど速く飛ぶ）
 void DummyHit(int index, const XMFLOAT3& direction, float damage, float power);
+
+/// @brief 敵の体とつかめる状態を取得する（無効な番号なら空の候補）
+TENTACLE_TARGET DummyGetTarget(int index);
+/// @brief 敵が生存しているか取得する
+bool DummyIsActive(int index);
+/// @brief 敵をつかむ。ほかの腕が保持中、または消えていれば false
+bool DummyGrab(int index);
+/// @brief 保持中の敵の中心位置を設定する
+void DummyMoveHeld(int index, const VEC3& center);
+/// @brief 保持を解除する。throwTarget が true なら指定した3D方向へ投げ、false ならダメージなしで離す
+void DummyRelease(int index, bool throwTarget, const VEC3& direction, float damage, float power);
 
 /// @brief ダミー全員が場外に落ちた回数の合計を取得する（No.14 のスコアに使う）
 /// @return 落ちた回数の合計

@@ -10,7 +10,6 @@
 #ifdef _DEBUG
 #include <iostream>
 #include "core/debug_ostream.h"
-#include "input/keyboard.h"
 #endif
 
 
@@ -35,11 +34,6 @@ static constexpr float KNOCKBACK_AIR_DRAG = 0.5f;		// 空気の抵抗（空中�
 static constexpr float KNOCKBACK_FRICTION = 20.0f;		// 地面の摩擦（浮島の上をすべる間、横の速さが 1秒ごとにこれだけ減る）
 static constexpr float KNOCKBACK_STOP_SPEED = 0.5f;		// 浮島の上でこれより遅くなったら止まる
 
-#ifdef _DEBUG
-// 確かめ用の攻撃（F1 キー。No.13 の触腕ができたら消す）
-static constexpr float DEBUG_ATTACK_DAMAGE = 12.0f;		// 1回のダメージ（%）
-static constexpr float DEBUG_ATTACK_POWER = 1.0f;		// 攻撃の強さ
-#endif
 
 
 // ダミー1体
@@ -49,6 +43,7 @@ struct DUMMY
 	DUMMY_LIFE Life;	// 場外に落ちて復活する流れ
 	float Percent;		// ダメージ%（復活したら 0 に戻る）
 	bool Launched;		// 吹っ飛ばされているか（自分では止まれない。浮島の上で止まったら false）
+	bool Held;          // 触腕が保持しているか
 };
 
 static DUMMY g_Dummies[DUMMY_COUNT] = {};
@@ -80,34 +75,9 @@ static void PlaceAtSpawn(int index)
 	dummy.Body.OnGround = true;
 	dummy.Percent = 0.0f;
 	dummy.Launched = false;
+	dummy.Held = false;
 }
 
-#ifdef _DEBUG
-// 確かめ用の攻撃：プレイヤーにいちばん近いダミーを、プレイヤーからの向きに殴る（No.13 の触腕ができたら消す）
-static void DebugAttackNearest(void)
-{
-	const XMFLOAT3 p = PlayerGetPosition();
-	int nearest = -1;
-	float nearestDistSq = 0.0f;
-	for (int i = 0; i < DUMMY_COUNT; i++) {
-		if (g_Dummies[i].Life.State != DUMMY_STATE_ACTIVE) {
-			continue;
-		}
-		const float dx = g_Dummies[i].Body.X - p.x;
-		const float dz = g_Dummies[i].Body.Z - p.z;
-		const float distSq = dx * dx + dz * dz;
-		if (nearest < 0 || distSq < nearestDistSq) {
-			nearest = i;
-			nearestDistSq = distSq;
-		}
-	}
-	if (nearest < 0) {
-		return;
-	}
-	const DUMMY& target = g_Dummies[nearest];
-	DummyHit(nearest, { target.Body.X - p.x, 0.0f, target.Body.Z - p.z }, DEBUG_ATTACK_DAMAGE, DEBUG_ATTACK_POWER);
-}
-#endif
 
 
 void DummyInitialize(void)
@@ -131,16 +101,11 @@ void DummyUpdate(void)
 	PLAYER_PARAMS params{};
 	params.Gravity = GRAVITY;	// 自分では動かないので、歩く速さ・ジャンプは 0
 
-#ifdef _DEBUG
-	if (KeyboardIsTrigger(VK_F1)) {
-		DebugAttackNearest();
-	}
-#endif
 
 	for (int i = 0; i < DUMMY_COUNT; i++) {
 		DUMMY& dummy = g_Dummies[i];
 
-		if (dummy.Life.State == DUMMY_STATE_ACTIVE) {
+		if (dummy.Life.State == DUMMY_STATE_ACTIVE && !dummy.Held) {
 			if (dummy.Launched) {
 				// 吹っ飛ばされている：自分では止まれない（プレイヤーにも押されない）
 				dummy.Launched = KnockbackCalcStep(dummy.Body, dt, KnockbackParams(), stage);
@@ -219,4 +184,52 @@ int DummyGetTotalOutCount(void)
 		total += g_Dummies[i].Life.OutCount;
 	}
 	return total;
+}
+
+bool DummyIsActive(int index)
+{
+	return index >= 0 && index < DUMMY_COUNT && g_Dummies[index].Life.State == DUMMY_STATE_ACTIVE;
+}
+
+TENTACLE_TARGET DummyGetTarget(int index)
+{
+	if (!DummyIsActive(index)) return {};
+	const DUMMY& dummy = g_Dummies[index];
+	const VEC3 feet{ dummy.Body.X, dummy.Body.Y, dummy.Body.Z };
+	return { DummyCalcBodyCapsule(feet, BODY_RADIUS, BODY_HEIGHT), !dummy.Held };
+}
+
+bool DummyGrab(int index)
+{
+	if (!DummyIsActive(index) || g_Dummies[index].Held) return false;
+	DUMMY& dummy = g_Dummies[index];
+	dummy.Held = true;
+	dummy.Launched = false;
+	dummy.Body.VelocityX = dummy.Body.VelocityY = dummy.Body.VelocityZ = 0.0f;
+	dummy.Body.OnGround = false;
+	return true;
+}
+
+void DummyMoveHeld(int index, const VEC3& center)
+{
+	if (!DummyIsActive(index) || !g_Dummies[index].Held) return;
+	DUMMY& dummy = g_Dummies[index];
+	dummy.Body.X = center.X;
+	dummy.Body.Y = center.Y - BODY_HEIGHT * 0.5f;
+	dummy.Body.Z = center.Z;
+}
+
+void DummyRelease(int index, bool throwTarget, const VEC3& direction, float damage, float power)
+{
+	if (index < 0 || index >= DUMMY_COUNT) return;
+	DUMMY& dummy = g_Dummies[index];
+	dummy.Held = false;
+	if (!DummyIsActive(index) || !throwTarget) return;
+	// ダメージと速さは従来の攻撃と同じ経路、投げる方向だけ3Dにする。
+	DummyHit(index, { direction.X, direction.Y, direction.Z }, damage, power);
+	const float speed = KnockbackCalcSpeed(dummy.Percent, power, KnockbackParams());
+	const VEC3 velocity = KnockbackCalcDirectedVelocity(direction, speed);
+	dummy.Body.VelocityX = velocity.X;
+	dummy.Body.VelocityY = velocity.Y;
+	dummy.Body.VelocityZ = velocity.Z;
 }

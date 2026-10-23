@@ -73,3 +73,9 @@ bool KnockbackCalcStep(PLAYER_BODY& body, float dt, const KNOCKBACK_PARAMS& para
 	}
 	return true;
 }
+
+VEC3 KnockbackCalcDirectedVelocity(const VEC3& direction, float speed)
+{
+	const float length = Vec3Length(direction);
+	return length < MIN_HORIZONTAL ? VEC3{ 0.0f, speed, 0.0f } : Vec3Scale(direction, speed / length);
+}

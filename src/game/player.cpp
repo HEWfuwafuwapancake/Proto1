@@ -24,6 +24,7 @@ static constexpr XMFLOAT4 BODY_COLOR = { 0.95f, 0.45f, 0.35f, 1.0f };	// 色（�
 
 
 static PLAYER_BODY g_Body = {};	// 位置・速度・立っているか
+static bool g_Respawned = false;
 
 
 // 浮島の真ん中に立たせる
@@ -40,6 +41,7 @@ static void Respawn(void)
 
 void PlayerInitialize(void)
 {
+	g_Respawned = false;
 	Respawn();
 }
 
@@ -50,6 +52,7 @@ void PlayerFinalize(void)
 
 void PlayerUpdate(void)
 {
+	g_Respawned = false;
 	// 移動の向き（前 = カメラが向いている向き。上下には傾けない）を、ワールドの向きに直す
 	const ACTION_AXIS move = ActionGetMove();
 	const float yaw = CameraGetYaw();
@@ -70,6 +73,7 @@ void PlayerUpdate(void)
 		hal::dout << "プレイヤー：場外 → 浮島の真ん中に戻した" << std::endl;
 #endif
 		Respawn();
+		g_Respawned = true;
 	}
 }
 
@@ -93,4 +97,9 @@ void PlayerSetPosition(const XMFLOAT3& position)
 float PlayerGetHeight(void)
 {
 	return BODY_HEIGHT;
+}
+
+bool PlayerDidRespawn(void)
+{
+	return g_Respawned;
 }
