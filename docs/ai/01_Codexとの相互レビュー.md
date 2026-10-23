@@ -16,8 +16,11 @@ AI ごとに作業フォルダを分けます。同じフォルダで2つの AI 
 
 | フォルダ | 使う AI |
 |---|---|
-| `Documents\GitHub\Proto1` | Claude（Claude Code） |
-| `Documents\GitHub\Proto1-codex` | Codex |
+| `Documents\GitHub\Proto1`（PC によっては `source\repos\Proto1`） | Claude（Claude Code） |
+| `Documents\GitHub\Proto1-codex`（Claude のフォルダと同じ場所に `-codex` を付けて作る） | Codex |
+
+レビューだけでなく、Codex が開発の続き（次のタスクの実装）をするときも、この Codex 用のフォルダを使います。
+始め方は `AGENTS.md` の「開発の続きをするとき」と、`docs/handoff.md`（引き継ぎメモ）に書いてあります。
 
 Codex 用のフォルダを作る：
 
