@@ -109,3 +109,9 @@ AI（Claude と Codex）がミスをして直したときや、ユーザーに�
   `.cpp` を変えずにヘッダーだけ変えると「最新」と判断される（ビルド時の警告 MSB8029 がこのこと）。
 - **次からどうするか**：一時フォルダの中でビルドして確かめるときは `/t:Rebuild` を付ける。`tools/run-tests.ps1` は毎回作り直すようにした。
   テストを足したら、わざと計算を壊してテストが失敗することを必ず確かめる（今回もこの確認で気づけた）。
+
+## 2026-10-23 CLAUDE.md の MSBuild のパスをそのまま使い、ノートPC でビルドが動かなかった
+- **書いた AI**：Claude
+- **起きたこと**：No.4 のビルド確認で、`CLAUDE.md` に書いてある `...\2022\Community\MSBuild\...` をそのまま実行したら「見つからない」で止まった。このPCの Visual Studio は Enterprise だった。
+- **原因**：`CLAUDE.md` に「エディション／パスは PC によって違う」と書いてあるのに、確かめずに使った。
+- **次からどうするか**：ビルドするときは `tools/run-tests.ps1` と同じように `vswhere.exe -latest -requires Microsoft.Component.MSBuild -find "MSBuild\**\Bin\MSBuild.exe"` で MSBuild を探してから使う。
