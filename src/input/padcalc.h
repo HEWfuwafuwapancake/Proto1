@@ -1,0 +1,56 @@
+﻿#pragma once
+
+#include "input/actioncalc.h"
+
+/// @file padcalc.h
+/// @brief PS4 コントローラー（DUALSHOCK 4）の USB のデータ（レポート）の読み方と、スティックの遊び（デッドゾーン）の計算
+/// @details DirectX と Windows を使わないので、単体テスト（tests/Proto1Tests）からそのまま使える
+
+/// @brief パッドのボタン（PAD_STATE::Buttons のビット）
+enum PAD_BUTTON : unsigned int
+{
+	PAD_BUTTON_CROSS = 1u << 0,		///< ×
+	PAD_BUTTON_CIRCLE = 1u << 1,	///< ○
+	PAD_BUTTON_SQUARE = 1u << 2,	///< □
+	PAD_BUTTON_TRIANGLE = 1u << 3,	///< △
+	PAD_BUTTON_L1 = 1u << 4,		///< L1
+	PAD_BUTTON_R1 = 1u << 5,		///< R1
+	PAD_BUTTON_L2 = 1u << 6,		///< L2（奥まで押し込まなくても、少し押せば押した扱い）
+	PAD_BUTTON_R2 = 1u << 7,		///< R2（同上）
+	PAD_BUTTON_SHARE = 1u << 8,		///< SHARE
+	PAD_BUTTON_OPTIONS = 1u << 9,	///< OPTIONS
+	PAD_BUTTON_L3 = 1u << 10,		///< L3（左スティックの押し込み）
+	PAD_BUTTON_R3 = 1u << 11,		///< R3（右スティックの押し込み）
+	PAD_BUTTON_PS = 1u << 12,		///< PS ボタン
+};
+
+/// @brief パッド1台の状態
+struct PAD_STATE
+{
+	ACTION_AXIS LeftStick;	///< 左スティック（X：右がプラス、Y：上がプラス。どちらも -1〜1）
+	ACTION_AXIS RightStick;	///< 右スティック（同上）
+	unsigned int Buttons;	///< 押しているボタン（PAD_BUTTON のビットを「または」でまとめたもの）
+};
+
+/// @brief DUALSHOCK 4 の USB のレポートの、スティック1本分の値（0〜255）を -1〜1 に変える
+/// @param raw レポートの値（0：左・上の端、255：右・下の端）
+/// @return -1〜1（0 が左の端、255 が右の端。上下のときは呼んだ側で向きを逆にする）
+float PadCalcStickValue(unsigned char raw);
+
+/// @brief スティックの真ん中の遊び（デッドゾーン）を取り除く
+/// @details 手を離しても真ん中から少しずれた値が来るので、その分を 0 にする。
+///          遊びの外側は 0 から 1 までなめらかにつながるように広げ直し、長さは 1 までにする
+/// @param stick スティックの向き
+/// @param deadZone 遊びの大きさ（0〜1 未満。0.1 なら、長さ 0.1 以下は 0）
+/// @return 遊びを取り除いた向き（長さ 0〜1）
+ACTION_AXIS PadCalcApplyDeadZone(ACTION_AXIS stick, float deadZone);
+
+/// @brief DUALSHOCK 4 を USB でつないだときのレポートを読む
+/// @details レポートの並び：[0] レポート番号（0x01）、[1]〜[4] 左X・左Y・右X・右Y、
+///          [5] 方向キー（下位4ビット）と □×○△、[6] L1 R1 L2 R2 SHARE OPTIONS L3 R3、[7] PS ボタン（最下位ビット）。
+///          スティックは遊びを取り除く前の値（遊びは PadCalcApplyDeadZone で取り除く）
+/// @param data レポートのバイト列
+/// @param size data のバイト数
+/// @param[out] state 読んだ状態（読めなかったときは書き換えない）
+/// @return 読めたら true。バイト数が足りないときや、レポート番号が 0x01 でないときは false
+bool PadCalcParseDs4UsbReport(const unsigned char* data, int size, PAD_STATE& state);

@@ -16,43 +16,53 @@
 | 2 | コードの構成ルールとフォルダ分け（`src/core` `src/input` `src/render` `src/game` `shaders`） | ✅ 完了 | [#4](https://github.com/HEWfuwafuwapancake/Proto1/pull/4) |
 | 3 | 単体テストのプロジェクト（`tests/Proto1Tests`、`tools/run-tests.ps1`） | ✅ 完了 | [#5](https://github.com/HEWfuwafuwapancake/Proto1/pull/5) |
 | 4 | 時間の管理（`src/core/gametime`・`src/core/timer`） | ✅ 完了 | [#7](https://github.com/HEWfuwafuwapancake/Proto1/pull/7) |
-| 5 | 入力を「行動」に変える仕組み（`src/input/action`・`src/input/actioncalc`） | ✅ PR を出した。**管理者のマージ待ち** | PR は `tasks.md`・Notion を参照 |
-| **6** | **PS4 コントローラー（DUALSHOCK 4）を USB で読む** | **⬜ プランを出した。管理者の確認待ち** | — |
+| 5 | 入力を「行動」に変える仕組み（`src/input/action`・`src/input/actioncalc`） | ✅ 完了 | [#8](https://github.com/HEWfuwafuwapancake/Proto1/pull/8) |
+| **6** | **PS4 コントローラー（DUALSHOCK 4）を USB で読む**（`src/input/pad`・`src/input/padcalc`） | **🔄 PR を出した。実物のパッドでの確認とマージ待ち** | `tasks.md`・Notion を参照 |
+| 7 | ステージ（浮島）と場外の判定 | ⬜ プランを管理者と相談して直した。管理者の「進めて」待ち | — |
 
-- No.5 の PR（`feature/input-action`）がマージ待ち。それ以外の変更は develop にマージ済み。
-- ゲームは起動すると、丘と砂のくぼ地・回る立方体・2D パネルが出る（FPS 60）。単体テストは 28 個すべて通る（No.5 の PR の時点）。
-- No.5 の PR で残っている確認（人が操作して見る）：左右クリック・Space・E・R で VS の出力ウィンドウに「行動：〇〇」が出る／マウス・矢印キーでカメラが前と同じように回る。
-- **メインPC でまだやっていないこと**：Claude に `gh pr merge` を許す設定（下の「3. 決まったこと」の「マージの許可」）。
+- No.6 の PR（`feature/pad-input`）がマージ待ち。それ以外の変更は develop にマージ済み。
+- ゲームは起動すると、丘と砂のくぼ地・回る立方体・2D パネルが出る（FPS 60）。単体テストは 38 個すべて通る（No.6 の PR の時点）。
+- **No.6 で残っている確認（DUALSHOCK 4 を USB でつないで、人が操作して見る）**：Debug で起動して、出力ウィンドウに「パッド：DUALSHOCK 4 をつなぎました」→ ×・L1・R1・□・OPTIONS で「行動：〇〇」→ 右スティックでカメラが回る → 抜くと「外れました」で、落ちない。
+  確かめられたら `tasks.md` と Notion の No.6 を ✅ / 完了にする。Bluetooth は読まない（USB だけ）。
+- No.5 で残っている確認（人が操作して見る）：左右クリック・Space・E・R で「行動：〇〇」が出る／マウス・矢印キーでカメラが前と同じように回る。
+- **メインPC でまだやっていないこと**：Claude に許可を足す設定（下の「3. 決まったこと」の「Claude の許可」）。
 
-## 2. 次にやること：No.6 PS4 コントローラー（DUALSHOCK 4）を USB で読む（プラン・確認待ち）
+## 2. 次にやること：No.7 ステージ（浮島）と場外の判定（プラン・「進めて」待ち）
 
-No.5 の PR のマージのあと、管理者が「進めて」と言ったら、このプランで実装する。**テストのときに DUALSHOCK 4 を USB でつなぐ**。
+2026-10-23 に管理者と相談して決めたこと：**地形（丘と湖）は消して、空に浮島だけ**／浮島は **四角 30 × 30**／場外の線は **下だけ**（横や上に飛ばされても、落ちて下の線を越えたらアウト）。
+管理者が「進めて」と言ったら、このプランで実装する（No.6 の PR #9 とは別のファイルなので、マージ前に始めてもよい）。
 
 **やること**
-1. **`src/input/pad.h / .cpp`**（ひな形の書き方：`PadInitialize / Finalize / Update`）
-   - Raw Input に「ゲームパッド（HID）」も登録し、`WndProc` の `WM_INPUT` で、マウスでなければパッドに渡す
-   - DUALSHOCK 4 だけを読む（ソニーの VID `054C`・PID `05C4`（初代）/ `09CC`（2代目）で見分ける）。1台だけ（プロトは1人で遊ぶ）
-   - 抜いた／つないでいないときは「何も押していない」扱い（落ちない）
-2. **USB のデータ（レポート）の読み方は `src/input/padcalc.h / .cpp` に分けて単体テストする**（DirectX も Windows も使わない）
-   - 左右のスティック（0〜255 → -1〜1。上がプラス）、真ん中の遊び（デッドゾーン）、×・□・L1・R1・OPTIONS のボタン
-   - テストは、決まったバイト列を渡して、スティックとボタンが正しく読めるかを確かめる
-3. `action.cpp` でキーボードとパッドをまとめる：ボタンは「どちらかを押している」、移動は `ActionCalcCombineAxis`（長いほう）、カメラは右スティック × 回る速さを足す
-4. Debug ビルドでは、つないだ／外れたときに出力ウィンドウに出す
+1. **計算 `src/physics/stagecalc.h / .cpp`**（`src/physics/` を新しく作る。DirectX を使わない・単体テストする）
+   - `STAGE`（浮島の中心・横幅・奥行き・上の面の高さ・厚さ）と、場外の下の線の高さを「調整用の値」で決める
+   - `StageCalcIsOnPlatform(stage, x, z)`：その場所の真下に浮島があるか（あれば上の面に着地できる。No.8 のプレイヤーが使う）
+   - `StageCalcIsOut(stage, position)`：場外の下の線より下に落ちたか
+2. **描画 `src/game/stage.h / .cpp`**：浮島を平たい箱で描く（`StageInitialize / Finalize / Update / Draw`。仮の色）
+   - 置き場所：浮島の上の面を y = 0、中心を原点、30 × 30、厚さ 2。場外の下の線は y = -15
+3. **地形をやめる**：`main.cpp` から `Field〇〇` を呼ぶのをやめ、代わりに `Stage〇〇` を呼ぶ。背景は今の空の色のまま
+   - `field.cpp` のファイルは消さずに残す（あとで背景がほしくなったら戻せる。使わない間はビルドには入れたまま）
+   - カメラの「地面にもぐらない」制限（`FieldGetHeight` を使っている）を外す。浮島の下にも行けるようにして、場外を試せるようにする（カメラは No.9 で作り直す）
+   - 立方体（サンプル）は浮島の上に乗る高さに直す
+4. `CLAUDE.md` の表と「地面の上に物を置くときは `FieldGetHeight`」の説明・`docs/dev/01_DX11基盤の構成.md`・`.vcxproj.filters` に `src/physics` とステージのことを足す（`CLAUDE.md` の決まり）
+5. 確かめ用に、Debug ビルドでは、カメラが場外の下の線より下に行ったら出力ウィンドウに「場外」と出す（プレイヤーは No.8 なので、今はカメラで試す）
 
 **確かめ方**
-- `padcalc` の単体テスト（スティックの真ん中が 0・端が ±1・デッドゾーンの中は 0・ボタンのビット）。わざと壊してテストが失敗することも確かめる
-- ビルド警告 0、起動して FPS 60。パッドの ×・□・L1・R1・OPTIONS で「行動：〇〇」が出る、右スティックでカメラが回る、抜いても落ちない
+- `stagecalc` の単体テスト（浮島の真ん中・端ちょうど・外、下の線の上・ちょうど・下、浮島の外の上空はまだ場外でない）。わざと壊してテストが失敗することも確かめる
+- ビルド警告 0、起動して FPS 60。空に浮島と立方体が見える。カメラで浮島の下へ降りると「場外」と出る
 
-**終わったら**：PR を出す → `tasks.md` の No.6 を ✅ → Notion の No.6 を「完了」（PR のリンク）→ このファイルを更新 → No.7 のプランを出す。
+**終わったら**：PR を出す → `tasks.md` の No.7 を ✅ → Notion の No.7 を「完了」（PR のリンク）→ このファイルを更新 → No.8 のプランを出す。
 
 ## 3. これまでに決まったこと（会話の中で決めたこと）
 
 - **進め方**：`tasks.md` の優先度：高から順に、1つずつ「プラン → 管理者の確認 → 実装 → テスト → 完了チェック」。1タスク＝1フィーチャーブランチ＝1 PR。
 - **マージ**：管理者が「マージして」と言ったら Claude が `gh pr merge <番号> --merge --admin` でマージし、GitHub 上のブランチを消す。言われていないときはマージしない。
-- **マージの許可**：Claude Code の安全チェックが `gh pr merge` を止めるので、管理者の PC だけ `Proto1\.claude\settings.local.json` に次を入れる（GitHub には送らない。`.gitignore` 済み）。
-  `{"permissions":{"allow":["PowerShell(gh pr merge:*)","Bash(gh pr merge:*)"]}}`
+- **Claude の許可**：Claude Code の自動モードの安全チェックが、マージや `start-work.ps1`（中で develop を `git merge` する）、Notion の更新を止めることがある。
+  そのため、管理者の PC だけ `Proto1\.claude\settings.local.json` の `permissions.allow` に次を入れる（GitHub には送らない。`.gitignore` 済み）。
+  - `PowerShell(gh pr merge:*)`・`Bash(gh pr merge:*)`：PR のマージ
+  - `PowerShell(.\tools\start-work.ps1:*)`：作業を始めるスクリプト
+  - Notion の `notion-update-page` ツール（名前の `mcp__〇〇__` の部分は PC ごとに違うので、その PC のツール名で入れる）
   Visual Studio Enterprise の PC は設定済み。**メインPC はまだ**（メインPC の Claude は、管理者に確認してから作る）。
-  `start-work.ps1`（中で develop を `git merge` する）も止められることがある。そのときは管理者に実行してもらう。
+  許可を足しても、ブランチの削除などの「先に確認する」決まりは変わらない。
 - **状態の記録**：タスクの状態は `tasks.md` と Notion の両方をそろえる。プランを出したら、このファイルの「次にやること」と Notion のタスクのページの本文に書く。
 - **プロトのルール**（`docs/plan/01_企画の要点.md`）：制限時間 90 秒・ダミー3体・場外で +1・L1 / R1 で左右の触腕（キーボードは左右クリック）・□ ではたく（E）・OPTIONS でやり直し（R）。
 - **PS4 コントローラー**は外部ライブラリなしで読む（Raw Input と HID）。No.6 のテストのときに USB でつなぐ。
