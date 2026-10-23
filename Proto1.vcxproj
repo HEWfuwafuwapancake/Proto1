@@ -140,6 +140,8 @@
     <ClCompile Include="src\input\mouse.cpp" />
     <ClCompile Include="src\render\polygon2D.cpp" />
     <ClCompile Include="src\core\shader.cpp" />
+    <ClCompile Include="src\game\stage.cpp" />
+    <ClCompile Include="src\physics\stagecalc.cpp" />
     <ClCompile Include="src\core\timer.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -157,6 +159,8 @@
     <ClInclude Include="src\input\mouse.h" />
     <ClInclude Include="src\render\polygon2D.h" />
     <ClInclude Include="src\core\shader.h" />
+    <ClInclude Include="src\game\stage.h" />
+    <ClInclude Include="src\physics\stagecalc.h" />
     <ClInclude Include="src\core\timer.h" />
   </ItemGroup>
   <ItemGroup>

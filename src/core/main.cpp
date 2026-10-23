@@ -11,7 +11,7 @@
 #include "input/keyboard.h"
 #include "input/mouse.h"
 #include "game/camera.h"
-#include "game/field.h"
+#include "game/stage.h"
 #include "game/cube.h"
 #include "render/polygon2D.h"
 
@@ -234,7 +234,7 @@ bool Initialize(HWND hWnd)
 	CameraInitialize();
 
 	//3Dオブジェクト初期化
-	FieldInitialize();
+	StageInitialize();
 	CubeInitialize();
 
 	//2Dポリゴン初期化
@@ -250,7 +250,7 @@ void Finalize(void)
 	Polygon2DFinalize();
 
 	CubeFinalize();
-	FieldFinalize();
+	StageFinalize();
 
 	CameraFinalize();
 	MouseFinalize();
@@ -286,7 +286,7 @@ void Update(void)
 	ActionUpdate();
 
 	CameraUpdate();
-	FieldUpdate();
+	StageUpdate();
 	CubeUpdate();
 	Polygon2DUpdate();
 }
@@ -309,7 +309,7 @@ void Draw(void)
 	light.Ambient = { 0.3f, 0.3f, 0.3f, 1.0f };
 	Shader_SetLight(light);
 
-	FieldDraw();
+	StageDraw();
 	CubeDraw();
 
 	// ---- 2D描画（UI）：3Dの上に重ねるので最後に描く ----
