@@ -4,6 +4,7 @@
 #include <mmsystem.h>
 #include <stdio.h>
 #include "core/dx11.h"
+#include "core/gametime.h"
 #include "core/main.h"
 #include "core/shader.h"
 #include "input/keyboard.h"
@@ -219,6 +220,9 @@ bool Initialize(HWND hWnd)
 		return false;
 	}
 
+	//ゲームの時間の初期化
+	GameTimeInitialize();
+
 	//マウス初期化
 	MouseInitialize(hWnd);
 
@@ -262,7 +266,10 @@ void Finalize(void)
 
 void Update(void)
 {
-	//入力は一番最初に更新する
+	//ゲームの時間を1フレーム分進める（このフレームの計算はすべて同じ dt を使う）
+	GameTimeUpdate();
+
+	//入力は時間の次に更新する
 	KeyboardUpdate();
 	MouseUpdate();
 

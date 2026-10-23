@@ -1,6 +1,14 @@
 ﻿#include "core/dx11.h"
+#include "core/gametime.h"
 #include "core/shader.h"
 #include "game/cube.h"
+
+
+/*------------------------------------------------------------------------------
+	調整用の値
+------------------------------------------------------------------------------*/
+static constexpr float ROTATION_SPEED_X = 30.0f;	// X 軸まわりに回る速さ（度／秒）
+static constexpr float ROTATION_SPEED_Y = 60.0f;	// Y 軸まわりに回る速さ（度／秒）
 
 
 static ID3D11Buffer* g_pVertexBuffer = nullptr;	// 頂点バッファ
@@ -87,9 +95,10 @@ void CubeFinalize(void)
 
 void CubeUpdate(void)
 {
-	// くるくる回す
-	g_Rotation.x += XMConvertToRadians(0.5f);
-	g_Rotation.y += XMConvertToRadians(1.0f);
+	// くるくる回す（1秒に何度 × 1フレームの秒数）
+	const float dt = GameTimeGetDeltaTime();
+	g_Rotation.x += XMConvertToRadians(ROTATION_SPEED_X * dt);
+	g_Rotation.y += XMConvertToRadians(ROTATION_SPEED_Y * dt);
 }
 
 XMMATRIX CubeGetWorldMatrix(void)
