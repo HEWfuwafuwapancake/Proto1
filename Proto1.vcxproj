@@ -132,11 +132,13 @@
     <ClCompile Include="src\core\debug_ostream.cpp" />
     <ClCompile Include="src\core\dx11.cpp" />
     <ClCompile Include="src\game\field.cpp" />
+    <ClCompile Include="src\core\gametime.cpp" />
     <ClCompile Include="src\input\keyboard.cpp" />
     <ClCompile Include="src\core\main.cpp" />
     <ClCompile Include="src\input\mouse.cpp" />
     <ClCompile Include="src\render\polygon2D.cpp" />
     <ClCompile Include="src\core\shader.cpp" />
+    <ClCompile Include="src\core\timer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\game\camera.h" />
@@ -144,12 +146,14 @@
     <ClInclude Include="src\core\debug_ostream.h" />
     <ClInclude Include="src\core\dx11.h" />
     <ClInclude Include="src\game\field.h" />
+    <ClInclude Include="src\core\gametime.h" />
     <ClInclude Include="src\input\keyboard.h" />
     <ClInclude Include="src\core\main.h" />
     <ClInclude Include="src\core\mathutil.h" />
     <ClInclude Include="src\input\mouse.h" />
     <ClInclude Include="src\render\polygon2D.h" />
     <ClInclude Include="src\core\shader.h" />
+    <ClInclude Include="src\core\timer.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="shaders\shaderCommon.hlsli" />

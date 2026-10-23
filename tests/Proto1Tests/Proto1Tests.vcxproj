@@ -77,7 +77,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\src\core\gametime.cpp" />
+    <ClCompile Include="..\..\src\core\timer.cpp" />
+    <ClCompile Include="gametime_test.cpp" />
     <ClCompile Include="mathutil_test.cpp" />
+    <ClCompile Include="timer_test.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
