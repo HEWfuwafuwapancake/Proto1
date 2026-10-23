@@ -153,7 +153,6 @@
     <ClCompile Include="src\game\dummy.cpp" />
     <ClCompile Include="src\game\tentacle.cpp" />
     <ClCompile Include="src\physics\tentaclecalc.cpp" />
-    <ClCompile Include="src\physics\slapcalc.cpp" />
     <ClCompile Include="src\game\match.cpp" />
     <ClCompile Include="src\physics\matchcalc.cpp" />
     <ClCompile Include="src\game\player.cpp" />
@@ -188,7 +187,6 @@
     <ClInclude Include="src\game\dummy.h" />
     <ClInclude Include="src\game\tentacle.h" />
     <ClInclude Include="src\physics\tentaclecalc.h" />
-    <ClInclude Include="src\physics\slapcalc.h" />
     <ClInclude Include="src\game\match.h" />
     <ClInclude Include="src\physics\matchcalc.h" />
     <ClInclude Include="src\physics\vec3.h" />

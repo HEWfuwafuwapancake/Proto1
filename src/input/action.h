@@ -13,7 +13,6 @@ enum ACTION
 	ACTION_JUMP,		///< ジャンプ（×／Space）
 	ACTION_ARM_LEFT,	///< 左の触腕：伸ばしてつかむ／つかんでいる間にもう一度で投げる（L1／左クリック）
 	ACTION_ARM_RIGHT,	///< 右の触腕：同上（R1／右クリック）
-	ACTION_SLAP,		///< はたく（□／E）
 	ACTION_RESTART,		///< やり直し（OPTIONS／R）
 
 	ACTION_COUNT		///< 行動の数（配列の大きさに使う。行動ではない）

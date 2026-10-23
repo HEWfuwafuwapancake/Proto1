@@ -234,8 +234,4 @@
       <Filter>src\physics</Filter>
     </ClInclude>
   </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="src\physics\slapcalc.cpp"><Filter>src\physics</Filter></ClCompile>
-    <ClInclude Include="src\physics\slapcalc.h"><Filter>src\physics</Filter></ClInclude>
-  </ItemGroup>
 </Project>

@@ -99,8 +99,6 @@
     <ClCompile Include="stagecalc_test.cpp" />
     <ClCompile Include="timer_test.cpp" />
     <ClCompile Include="tentaclecalc_test.cpp" />
-    <ClCompile Include="slapcalc_test.cpp" />
-    <ClCompile Include="..\..\src\physics\slapcalc.cpp" />
     <ClCompile Include="matchcalc_test.cpp" />
     <ClCompile Include="..\..\src\physics\matchcalc.cpp" />
     <ClCompile Include="..\..\src\physics\tentaclecalc.cpp" />

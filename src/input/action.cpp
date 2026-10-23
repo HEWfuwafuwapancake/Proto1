@@ -19,7 +19,6 @@ static constexpr int ACTION_KEYS[ACTION_COUNT] = {
 	VK_SPACE,		// ACTION_JUMP
 	VK_LBUTTON,		// ACTION_ARM_LEFT（左クリック）
 	VK_RBUTTON,		// ACTION_ARM_RIGHT（右クリック）
-	'E',			// ACTION_SLAP
 	'R',			// ACTION_RESTART
 };
 
@@ -28,7 +27,6 @@ static constexpr PAD_BUTTON ACTION_PAD_BUTTONS[ACTION_COUNT] = {
 	PAD_BUTTON_CROSS,	// ACTION_JUMP（×）
 	PAD_BUTTON_L1,		// ACTION_ARM_LEFT（L1）
 	PAD_BUTTON_R1,		// ACTION_ARM_RIGHT（R1）
-	PAD_BUTTON_SQUARE,	// ACTION_SLAP（□）
 	PAD_BUTTON_OPTIONS,	// ACTION_RESTART（OPTIONS）
 };
 
@@ -55,7 +53,7 @@ static ACTION_AXIS g_Look = {};				// このフレームでカメラを回す角
 #ifdef _DEBUG
 // 確かめ用に出力ウィンドウに出す名前（ACTION の並びと同じ順番。No.8 でプレイヤーができたら消す）
 static const char* const ACTION_NAMES[ACTION_COUNT] = {
-	"ジャンプ", "左の触腕", "右の触腕", "はたく", "やり直し",
+	"ジャンプ", "左の触腕", "右の触腕", "やり直し",
 };
 #endif
 
