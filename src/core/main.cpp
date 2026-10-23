@@ -12,6 +12,7 @@
 #include "input/mouse.h"
 #include "input/pad.h"
 #include "game/camera.h"
+#include "game/dummy.h"
 #include "game/player.h"
 #include "game/stage.h"
 #include "render/polygon2D.h"
@@ -246,6 +247,7 @@ bool Initialize(HWND hWnd)
 	//3Dオブジェクト初期化（プレイヤーは浮島の上に立たせるのでステージのあと、カメラはプレイヤーの後ろに置くのでプレイヤーのあと）
 	StageInitialize();
 	PlayerInitialize();
+	DummyInitialize();
 	CameraInitialize();
 
 	//2Dポリゴン初期化
@@ -261,6 +263,7 @@ void Finalize(void)
 	Polygon2DFinalize();
 
 	CameraFinalize();
+	DummyFinalize();
 	PlayerFinalize();
 	StageFinalize();
 	ShapeFinalize();
@@ -299,9 +302,10 @@ void Update(void)
 	//キーボード・マウスの状態を「行動」に変える（ロックの切り替えのあとなので、切り替えた瞬間はマウスの移動量が 0）
 	ActionUpdate();
 
-	//プレイヤーを動かしてから、カメラがそれを追いかける
+	//プレイヤーを動かし、ダミーがプレイヤーに押されてから、カメラがプレイヤーを追いかける
 	StageUpdate();
 	PlayerUpdate();
+	DummyUpdate();
 	CameraUpdate();
 	Polygon2DUpdate();
 }
@@ -326,6 +330,7 @@ void Draw(void)
 
 	StageDraw();
 	PlayerDraw();
+	DummyDraw();
 
 	// ---- 2D描画（UI）：3Dの上に重ねるので最後に描く ----
 	SetDepthEnable(false);

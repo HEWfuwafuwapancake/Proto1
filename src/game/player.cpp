@@ -83,6 +83,13 @@ XMFLOAT3 PlayerGetPosition(void)
 	return { g_Body.X, g_Body.Y, g_Body.Z };
 }
 
+void PlayerSetPosition(const XMFLOAT3& position)
+{
+	g_Body.X = position.x;
+	g_Body.Y = position.y;
+	g_Body.Z = position.z;
+}
+
 float PlayerGetHeight(void)
 {
 	return BODY_HEIGHT;
