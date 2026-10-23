@@ -60,6 +60,12 @@
     <ClCompile Include="src\physics\collision.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
+    <ClCompile Include="src\physics\dummycalc.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\game\dummy.cpp">
+      <Filter>src\game</Filter>
+    </ClCompile>
     <ClCompile Include="src\physics\playercalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
@@ -130,6 +136,12 @@
     </ClInclude>
     <ClInclude Include="src\physics\collision.h">
       <Filter>src\physics</Filter>
+    </ClInclude>
+    <ClInclude Include="src\physics\dummycalc.h">
+      <Filter>src\physics</Filter>
+    </ClInclude>
+    <ClInclude Include="src\game\dummy.h">
+      <Filter>src\game</Filter>
     </ClInclude>
     <ClInclude Include="src\physics\vec3.h">
       <Filter>src\physics</Filter>

@@ -25,6 +25,10 @@ void PlayerDraw(void);
 /// @return 足元の位置（ワールド座標）
 XMFLOAT3 PlayerGetPosition(void);
 
+/// @brief プレイヤーの足元の位置を変える（ダミーの頭に乗ったときに押し出されるなど。速度はそのまま）
+/// @param position 新しい足元の位置（ワールド座標）
+void PlayerSetPosition(const XMFLOAT3& position);
+
 /// @brief プレイヤーの高さ（カプセルの全体の高さ）を取得する
 /// @return 高さ（カメラが頭のあたりを見るのに使う）
 float PlayerGetHeight(void);
