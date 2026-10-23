@@ -145,6 +145,7 @@
     <ClCompile Include="src\physics\stagecalc.cpp" />
     <ClCompile Include="src\physics\playercalc.cpp" />
     <ClCompile Include="src\physics\cameracalc.cpp" />
+    <ClCompile Include="src\physics\collision.cpp" />
     <ClCompile Include="src\game\player.cpp" />
     <ClCompile Include="src\render\shape.cpp" />
     <ClCompile Include="src\core\timer.cpp" />
@@ -169,6 +170,8 @@
     <ClInclude Include="src\physics\stagecalc.h" />
     <ClInclude Include="src\physics\playercalc.h" />
     <ClInclude Include="src\physics\cameracalc.h" />
+    <ClInclude Include="src\physics\collision.h" />
+    <ClInclude Include="src\physics\vec3.h" />
     <ClInclude Include="src\game\player.h" />
     <ClInclude Include="src\render\shape.h" />
     <ClInclude Include="src\core\timer.h" />

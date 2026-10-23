@@ -57,6 +57,9 @@
     <ClCompile Include="src\physics\cameracalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
+    <ClCompile Include="src\physics\collision.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
     <ClCompile Include="src\physics\playercalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
@@ -123,6 +126,12 @@
       <Filter>src\game</Filter>
     </ClInclude>
     <ClInclude Include="src\physics\cameracalc.h">
+      <Filter>src\physics</Filter>
+    </ClInclude>
+    <ClInclude Include="src\physics\collision.h">
+      <Filter>src\physics</Filter>
+    </ClInclude>
+    <ClInclude Include="src\physics\vec3.h">
       <Filter>src\physics</Filter>
     </ClInclude>
     <ClInclude Include="src\physics\playercalc.h">

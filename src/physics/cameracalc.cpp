@@ -2,7 +2,7 @@
 #include "physics/cameracalc.h"
 
 
-CAMERA_VEC3 CameraCalcOrbitPosition(const CAMERA_VEC3& target, float yaw, float pitch, float distance)
+VEC3 CameraCalcOrbitPosition(const VEC3& target, float yaw, float pitch, float distance)
 {
 	const float dirX = cosf(pitch) * sinf(yaw);
 	const float dirY = sinf(pitch);
@@ -10,7 +10,7 @@ CAMERA_VEC3 CameraCalcOrbitPosition(const CAMERA_VEC3& target, float yaw, float 
 	return { target.X - dirX * distance, target.Y - dirY * distance, target.Z - dirZ * distance };
 }
 
-CAMERA_VEC3 CameraCalcClipToStage(const CAMERA_VEC3& target, const CAMERA_VEC3& camera, const STAGE& stage, float margin)
+VEC3 CameraCalcClipToStage(const VEC3& target, const VEC3& camera, const STAGE& stage, float margin)
 {
 	// 浮島の箱（margin だけ大きくする）
 	const float boxMin[3] = { stage.CenterX - stage.HalfWidth - margin, stage.TopY - stage.Thickness - margin, stage.CenterZ - stage.HalfDepth - margin };
@@ -58,7 +58,7 @@ CAMERA_VEC3 CameraCalcClipToStage(const CAMERA_VEC3& target, const CAMERA_VEC3& 
 	return { start[0] + delta[0] * enter, start[1] + delta[1] * enter, start[2] + delta[2] * enter };
 }
 
-CAMERA_VEC3 CameraCalcSmooth(const CAMERA_VEC3& current, const CAMERA_VEC3& target, float speed, float dt)
+VEC3 CameraCalcSmooth(const VEC3& current, const VEC3& target, float speed, float dt)
 {
 	// 1フレームで、残りの距離のうち rate の割合だけ近づく（rate は 0〜1 未満なので行き過ぎない）
 	const float rate = 1.0f - expf(-speed * dt);

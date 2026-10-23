@@ -25,13 +25,13 @@ static constexpr float FAR_Z = 1000.0f;								// これより遠いものは描
 
 
 static XMFLOAT3 g_Position;		// カメラの位置
-static CAMERA_VEC3 g_Target;	// 見ている点（プレイヤーの頭のあたりを、なめらかに追いかける）
+static VEC3 g_Target;	// 見ている点（プレイヤーの頭のあたりを、なめらかに追いかける）
 static float g_Yaw;				// 左右の向き（ラジアン。0 で +Z 方向を見る）
 static float g_Pitch;			// 上下の向き（ラジアン。プラスで上を見る）
 
 
 // プレイヤーの頭のあたり（見ている点の目標）
-static CAMERA_VEC3 PlayerHead(void)
+static VEC3 PlayerHead(void)
 {
 	const XMFLOAT3 feet = PlayerGetPosition();
 	return { feet.x, feet.y + PlayerGetHeight() * TARGET_HEIGHT_RATE, feet.z };
@@ -40,8 +40,8 @@ static CAMERA_VEC3 PlayerHead(void)
 // 見ている点のまわりの、向きと距離で決まる位置に置き、浮島にめり込むなら手前まで近づける
 static void PlaceCamera(void)
 {
-	const CAMERA_VEC3 orbit = CameraCalcOrbitPosition(g_Target, g_Yaw, g_Pitch, FOLLOW_DISTANCE);
-	const CAMERA_VEC3 pos = CameraCalcClipToStage(g_Target, orbit, StageGet(), STAGE_MARGIN);
+	const VEC3 orbit = CameraCalcOrbitPosition(g_Target, g_Yaw, g_Pitch, FOLLOW_DISTANCE);
+	const VEC3 pos = CameraCalcClipToStage(g_Target, orbit, StageGet(), STAGE_MARGIN);
 	g_Position = { pos.X, pos.Y, pos.Z };
 }
 
