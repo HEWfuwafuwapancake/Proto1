@@ -1,6 +1,6 @@
 # 引き継ぎメモ（今どこまで進んだか・次に何をするか）
 
-別の PC（メインPC・ノートPC）や、別の日の Claude Code で作業を続けるためのメモです。
+別の PC（メインPC・ノートPC）や、別の日の Claude Code・Codex で作業を続けるためのメモです（Claude と Codex のどちらでも続きから始められる）。
 **作業を始めるときに読み、作業を終えるときに更新します。** タスクの一覧は [tasks.md](tasks.md)、同じ内容を Notion の
 「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」データベースでも管理しています。
 
@@ -65,16 +65,19 @@
 - **ビルド**：MSBuild の場所は PC によって違う（Community の PC と Enterprise の PC がある）。`vswhere.exe` で探してから使う（`docs/lessons.md` 参照）。
 - **作業場所**：Claude が確かめのために一時フォルダ（%TEMP%）の worktree でビルドするときは `/t:Rebuild` を付ける（`docs/lessons.md` 参照）。
 
-## 4. 別の PC・新しいセッションで始めるとき（Claude がやること）
+## 4. 別の PC・新しいセッションで始めるとき（Claude・Codex がやること）
 
-1. `CLAUDE.md`・`docs/lessons.md`・このファイル・`docs/tasks.md` を読む
+Claude（Claude Code）でも Codex でも、同じ手順で続きから始める。Codex は作業フォルダを Codex 専用のクローン（`Proto1-codex`）にする（`AGENTS.md`）。
+
+1. `CLAUDE.md`（Codex は `AGENTS.md` も）・`docs/lessons.md`・このファイル・`docs/tasks.md`・`docs/dev/01_DX11基盤の構成.md` を読む
 2. `git status` だけを先に見る（自分のものではない変更があればユーザーに聞く）
 3. `.\tools\fetch-latest.ps1` で develop を最新にし、`gh pr list` で開いている PR を確かめる
-4. Notion の「Proto1（腕ダフルアームズ）」で、`tasks.md` と状態がそろっているか確かめる（ずれていたらユーザーに聞く）
+4. Notion の「Proto1（腕ダフルアームズ）」で、`tasks.md` と状態がそろっているか確かめる（ずれていたらユーザーに聞く。Notion を読めない AI は飛ばして、最後に管理者に伝える）
 5. 「次にやること」の続きから始める（プランが確認待ちなら、ユーザーに確認を取ってから実装する）
 
 ## 5. 作業を終えるとき
 
-- このファイルの「今の状態」「次にやること」「最終更新」を書き直す（どの PC で更新したかも）
-- `tasks.md` と Notion の状態をそろえる
+- このファイルの「今の状態」「次にやること」「最終更新」を書き直す（どの PC の、どの AI（Claude／Codex）で更新したかも）
+- `tasks.md` と Notion の状態をそろえる（Notion を書き換えられない AI は、管理者に「Notion の No.〇 を〇〇に」と伝える）
+- 次にやるタスクのプランをまだ出していないときは、「次にやること」に「プランに入れること」のメモを残す（次の AI がそこから始められるように）
 - 途中で終わるときは、作業中のブランチを `save-work.ps1` で GitHub に送っておく（別の PC で `start-work.ps1 <同じ作業名>` すると続きから始められる）
