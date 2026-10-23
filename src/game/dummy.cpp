@@ -186,6 +186,12 @@ int DummyGetTotalOutCount(void)
 	return total;
 }
 
+float DummyGetPercent(int index)
+{
+	if (index < 0 || index >= DUMMY_COUNT) return 0.0f;
+	return g_Dummies[index].Percent;
+}
+
 bool DummyIsActive(int index)
 {
 	return index >= 0 && index < DUMMY_COUNT && g_Dummies[index].Life.State == DUMMY_STATE_ACTIVE;

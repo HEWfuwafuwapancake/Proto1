@@ -27,6 +27,12 @@ void CameraUpdate(void);
 /// @details 3D描画の前に呼ぶ
 void CameraDraw(void);
 
+/// @brief ワールド座標の点が、画面のどこに映るかを取得する（頭の上の % の表示に使う）
+/// @param world 点（ワールド座標）
+/// @param[out] screen 画面の位置（左上が原点のピクセル。画面の外になることもある）
+/// @return 点がカメラの前にあれば true、後ろ（映らない）なら false（そのとき screen は変えない）
+bool CameraWorldToScreen(const XMFLOAT3& world, XMFLOAT2* screen);
+
 /// @brief カメラの位置を取得する
 /// @return カメラの位置（ワールド座標）
 XMFLOAT3 CameraGetPosition(void);

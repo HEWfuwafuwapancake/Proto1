@@ -75,7 +75,8 @@ void CameraUpdate(void)
 	PlaceCamera();
 }
 
-void CameraDraw(void)
+// ビュー行列とプロジェクション行列を作る（描画と、画面の位置の計算で同じものを使う）
+static void MakeMatrices(XMMATRIX* view, XMMATRIX* projection)
 {
 	// ビュー行列（カメラの位置と、見ている向き）
 	// カメラは見ている点から向きの反対に置いてあるので、この向きで見れば見ている点が画面の真ん中に来る
@@ -84,11 +85,36 @@ void CameraDraw(void)
 	const XMFLOAT3 direction = CameraGetDirection();
 	XMVECTOR dir = XMLoadFloat3(&direction);
 	XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-	Shader_SetViewMatrix(XMMatrixLookToLH(eye, dir, up));
+	*view = XMMatrixLookToLH(eye, dir, up);
 
 	// プロジェクション行列（遠くのものほど小さく見える透視投影）
 	float aspect = (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT;
-	Shader_SetProjectionMatrix(XMMatrixPerspectiveFovLH(FOV, aspect, NEAR_Z, FAR_Z));
+	*projection = XMMatrixPerspectiveFovLH(FOV, aspect, NEAR_Z, FAR_Z);
+}
+
+void CameraDraw(void)
+{
+	XMMATRIX view, projection;
+	MakeMatrices(&view, &projection);
+	Shader_SetViewMatrix(view);
+	Shader_SetProjectionMatrix(projection);
+}
+
+bool CameraWorldToScreen(const XMFLOAT3& world, XMFLOAT2* screen)
+{
+	XMMATRIX view, projection;
+	MakeMatrices(&view, &projection);
+	const XMVECTOR clip = XMVector4Transform(XMVectorSet(world.x, world.y, world.z, 1.0f), view * projection);
+	const float w = XMVectorGetW(clip);
+	if (w <= 0.0f) {
+		return false;	// カメラの後ろ
+	}
+	// -1〜1（上が +1）を、左上が原点のピクセルに変える
+	const float ndcX = XMVectorGetX(clip) / w;
+	const float ndcY = XMVectorGetY(clip) / w;
+	screen->x = (ndcX + 1.0f) * 0.5f * (float)SCREEN_WIDTH;
+	screen->y = (1.0f - ndcY) * 0.5f * (float)SCREEN_HEIGHT;
+	return true;
 }
 
 XMFLOAT3 CameraGetPosition(void)

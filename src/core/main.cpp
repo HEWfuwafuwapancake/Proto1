@@ -3,7 +3,6 @@
 #include <Windows.h>
 #include <mmsystem.h>
 #include <stdio.h>
-#include <string.h>
 #include "core/dx11.h"
 #include "core/gametime.h"
 #include "core/main.h"
@@ -14,11 +13,12 @@
 #include "input/pad.h"
 #include "game/camera.h"
 #include "game/dummy.h"
+#include "game/hud.h"
 #include "game/match.h"
 #include "game/player.h"
 #include "game/stage.h"
 #include "game/tentacle.h"
-#include "render/polygon2D.h"
+#include "render/number2d.h"
 #include "render/shape.h"
 
 #pragma comment (lib, "winmm.lib")
@@ -38,21 +38,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 static DWORD g_Fps = 0;	// 直近1秒の FPS
 
-/// タイトルバーに FPS・残り時間・得点を出す（文字が変わったときだけ書き換える。画面表示（No.15）ができるまでの仮）
+/// タイトルバーに FPS を出す（残り時間・得点は画面に出す。hud.cpp）
 static void RefreshTitle(HWND hWnd)
 {
-	char title[128];
-	if (MatchGetState() == MATCH_STATE_PLAYING) {
-		sprintf_s(title, "%s  FPS: %lu  残り %d 秒  スコア %d", TITLE, g_Fps, MatchGetRemainingSeconds(), MatchGetScore());
-	}
-	else {
-		sprintf_s(title, "%s  FPS: %lu  時間切れ  スコア %d（R で再開）", TITLE, g_Fps, MatchGetScore());
-	}
-	static char last[128] = "";
-	if (strcmp(title, last) != 0) {
-		SetWindowText(hWnd, title);
-		strcpy_s(last, title);
-	}
+	char title[64];
+	sprintf_s(title, "%s  FPS: %lu", TITLE, g_Fps);
+	SetWindowText(hWnd, title);
 }
 
 bool Initialize(HWND hWnd);
@@ -146,9 +137,10 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
 
 		if ((dwCurrentTime - dwFPSLastTime) >= 1000)	// 1秒ごとに実行
 		{
-			// FPS（1秒間に何回 Update・Draw したか）を覚える（タイトルバーへの表示は RefreshTitle）
+			// FPS（1秒間に何回 Update・Draw したか）をタイトルバーに出す
 			DWORD elapsed = dwCurrentTime - dwFPSLastTime;	// 1000ミリ秒ちょうどより少し長いので、四捨五入して表示する
 			g_Fps = (dwFrameCount * 1000 + elapsed / 2) / elapsed;
+			RefreshTitle(hWnd);
 
 			dwFPSLastTime = dwCurrentTime;				// FPSを測定した時刻を保存
 			dwFrameCount = 0;							// カウントをクリア
@@ -165,7 +157,6 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
 
 			Update();			// 更新処理
 			Draw();				// 描画処理
-			RefreshTitle(hWnd);	// タイトルバー（FPS・残り時間・得点）
 
 			dwFrameCount++;		// 処理回数のカウントを加算
 		}
@@ -273,8 +264,9 @@ bool Initialize(HWND hWnd)
 	TentacleInitialize();
 	MatchInitialize();
 
-	//2Dポリゴン初期化
-	Polygon2DInitialize();
+	//画面表示（2D の四角・数字・文字の部品のあとに、残り時間・スコアなどの表示）
+	Number2DInitialize();
+	HudInitialize();
 
 	return true;
 }
@@ -283,7 +275,8 @@ bool Initialize(HWND hWnd)
 void Finalize(void)
 {
 	//初期化と逆の順番で終了処理をする
-	Polygon2DFinalize();
+	HudFinalize();
+	Number2DFinalize();
 
 	MatchFinalize();
 	TentacleFinalize();
@@ -340,7 +333,7 @@ void Update(void)
 	}
 	//試合の流れ（場外の回数を数える・時間切れ・やり直し）はダミーが動いたあとに呼ぶ
 	MatchUpdate();
-	Polygon2DUpdate();
+	HudUpdate();
 }
 
 void Draw(void)
@@ -371,7 +364,7 @@ void Draw(void)
 	light.Enable = FALSE;
 	Shader_SetLight(light);
 
-	Polygon2DDraw();
+	HudDraw();
 
 	Present();
 }

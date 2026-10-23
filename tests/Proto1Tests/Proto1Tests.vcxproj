@@ -102,6 +102,8 @@
     <ClCompile Include="matchcalc_test.cpp" />
     <ClCompile Include="..\..\src\physics\matchcalc.cpp" />
     <ClCompile Include="..\..\src\physics\tentaclecalc.cpp" />
+    <ClCompile Include="..\..\src\render\glyphcalc.cpp" />
+    <ClCompile Include="glyphcalc_test.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

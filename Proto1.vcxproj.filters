@@ -93,8 +93,14 @@
     <ClCompile Include="src\input\padcalc.cpp">
       <Filter>src\input</Filter>
     </ClCompile>
-    <ClCompile Include="src\render\polygon2D.cpp">
+    <ClCompile Include="src\render\glyphcalc.cpp">
       <Filter>src\render</Filter>
+    </ClCompile>
+    <ClCompile Include="src\render\number2d.cpp">
+      <Filter>src\render</Filter>
+    </ClCompile>
+    <ClCompile Include="src\game\hud.cpp">
+      <Filter>src\game</Filter>
     </ClCompile>
     <ClCompile Include="src\render\shape.cpp">
       <Filter>src\render</Filter>
@@ -176,8 +182,14 @@
     <ClInclude Include="src\input\padcalc.h">
       <Filter>src\input</Filter>
     </ClInclude>
-    <ClInclude Include="src\render\polygon2D.h">
+    <ClInclude Include="src\render\glyphcalc.h">
       <Filter>src\render</Filter>
+    </ClInclude>
+    <ClInclude Include="src\render\number2d.h">
+      <Filter>src\render</Filter>
+    </ClInclude>
+    <ClInclude Include="src\game\hud.h">
+      <Filter>src\game</Filter>
     </ClInclude>
     <ClInclude Include="src\render\shape.h">
       <Filter>src\render</Filter>
