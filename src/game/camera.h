@@ -2,6 +2,9 @@
 
 #include "core/dx11.h"
 
+/// @brief 描画と同じ、上下を含むカメラの向きを取得する（長さ1）
+XMFLOAT3 CameraGetDirection(void);
+
 /// @file camera.h
 /// @brief TPS カメラ（プレイヤーの背後から追いかける）
 /// @details

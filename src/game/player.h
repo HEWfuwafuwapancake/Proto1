@@ -2,6 +2,9 @@
 
 #include "core/dx11.h"
 
+/// @brief このフレームで場外から復活したか（保持中の触腕を解除するため）
+bool PlayerDidRespawn(void);
+
 /// @file player.h
 /// @brief プレイヤー（仮の形のカプセル）。浮島の上を歩く・ジャンプする・落ちる
 /// @details 操作は「行動」で受け取る（移動：W/A/S/D・左スティック、ジャンプ：Space・×）。

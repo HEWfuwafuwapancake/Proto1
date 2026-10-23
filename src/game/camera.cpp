@@ -81,7 +81,8 @@ void CameraDraw(void)
 	// カメラは見ている点から向きの反対に置いてあるので、この向きで見れば見ている点が画面の真ん中に来る
 	// （浮島に近づけてカメラが見ている点にほぼ重なっても、向きは決まる）
 	XMVECTOR eye = XMLoadFloat3(&g_Position);
-	XMVECTOR dir = XMVectorSet(cosf(g_Pitch) * sinf(g_Yaw), sinf(g_Pitch), cosf(g_Pitch) * cosf(g_Yaw), 0.0f);
+	const XMFLOAT3 direction = CameraGetDirection();
+	XMVECTOR dir = XMLoadFloat3(&direction);
 	XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 	Shader_SetViewMatrix(XMMatrixLookToLH(eye, dir, up));
 
@@ -98,4 +99,9 @@ XMFLOAT3 CameraGetPosition(void)
 float CameraGetYaw(void)
 {
 	return g_Yaw;
+}
+
+XMFLOAT3 CameraGetDirection(void)
+{
+	return { cosf(g_Pitch) * sinf(g_Yaw), sinf(g_Pitch), cosf(g_Pitch) * cosf(g_Yaw) };
 }

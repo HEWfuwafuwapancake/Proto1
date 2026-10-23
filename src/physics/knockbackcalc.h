@@ -40,6 +40,9 @@ float KnockbackCalcSpeed(float percent, float power, const KNOCKBACK_PARAMS& par
 /// @return 速度（長さが speed）
 VEC3 KnockbackCalcVelocity(const VEC3& direction, float speed, const KNOCKBACK_PARAMS& params);
 
+/// @brief 上下を含む指定方向の速度を取得する。方向の長さは無視し、ゼロ方向なら真上へ飛ばす
+VEC3 KnockbackCalcDirectedVelocity(const VEC3& direction, float speed);
+
 /// @brief 吹っ飛ばされている体を1フレーム分動かす
 /// @details 自分では止まれない。空中では重力と空気の抵抗、浮島の上から落ちてきたら着地して、地面の摩擦ですべりながら遅くなる。
 ///          浮島の上で StopSpeed より遅くなったら止まり、吹っ飛ばされている状態が終わる（浮島の外では止まらずに落ちる）
