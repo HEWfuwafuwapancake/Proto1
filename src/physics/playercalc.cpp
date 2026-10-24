@@ -1,5 +1,15 @@
 ﻿#include <math.h>
 #include "physics/playercalc.h"
+#include "core/mathutil.h"
+
+
+float PlayerCalcFacing(float current, float moveX, float moveZ, float cameraYaw,
+	bool armActive, float speed, float dt)
+{
+	if (armActive) return WrapYaw(cameraYaw);
+	if (moveX == 0.0f && moveZ == 0.0f) return current;
+	return TurnYaw(current, atan2f(moveX, moveZ), speed, dt);
+}
 
 
 void PlayerCalcStep(PLAYER_BODY& body, float moveX, float moveZ, bool jump, float dt,

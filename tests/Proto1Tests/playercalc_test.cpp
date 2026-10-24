@@ -44,6 +44,63 @@ namespace Proto1Tests
 	TEST_CLASS(PlayerCalcTest)
 	{
 	public:
+		// ワールドの移動方向へ向く（右・左・前・斜め）。入力の長さにはよらない
+		TEST_METHOD(Facing_TurnsToWorldMoveDirection)
+		{
+			const float pi = 3.14159265358979323846f;
+			Assert::AreEqual(pi * 0.5f, PlayerCalcFacing(0, 1, 0, -1, false, 10, 1), PLAYER_EPSILON);
+			Assert::AreEqual(-pi * 0.5f, PlayerCalcFacing(0, -1, 0, 1, false, 10, 1), PLAYER_EPSILON);
+			Assert::AreEqual(0.0f, PlayerCalcFacing(1, 0, 1, 2, false, 10, 1), PLAYER_EPSILON);
+			Assert::AreEqual(pi * 0.25f, PlayerCalcFacing(0, 0.2f, 0.2f, 0, false, 10, 1), PLAYER_EPSILON);
+		}
+
+		// 止まっている間は、カメラが回っても最後の向きを保つ
+		TEST_METHOD(Facing_StandingStillKeepsLastYaw)
+		{
+			Assert::AreEqual(0.7f, PlayerCalcFacing(0.7f, 0, 0, -1, false, 10, 1), PLAYER_EPSILON);
+		}
+
+		// ボタンを押した瞬間と、伸長・保持・収縮中は、歩く方向より画面の正面を優先する
+		TEST_METHOD(Facing_ArmImmediatelyFacesCameraAndFollowsIt)
+		{
+			float yaw = PlayerCalcFacing(-1, 1, 0, 0.6f, true, 0.1f, PLAYER_DT);
+			Assert::AreEqual(0.6f, yaw, PLAYER_EPSILON);
+			yaw = PlayerCalcFacing(yaw, -1, 0, -0.8f, true, 0.1f, PLAYER_DT);
+			Assert::AreEqual(-0.8f, yaw, PLAYER_EPSILON);
+			yaw = PlayerCalcFacing(yaw, 0, 0, 1.2f, true, 0.1f, PLAYER_DT);
+			Assert::AreEqual(1.2f, yaw, PLAYER_EPSILON);
+		}
+
+		TEST_METHOD(Facing_LimitsTurnPerSecondAndStopsAtTarget)
+		{
+			Assert::AreEqual(0.1f, PlayerCalcFacing(0, 1, 0, 0, false, 0.2f, 0.5f), PLAYER_EPSILON);
+			Assert::AreEqual(-0.1f, PlayerCalcFacing(0, -1, 0, 0, false, 0.2f, 0.5f), PLAYER_EPSILON);
+			Assert::AreEqual(0.0f, PlayerCalcFacing(0.05f, 0, 1, 1, false, 0.2f, 0.5f), PLAYER_EPSILON);
+		}
+
+		TEST_METHOD(Facing_CrossesPiByShortestPathInBothDirections)
+		{
+			const float pi = 3.14159265358979323846f;
+			const float target = -pi + 0.2f;
+			Assert::AreEqual(-pi + 0.05f,
+				PlayerCalcFacing(pi - 0.05f, sinf(target), cosf(target), 0, false, 0.1f, 1), PLAYER_EPSILON);
+			Assert::AreEqual(pi - 0.05f,
+				PlayerCalcFacing(-pi + 0.05f, sinf(-target), cosf(-target), 0, false, 0.1f, 1), PLAYER_EPSILON);
+		}
+
+		// dt=0 では歩く方向へ回らない。腕の入力による即時の向きは反映する
+		TEST_METHOD(Facing_ZeroDtKeepsWalkingYawButAppliesArmYaw)
+		{
+			Assert::AreEqual(0.3f, PlayerCalcFacing(0.3f, 1, 0, 1, false, 10, 0), PLAYER_EPSILON);
+			Assert::AreEqual(1.0f, PlayerCalcFacing(0.3f, 1, 0, 1, true, 10, 0), PLAYER_EPSILON);
+		}
+
+		TEST_METHOD(Facing_ReturnsToWalkingAfterArmEnds)
+		{
+			const float yaw = PlayerCalcFacing(0, 1, 0, 0.5f, true, 1, 0.1f);
+			Assert::AreEqual(0.6f, PlayerCalcFacing(yaw, 1, 0, -1, false, 1, 0.1f), PLAYER_EPSILON);
+		}
+
 		// 何もしなければ、立ったまま動かない
 		TEST_METHOD(Step_StandingStill)
 		{

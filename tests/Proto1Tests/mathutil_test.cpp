@@ -11,6 +11,26 @@ namespace Proto1Tests
 	TEST_CLASS(MathUtilTest)
 	{
 	public:
+		// カメラとプレイヤーで共用する回転：速さの上限と、±180° をまたぐ最短方向
+		TEST_METHOD(TurnYaw_LimitsSpeedAndCrossesPiByShortestPath)
+		{
+			const float pi = 3.14159265358979323846f;
+			Assert::AreEqual(0.1f, TurnYaw(0, 1, 0.2f, 0.5f), EPSILON);
+			Assert::AreEqual(-pi + 0.05f,
+				TurnYaw(pi - 0.05f, -pi + 0.2f, 0.1f, 1), EPSILON);
+			Assert::AreEqual(pi - 0.05f,
+				TurnYaw(-pi + 0.05f, pi - 0.2f, 0.1f, 1), EPSILON);
+		}
+
+		TEST_METHOD(TurnYaw_DoesNotOvershootOrMoveWithoutTimeOrSpeed)
+		{
+			Assert::AreEqual(0.2f, TurnYaw(0, 0.2f, 2, 1), EPSILON);
+			Assert::AreEqual(0.3f, TurnYaw(0.3f, 1, 2, 0), EPSILON);
+			Assert::AreEqual(0.3f, TurnYaw(0.3f, 1, 0, 1), EPSILON);
+			Assert::AreEqual(0.3f, TurnYaw(0.3f, 1, -2, 1), EPSILON);
+			Assert::AreEqual(0.3f, TurnYaw(0.3f, 1, 2, -1), EPSILON);
+		}
+
 		// Saturate：0〜1 の中はそのまま、外は端に収める
 		TEST_METHOD(Saturate_KeepsValueInRange)
 		{
