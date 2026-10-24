@@ -60,7 +60,7 @@ static bool g_OldPress[ACTION_COUNT] = {};	// 1つ前のフレームで押して
 static ACTION_AXIS g_Move = {};				// 移動の向き
 static ACTION_AXIS g_Look = {};				// このフレームでカメラを回す角度
 static bool g_TargetPadReady = true;			// 遊びへ戻るまで次の切り替えを止める
-static float g_TargetMouseCooldown = 0.0f;
+static float g_TargetMouseCooldown = 0.0f;	// マウスで次の切り替えを受け付けるまでの残り秒数
 struct TARGET_MOUSE_SAMPLE
 {
 	float Age;	// 入力からの秒数

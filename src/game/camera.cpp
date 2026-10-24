@@ -55,8 +55,8 @@ static float g_ManualPause;		// 横移動について回るのを止める残り
 static VEC3 g_PlayerGoal;			// 自由カメラ用の遊び・最後に立っていた高さ（敵の注視点と分ける）
 static int g_LockTarget = -1;		// 現在ロックオンしているダミー番号
 static int g_SavedTarget = -1;	// つかむ前のターゲット番号
-static bool g_WasHolding = false;
-static float g_SwitchRemaining = 0.0f;
+static bool g_WasHolding = false;	// 1つ前のフレームで敵をつかんでいたか
+static float g_SwitchRemaining = 0.0f;	// 切り替え用の速い角度のバネを使う残り秒数
 
 
 // プレイヤーの頭のあたり（見ている点の目標）
