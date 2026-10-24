@@ -144,5 +144,175 @@ namespace Proto1Tests
 			Assert::IsFalse(PadCalcParseDs4UsbReport(nullptr, 64, state));
 			Assert::AreEqual(123u, state.Buttons);
 		}
+
+		// USB 出力：モーターと色の位置、番号・変更の印、未使用バイトがすべて 0。
+		TEST_METHOD(Output_BytePositionsAndUnusedBytes)
+		{
+			unsigned char report[32];
+			for (unsigned char& byte : report) byte = 0xAA;
+			Assert::IsTrue(PadCalcBuildDs4UsbOutput(report, 32, 0.4f, 0.6f, 0.95f, 0.45f, 0.35f));
+			const unsigned char expected[32] = { 0x05, 0x07, 0, 0, 102, 153, 242, 115, 89 };
+			for (int i = 0; i < 32; ++i) Assert::AreEqual((int)expected[i], (int)report[i]);
+		}
+
+		// 0 と 1 がそれぞれ 0 と 255、半端な値は四捨五入される。
+		TEST_METHOD(Output_EndpointsAndRounding)
+		{
+			unsigned char report[32];
+			Assert::IsTrue(PadCalcBuildDs4UsbOutput(report, 32, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f));
+			Assert::AreEqual(0, (int)report[4]);
+			Assert::AreEqual(255, (int)report[5]);
+			Assert::AreEqual(255, (int)report[6]);
+			Assert::AreEqual(0, (int)report[7]);
+			Assert::AreEqual(255, (int)report[8]);
+			Assert::IsTrue(PadCalcBuildDs4UsbOutput(report, 32, 0.5f, 0.1f, 0.9f, 0.25f, 0.75f));
+			const int expected[5] = { 128, 26, 230, 64, 191 };
+			for (int i = 0; i < 5; ++i) Assert::AreEqual(expected[i], (int)report[i + 4]);
+		}
+
+		// 各モーター・RGB のすべてで範囲外を切る。
+		TEST_METHOD(Output_ClampsEveryValue)
+		{
+			unsigned char report[32];
+			Assert::IsTrue(PadCalcBuildDs4UsbOutput(report, 32, -1.0f, -2.0f, -0.1f, -10.0f, -0.5f));
+			for (int i = 4; i <= 8; ++i) Assert::AreEqual(0, (int)report[i]);
+			Assert::IsTrue(PadCalcBuildDs4UsbOutput(report, 32, 2.0f, 3.0f, 1.1f, 10.0f, 1.5f));
+			for (int i = 4; i <= 8; ++i) Assert::AreEqual(255, (int)report[i]);
+		}
+
+		// HID が返した長さだけ書き、長いレポートの末尾も 0 にする（前後の番兵は保つ）。
+		TEST_METHOD(Output_UsesGivenLength)
+		{
+			unsigned char storage[66];
+			for (unsigned char& byte : storage) byte = 0xAA;
+			Assert::IsTrue(PadCalcBuildDs4UsbOutput(storage + 1, 64, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f));
+			Assert::AreEqual(0xAA, (int)storage[0]);
+			Assert::AreEqual(0xAA, (int)storage[65]);
+			for (int i = 3; i <= 64; ++i) Assert::AreEqual(0, (int)storage[i]);
+			unsigned char minimum[9];
+			Assert::IsTrue(PadCalcBuildDs4UsbOutput(minimum, 9, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f));
+			Assert::AreEqual(255, (int)minimum[8]);
+		}
+
+		// 短い出力先や null は拒否し、渡されたバッファを書き換えない。
+		TEST_METHOD(Output_RejectsInvalidBuffer)
+		{
+			unsigned char report[32];
+			for (unsigned char& byte : report) byte = 0xAA;
+			Assert::IsFalse(PadCalcBuildDs4UsbOutput(nullptr, 32, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f));
+			Assert::IsFalse(PadCalcBuildDs4UsbOutput(report, 8, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f));
+			Assert::IsFalse(PadCalcBuildDs4UsbOutput(report, 0, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f));
+			Assert::IsFalse(PadCalcBuildDs4UsbOutput(report, -1, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f));
+			for (unsigned char byte : report) Assert::AreEqual(0xAA, (int)byte);
+		}
+
+		// 停止状態から開始し、両モーターの範囲外の強さを切る。
+		TEST_METHOD(Rumble_StartAndClamp)
+		{
+			PAD_RUMBLE rumble{};
+			PadCalcRumble(rumble, 0.4f, 0.6f, 0.15f);
+			Assert::AreEqual(0.4f, rumble.SmallMotor, PAD_EPSILON);
+			Assert::AreEqual(0.6f, rumble.LargeMotor, PAD_EPSILON);
+			Assert::AreEqual(0.15f, rumble.RemainingSeconds, PAD_EPSILON);
+			rumble = {};
+			PadCalcRumble(rumble, -1.0f, 2.0f, 0.4f);
+			Assert::AreEqual(0.0f, rumble.SmallMotor, PAD_EPSILON);
+			Assert::AreEqual(1.0f, rumble.LargeMotor, PAD_EPSILON);
+			rumble = {};
+			PadCalcRumble(rumble, 2.0f, -1.0f, 0.4f);
+			Assert::AreEqual(1.0f, rumble.SmallMotor, PAD_EPSILON);
+			Assert::AreEqual(0.0f, rumble.LargeMotor, PAD_EPSILON);
+		}
+
+		// 各モーターの強さを別々に重ね、長い残り時間を保つ。
+		TEST_METHOD(Rumble_MergesStrongestMotorsAndLongestTime)
+		{
+			PAD_RUMBLE rumble{};
+			PadCalcRumble(rumble, 0.4f, 0.0f, 0.1f); // つかむ
+			PadCalcRumble(rumble, 0.6f, 0.6f, 0.15f); // 投げる
+			PadCalcRumble(rumble, 0.0f, 1.0f, 0.4f); // 得点
+			Assert::AreEqual(0.6f, rumble.SmallMotor, PAD_EPSILON);
+			Assert::AreEqual(1.0f, rumble.LargeMotor, PAD_EPSILON);
+			Assert::AreEqual(0.4f, rumble.RemainingSeconds, PAD_EPSILON);
+			PadCalcRumble(rumble, 0.4f, 0.0f, 0.1f); // 弱く短い振動で上書きしない
+			Assert::AreEqual(0.6f, rumble.SmallMotor, PAD_EPSILON);
+			Assert::AreEqual(1.0f, rumble.LargeMotor, PAD_EPSILON);
+			Assert::AreEqual(0.4f, rumble.RemainingSeconds, PAD_EPSILON);
+		}
+
+		// 強く短い要求は時間を縮めず、弱く長い要求は強さを下げずに時間を延ばす。
+		TEST_METHOD(Rumble_StrengthAndTimeAreIndependent)
+		{
+			PAD_RUMBLE rumble{ 0.2f, 0.3f, 0.4f };
+			PadCalcRumble(rumble, 0.8f, 0.7f, 0.1f);
+			Assert::AreEqual(0.8f, rumble.SmallMotor, PAD_EPSILON);
+			Assert::AreEqual(0.7f, rumble.LargeMotor, PAD_EPSILON);
+			Assert::AreEqual(0.4f, rumble.RemainingSeconds, PAD_EPSILON);
+			PadCalcUpdateRumble(rumble, 0.3f);
+			PadCalcRumble(rumble, 0.1f, 0.2f, 0.25f);
+			Assert::AreEqual(0.8f, rumble.SmallMotor, PAD_EPSILON);
+			Assert::AreEqual(0.7f, rumble.LargeMotor, PAD_EPSILON);
+			Assert::AreEqual(0.25f, rumble.RemainingSeconds, PAD_EPSILON);
+		}
+
+		// 減算中は強さが変わらず、ちょうど時間切れ・時間超過で両方止まる。
+		TEST_METHOD(Rumble_UpdateAndExpire)
+		{
+			PAD_RUMBLE rumble{ 0.4f, 0.8f, 0.5f };
+			PadCalcUpdateRumble(rumble, 0.25f);
+			Assert::AreEqual(0.4f, rumble.SmallMotor, PAD_EPSILON);
+			Assert::AreEqual(0.8f, rumble.LargeMotor, PAD_EPSILON);
+			Assert::AreEqual(0.25f, rumble.RemainingSeconds, PAD_EPSILON);
+			PadCalcUpdateRumble(rumble, 0.25f);
+			Assert::AreEqual(0.0f, rumble.SmallMotor, PAD_EPSILON);
+			Assert::AreEqual(0.0f, rumble.LargeMotor, PAD_EPSILON);
+			Assert::AreEqual(0.0f, rumble.RemainingSeconds, PAD_EPSILON);
+			PadCalcRumble(rumble, 0.6f, 0.6f, 0.15f);
+			PadCalcUpdateRumble(rumble, 1.0f);
+			Assert::AreEqual(0.0f, rumble.SmallMotor, PAD_EPSILON);
+			Assert::AreEqual(0.0f, rumble.LargeMotor, PAD_EPSILON);
+			Assert::AreEqual(0.0f, rumble.RemainingSeconds, PAD_EPSILON);
+		}
+
+		// 時間を進めないときに、残り時間が増えたり強さが変わったりしない。
+		TEST_METHOD(Rumble_ZeroAndNegativeDeltaDoNotAdvance)
+		{
+			PAD_RUMBLE rumble{ 0.4f, 0.8f, 0.5f };
+			PadCalcUpdateRumble(rumble, 0.0f);
+			PadCalcUpdateRumble(rumble, -1.0f);
+			Assert::AreEqual(0.4f, rumble.SmallMotor, PAD_EPSILON);
+			Assert::AreEqual(0.8f, rumble.LargeMotor, PAD_EPSILON);
+			Assert::AreEqual(0.5f, rumble.RemainingSeconds, PAD_EPSILON);
+		}
+
+		// やり直し・時間切れ用の明示的な停止は、強い振動が残っていても止める。
+		TEST_METHOD(Rumble_NonPositiveDurationStops)
+		{
+			PAD_RUMBLE rumble{ 1.0f, 1.0f, 0.4f };
+			PadCalcRumble(rumble, 0.0f, 0.0f, 0.0f);
+			Assert::AreEqual(0.0f, rumble.SmallMotor, PAD_EPSILON);
+			Assert::AreEqual(0.0f, rumble.LargeMotor, PAD_EPSILON);
+			Assert::AreEqual(0.0f, rumble.RemainingSeconds, PAD_EPSILON);
+			PadCalcRumble(rumble, 0.6f, 0.6f, 0.15f);
+			PadCalcRumble(rumble, 1.0f, 1.0f, -1.0f);
+			Assert::AreEqual(0.0f, rumble.SmallMotor, PAD_EPSILON);
+			Assert::AreEqual(0.0f, rumble.LargeMotor, PAD_EPSILON);
+			Assert::AreEqual(0.0f, rumble.RemainingSeconds, PAD_EPSILON);
+		}
+
+		// 時間が終わった状態の古い強さを、新しい振動へ持ち越さない。
+		TEST_METHOD(Rumble_DiscardsExpiredStrength)
+		{
+			PAD_RUMBLE rumble{ 1.0f, 1.0f, 0.0f };
+			PadCalcRumble(rumble, 0.4f, 0.0f, 0.1f);
+			Assert::AreEqual(0.4f, rumble.SmallMotor, PAD_EPSILON);
+			Assert::AreEqual(0.0f, rumble.LargeMotor, PAD_EPSILON);
+			Assert::AreEqual(0.1f, rumble.RemainingSeconds, PAD_EPSILON);
+			rumble = { 1.0f, 1.0f, -1.0f };
+			PadCalcUpdateRumble(rumble, 0.0f);
+			Assert::AreEqual(0.0f, rumble.SmallMotor, PAD_EPSILON);
+			Assert::AreEqual(0.0f, rumble.LargeMotor, PAD_EPSILON);
+			Assert::AreEqual(0.0f, rumble.RemainingSeconds, PAD_EPSILON);
+		}
 	};
 }

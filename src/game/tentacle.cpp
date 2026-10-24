@@ -5,12 +5,19 @@
 #include "game/stage.h"
 #include "core/gametime.h"
 #include "input/action.h"
+#include "input/pad.h"
 #include "render/shape.h"
 
 // 調整用の値
 static constexpr TENTACLE_PARAMS PARAMS{ 8.0f, 24.0f, 30.0f, 3.0f, 0.18f };
 static constexpr float THROW_DAMAGE = 12.0f;
 static constexpr float THROW_POWER = 2.0f;
+static constexpr float GRAB_RUMBLE_SMALL = 0.4f;
+static constexpr float GRAB_RUMBLE_LARGE = 0.0f;
+static constexpr float GRAB_RUMBLE_SECONDS = 0.1f;
+static constexpr float THROW_RUMBLE_SMALL = 0.6f;
+static constexpr float THROW_RUMBLE_LARGE = 0.6f;
+static constexpr float THROW_RUMBLE_SECONDS = 0.15f;
 static constexpr float SHOULDER_OFFSET = 0.65f;
 static constexpr float HOLD_OFFSET = 1.0f;
 static constexpr float HOLD_FORWARD = 2.0f;
@@ -74,8 +81,14 @@ void TentacleUpdate(void)
 		const TENTACLE_EVENT event = TentacleCalcStep(arm, origin, aim, hold,
 			trigger, cancel,
 			GameTimeGetDeltaTime(), PARAMS, targets, DUMMY_COUNT, StageGet());
-		if (event.Grabbed >= 0 && !DummyGrab(event.Grabbed)) TentacleCalcReset(arm);
-		if (event.Released >= 0) DummyRelease(event.Released, event.Throw, cameraForward, THROW_DAMAGE, THROW_POWER);
+		if (event.Grabbed >= 0) {
+			if (DummyGrab(event.Grabbed)) PadRumble(GRAB_RUMBLE_SMALL, GRAB_RUMBLE_LARGE, GRAB_RUMBLE_SECONDS);
+			else TentacleCalcReset(arm);
+		}
+		if (event.Released >= 0) {
+			DummyRelease(event.Released, event.Throw, cameraForward, THROW_DAMAGE, THROW_POWER);
+			if (event.Throw) PadRumble(THROW_RUMBLE_SMALL, THROW_RUMBLE_LARGE, THROW_RUMBLE_SECONDS);
+		}
 		if (arm.Target >= 0) DummyMoveHeld(arm.Target, arm.Tip);
 	}
 }
