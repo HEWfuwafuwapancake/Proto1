@@ -198,7 +198,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 	case WM_ACTIVATE: // ウィンドウが選ばれた／選ばれなくなった
 		// 選ばれている間だけマウスでカメラを回す（終了確認のメッセージボックスが出たときなどは自動で解除）
-		MouseSetLock(LOWORD(wParam) != WA_INACTIVE);
+		// 【マウス操作は一旦止めている】カーソルを取られないように、ロックしない（2026-10-24、管理者の指示）。
+		// 戻すときは、この行と Update の Tab の3行のコメントを外す。
+		// MouseSetLock(LOWORD(wParam) != WA_INACTIVE);
 		return DefWindowProc(hWnd, uMsg, wParam, lParam);
 
 	case WM_KEYDOWN:
@@ -313,9 +315,11 @@ void Update(void)
 	PadUpdate();
 
 	//Tab でマウスのロック（カーソルを隠してカメラを回す）を切り替える
-	if (KeyboardIsTrigger(VK_TAB)) {
-		MouseSetLock(!MouseIsLocked());
-	}
+	//【マウス操作は一旦止めている】ロックしないので、マウスでカメラを回す・ターゲットを切り替えることもない。
+	//戻すときは、この3行と WndProc の WM_ACTIVATE の MouseSetLock のコメントを外す（左右クリックの触腕は今も使える）
+	//if (KeyboardIsTrigger(VK_TAB)) {
+	//	MouseSetLock(!MouseIsLocked());
+	//}
 
 	//キーボード・マウスの状態を「行動」に変える（ロックの切り替えのあとなので、切り替えた瞬間はマウスの移動量が 0）
 	ActionUpdate();
