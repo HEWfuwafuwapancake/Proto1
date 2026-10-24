@@ -2,6 +2,7 @@
 #include "game/camera.h"
 #include "game/player.h"
 #include "game/stage.h"
+#include "game/tentacle.h"
 #include "input/action.h"
 #include "physics/playercalc.h"
 #include "render/shape.h"
@@ -16,6 +17,7 @@
 //	調整用の値
 //------------------------------------------------------------------------------
 static constexpr float MOVE_SPEED = 6.0f;		// 歩く速さ（1秒に進む距離）
+static constexpr float TURN_SPEED = XMConvertToRadians(720.0f);	// 歩く方向へ1秒に回る角度の上限
 static constexpr float JUMP_SPEED = 9.0f;		// ジャンプした瞬間の上向きの速さ（高さは JUMP_SPEED² / (2 × GRAVITY) ＝ 約 1.6）
 static constexpr float GRAVITY = 25.0f;			// 重力（1秒ごとに下向きの速さがこれだけ増える）
 static constexpr float BODY_RADIUS = 0.5f;		// カプセルの半径
@@ -24,6 +26,7 @@ static constexpr XMFLOAT4 BODY_COLOR = { 0.95f, 0.45f, 0.35f, 1.0f };	// 色（�
 
 
 static PLAYER_BODY g_Body = {};	// 位置・速度・立っているか
+static float g_Yaw = 0.0f;		// キャラの左右の向き（ラジアン）
 static bool g_Respawned = false;
 
 
@@ -36,6 +39,7 @@ static void Respawn(void)
 	g_Body.Y = stage.TopY;
 	g_Body.Z = stage.CenterZ;
 	g_Body.OnGround = true;
+	g_Yaw = 0.0f;
 }
 
 
@@ -75,6 +79,24 @@ void PlayerUpdate(void)
 		Respawn();
 		g_Respawned = true;
 	}
+}
+
+void PlayerUpdateFacing(void)
+{
+	// カメラ更新後の向きに合わせる。復活したフレームの腕は解除される。
+	if (g_Respawned) {
+		g_Yaw = CameraGetYaw();
+		return;
+	}
+	const bool armActive = TentacleIsActive()
+		|| ActionIsTrigger(ACTION_ARM_LEFT) || ActionIsTrigger(ACTION_ARM_RIGHT);
+	g_Yaw = PlayerCalcFacing(g_Yaw, g_Body.VelocityX, g_Body.VelocityZ, CameraGetYaw(),
+		armActive, TURN_SPEED, GameTimeGetDeltaTime());
+}
+
+float PlayerGetYaw(void)
+{
+	return g_Yaw;
 }
 
 void PlayerDraw(void)

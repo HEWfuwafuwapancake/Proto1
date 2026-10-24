@@ -58,13 +58,6 @@ struct CAMERA_FOCUS_TARGET
 /// @param fallbackYaw 水平距離がほぼ0のときの角度（ラジアン）
 /// @return 水平角（ラジアン。0で+Z方向、プラスで右回り）
 float CameraCalcYawTo(const VEC3& from, const VEC3& to, float fallbackYaw);
-/// @brief 最短方向へ毎秒 speed ラジアンまで回す（dt は秒、0以下なら動かない）
-/// @param current 今の角度（ラジアン）
-/// @param target 目標の角度（ラジアン）
-/// @param speed 1秒に回る角度の上限（ラジアン。0以下なら動かない）
-/// @param dt 1フレームの秒数
-/// @return 回したあとの角度（-π〜π。動かないときはcurrent）
-float CameraCalcTurnYaw(float current, float target, float speed, float dt);
 /// @brief yaw から maxAngle ラジアン・3D距離 maxDistance 以内の最も中央の敵を選ぶ。current は bonus ラジアン優先（なしは -1）
 /// @param yaw カメラの水平角（ラジアン）
 /// @param player プレイヤーの注視点

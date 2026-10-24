@@ -25,7 +25,7 @@ static TENTACLE g_Arms[2];
 static VEC3 Position(float side, float forward)
 {
 	const XMFLOAT3 p = PlayerGetPosition();
-	const float yaw = CameraGetYaw();
+	const float yaw = PlayerGetYaw();
 	return { p.x + cosf(yaw) * side + sinf(yaw) * forward, p.y + HAND_HEIGHT,
 		p.z - sinf(yaw) * side + cosf(yaw) * forward };
 }
@@ -90,6 +90,14 @@ bool TentacleIsHolding(void)
 {
 	for (const TENTACLE& arm : g_Arms) {
 		if (arm.State == TENTACLE_HOLDING) return true;
+	}
+	return false;
+}
+
+bool TentacleIsActive(void)
+{
+	for (const TENTACLE& arm : g_Arms) {
+		if (arm.State != TENTACLE_IDLE) return true;
 	}
 	return false;
 }

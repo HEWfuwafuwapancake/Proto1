@@ -3,7 +3,7 @@
 #include "physics/stagecalc.h"
 
 /// @file playercalc.h
-/// @brief プレイヤーの動きの計算（移動・ジャンプ・重力・浮島への着地）
+/// @brief プレイヤーの動きの計算（移動・ジャンプ・重力・浮島への着地・左右の向き）
 /// @details DirectX と Windows を使わないので、単体テスト（tests/Proto1Tests）からそのまま使える
 
 /// @brief プレイヤーの体（位置・速度・立っているか）
@@ -42,3 +42,15 @@ struct PLAYER_PARAMS
 /// @param stage 浮島
 void PlayerCalcStep(PLAYER_BODY& body, float moveX, float moveZ, bool jump, float dt,
 	const PLAYER_PARAMS& params, const STAGE& stage);
+
+/// @brief 歩く方向へ速さの上限つきで向く（腕の操作中は画面の正面へ即座に向く）
+/// @param current 今の左右の向き（ラジアン。0で+Z方向、プラスで右回り）
+/// @param moveX 移動の向きの X（ワールド座標。速度でもよい）
+/// @param moveZ 移動の向きの Z（ワールド座標。速度でもよい）
+/// @param cameraYaw 画面の正面の左右の向き（ラジアン）
+/// @param armActive 腕の向きを優先するか（true：ボタンを押した瞬間または腕が出ている、false：歩く方向へ向く）
+/// @param speed 1秒に回る角度の上限（ラジアン。0以下なら歩く方向へ回らない）
+/// @param dt 1フレームの秒数（0以下なら歩く方向へ回らない。腕の向きは即座に反映する）
+/// @return 更新後の左右の向き（腕の操作中は-π〜π。通常は移動入力が0ならcurrentのまま）
+float PlayerCalcFacing(float current, float moveX, float moveZ, float cameraYaw,
+	bool armActive, float speed, float dt);

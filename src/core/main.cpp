@@ -329,6 +329,7 @@ void Update(void)
 	}
 	CameraUpdate();
 	if (MatchIsPlaying()) {
+		PlayerUpdateFacing();	// 腕の入力と同じフレームのカメラへ向いてから、肩の位置を計算する
 		TentacleUpdate();
 	}
 	//試合の流れ（場外の回数を数える・時間切れ・やり直し）はダミーが動いたあとに呼ぶ

@@ -208,19 +208,6 @@ namespace Proto1Tests
 			Assert::AreEqual(CAMERA_PI * 0.5f, CameraCalcYawTo({}, {10, 7, 0}, 0), CAMERA_EPSILON);
 			Assert::AreEqual(1.2f, CameraCalcYawTo({}, {0.00001f, 10, 0}, 1.2f), CAMERA_EPSILON);
 		}
-		TEST_METHOD(Turn_LimitsSpeedAndCrossesPiByShortestPath)
-		{
-			Assert::AreEqual(0.1f, CameraCalcTurnYaw(0, 1, 0.2f, 0.5f), CAMERA_EPSILON);
-			Assert::AreEqual(-CAMERA_PI + 0.05f,
-				CameraCalcTurnYaw(CAMERA_PI - 0.05f, -CAMERA_PI + 0.2f, 0.1f, 1), CAMERA_EPSILON);
-			Assert::AreEqual(CAMERA_PI - 0.05f,
-				CameraCalcTurnYaw(-CAMERA_PI + 0.05f, CAMERA_PI - 0.2f, 0.1f, 1), CAMERA_EPSILON);
-		}
-		TEST_METHOD(Turn_DoesNotOvershootOrMoveAtZeroDt)
-		{
-			Assert::AreEqual(0.2f, CameraCalcTurnYaw(0, 0.2f, 2, 1), CAMERA_EPSILON);
-			Assert::AreEqual(0.3f, CameraCalcTurnYaw(0.3f, 1, 2, 0), CAMERA_EPSILON);
-		}
 		TEST_METHOD(FocusPoint_UsesRequestedRateForNearbyEnemy)
 		{
 			const VEC3 p = CameraCalcFocusPoint({1,2,3}, {3,2,5}, 0, 0, 8, CAMERA_PI/3, 1.7f, 0.15f, 1.5f, 0.25f);

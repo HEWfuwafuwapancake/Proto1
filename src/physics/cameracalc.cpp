@@ -1,5 +1,6 @@
 ﻿#include <math.h>
 #include "physics/cameracalc.h"
+#include "core/mathutil.h"
 
 
 VEC3 CameraCalcOrbitPosition(const VEC3& target, float yaw, float pitch, float distance)
@@ -77,11 +78,6 @@ float CameraCalcSmoothDamp(float current, float target, float& velocity, float s
 	return result;
 }
 
-static float WrapYaw(float yaw)
-{
-	return atan2f(sinf(yaw), cosf(yaw));
-}
-
 float CameraCalcSmoothDampAngle(float current, float target, float& velocity, float smoothTime, float dt)
 {
 	if (dt <= 0.0f) return current;
@@ -94,14 +90,6 @@ float CameraCalcYawTo(const VEC3& from, const VEC3& to, float fallbackYaw)
 	const VEC3 delta = Vec3Sub(to, from);
 	if (delta.X * delta.X + delta.Z * delta.Z < 1.0e-8f) return fallbackYaw;
 	return atan2f(delta.X, delta.Z);
-}
-
-float CameraCalcTurnYaw(float current, float target, float speed, float dt)
-{
-	if (dt <= 0.0f || speed <= 0.0f) return current;
-	const float delta = WrapYaw(target - current);
-	const float step = speed * dt;
-	return WrapYaw(current + fmaxf(-step, fminf(step, delta)));
 }
 
 int CameraCalcPickFocus(float yaw, const VEC3& player, const CAMERA_FOCUS_TARGET* targets,
