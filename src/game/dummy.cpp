@@ -1,4 +1,5 @@
 ﻿#include "core/gametime.h"
+#include "game/camera.h"
 #include "game/dummy.h"
 #include "game/player.h"
 #include "game/stage.h"
@@ -24,6 +25,7 @@ static constexpr float BODY_RADIUS = 0.5f;		// カプセルの半径（プレイ
 static constexpr float BODY_HEIGHT = 1.8f;		// カプセルの高さ（プレイヤーと同じ）
 static constexpr float GRAVITY = 25.0f;			// 重力（プレイヤーと同じ）
 static constexpr XMFLOAT4 BODY_COLOR = { 0.35f, 0.55f, 0.95f, 1.0f };		// 色（仮。青）
+static constexpr XMFLOAT4 TARGET_COLOR = { 1.0f, 0.55f, 0.15f, 1.0f };		// ターゲットの色（明るいオレンジ）
 static constexpr XMFLOAT4 LAUNCHED_COLOR = { 0.95f, 0.85f, 0.3f, 1.0f };	// 吹っ飛ばされている間の色（仮。黄色）
 
 // 吹っ飛び（スマブラ式：% が高いほど速く＝遠くへ飛ぶ。No.19 で試しながら調整する）
@@ -144,13 +146,16 @@ void DummyUpdate(void)
 
 void DummyDraw(void)
 {
+	const int target = CameraGetTarget();
 	for (int i = 0; i < DUMMY_COUNT; i++) {
 		const DUMMY& dummy = g_Dummies[i];
 		if (dummy.Life.State != DUMMY_STATE_ACTIVE) {
 			continue;	// 復活を待っている間は見えない
 		}
+		const XMFLOAT4& color = dummy.Launched ? LAUNCHED_COLOR
+			: (i == target ? TARGET_COLOR : BODY_COLOR);
 		ShapeDrawCapsule({ dummy.Body.X, dummy.Body.Y, dummy.Body.Z }, BODY_RADIUS, BODY_HEIGHT,
-			dummy.Launched ? LAUNCHED_COLOR : BODY_COLOR);
+			color);
 	}
 }
 
