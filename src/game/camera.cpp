@@ -33,6 +33,7 @@ static constexpr float SWITCH_SMOOTH_TIME = 0.06f;					// 切り替え直後の�
 static constexpr float SWITCH_TIME = 0.3f;							// 角度のバネを速める秒数
 static constexpr float TARGET_POINT_RATE = 0.25f;					// 見ている点を敵へずらす割合
 static constexpr float TARGET_SCREEN_MARGIN = 0.15f;				// 画面の端に残す余白
+static constexpr float TARGET_FALL_MARGIN = 0.1f;					// 敵の足元が浮島の上面からこれだけ下へ落ちたら、ターゲットから外す（追いかけない）
 
 static constexpr float FOV = XMConvertToRadians(60.0f);				// 視野角（縦）
 static constexpr float NEAR_Z = 0.1f;								// これより近いものは描かない
@@ -66,14 +67,15 @@ static VEC3 PlayerHead(void)
 	return { feet.x, feet.y + PlayerGetHeight() * TARGET_HEIGHT_RATE, feet.z };
 }
 
-// 生存・場外・保持状態を候補へ反映する。配列の添字とダミー番号は同じ。
+// 生存・浮島より下への落下・保持状態を候補へ反映する。配列の添字とダミー番号は同じ。
+// 浮島の上面より下へ落ちた敵は候補から外し、カメラが下まで追いかけないようにする。
 static void CollectTargets(CAMERA_FOCUS_TARGET* targets)
 {
 	for (int i = 0; i < DUMMY_COUNT; ++i) {
 		const TENTACLE_TARGET dummy = DummyGetTarget(i);
 		targets[i].Position = Vec3Scale(Vec3Add(dummy.Body.Start, dummy.Body.End), 0.5f);
 		const float feetY = dummy.Body.Start.Y - dummy.Body.Radius;
-		targets[i].Available = dummy.Available && !StageCalcIsOut(StageGet(), feetY);
+		targets[i].Available = dummy.Available && feetY >= StageGet().TopY - TARGET_FALL_MARGIN;
 	}
 }
 
