@@ -43,14 +43,16 @@ struct PLAYER_PARAMS
 void PlayerCalcStep(PLAYER_BODY& body, float moveX, float moveZ, bool jump, float dt,
 	const PLAYER_PARAMS& params, const STAGE& stage);
 
-/// @brief 歩く方向へ速さの上限つきで向く（腕の操作中は画面の正面へ即座に向く）
+/// @brief ターゲット、なければ歩く方向へ速さの上限つきで向く（腕の操作中は画面の正面へ即座に向く）
 /// @param current 今の左右の向き（ラジアン。0で+Z方向、プラスで右回り）
 /// @param moveX 移動の向きの X（ワールド座標。速度でもよい）
 /// @param moveZ 移動の向きの Z（ワールド座標。速度でもよい）
 /// @param cameraYaw 画面の正面の左右の向き（ラジアン）
-/// @param armActive 腕の向きを優先するか（true：ボタンを押した瞬間または腕が出ている、false：歩く方向へ向く）
-/// @param speed 1秒に回る角度の上限（ラジアン。0以下なら歩く方向へ回らない）
-/// @param dt 1フレームの秒数（0以下なら歩く方向へ回らない。腕の向きは即座に反映する）
-/// @return 更新後の左右の向き（腕の操作中は-π〜π。通常は移動入力が0ならcurrentのまま）
+/// @param armActive 腕の向きを優先するか（true：ボタンを押した瞬間または腕が出ている、false：ターゲットまたは歩く方向へ向く）
+/// @param speed 1秒に回る角度の上限（ラジアン。0以下なら通常の回転は止まる）
+/// @param dt 1フレームの秒数（0以下なら通常の回転は止まる。腕の向きは即座に反映する）
+/// @param hasTarget ターゲットがいるか（true：targetYawへ向く、false：歩く方向へ向く）
+/// @param targetYaw ターゲットへの左右の向き（ラジアン）
+/// @return 更新後の左右の向き（ターゲットも移動入力もなければcurrentのまま）
 float PlayerCalcFacing(float current, float moveX, float moveZ, float cameraYaw,
-	bool armActive, float speed, float dt);
+	bool armActive, float speed, float dt, bool hasTarget = false, float targetYaw = 0.0f);

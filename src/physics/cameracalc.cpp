@@ -110,6 +110,30 @@ int CameraCalcPickFocus(float yaw, const VEC3& player, const CAMERA_FOCUS_TARGET
 	return best;
 }
 
+int CameraCalcNextTarget(const VEC3& player, const CAMERA_FOCUS_TARGET* targets,
+	int count, int current, int direction)
+{
+	if (current < 0 || current >= count || !targets[current].Available) return -1;
+	if (direction == 0) return current;
+	const VEC3 origin = Vec3Sub(targets[current].Position, player);
+	if (origin.X * origin.X + origin.Z * origin.Z < 1.0e-8f) return current;
+	const float yaw = CameraCalcYawTo(player, targets[current].Position, 0.0f);
+	int best = current;
+	float bestAngle = 4.0f;
+	for (int i = 0; i < count; ++i) {
+		if (i == current || !targets[i].Available) continue;
+		const VEC3 delta = Vec3Sub(targets[i].Position, player);
+		if (delta.X * delta.X + delta.Z * delta.Z < 1.0e-8f) continue;
+		const float angle = WrapYaw(CameraCalcYawTo(player, targets[i].Position, yaw) - yaw);
+		const float sideAngle = direction > 0 ? angle : -angle;
+		if (sideAngle > 0.0f && sideAngle < bestAngle) {
+			best = i;
+			bestAngle = sideAngle;
+		}
+	}
+	return best;
+}
+
 VEC3 CameraCalcFocusPoint(const VEC3& player, const VEC3& enemy, float yaw, float pitch,
 	float distance, float fov, float aspect, float margin, float radius, float rate)
 {

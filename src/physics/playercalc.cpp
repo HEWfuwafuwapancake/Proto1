@@ -4,9 +4,10 @@
 
 
 float PlayerCalcFacing(float current, float moveX, float moveZ, float cameraYaw,
-	bool armActive, float speed, float dt)
+	bool armActive, float speed, float dt, bool hasTarget, float targetYaw)
 {
 	if (armActive) return WrapYaw(cameraYaw);
+	if (hasTarget) return TurnYaw(current, targetYaw, speed, dt);
 	if (moveX == 0.0f && moveZ == 0.0f) return current;
 	return TurnYaw(current, atan2f(moveX, moveZ), speed, dt);
 }

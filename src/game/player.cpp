@@ -1,10 +1,12 @@
 ﻿#include "core/gametime.h"
 #include "game/camera.h"
+#include "game/dummy.h"
 #include "game/player.h"
 #include "game/stage.h"
 #include "game/tentacle.h"
 #include "input/action.h"
 #include "physics/playercalc.h"
+#include "physics/cameracalc.h"
 #include "render/shape.h"
 
 #ifdef _DEBUG
@@ -90,8 +92,15 @@ void PlayerUpdateFacing(void)
 	}
 	const bool armActive = TentacleIsActive()
 		|| ActionIsTrigger(ACTION_ARM_LEFT) || ActionIsTrigger(ACTION_ARM_RIGHT);
+	const int target = CameraGetTarget();
+	float targetYaw = g_Yaw;
+	if (target >= 0) {
+		const CAPSULE body = DummyGetTarget(target).Body;
+		const VEC3 center = Vec3Scale(Vec3Add(body.Start, body.End), 0.5f);
+		targetYaw = CameraCalcYawTo({ g_Body.X, g_Body.Y, g_Body.Z }, center, g_Yaw);
+	}
 	g_Yaw = PlayerCalcFacing(g_Yaw, g_Body.VelocityX, g_Body.VelocityZ, CameraGetYaw(),
-		armActive, TURN_SPEED, GameTimeGetDeltaTime());
+		armActive, TURN_SPEED, GameTimeGetDeltaTime(), target >= 0, targetYaw);
 }
 
 float PlayerGetYaw(void)

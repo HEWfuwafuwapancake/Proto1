@@ -70,6 +70,17 @@ float CameraCalcYawTo(const VEC3& from, const VEC3& to, float fallbackYaw);
 /// @return 選んだ候補の添字（選べる敵がなければ-1）
 int CameraCalcPickFocus(float yaw, const VEC3& player, const CAMERA_FOCUS_TARGET* targets,
 	int count, int current, float maxAngle, float maxDistance, float bonus);
+
+/// @brief 今のターゲットへの向きを基準に、指定した側で角度が最も近い敵へ切り替える
+/// @param player プレイヤーの位置（高さは使わない）
+/// @param targets 候補の配列（countが0ならnullptrでもよい）
+/// @param count 候補の数
+/// @param current 今のターゲット番号
+/// @param direction 切り替える側（負：左、正：右、0：切り替えない）
+/// @return 次の敵の添字。その側に敵がいなければcurrent、currentが無効・選択不可なら-1
+int CameraCalcNextTarget(const VEC3& player, const CAMERA_FOCUS_TARGET* targets,
+	int count, int current, int direction);
+
 /// @brief player から enemy へ rate の割合だけ視点をずらす。縦横の視野とプレイヤーを囲む半径で上限を決める
 /// @param player プレイヤーの注視点（頭付近）
 /// @param enemy 敵の中心

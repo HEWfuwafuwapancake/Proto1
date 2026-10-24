@@ -14,6 +14,8 @@ enum ACTION
 	ACTION_ARM_LEFT,	///< 左の触腕：伸ばしてつかむ／つかんでいる間にもう一度で投げる（L1／左クリック）
 	ACTION_ARM_RIGHT,	///< 右の触腕：同上（R1／右クリック）
 	ACTION_RESTART,		///< やり直し（OPTIONS／R）
+	ACTION_TARGET_LEFT,	///< 左の次の敵へ切り替え（←／右スティック・マウスを左へ弾く。1フレームだけ）
+	ACTION_TARGET_RIGHT,	///< 右の次の敵へ切り替え（→／右スティック・マウスを右へ弾く。1フレームだけ）
 
 	ACTION_COUNT		///< 行動の数（配列の大きさに使う。行動ではない）
 };
@@ -27,7 +29,7 @@ void ActionUpdate(void);
 
 /// @brief 行動のボタンを押しているか
 /// @param action 行動
-/// @return 押している間ずっと true
+/// @return 押している間ずっと true（ターゲット切り替えは入力が出た1フレームだけtrue）
 bool ActionIsPress(ACTION action);
 
 /// @brief 行動のボタンを押した瞬間か
