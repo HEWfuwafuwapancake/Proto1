@@ -101,6 +101,38 @@ namespace Proto1Tests
 			Assert::AreEqual(0.6f, PlayerCalcFacing(yaw, 1, 0, -1, false, 1, 0.1f), PLAYER_EPSILON);
 		}
 
+		// ターゲットは横歩き・後ろ歩き・停止中も優先し、解除後は歩く向きへ戻る。
+		TEST_METHOD(Facing_TargetOverridesWalkingAndStanding)
+		{
+			Assert::AreEqual(0.8f, PlayerCalcFacing(0, -1, 0, -1, false, 10, 1, true, 0.8f), PLAYER_EPSILON);
+			Assert::AreEqual(0.8f, PlayerCalcFacing(0, 0, -1, -1, false, 10, 1, true, 0.8f), PLAYER_EPSILON);
+			Assert::AreEqual(0.8f, PlayerCalcFacing(0, 0, 0, -1, false, 10, 1, true, 0.8f), PLAYER_EPSILON);
+			Assert::AreEqual(0.0f, PlayerCalcFacing(0.8f, 0, 1, -1, false, 10, 1, false, 0.8f), PLAYER_EPSILON);
+		}
+
+		TEST_METHOD(Facing_ArmOverridesTargetThenReturnsToTarget)
+		{
+			const float yaw = PlayerCalcFacing(0, 1, 0, -0.7f, true, 0.1f, PLAYER_DT, true, 1);
+			Assert::AreEqual(-0.7f, yaw, PLAYER_EPSILON);
+			Assert::AreEqual(1.0f, PlayerCalcFacing(yaw, 1, 0, -0.7f, false, 10, 1, true, 1), PLAYER_EPSILON);
+		}
+
+		TEST_METHOD(Facing_TargetKeepsTurnLimitAndZeroDt)
+		{
+			Assert::AreEqual(0.1f, PlayerCalcFacing(0, 0, 0, -1, false, 0.2f, 0.5f, true, 1), PLAYER_EPSILON);
+			Assert::AreEqual(0.3f, PlayerCalcFacing(0.3f, 0, 0, -1, false, 10, 0, true, 1), PLAYER_EPSILON);
+			Assert::AreEqual(-1.0f, PlayerCalcFacing(0.3f, 0, 0, -1, true, 10, 0, true, 1), PLAYER_EPSILON);
+		}
+
+		TEST_METHOD(Facing_TargetCrossesPiByShortestPath)
+		{
+			const float pi = 3.14159265358979323846f;
+			Assert::AreEqual(-pi + 0.05f,
+				PlayerCalcFacing(pi - 0.05f, 0, 0, 0, false, 0.1f, 1, true, -pi + 0.2f), PLAYER_EPSILON);
+			Assert::AreEqual(pi - 0.05f,
+				PlayerCalcFacing(-pi + 0.05f, 0, 0, 0, false, 0.1f, 1, true, pi - 0.2f), PLAYER_EPSILON);
+		}
+
 		// 何もしなければ、立ったまま動かない
 		TEST_METHOD(Step_StandingStill)
 		{

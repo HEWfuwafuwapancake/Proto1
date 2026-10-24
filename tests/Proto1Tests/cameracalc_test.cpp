@@ -1,6 +1,7 @@
 ﻿// physics/cameracalc.h（TPS カメラの位置・浮島にめり込まない・なめらかに追う）の単体テスト
 #include <math.h>
 #include <initializer_list>
+#include <limits>
 #include "CppUnitTest.h"
 #include "physics/cameracalc.h"
 
@@ -203,6 +204,68 @@ namespace Proto1Tests
 			CAMERA_FOCUS_TARGET targets[]{ {{0.01f, 0, -10}, true}, {{0, 1, 0}, true} };
 			Assert::AreEqual(0, CameraCalcPickFocus(-CAMERA_PI + 0.01f, {}, targets, 2, -1, 0.05f, 20, 0));
 		}
+		// 候補の並び・距離ではなく、現在の敵から指定側の最小角を選ぶ。
+		TEST_METHOD(NextTarget_ChoosesNearestAngleOnRightAndLeft)
+		{
+			const VEC3 player{ 3, 2, -4 };
+			CAMERA_FOCUS_TARGET targets[]{
+				{{3, 2, 6}, true}, {{13, 2, -4}, true}, {{5, 2, 6}, true},
+				{{-7, 2, -4}, true}, {{1, 2, 6}, true}
+			};
+			Assert::AreEqual(2, CameraCalcNextTarget(player, targets, 5, 0, 1));
+			Assert::AreEqual(4, CameraCalcNextTarget(player, targets, 5, 0, -1));
+			Assert::AreEqual(0, CameraCalcNextTarget(player, targets, 5, 0, 0));
+		}
+
+		TEST_METHOD(NextTarget_NoEnemyOnThatSideKeepsCurrent)
+		{
+			CAMERA_FOCUS_TARGET targets[]{ {{0, 0, 10}, true}, {{3, 0, 10}, true} };
+			Assert::AreEqual(0, CameraCalcNextTarget({}, targets, 2, 0, -1));
+			Assert::AreEqual(1, CameraCalcNextTarget({}, targets, 2, 1, 1));
+			Assert::AreEqual(0, CameraCalcNextTarget({}, targets, 1, 0, 1));
+		}
+
+		TEST_METHOD(NextTarget_SkipsUnavailableSameBearingAndVerticalEnemy)
+		{
+			CAMERA_FOCUS_TARGET targets[]{
+				{{0, 0, 10}, true}, {{1, 0, 10}, false}, {{4, 0, 10}, true},
+				{{0, 0, 20}, true}, {{0, 4, 0}, true}, {{-2, 0, 10}, false}
+			};
+			Assert::AreEqual(2, CameraCalcNextTarget({}, targets, 6, 0, 1));
+			Assert::AreEqual(0, CameraCalcNextTarget({}, targets, 6, 0, -1));
+		}
+
+		TEST_METHOD(NextTarget_CrossesPiInBothDirections)
+		{
+			CAMERA_FOCUS_TARGET targets[]{
+				{{sinf(CAMERA_PI - 0.1f), 0, cosf(CAMERA_PI - 0.1f)}, true},
+				{{sinf(-CAMERA_PI + 0.1f), 0, cosf(-CAMERA_PI + 0.1f)}, true},
+				{{0, 0, 1}, true}
+			};
+			Assert::AreEqual(1, CameraCalcNextTarget({}, targets, 3, 0, 1));
+			Assert::AreEqual(0, CameraCalcNextTarget({}, targets, 3, 1, -1));
+		}
+
+		TEST_METHOD(NextTarget_InvalidOrUnavailableCurrentReturnsNone)
+		{
+			CAMERA_FOCUS_TARGET targets[]{ {{0, 0, 10}, false} };
+			Assert::AreEqual(-1, CameraCalcNextTarget({}, nullptr, 0, -1, 1));
+			Assert::AreEqual(-1, CameraCalcNextTarget({}, targets, 1, 1, -1));
+			Assert::AreEqual(-1, CameraCalcNextTarget({}, targets, 1, 0, 1));
+		}
+
+		// No.33 の開幕・自動再選択は角度・距離で絞らない。
+		TEST_METHOD(Focus_UnlimitedSelectionIncludesBehindAndDistantEnemies)
+		{
+			const float unlimited = (std::numeric_limits<float>::infinity)();
+			CAMERA_FOCUS_TARGET targets[]{ {{0, 0, -10000}, true}, {{10000, 0, -10000}, true} };
+			Assert::AreEqual(1, CameraCalcPickFocus(0, {}, targets, 2, -1, CAMERA_PI, unlimited, 0));
+			targets[1].Available = false;
+			Assert::AreEqual(0, CameraCalcPickFocus(0, {}, targets, 2, -1, CAMERA_PI, unlimited, 0));
+			targets[0].Available = false;
+			Assert::AreEqual(-1, CameraCalcPickFocus(0, {}, targets, 2, -1, CAMERA_PI, unlimited, 0));
+		}
+
 		TEST_METHOD(YawTo_UsesHorizontalDirectionAndNearFallback)
 		{
 			Assert::AreEqual(CAMERA_PI * 0.5f, CameraCalcYawTo({}, {10, 7, 0}, 0), CAMERA_EPSILON);

@@ -1,5 +1,7 @@
 ﻿#include <Windows.h>
 #include "core/gametime.h"
+#include <deque>
+#include <math.h>
 #include "input/action.h"
 #include "input/keyboard.h"
 #include "input/mouse.h"
@@ -20,10 +22,12 @@ static constexpr int ACTION_KEYS[ACTION_COUNT] = {
 	VK_LBUTTON,		// ACTION_ARM_LEFT（左クリック）
 	VK_RBUTTON,		// ACTION_ARM_RIGHT（右クリック）
 	'R',			// ACTION_RESTART
+	VK_LEFT,		// ACTION_TARGET_LEFT
+	VK_RIGHT,		// ACTION_TARGET_RIGHT
 };
 
 // 行動ごとのパッドのボタン（ACTION の並びと同じ順番。企画書の「5. 操作方法」のとおり）
-static constexpr PAD_BUTTON ACTION_PAD_BUTTONS[ACTION_COUNT] = {
+static constexpr PAD_BUTTON ACTION_PAD_BUTTONS[ACTION_TARGET_LEFT] = {
 	PAD_BUTTON_CROSS,	// ACTION_JUMP（×）
 	PAD_BUTTON_L1,		// ACTION_ARM_LEFT（L1）
 	PAD_BUTTON_R1,		// ACTION_ARM_RIGHT（R1）
@@ -44,16 +48,30 @@ static constexpr bool  MOUSE_INVERT_Y = false;			// true にすると上下が�
 static constexpr float KEY_LOOK_SPEED = 120.0f * 3.14159265f / 180.0f;	// 矢印キーで1秒に回る角度（120度）
 static constexpr float PAD_LOOK_SPEED = 180.0f * 3.14159265f / 180.0f;	// 右スティックを端まで倒したときに1秒に回る角度（180度）
 
+static constexpr float TARGET_PAD_DEADZONE = 0.3f;	// 次の弾きを受け付ける右スティックXの遊び
+static constexpr float TARGET_PAD_THRESHOLD = 0.7f;	// この大きさを超えた瞬間に切り替える
+static constexpr float TARGET_MOUSE_WINDOW = 0.15f;	// マウス移動量を合計する直近の秒数
+static constexpr float TARGET_MOUSE_DISTANCE = 40.0f;	// 切り替える横移動量（ピクセル）
+static constexpr float TARGET_MOUSE_COOLDOWN = 0.3f;	// マウスで切り替えてから次を受け付けるまでの秒数（管理者確認済み）
+
 
 static bool g_Press[ACTION_COUNT] = {};		// 今のフレームで押しているか
 static bool g_OldPress[ACTION_COUNT] = {};	// 1つ前のフレームで押していたか
 static ACTION_AXIS g_Move = {};				// 移動の向き
 static ACTION_AXIS g_Look = {};				// このフレームでカメラを回す角度
+static bool g_TargetPadReady = true;			// 遊びへ戻るまで次の切り替えを止める
+static float g_TargetMouseCooldown = 0.0f;
+struct TARGET_MOUSE_SAMPLE
+{
+	float Age;	// 入力からの秒数
+	float Delta;	// 横の移動量
+};
+static std::deque<TARGET_MOUSE_SAMPLE> g_TargetMouseSamples;
 
 #ifdef _DEBUG
 // 確かめ用に出力ウィンドウに出す名前（ACTION の並びと同じ順番。No.8 でプレイヤーができたら消す）
 static const char* const ACTION_NAMES[ACTION_COUNT] = {
-	"ジャンプ", "左の触腕", "右の触腕", "やり直し",
+	"ジャンプ", "左の触腕", "右の触腕", "やり直し", "ターゲット左", "ターゲット右",
 };
 #endif
 
@@ -66,22 +84,64 @@ void ActionInitialize(void)
 	}
 	g_Move = { 0.0f, 0.0f };
 	g_Look = { 0.0f, 0.0f };
+	g_TargetPadReady = true;
+	g_TargetMouseCooldown = 0.0f;
+	g_TargetMouseSamples.clear();
+}
+
+// 機器ごとの切り替え入力は押した瞬間だけ出す。自由カメラ用の横入力はそのまま残す。
+static void UpdateTargetInput(float dt)
+{
+	bool left = KeyboardIsTrigger(ACTION_KEYS[ACTION_TARGET_LEFT]);
+	bool right = KeyboardIsTrigger(ACTION_KEYS[ACTION_TARGET_RIGHT]);
+	const float stick = PadGetRightStick().X;
+	if (fabsf(stick) <= TARGET_PAD_DEADZONE) g_TargetPadReady = true;
+	if (g_TargetPadReady && fabsf(stick) > TARGET_PAD_THRESHOLD) {
+		left = left || stick < 0.0f;
+		right = right || stick > 0.0f;
+		g_TargetPadReady = false;
+	}
+
+	g_TargetMouseCooldown = fmaxf(0.0f, g_TargetMouseCooldown - dt);
+	for (TARGET_MOUSE_SAMPLE& sample : g_TargetMouseSamples) sample.Age += dt;
+	while (!g_TargetMouseSamples.empty() && g_TargetMouseSamples.front().Age >= TARGET_MOUSE_WINDOW) {
+		g_TargetMouseSamples.pop_front();
+	}
+	if (!MouseIsLocked() || g_TargetMouseCooldown > 0.0f) {
+		g_TargetMouseSamples.clear();
+	}
+	else {
+		const float delta = (float)MouseGetDeltaX();
+		if (delta != 0.0f) g_TargetMouseSamples.push_back({ 0.0f, delta });
+		float distance = 0.0f;
+		for (const TARGET_MOUSE_SAMPLE& sample : g_TargetMouseSamples) distance += sample.Delta;
+		if (fabsf(distance) > TARGET_MOUSE_DISTANCE) {
+			left = left || distance < 0.0f;
+			right = right || distance > 0.0f;
+			g_TargetMouseSamples.clear();
+			g_TargetMouseCooldown = TARGET_MOUSE_COOLDOWN;
+		}
+	}
+	// 連続フレームでも別の機器から新しい弾きが来れば、独立したトリガーとして扱う。
+	g_OldPress[ACTION_TARGET_LEFT] = g_OldPress[ACTION_TARGET_RIGHT] = false;
+	g_Press[ACTION_TARGET_LEFT] = left;
+	g_Press[ACTION_TARGET_RIGHT] = right;
 }
 
 void ActionUpdate(void)
 {
 	// ---- ボタン ----
 	// キーボードとパッドの「どちらかを押している」。押した瞬間・離した瞬間は、まとめたあとの状態で判定する
-	for (int i = 0; i < ACTION_COUNT; i++) {
+	for (int i = 0; i < ACTION_TARGET_LEFT; i++) {
 		g_OldPress[i] = g_Press[i];
 		g_Press[i] = KeyboardIsPress(ACTION_KEYS[i]) || PadIsPress(ACTION_PAD_BUTTONS[i]);
-
-#ifdef _DEBUG
-		if (g_Press[i] && !g_OldPress[i]) {
-			hal::dout << "行動：" << ACTION_NAMES[i] << std::endl;
-		}
-#endif
 	}
+	UpdateTargetInput(GameTimeGetDeltaTime());
+#ifdef _DEBUG
+	for (int i = 0; i < ACTION_COUNT; ++i) {
+		if (ActionIsTrigger((ACTION)i)) hal::dout << "行動：" << ACTION_NAMES[i] << std::endl;
+	}
+#endif
 
 	// ---- 移動 ----
 	// キーボードと左スティックの、強く入れているほう
