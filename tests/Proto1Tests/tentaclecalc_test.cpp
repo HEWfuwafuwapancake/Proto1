@@ -1,6 +1,7 @@
 ﻿#include "CppUnitTest.h"
 #include "physics/tentaclecalc.h"
 #include "physics/knockbackcalc.h"
+#include <initializer_list>
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
 namespace Proto1Tests
@@ -21,6 +22,95 @@ namespace Proto1Tests
 	TEST_CLASS(TentacleCalcTest)
 	{
 	public:
+		TEST_METHOD(Aim_TargetGivesHorizontalUnitDirection)
+		{
+			const VEC3 direction = TentacleCalcAim({ 2, 1, -3 }, { 5, 1, 1 }, true, aim);
+			Assert::AreEqual(0.6f, direction.X, 0.0001f);
+			Assert::AreEqual(0.0f, direction.Y, 0.0001f);
+			Assert::AreEqual(0.8f, direction.Z, 0.0001f);
+			Assert::AreEqual(1.0f, Vec3Length(direction), 0.0001f);
+		}
+		TEST_METHOD(Aim_IgnoresTargetHeightAndJumpHeight)
+		{
+			for (float height : { -20.0f, 20.0f }) {
+				const VEC3 direction = TentacleCalcAim({ 2, -height, -3 }, { 5, height, 1 }, true, aim);
+				Assert::AreEqual(0.6f, direction.X, 0.0001f);
+				Assert::AreEqual(0.0f, direction.Y, 0.0001f);
+				Assert::AreEqual(0.8f, direction.Z, 0.0001f);
+			}
+		}
+		TEST_METHOD(Aim_NoTargetUsesFallback)
+		{
+			const VEC3 direction = TentacleCalcAim(origin, { 3, 1, 4 }, false, { -1, 0, 0 });
+			Assert::AreEqual(-1.0f, direction.X, 0.0001f);
+			Assert::AreEqual(0.0f, direction.Y, 0.0001f);
+			Assert::AreEqual(0.0f, direction.Z, 0.0001f);
+		}
+		TEST_METHOD(Aim_TargetDirectlyAboveBelowOrAtShoulderUsesFallback)
+		{
+			for (float height : { -20.0f, 1.35f, 20.0f }) {
+				const VEC3 direction = TentacleCalcAim(origin, { 0, height, 0 }, true, { -1, 0, 0 });
+				Assert::AreEqual(-1.0f, direction.X, 0.0001f);
+				Assert::AreEqual(0.0f, direction.Y, 0.0001f);
+				Assert::AreEqual(0.0f, direction.Z, 0.0001f);
+			}
+		}
+		TEST_METHOD(Aim_NearlyZeroHorizontalDistanceUsesFallback)
+		{
+			const VEC3 direction = TentacleCalcAim(origin, { 0.000001f, 10, -0.000001f }, true, aim);
+			Assert::AreEqual(0.0f, direction.X, 0.0001f);
+			Assert::AreEqual(0.0f, direction.Y, 0.0001f);
+			Assert::AreEqual(1.0f, direction.Z, 0.0001f);
+		}
+		TEST_METHOD(Aim_FallbackIsHorizontalAndNormalized)
+		{
+			for (bool hasTarget : { false, true }) {
+				const VEC3 direction = TentacleCalcAim(origin, origin, hasTarget, { -3, 12, 4 });
+				Assert::AreEqual(-0.6f, direction.X, 0.0001f);
+				Assert::AreEqual(0.0f, direction.Y, 0.0001f);
+				Assert::AreEqual(0.8f, direction.Z, 0.0001f);
+				Assert::AreEqual(1.0f, Vec3Length(direction), 0.0001f);
+			}
+		}
+		TEST_METHOD(Aim_DegenerateFallbackUsesPositiveZ)
+		{
+			for (const VEC3& fallback : { VEC3{}, VEC3{ 0, 5, 0 }, VEC3{ 0.000001f, 5, 0 } }) {
+				for (bool hasTarget : { false, true }) {
+					const VEC3 direction = TentacleCalcAim(origin, origin, hasTarget, fallback);
+					Assert::AreEqual(0.0f, direction.X, 0.0001f);
+					Assert::AreEqual(0.0f, direction.Y, 0.0001f);
+					Assert::AreEqual(1.0f, direction.Z, 0.0001f);
+				}
+			}
+		}
+		TEST_METHOD(Aim_EachShoulderPointsToSameTarget)
+		{
+			const VEC3 target{ 0, 9, 4 };
+			const VEC3 left = TentacleCalcAim({ -3, 1, 0 }, target, true, aim);
+			const VEC3 right = TentacleCalcAim({ 3, 1, 0 }, target, true, aim);
+			Assert::AreEqual(0.6f, left.X, 0.0001f);
+			Assert::AreEqual(-0.6f, right.X, 0.0001f);
+			Assert::AreEqual(0.0f, left.Y, 0.0001f);
+			Assert::AreEqual(0.0f, right.Y, 0.0001f);
+			Assert::AreEqual(0.8f, left.Z, 0.0001f);
+			Assert::AreEqual(0.8f, right.Z, 0.0001f);
+		}
+		TEST_METHOD(Aim_DistantTargetKeepsInitialDirectionAndMaximumLength)
+		{
+			TENTACLE arm; TentacleCalcReset(arm);
+			const VEC3 initial = TentacleCalcAim(origin, { 30, 10, 40 }, true, aim);
+			TentacleCalcStep(arm, origin, initial, hold, true, false, 0.05f, params, nullptr, 0, stage);
+			const VEC3 moved = TentacleCalcAim(origin, { -40, -10, 30 }, true, aim);
+			TentacleCalcStep(arm, origin, moved, hold, false, false, 0.05f, params, nullptr, 0, stage);
+			Assert::AreEqual(1.44f, arm.Tip.X, 0.0001f);
+			Assert::AreEqual(origin.Y, arm.Tip.Y, 0.0001f);
+			Assert::AreEqual(1.92f, arm.Tip.Z, 0.0001f);
+			TentacleCalcStep(arm, origin, moved, hold, false, false, 1, params, nullptr, 0, stage);
+			Assert::AreEqual(4.8f, arm.Tip.X, 0.0001f);
+			Assert::AreEqual(6.4f, arm.Tip.Z, 0.0001f);
+			Assert::AreEqual(8.0f, arm.Length, 0.0001f);
+			Assert::AreEqual((int)TENTACLE_RETURNING, (int)arm.State);
+		}
 		TEST_METHOD(Miss_ReturnsAndCanExtendAgain)
 		{
 			TENTACLE arm; TentacleCalcReset(arm);

@@ -50,6 +50,13 @@ struct TENTACLE_EVENT
 
 /// @brief 腕を待機に戻す（保持中の敵の解放は呼び出し側で行う）
 void TentacleCalcReset(TENTACLE& arm);
+/// @brief 肩からターゲットへ伸ばす水平の単位ベクトルを求める（距離の制限なし）
+/// @param origin 腕の肩の位置
+/// @param target ターゲットの中心（高さは使わない）
+/// @param hasTarget ターゲットの有無を指定する（true：あり、false：なし）
+/// @param fallback 対象なし・水平距離がほぼ0のときの向き（高さを除いて正規化する）
+/// @return 水平の単位ベクトル。fallback の水平成分もほぼ0なら Z の正方向
+VEC3 TentacleCalcAim(const VEC3& origin, const VEC3& target, bool hasTarget, const VEC3& fallback);
 /// @brief 浮島を通過しないところまで移動する。半径と半高で移動する物の大きさを指定する
 VEC3 TentacleCalcClip(const VEC3& from, const VEC3& to, const STAGE& stage, float radius, float halfHeight);
 /// @brief 触腕を進める。trigger は押した瞬間、cancel は場外復活などによる解除。dt が0なら停止する

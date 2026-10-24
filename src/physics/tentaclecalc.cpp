@@ -1,6 +1,9 @@
 ﻿#include "physics/tentaclecalc.h"
 #include <algorithm>
 
+// 調整用の値
+static constexpr float AIM_MIN_LENGTH = 0.00001f; // 水平の向きを決められる最小の長さ
+
 static VEC3 MoveTowards(const VEC3& from, const VEC3& to, float distance)
 {
 	const VEC3 delta = Vec3Sub(to, from);
@@ -12,6 +15,18 @@ void TentacleCalcReset(TENTACLE& arm)
 {
 	arm = {};
 	arm.Target = -1;
+}
+
+VEC3 TentacleCalcAim(const VEC3& origin, const VEC3& target, bool hasTarget, const VEC3& fallback)
+{
+	VEC3 direction = hasTarget ? VEC3{ target.X - origin.X, 0.0f, target.Z - origin.Z }
+		: VEC3{ fallback.X, 0.0f, fallback.Z };
+	float length = Vec3Length(direction);
+	if (length < AIM_MIN_LENGTH) {
+		direction = { fallback.X, 0.0f, fallback.Z };
+		length = Vec3Length(direction);
+	}
+	return length < AIM_MIN_LENGTH ? VEC3{ 0.0f, 0.0f, 1.0f } : Vec3Scale(direction, 1.0f / length);
 }
 
 VEC3 TentacleCalcClip(const VEC3& from, const VEC3& to, const STAGE& stage, float radius, float halfHeight)
