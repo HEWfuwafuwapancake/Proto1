@@ -17,9 +17,6 @@
 	調整用の値
 ------------------------------------------------------------------------------*/
 static constexpr float MATCH_SECONDS = 90.0f;	// 制限時間（秒）
-static constexpr float SCORE_RUMBLE_SMALL = 0.0f;	// 得点したときの振動：小さいモーター（0〜1）
-static constexpr float SCORE_RUMBLE_LARGE = 1.0f;	// 得点したときの振動：大きいモーター（0〜1）
-static constexpr float SCORE_RUMBLE_SECONDS = 0.4f;	// 得点したときの振動の長さ（秒）
 static constexpr float PLAYING_LIGHT_COLOR[3] = { 0.95f, 0.45f, 0.35f }; // プレイヤーのサーモンピンク
 static constexpr float FINISHED_LIGHT_COLOR[3] = { 1.0f, 0.0f, 0.0f };   // 時間切れは赤
 
@@ -55,12 +52,11 @@ void MatchUpdate(void)
 	}
 
 	const MATCH_EVENT event = MatchCalcStep(g_Match, GameTimeGetDeltaTime(), DummyGetTotalOutCount());
-	if (event == MATCH_EVENT_SCORED) {
-		PadRumble(SCORE_RUMBLE_SMALL, SCORE_RUMBLE_LARGE, SCORE_RUMBLE_SECONDS);
 #ifdef _DEBUG
+	if (event == MATCH_EVENT_SCORED) {
 		hal::dout << "試合：得点 " << g_Match.Score << std::endl;
-#endif
 	}
+#endif
 	if (event == MATCH_EVENT_TIME_UP) {
 		PadRumble(0.0f, 0.0f, 0.0f);
 		PadSetLightColor(FINISHED_LIGHT_COLOR[0], FINISHED_LIGHT_COLOR[1], FINISHED_LIGHT_COLOR[2]);

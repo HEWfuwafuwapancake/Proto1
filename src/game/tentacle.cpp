@@ -4,6 +4,7 @@
 #include "game/player.h"
 #include "game/stage.h"
 #include "core/gametime.h"
+#include "core/mathutil.h"
 #include "input/action.h"
 #include "input/pad.h"
 #include "render/shape.h"
@@ -18,6 +19,9 @@ static constexpr float GRAB_RUMBLE_SECONDS = 0.1f;
 static constexpr float THROW_RUMBLE_SMALL = 0.6f;
 static constexpr float THROW_RUMBLE_LARGE = 0.6f;
 static constexpr float THROW_RUMBLE_SECONDS = 0.15f;
+static constexpr float EXTEND_RUMBLE_START = 0.05f;	// 腕が伸び始めたときの振動の強さ（0〜1。両方のモーター）
+static constexpr float EXTEND_RUMBLE_END = 0.5f;	// 腕が最大まで伸びたときの振動の強さ（0〜1。両方のモーター）
+static constexpr float EXTEND_RUMBLE_SECONDS = 0.05f;	// 伸長中に毎フレーム足す振動の長さ（伸び終わるとこの秒数で止まる）
 static constexpr float SHOULDER_OFFSET = 0.65f;
 static constexpr float HOLD_OFFSET = 1.0f;
 static constexpr float HOLD_FORWARD = 2.0f;
@@ -90,6 +94,11 @@ void TentacleUpdate(void)
 			if (event.Throw) PadRumble(THROW_RUMBLE_SMALL, THROW_RUMBLE_LARGE, THROW_RUMBLE_SECONDS);
 		}
 		if (arm.Target >= 0) DummyMoveHeld(arm.Target, arm.Tip);
+		if (arm.State == TENTACLE_EXTENDING) {
+			// 伸びるほど強くする（PadRumble は強いほうを残すので、毎フレーム足すと右肩上がりになる）
+			const float strength = Lerp(EXTEND_RUMBLE_START, EXTEND_RUMBLE_END, TentacleCalcExtendRatio(arm, PARAMS));
+			PadRumble(strength, strength, EXTEND_RUMBLE_SECONDS);
+		}
 	}
 }
 
