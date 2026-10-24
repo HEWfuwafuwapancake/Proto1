@@ -51,7 +51,7 @@ void TentacleFinalize(void)
 void TentacleUpdate(void)
 {
 	const float yaw = CameraGetYaw();
-	const VEC3 aim{ sinf(yaw), 0.0f, cosf(yaw) };
+	const VEC3 cameraForward{ sinf(yaw), 0.0f, cosf(yaw) };
 	for (int hand = 0; hand < 2; ++hand) {
 		TENTACLE& arm = g_Arms[hand];
 		// 左腕がつかんだ状態を右腕へ反映するため、候補は各腕の直前に取得する。
@@ -60,12 +60,22 @@ void TentacleUpdate(void)
 		const float side = hand == 0 ? -1.0f : 1.0f;
 		const VEC3 origin = Position(side * SHOULDER_OFFSET, 0.0f);
 		const VEC3 hold = Position(side * HOLD_OFFSET, HOLD_FORWARD);
+		const bool trigger = ActionIsTrigger(hand == 0 ? ACTION_ARM_LEFT : ACTION_ARM_RIGHT);
+		VEC3 aim = cameraForward;
+		if (trigger && arm.State == TENTACLE_IDLE) {
+			const int target = CameraGetTarget();
+			const bool hasTarget = target >= 0 && target < DUMMY_COUNT;
+			const VEC3 center = hasTarget
+				? Vec3Scale(Vec3Add(targets[target].Body.Start, targets[target].Body.End), 0.5f) : VEC3{};
+			// 各肩からの向きを開始時だけ決める。伸長中は追いかけず、投げる向きとも分ける。
+			aim = TentacleCalcAim(origin, center, hasTarget, cameraForward);
+		}
 		const bool cancel = PlayerDidRespawn() || (arm.Target >= 0 && !DummyIsActive(arm.Target));
 		const TENTACLE_EVENT event = TentacleCalcStep(arm, origin, aim, hold,
-			ActionIsTrigger(hand == 0 ? ACTION_ARM_LEFT : ACTION_ARM_RIGHT), cancel,
+			trigger, cancel,
 			GameTimeGetDeltaTime(), PARAMS, targets, DUMMY_COUNT, StageGet());
 		if (event.Grabbed >= 0 && !DummyGrab(event.Grabbed)) TentacleCalcReset(arm);
-		if (event.Released >= 0) DummyRelease(event.Released, event.Throw, aim, THROW_DAMAGE, THROW_POWER);
+		if (event.Released >= 0) DummyRelease(event.Released, event.Throw, cameraForward, THROW_DAMAGE, THROW_POWER);
 		if (arm.Target >= 0) DummyMoveHeld(arm.Target, arm.Tip);
 	}
 }
