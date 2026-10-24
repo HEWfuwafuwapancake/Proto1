@@ -1,5 +1,6 @@
 ﻿// physics/cameracalc.h（TPS カメラの位置・浮島にめり込まない・なめらかに追う）の単体テスト
 #include <math.h>
+#include <initializer_list>
 #include "CppUnitTest.h"
 #include "physics/cameracalc.h"
 
@@ -89,29 +90,160 @@ namespace Proto1Tests
 			Assert::AreEqual(-8.0f, cam.Z, CAMERA_EPSILON);
 		}
 
-		// なめらかに追う：少しずつ近づき、行き過ぎず、1 秒たつと残りが e^(-speed) 倍になる
-		TEST_METHOD(Smooth_ApproachesWithoutOvershoot)
+		// 正負どちらの目標へも近づく。大きな持ち越し速度でも目標を通り過ぎない。
+		TEST_METHOD(SmoothDamp_ApproachesWithoutOvershoot)
 		{
-			VEC3 pos = { 0.0f, 0.0f, 0.0f };
-			const VEC3 goal = { 10.0f, 0.0f, -4.0f };
-			float previous = Distance(pos, goal);
-			for (int i = 0; i < 60; i++) {
-				pos = CameraCalcSmooth(pos, goal, 5.0f, 1.0f / 60.0f);
-				const float now = Distance(pos, goal);
-				Assert::IsTrue(now < previous);		// 毎フレーム近づく
-				Assert::IsTrue(pos.X <= 10.0f);		// 行き過ぎない
-				previous = now;
+			for (float goal : {10.0f, -10.0f}) {
+				float pos = 0.0f, velocity = 0.0f;
+				for (int i = 0; i < 60; ++i) {
+					const float previous = pos;
+					pos = CameraCalcSmoothDamp(pos, goal, velocity, 0.3f, 1.0f / 60.0f);
+					Assert::IsTrue(fabsf(goal - pos) <= fabsf(goal - previous));
+					Assert::IsTrue(pos * goal >= 0.0f && fabsf(pos) <= fabsf(goal));
+				}
+				Assert::AreEqual(goal, pos, 0.11f);
+				velocity = goal * 1000.0f;
+				Assert::AreEqual(goal, CameraCalcSmoothDamp(0, goal, velocity, 0.3f, 1.0f / 30.0f), CAMERA_EPSILON);
+				Assert::AreEqual(0.0f, velocity, CAMERA_EPSILON);
 			}
-			Assert::AreEqual(Distance({ 0.0f, 0.0f, 0.0f }, goal) * expf(-5.0f), previous, 1.0e-3f);
 		}
 
-		// dt が 0（時間が止まっている）なら動かない
-		TEST_METHOD(Smooth_ZeroDtDoesNotMove)
+		// 時間が止まっている間は速度も角度も変えない（角度の正規化も行わない）。
+		TEST_METHOD(SmoothDamp_ZeroDtKeepsValueAndVelocity)
 		{
-			VEC3 pos = CameraCalcSmooth({ 1.0f, 2.0f, 3.0f }, { 9.0f, 9.0f, 9.0f }, 5.0f, 0.0f);
-			Assert::AreEqual(1.0f, pos.X, CAMERA_EPSILON);
-			Assert::AreEqual(2.0f, pos.Y, CAMERA_EPSILON);
-			Assert::AreEqual(3.0f, pos.Z, CAMERA_EPSILON);
+			float velocity = 3.0f;
+			Assert::AreEqual(1.0f, CameraCalcSmoothDamp(1, 9, velocity, 0.3f, 0), CAMERA_EPSILON);
+			Assert::AreEqual(3.0f, velocity, CAMERA_EPSILON);
+			Assert::AreEqual(7.0f, CameraCalcSmoothDampAngle(7, -2, velocity, 0.12f, 0), CAMERA_EPSILON);
+			Assert::AreEqual(3.0f, velocity, CAMERA_EPSILON);
+		}
+
+		TEST_METHOD(SmoothDampAngle_CrossesPiInBothDirectionsByShortestPath)
+		{
+			for (float sign : {1.0f, -1.0f}) {
+				float angle = sign * (CAMERA_PI - 0.1f), velocity = 0.0f;
+				const float goal = sign * (-CAMERA_PI + 0.1f);
+				float previous = 0.2f;
+				for (int i = 0; i < 60; ++i) {
+					angle = CameraCalcSmoothDampAngle(angle, goal, velocity, 0.12f, 1.0f / 60.0f);
+					const float gap = fabsf(atan2f(sinf(goal - angle), cosf(goal - angle)));
+					Assert::IsTrue(gap <= previous + CAMERA_EPSILON);
+					Assert::IsTrue(fabsf(angle) >= CAMERA_PI - 0.101f);
+					Assert::IsTrue(velocity * sign >= -CAMERA_EPSILON);
+					previous = gap;
+				}
+				Assert::AreEqual(goal, angle, CAMERA_EPSILON);
+			}
+		}
+
+		// 1秒後の値と速度を比較。許容差は移動量10に対して0.01（0.1%）。
+		TEST_METHOD(SmoothDamp_FrameRatesReachNearlySameValueAndVelocity)
+		{
+			float value60 = 0, value30 = 0, velocity60 = 0, velocity30 = 0;
+			float angle60 = 3, angle30 = 3, angularVelocity60 = 0, angularVelocity30 = 0;
+			for (int i = 0; i < 60; ++i) {
+				value60 = CameraCalcSmoothDamp(value60, 10, velocity60, 0.5f, 1.0f / 60.0f);
+				angle60 = CameraCalcSmoothDampAngle(angle60, -3, angularVelocity60, 0.5f, 1.0f / 60.0f);
+			}
+			for (int i = 0; i < 30; ++i) {
+				value30 = CameraCalcSmoothDamp(value30, 10, velocity30, 0.5f, 1.0f / 30.0f);
+				angle30 = CameraCalcSmoothDampAngle(angle30, -3, angularVelocity30, 0.5f, 1.0f / 30.0f);
+			}
+			Assert::AreEqual(value60, value30, 0.01f);
+			Assert::AreEqual(velocity60, velocity30, 0.01f);
+			Assert::AreEqual(angle60, angle30, 0.001f);
+			Assert::AreEqual(angularVelocity60, angularVelocity30, 0.001f);
+		}
+
+		TEST_METHOD(SmoothDamp_ChangingGoalCarriesVelocity)
+		{
+			float value = 0, velocity = 0;
+			for (int i = 0; i < 6; ++i) {
+				value = CameraCalcSmoothDamp(value, 10, velocity, 0.3f, 1.0f / 60.0f);
+			}
+			const float beforeVelocity = velocity;
+			float resetVelocity = 0;
+			const float restarted = CameraCalcSmoothDamp(value, -10, resetVelocity, 0.3f, 1.0f / 60.0f);
+			const float continued = CameraCalcSmoothDamp(value, -10, velocity, 0.3f, 1.0f / 60.0f);
+			Assert::IsTrue(beforeVelocity > 0 && velocity > 0);
+			Assert::IsTrue(continued > value && restarted < value);
+			Assert::IsTrue(continued - restarted > 0.1f);
+		}
+
+		TEST_METHOD(SmoothDampAngle_ChangingGoalCarriesAngularVelocity)
+		{
+			float angle = 3, velocity = 0;
+			for (int i = 0; i < 6; ++i) {
+				angle = CameraCalcSmoothDampAngle(angle, -2.5f, velocity, 0.3f, 1.0f / 60.0f);
+			}
+			float resetVelocity = 0;
+			const float restarted = CameraCalcSmoothDampAngle(angle, 2.5f, resetVelocity, 0.3f, 1.0f / 60.0f);
+			const float continued = CameraCalcSmoothDampAngle(angle, 2.5f, velocity, 0.3f, 1.0f / 60.0f);
+			Assert::IsTrue(velocity > 0 && resetVelocity < 0);
+			Assert::IsTrue(atan2f(sinf(continued - restarted), cosf(continued - restarted)) > 0.01f);
+		}
+		TEST_METHOD(Focus_ChoosesClosestAngleAndKeepsSmallPriority)
+		{
+			CAMERA_FOCUS_TARGET targets[]{ {{2, 0, 10}, true}, {{1.5f, 0, 10}, true} };
+			Assert::AreEqual(1, CameraCalcPickFocus(0, {}, targets, 2, -1, 0.5f, 20, 0.06f));
+			Assert::AreEqual(0, CameraCalcPickFocus(0, {}, targets, 2, 0, 0.5f, 20, 0.06f));
+			targets[1].Position.X = 0;
+			Assert::AreEqual(1, CameraCalcPickFocus(0, {}, targets, 2, 0, 0.5f, 20, 0.06f));
+		}
+		TEST_METHOD(Focus_RejectsAngleDistanceUnavailableAndEmpty)
+		{
+			CAMERA_FOCUS_TARGET targets[]{ {{8, 0, 1}, true}, {{0, 0, 30}, true}, {{0, 0, 5}, false} };
+			Assert::AreEqual(-1, CameraCalcPickFocus(0, {}, targets, 3, 0, 0.5f, 20, 2));
+			Assert::AreEqual(-1, CameraCalcPickFocus(0, {}, nullptr, 0, -1, 0.5f, 20, 0));
+			targets[1].Position = {0, 30, 1};
+			Assert::AreEqual(-1, CameraCalcPickFocus(0, {}, targets, 3, 1, 0.5f, 20, 2));
+		}
+		TEST_METHOD(Focus_WrapsAngleAndIgnoresCoincidentTarget)
+		{
+			CAMERA_FOCUS_TARGET targets[]{ {{0.01f, 0, -10}, true}, {{0, 1, 0}, true} };
+			Assert::AreEqual(0, CameraCalcPickFocus(-CAMERA_PI + 0.01f, {}, targets, 2, -1, 0.05f, 20, 0));
+		}
+		TEST_METHOD(YawTo_UsesHorizontalDirectionAndNearFallback)
+		{
+			Assert::AreEqual(CAMERA_PI * 0.5f, CameraCalcYawTo({}, {10, 7, 0}, 0), CAMERA_EPSILON);
+			Assert::AreEqual(1.2f, CameraCalcYawTo({}, {0.00001f, 10, 0}, 1.2f), CAMERA_EPSILON);
+		}
+		TEST_METHOD(Turn_LimitsSpeedAndCrossesPiByShortestPath)
+		{
+			Assert::AreEqual(0.1f, CameraCalcTurnYaw(0, 1, 0.2f, 0.5f), CAMERA_EPSILON);
+			Assert::AreEqual(-CAMERA_PI + 0.05f,
+				CameraCalcTurnYaw(CAMERA_PI - 0.05f, -CAMERA_PI + 0.2f, 0.1f, 1), CAMERA_EPSILON);
+			Assert::AreEqual(CAMERA_PI - 0.05f,
+				CameraCalcTurnYaw(-CAMERA_PI + 0.05f, CAMERA_PI - 0.2f, 0.1f, 1), CAMERA_EPSILON);
+		}
+		TEST_METHOD(Turn_DoesNotOvershootOrMoveAtZeroDt)
+		{
+			Assert::AreEqual(0.2f, CameraCalcTurnYaw(0, 0.2f, 2, 1), CAMERA_EPSILON);
+			Assert::AreEqual(0.3f, CameraCalcTurnYaw(0.3f, 1, 2, 0), CAMERA_EPSILON);
+		}
+		TEST_METHOD(FocusPoint_UsesRequestedRateForNearbyEnemy)
+		{
+			const VEC3 p = CameraCalcFocusPoint({1,2,3}, {3,2,5}, 0, 0, 8, CAMERA_PI/3, 1.7f, 0.15f, 1.5f, 0.25f);
+			Assert::AreEqual(1.5f, p.X, CAMERA_EPSILON);
+			Assert::AreEqual(2.0f, p.Y, CAMERA_EPSILON);
+			Assert::AreEqual(3.5f, p.Z, CAMERA_EPSILON);
+		}
+		TEST_METHOD(FocusPoint_KeepsWholePlayerInsideBothScreenAxes)
+		{
+			for (float aspect : {0.6f, 1.777f}) {
+				for (VEC3 enemy : {VEC3{100, 0, 10}, VEC3{0, 60, 100}, VEC3{-80, -40, 100}}) {
+					const float pitch = -0.6f, radius = 1.6f, distance = 8;
+					const VEC3 point = CameraCalcFocusPoint({}, enemy, 0, pitch, distance, CAMERA_PI/3, aspect, 0.15f, radius, 0.4f);
+					Assert::IsTrue(Vec3Length(point) < Vec3Length(enemy) * 0.4f);
+					const VEC3 eye = CameraCalcOrbitPosition(point, 0, pitch, distance);
+					const VEC3 relative = Vec3Scale(eye, -1);
+					const float depth = relative.Y * sinf(pitch) + relative.Z * cosf(pitch);
+					const float vertical = relative.Y * cosf(pitch) - relative.Z * sinf(pitch);
+					const float tanY = tanf(CAMERA_PI/6) * 0.85f;
+					Assert::IsTrue(fabsf(relative.X) + radius * sqrtf(1 + tanY*tanY*aspect*aspect) <= depth*tanY*aspect + CAMERA_EPSILON);
+					Assert::IsTrue(fabsf(vertical) + radius * sqrtf(1 + tanY*tanY) <= depth*tanY + CAMERA_EPSILON);
+				}
+			}
 		}
 	};
 }

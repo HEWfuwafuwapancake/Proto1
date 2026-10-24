@@ -3,7 +3,12 @@
 #include "core/dx11.h"
 
 /// @brief このフレームで場外から復活したか（保持中の触腕を解除するため）
+/// @return このフレームで復活したときtrue、それ以外はfalse
 bool PlayerDidRespawn(void);
+
+/// @brief プレイヤーが浮島の上に立っているかを取得する
+/// @return 立っているときtrue、ジャンプ中・落下中はfalse
+bool PlayerIsOnGround(void);
 
 /// @file player.h
 /// @brief プレイヤー（仮の形のカプセル）。浮島の上を歩く・ジャンプする・落ちる

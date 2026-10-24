@@ -13,3 +13,7 @@ void TentacleFinalize(void);
 void TentacleUpdate(void);
 /// @brief 球を並べて左右の触腕を描く
 void TentacleDraw(void);
+
+/// @brief どちらかの腕が敵をつかんでいるか返す（No.33 のロックオン停止に使う）
+/// @return 左右いずれかの腕が保持中ならtrue、どちらも保持中でなければfalse
+bool TentacleIsHolding(void);
