@@ -4,7 +4,7 @@
 #include "physics/vec3.h"
 
 /// @file cameracalc.h
-/// @brief TPS カメラの計算（位置・浮島との接触・フォーカス・左右角の補助・視点の範囲）
+/// @brief TPS カメラの計算（位置・浮島との接触・臨界減衰バネ・No.33 用のフォーカス）
 /// @details DirectX と Windows を使わないので、単体テスト（tests/Proto1Tests）からそのまま使える
 
 /// @brief 見ている点のまわりを回るカメラの位置を出す
@@ -26,14 +26,24 @@ VEC3 CameraCalcOrbitPosition(const VEC3& target, float yaw, float pitch, float d
 /// @return めり込まない位置（ぶつからなければ camera のまま）
 VEC3 CameraCalcClipToStage(const VEC3& target, const VEC3& camera, const STAGE& stage, float margin);
 
-/// @brief 今の点を、目標の点へなめらかに近づける
-/// @details 1秒ごとに、残りの距離が e^(-speed) 倍に縮む（dt が変わっても同じ動きになり、行き過ぎない）
-/// @param current 今の点
-/// @param target 目標の点
-/// @param speed 近づく速さ（大きいほど速く追いつく。0 なら動かない）
-/// @param dt 1フレームの秒数
-/// @return 近づけたあとの点
-VEC3 CameraCalcSmooth(const VEC3& current, const VEC3& target, float speed, float dt);
+/// @brief 臨界減衰バネで目標へ近づけ、行き過ぎるときは目標で止める
+/// @details 速度は呼ぶ側で値ごとに持ち、目標が変わっても初期化せず次の呼び出しへ渡す
+/// @param current 今の値
+/// @param target 目標の値
+/// @param[in,out] velocity 1秒あたりの速度（初回・瞬間移動時は0）
+/// @param smoothTime 追いつくまでのおよその秒数（0以下は0.0001秒として扱う）
+/// @param dt 1フレームの秒数（0以下なら値も速度も変えない）
+/// @return 近づけたあとの値
+float CameraCalcSmoothDamp(float current, float target, float& velocity, float smoothTime, float dt);
+
+/// @brief 角度の差を最短方向に直し、臨界減衰バネで目標へ近づける
+/// @param current 今の角度（ラジアン）
+/// @param target 目標の角度（ラジアン）
+/// @param[in,out] velocity 角速度（ラジアン/秒。初回・瞬間移動時は0）
+/// @param smoothTime 追いつくまでのおよその秒数（0以下は0.0001秒として扱う）
+/// @param dt 1フレームの秒数（0以下なら値も速度も変えない）
+/// @return 近づけたあとの角度（-π〜π。dtが0以下ならcurrentのまま）
+float CameraCalcSmoothDampAngle(float current, float target, float& velocity, float smoothTime, float dt);
 
 /// @brief フォーカス候補（配列の添字がダミー番号）
 struct CAMERA_FOCUS_TARGET
@@ -43,10 +53,28 @@ struct CAMERA_FOCUS_TARGET
 };
 
 /// @brief from から to への水平角を返す（水平距離がほぼ0なら fallbackYaw）
+/// @param from 向きの始点
+/// @param to 向きの終点
+/// @param fallbackYaw 水平距離がほぼ0のときの角度（ラジアン）
+/// @return 水平角（ラジアン。0で+Z方向、プラスで右回り）
 float CameraCalcYawTo(const VEC3& from, const VEC3& to, float fallbackYaw);
 /// @brief 最短方向へ毎秒 speed ラジアンまで回す（dt は秒、0以下なら動かない）
+/// @param current 今の角度（ラジアン）
+/// @param target 目標の角度（ラジアン）
+/// @param speed 1秒に回る角度の上限（ラジアン。0以下なら動かない）
+/// @param dt 1フレームの秒数
+/// @return 回したあとの角度（-π〜π。動かないときはcurrent）
 float CameraCalcTurnYaw(float current, float target, float speed, float dt);
 /// @brief yaw から maxAngle ラジアン・3D距離 maxDistance 以内の最も中央の敵を選ぶ。current は bonus ラジアン優先（なしは -1）
+/// @param yaw カメラの水平角（ラジアン）
+/// @param player プレイヤーの注視点
+/// @param targets 候補の配列（countが0ならnullptrでもよい）
+/// @param count 候補の数
+/// @param current 今の候補番号（なしは-1）
+/// @param maxAngle 中央から選べる角度（ラジアン）
+/// @param maxDistance 選べる3D距離
+/// @param bonus 今の候補を優先する角度（ラジアン）
+/// @return 選んだ候補の添字（選べる敵がなければ-1）
 int CameraCalcPickFocus(float yaw, const VEC3& player, const CAMERA_FOCUS_TARGET* targets,
 	int count, int current, float maxAngle, float maxDistance, float bonus);
 /// @brief player から enemy へ rate の割合だけ視点をずらす。縦横の視野とプレイヤーを囲む半径で上限を決める
@@ -60,5 +88,6 @@ int CameraCalcPickFocus(float yaw, const VEC3& player, const CAMERA_FOCUS_TARGET
 /// @param margin 画面端に残す割合（0〜1、各半画面に対する割合）
 /// @param radius 注視点を中心にプレイヤー全身を囲む半径
 /// @param rate 敵へずらす割合（0〜1）
+/// @return プレイヤー全身が画面に収まる範囲で敵へずらした注視点
 VEC3 CameraCalcFocusPoint(const VEC3& player, const VEC3& enemy, float yaw, float pitch,
 	float distance, float fov, float aspect, float margin, float radius, float rate);

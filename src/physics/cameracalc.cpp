@@ -58,20 +58,35 @@ VEC3 CameraCalcClipToStage(const VEC3& target, const VEC3& camera, const STAGE& 
 	return { start[0] + delta[0] * enter, start[1] + delta[1] * enter, start[2] + delta[2] * enter };
 }
 
-VEC3 CameraCalcSmooth(const VEC3& current, const VEC3& target, float speed, float dt)
+float CameraCalcSmoothDamp(float current, float target, float& velocity, float smoothTime, float dt)
 {
-	// 1フレームで、残りの距離のうち rate の割合だけ近づく（rate は 0〜1 未満なので行き過ぎない）
-	const float rate = 1.0f - expf(-speed * dt);
-	return {
-		current.X + (target.X - current.X) * rate,
-		current.Y + (target.Y - current.Y) * rate,
-		current.Z + (target.Z - current.Z) * rate,
-	};
+	if (dt <= 0.0f) return current;
+	// 臨界減衰バネ。速度を持ち越し、目標が変わっても今の動きから滑らかにつなぐ。
+	const float omega = 2.0f / fmaxf(smoothTime, 0.0001f);
+	const float x = omega * dt;
+	const float decay = 1.0f / (1.0f + x + 0.48f * x * x + 0.235f * x * x * x);
+	const float change = current - target;
+	const float step = (velocity + omega * change) * dt;
+	velocity = (velocity - omega * step) * decay;
+	const float result = target + (change + step) * decay;
+	// 持ち越した速度で目標を越える場合は、目標で止める。
+	if ((target > current && result > target) || (target < current && result < target)) {
+		velocity = 0.0f;
+		return target;
+	}
+	return result;
 }
 
 static float WrapYaw(float yaw)
 {
 	return atan2f(sinf(yaw), cosf(yaw));
+}
+
+float CameraCalcSmoothDampAngle(float current, float target, float& velocity, float smoothTime, float dt)
+{
+	if (dt <= 0.0f) return current;
+	const float nearest = current + WrapYaw(target - current);
+	return WrapYaw(CameraCalcSmoothDamp(current, nearest, velocity, smoothTime, dt));
 }
 
 float CameraCalcYawTo(const VEC3& from, const VEC3& to, float fallbackYaw)

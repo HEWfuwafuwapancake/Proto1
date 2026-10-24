@@ -2,8 +2,7 @@
 #include "core/shader.h"
 #include "game/camera.h"
 #include "game/player.h"
-#include "game/dummy.h"
-#include "game/tentacle.h"
+#include "game/match.h"
 #include "game/stage.h"
 #include "input/action.h"
 #include "physics/cameracalc.h"
@@ -15,13 +14,14 @@
 // マウス感度・矢印キー・右スティックで回る速さは action.cpp の「調整用の値」にある
 static constexpr float FOLLOW_DISTANCE = 8.0f;						// 見ている点からカメラまでの距離
 static constexpr float TARGET_HEIGHT_RATE = 0.8f;					// 見ている点の高さ（プレイヤーの高さに対する割合。0.8 で頭のあたり）
-static constexpr float FOCUS_ANGLE = XMConvertToRadians(25.0f); // 中央から選べる角度
-static constexpr float FOCUS_DISTANCE = 18.0f; // 選べる距離
-static constexpr float FOCUS_BONUS = XMConvertToRadians(4.0f); // 今の敵の優先
-static constexpr float SWAY_SPEED = XMConvertToRadians(35.0f); // 毎秒の補助角度
-static constexpr float MANUAL_SWAY_RATE = 0.15f; // 手動操作中の補助倍率
-static constexpr float FOCUS_POINT_RATE = 0.25f; // 注視点を敵へずらす割合
-static constexpr float PLAYER_SCREEN_MARGIN = 0.15f; // 各半画面の端に残す割合
+static constexpr float YAW_SMOOTH_TIME = 0.12f;						// 左右の角度が目標へ追いつくまでのおよその秒数
+static constexpr float PITCH_SMOOTH_TIME = 0.12f;					// 上下の角度が目標へ追いつくまでのおよその秒数
+static constexpr float DISTANCE_SMOOTH_TIME = 0.3f;					// 障害物から離れたとき、元の距離へ戻るまでのおよその秒数
+static constexpr float LOOK_SMOOTH_TIME = 0.15f;						// 見ている点の左右（XZ）が追いつくまでのおよその秒数
+static constexpr float LOOK_HEIGHT_SMOOTH_TIME = 0.5f;				// 見ている点の高さが追いつくまでのおよその秒数
+static constexpr float LOOK_DEADZONE = 0.3f;							// 見ている点の左右（XZ）の遊び。この距離を超えた分だけ目標を動かす
+static constexpr float FOLLOW_TURN_SPEED = XMConvertToRadians(90.0f);	// 横移動について回る速さ（1秒に回る角度。入力の大きさに比例）
+static constexpr float MANUAL_PAUSE = 0.5f;							// 自分でカメラを回したあと、横移動について回るのを止める秒数
 static constexpr float STAGE_MARGIN = 0.3f;							// 浮島の面から、カメラをこれだけ離す（めり込んで見えないように）
 static constexpr float PITCH_MIN = XMConvertToRadians(-35.0f);		// いちばん下を向いたとき（上から見下ろす）
 static constexpr float PITCH_MAX = XMConvertToRadians(0.0f);		// いちばん上を向いたとき（水平まで）
@@ -33,10 +33,18 @@ static constexpr float FAR_Z = 1000.0f;								// これより遠いものは描
 
 
 static XMFLOAT3 g_Position;		// カメラの位置
-static VEC3 g_Target;	// 見ている点（遅れず追従し、フォーカス時だけ敵側へずらす）
-static int g_FocusTarget = -1;
+static VEC3 g_Target;			// 今の見ている点
+static VEC3 g_TargetGoal;		// 遊び・接地した高さを反映した、見ている点の目標
+static VEC3 g_TargetVelocity;	// 見ている点のバネの速度（軸ごとに持つ）
 static float g_Yaw;				// 左右の向き（ラジアン。0 で +Z 方向を見る）
 static float g_Pitch;			// 上下の向き（ラジアン。プラスで上を見る）
+static float g_YawGoal;			// 入力を足す左右の目標角度
+static float g_PitchGoal;		// 入力を足す上下の目標角度
+static float g_YawVelocity;		// 左右角のバネの速度
+static float g_PitchVelocity;	// 上下角のバネの速度
+static float g_Distance;			// 今のカメラまでの距離
+static float g_DistanceVelocity;	// 距離のバネの速度
+static float g_ManualPause;		// 横移動について回るのを止める残り秒数
 
 
 // プレイヤーの頭のあたり（見ている点の目標）
@@ -47,21 +55,43 @@ static VEC3 PlayerHead(void)
 }
 
 // 見ている点のまわりの、向きと距離で決まる位置に置き、浮島にめり込むなら手前まで近づける
-static void PlaceCamera(void)
+static void PlaceCamera(float dt)
 {
 	const VEC3 orbit = CameraCalcOrbitPosition(g_Target, g_Yaw, g_Pitch, FOLLOW_DISTANCE);
-	const VEC3 pos = CameraCalcClipToStage(g_Target, orbit, StageGet(), STAGE_MARGIN);
+	const VEC3 clipped = CameraCalcClipToStage(g_Target, orbit, StageGet(), STAGE_MARGIN);
+	const float distanceGoal = Vec3Length(Vec3Sub(clipped, g_Target));
+	if (distanceGoal < g_Distance) {
+		// 浮島にぶつかるときは即座に近づけ、離れる向きの速度も消す。
+		g_Distance = distanceGoal;
+		g_DistanceVelocity = 0.0f;
+	}
+	else {
+		g_Distance = CameraCalcSmoothDamp(g_Distance, distanceGoal, g_DistanceVelocity, DISTANCE_SMOOTH_TIME, dt);
+	}
+	const VEC3 pos = CameraCalcOrbitPosition(g_Target, g_Yaw, g_Pitch, g_Distance);
 	g_Position = { pos.X, pos.Y, pos.Z };
 }
 
+// やり直し・復活では目標へ瞬時に合わせ、すべてのバネの速度を消す。
+static void SnapToPlayer(void)
+{
+	g_Yaw = g_YawGoal;
+	g_Pitch = g_PitchGoal;
+	g_YawVelocity = 0.0f;
+	g_PitchVelocity = 0.0f;
+	g_Target = g_TargetGoal = PlayerHead();
+	g_TargetVelocity = {};
+	g_Distance = FOLLOW_DISTANCE;
+	g_DistanceVelocity = 0.0f;
+	g_ManualPause = 0.0f;
+	PlaceCamera(0.0f);
+}
 
 void CameraInitialize(void)
 {
-	g_FocusTarget = -1;
-	g_Yaw = 0.0f;
-	g_Pitch = START_PITCH;
-	g_Target = PlayerHead();
-	PlaceCamera();
+	g_YawGoal = 0.0f;
+	g_PitchGoal = START_PITCH;
+	SnapToPlayer();
 }
 
 void CameraFinalize(void)
@@ -71,35 +101,46 @@ void CameraFinalize(void)
 
 void CameraUpdate(void)
 {
-	// ---- 向き ----
-	// 「カメラを回す」行動（マウス ＋ 矢印キー ＋ 右スティック）。プレイヤーが歩いても自動では回り込まない（向きは自分で変える）
+	if (PlayerDidRespawn()) {
+		SnapToPlayer();
+		return;
+	}
+	const float dt = GameTimeGetDeltaTime();
+	// 手動入力も横移動の sway も、現在角ではなく目標角へ足す。
 	const ACTION_AXIS look = ActionGetLook();
-	g_Yaw += look.X;
-	g_Pitch += look.Y;
-	if (g_Pitch > PITCH_MAX) g_Pitch = PITCH_MAX;
-	if (g_Pitch < PITCH_MIN) g_Pitch = PITCH_MIN;
+	g_YawGoal += look.X;
+	g_PitchGoal += look.Y;
+	if (g_PitchGoal > PITCH_MAX) g_PitchGoal = PITCH_MAX;
+	if (g_PitchGoal < PITCH_MIN) g_PitchGoal = PITCH_MIN;
+	if (look.X != 0.0f || look.Y != 0.0f) {
+		g_ManualPause = MANUAL_PAUSE;
+	}
+	else if (g_ManualPause > 0.0f) {
+		g_ManualPause = fmaxf(0.0f, g_ManualPause - dt);
+	}
+	else if (MatchIsPlaying()) {
+		g_YawGoal += ActionGetMove().X * FOLLOW_TURN_SPEED * dt;
+	}
+	// 長く回し続けても、角度が大きくなり続けないようにする。
+	g_YawGoal = atan2f(sinf(g_YawGoal), cosf(g_YawGoal));
+	g_Yaw = CameraCalcSmoothDampAngle(g_Yaw, g_YawGoal, g_YawVelocity, YAW_SMOOTH_TIME, dt);
+	g_Pitch = CameraCalcSmoothDamp(g_Pitch, g_PitchGoal, g_PitchVelocity, PITCH_SMOOTH_TIME, dt);
 
-	// プレイヤーの現在位置を基準に選ぶ。保持中のダミー・復活待ちは候補から外す。
+	// 左右は円形の遊びを超えた分だけ目標を動かす（高さとは分ける）。
 	const VEC3 head = PlayerHead();
-	CAMERA_FOCUS_TARGET targets[DUMMY_COUNT];
-	for (int i = 0; i < DUMMY_COUNT; ++i) {
-		const TENTACLE_TARGET target = DummyGetTarget(i);
-		targets[i] = { Vec3Scale(Vec3Add(target.Body.Start, target.Body.End), 0.5f), target.Available };
+	const VEC3 horizontal = { head.X - g_TargetGoal.X, 0.0f, head.Z - g_TargetGoal.Z };
+	const float length = Vec3Length(horizontal);
+	if (length > LOOK_DEADZONE) {
+		g_TargetGoal = Vec3Add(g_TargetGoal, Vec3Scale(horizontal, (length - LOOK_DEADZONE) / length));
 	}
-	g_FocusTarget = CameraCalcPickFocus(g_Yaw, head, targets, DUMMY_COUNT, g_FocusTarget,
-		FOCUS_ANGLE, FOCUS_DISTANCE, FOCUS_BONUS);
-	g_Target = head;
-	if (g_FocusTarget >= 0 && !TentacleIsHolding()) {
-		const bool manual = look.X != 0.0f || look.Y != 0.0f;
-		const float strength = manual ? MANUAL_SWAY_RATE : 1.0f;
-		const VEC3 enemy = targets[g_FocusTarget].Position;
-		g_Yaw = CameraCalcTurnYaw(g_Yaw, CameraCalcYawTo(head, enemy, g_Yaw),
-			SWAY_SPEED * strength, GameTimeGetDeltaTime());
-		g_Target = CameraCalcFocusPoint(head, enemy, g_Yaw, g_Pitch, FOLLOW_DISTANCE,
-			FOV, (float)SCREEN_WIDTH / SCREEN_HEIGHT, PLAYER_SCREEN_MARGIN,
-			PlayerGetHeight() * TARGET_HEIGHT_RATE, FOCUS_POINT_RATE);
+	// ジャンプ中は最後に立っていた高さを保つ。浮島の上面より下へ落ちたら、その先まで追う。
+	if (PlayerIsOnGround() || PlayerGetPosition().y < StageGet().TopY) {
+		g_TargetGoal.Y = head.Y;
 	}
-	PlaceCamera();
+	g_Target.X = CameraCalcSmoothDamp(g_Target.X, g_TargetGoal.X, g_TargetVelocity.X, LOOK_SMOOTH_TIME, dt);
+	g_Target.Z = CameraCalcSmoothDamp(g_Target.Z, g_TargetGoal.Z, g_TargetVelocity.Z, LOOK_SMOOTH_TIME, dt);
+	g_Target.Y = CameraCalcSmoothDamp(g_Target.Y, g_TargetGoal.Y, g_TargetVelocity.Y, LOOK_HEIGHT_SMOOTH_TIME, dt);
+	PlaceCamera(dt);
 }
 
 // ビュー行列とプロジェクション行列を作る（描画と、画面の位置の計算で同じものを使う）
@@ -157,9 +198,4 @@ float CameraGetYaw(void)
 XMFLOAT3 CameraGetDirection(void)
 {
 	return { cosf(g_Pitch) * sinf(g_Yaw), sinf(g_Pitch), cosf(g_Pitch) * cosf(g_Yaw) };
-}
-
-int CameraGetFocusTarget(void)
-{
-	return g_FocusTarget;
 }

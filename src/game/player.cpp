@@ -103,3 +103,8 @@ bool PlayerDidRespawn(void)
 {
 	return g_Respawned;
 }
+
+bool PlayerIsOnGround(void)
+{
+	return g_Body.OnGround;
+}
