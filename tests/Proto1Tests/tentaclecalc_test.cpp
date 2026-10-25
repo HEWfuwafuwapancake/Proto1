@@ -220,6 +220,45 @@ namespace Proto1Tests
 			const VEC3 side = TentacleCalcClip({ 17, -1, 0 }, { 0, -1, 0 }, stage, 0.5f, 0.9f);
 			Assert::IsTrue(side.X >= 15.5f);
 		}
+		TEST_METHOD(ExtendRatio_GrowsWhileExtending)
+		{
+			TENTACLE arm{};
+			TentacleCalcReset(arm);
+			Assert::AreEqual(0.0f, TentacleCalcExtendRatio(arm, params));
+			Step(arm, true, 0.1f);
+			Assert::IsTrue(arm.State == TENTACLE_EXTENDING);
+			const float first = TentacleCalcExtendRatio(arm, params);
+			Assert::AreEqual(arm.Length / params.MaxLength, first, 0.0001f);
+			Assert::IsTrue(first > 0.0f);
+			Step(arm, false, 0.1f);
+			Assert::IsTrue(TentacleCalcExtendRatio(arm, params) > first);
+		}
+		TEST_METHOD(ExtendRatio_ZeroWhenNotExtending)
+		{
+			TENTACLE arm{};
+			TentacleCalcReset(arm);
+			arm.Length = 4.0f;
+			arm.State = TENTACLE_RETURNING;
+			Assert::AreEqual(0.0f, TentacleCalcExtendRatio(arm, params));
+			arm.State = TENTACLE_HOLDING;
+			Assert::AreEqual(0.0f, TentacleCalcExtendRatio(arm, params));
+			arm.State = TENTACLE_EXTENDING;
+			Assert::AreEqual(0.5f, TentacleCalcExtendRatio(arm, params), 0.0001f);
+			const TENTACLE_PARAMS zero{ 0, 24, 30, 3, 0.18f };
+			Assert::AreEqual(0.0f, TentacleCalcExtendRatio(arm, zero));
+		}
+		TEST_METHOD(ExtendRatio_ClampsToOne)
+		{
+			TENTACLE arm{};
+			TentacleCalcReset(arm);
+			arm.State = TENTACLE_EXTENDING;
+			arm.Length = 20.0f;
+			Assert::AreEqual(1.0f, TentacleCalcExtendRatio(arm, params));
+			arm.Length = 8.0f;
+			Assert::AreEqual(1.0f, TentacleCalcExtendRatio(arm, params), 0.0001f);
+			arm.Length = -1.0f;
+			Assert::AreEqual(0.0f, TentacleCalcExtendRatio(arm, params));
+		}
 		TEST_METHOD(DirectedThrow_UsesPitchAndNormalizesSpeed)
 		{
 			const VEC3 down = KnockbackCalcDirectedVelocity({ 0, -3, 4 }, 10);

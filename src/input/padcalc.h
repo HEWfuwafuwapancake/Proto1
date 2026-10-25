@@ -3,7 +3,7 @@
 #include "input/actioncalc.h"
 
 /// @file padcalc.h
-/// @brief PS4 コントローラー（DUALSHOCK 4）の USB のデータ（レポート）の読み方と、スティックの遊び（デッドゾーン）の計算
+/// @brief PS4 コントローラー（DUALSHOCK 4）の USB 入出力レポート、スティックの遊び、振動の重ね合わせと時間の計算
 /// @details DirectX と Windows を使わないので、単体テスト（tests/Proto1Tests）からそのまま使える
 
 /// @brief パッドのボタン（PAD_STATE::Buttons のビット）
@@ -31,6 +31,40 @@ struct PAD_STATE
 	ACTION_AXIS RightStick;	///< 右スティック（同上）
 	unsigned int Buttons;	///< 押しているボタン（PAD_BUTTON のビットを「または」でまとめたもの）
 };
+
+/// @brief パッドの振動の強さと、止まるまでの時間
+struct PAD_RUMBLE
+{
+	float SmallMotor;       ///< 右の小さいモーターの強さ（0〜1）
+	float LargeMotor;       ///< 左の大きいモーターの強さ（0〜1）
+	float RemainingSeconds; ///< 両方のモーターを止めるまでの残り秒数（0 なら停止中）
+};
+
+/// @brief DUALSHOCK 4 の USB 出力レポートを組み立てる（残りのバイトはすべて 0）
+/// @details 番号は [0] 0x05、変更の印は [1] 0x07。各値を 0〜1 に収め、255 倍して四捨五入する。
+///          小さいモーターは [4]、大きいモーターは [5]、赤・緑・青は [6]〜[8]。
+/// @param[out] data 出力先（作れなかったときは書き換えない）
+/// @param size 出力先のバイト数（9 以上）
+/// @param smallMotor 小さいモーターの強さ（0〜1。範囲外は切る）
+/// @param largeMotor 大きいモーターの強さ（0〜1。範囲外は切る）
+/// @param red ライトバーの赤（0〜1。範囲外は切る）
+/// @param green ライトバーの緑（0〜1。範囲外は切る）
+/// @param blue ライトバーの青（0〜1。範囲外は切る）
+/// @return 組み立てられたら true。data が null または size が 9 未満なら false
+bool PadCalcBuildDs4UsbOutput(unsigned char* data, int size,
+	float smallMotor, float largeMotor, float red, float green, float blue);
+
+/// @brief 振動を重ねる（各モーターは強いほう、残り時間は長いほうを残す）
+/// @param[in,out] rumble 今の振動（残り時間が 0 以下なら古い強さを捨てる）
+/// @param smallMotor 小さいモーターの強さ（0〜1。範囲外は切る）
+/// @param largeMotor 大きいモーターの強さ（0〜1。範囲外は切る）
+/// @param seconds 振動する秒数（0 以下なら、強さにかかわらず今の振動も止める）
+void PadCalcRumble(PAD_RUMBLE& rumble, float smallMotor, float largeMotor, float seconds);
+
+/// @brief 振動の残り時間を減らし、時間がなくなったら両方のモーターを止める
+/// @param[in,out] rumble 今の振動（残り時間が 0 以下なら強さも 0 にする）
+/// @param dt 減らす秒数（0 以下なら時間を進めない）
+void PadCalcUpdateRumble(PAD_RUMBLE& rumble, float dt);
 
 /// @brief DUALSHOCK 4 の USB のレポートの、スティック1本分の値（0〜255）を -1〜1 に変える
 /// @param raw レポートの値（0：左・上の端、255：右・下の端）

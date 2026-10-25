@@ -57,6 +57,11 @@ void TentacleCalcReset(TENTACLE& arm);
 /// @param fallback 対象なし・水平距離がほぼ0のときの向き（高さを除いて正規化する）
 /// @return 水平の単位ベクトル。fallback の水平成分もほぼ0なら Z の正方向
 VEC3 TentacleCalcAim(const VEC3& origin, const VEC3& target, bool hasTarget, const VEC3& fallback);
+/// @brief 伸長中の腕が、最大の長さのどこまで伸びたかを求める（伸びるほど強くなる振動に使う）
+/// @param arm 腕の状態
+/// @param params 調整値（MaxLength を使う）
+/// @return 伸長中なら 0〜1（範囲外は切る）。伸長中でない・最大の長さが 0 以下なら 0
+float TentacleCalcExtendRatio(const TENTACLE& arm, const TENTACLE_PARAMS& params);
 /// @brief 浮島を通過しないところまで移動する。半径と半高で移動する物の大きさを指定する
 VEC3 TentacleCalcClip(const VEC3& from, const VEC3& to, const STAGE& stage, float radius, float halfHeight);
 /// @brief 触腕を進める。trigger は押した瞬間、cancel は場外復活などによる解除。dt が0なら停止する
