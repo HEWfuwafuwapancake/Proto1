@@ -29,6 +29,13 @@ VEC3 TentacleCalcAim(const VEC3& origin, const VEC3& target, bool hasTarget, con
 	return length < AIM_MIN_LENGTH ? VEC3{ 0.0f, 0.0f, 1.0f } : Vec3Scale(direction, 1.0f / length);
 }
 
+float TentacleCalcExtendRatio(const TENTACLE& arm, const TENTACLE_PARAMS& params)
+{
+	if (arm.State != TENTACLE_EXTENDING || params.MaxLength <= 0.0f) return 0.0f;
+	const float ratio = arm.Length / params.MaxLength;
+	return ratio < 0.0f ? 0.0f : (ratio > 1.0f ? 1.0f : ratio);
+}
+
 VEC3 TentacleCalcClip(const VEC3& from, const VEC3& to, const STAGE& stage, float radius, float halfHeight)
 {
 	// 物の大きさだけ箱を広げ、中心の線分が最初に箱へ入る位置で止める。
