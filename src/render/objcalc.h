@@ -15,6 +15,6 @@ struct OBJ_VERTEX
 /// @param vertices 出力先。失敗時は空にする
 /// @return 面があり、必要な数値とインデックスが正しければ true
 bool ObjCalcParse(const std::string& source, std::vector<OBJ_VERTEX>& vertices);
-/// @brief 三角形列を X について鏡写しにする（右手用のモデルから左手用を作る。DirectX 不使用）
+/// @brief 三角形列を X について鏡写しにする（片手用のモデルから反対の手用を作る。DirectX 不使用）
 /// @param vertices ObjCalcParse の結果。位置と法線の X を反転し、表が変わらないよう各三角形の並びを逆にする
 void ObjCalcMirrorX(std::vector<OBJ_VERTEX>& vertices);
