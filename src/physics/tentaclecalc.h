@@ -48,6 +48,29 @@ struct TENTACLE_EVENT
 	bool Throw; ///< true：投げる、false：その場で離す
 };
 
+/// @brief モデルを配置する直交単位軸（-Y が腕の進む向き、-Z が吸盤側）
+struct TENTACLE_PIECE_AXES
+{
+	VEC3 X; ///< モデルの X 軸
+	VEC3 Y; ///< モデルの Y 軸
+	VEC3 Z; ///< モデルの Z 軸
+};
+
+/// @brief 肩と先端を固定して、腕に直角な2方向へ揺らした描画用の点を求める
+/// @param origin 肩
+/// @param tip 先端（肩と同じなら肩を返す）
+/// @param s 肩から先端までの割合（0〜1 に制限する）
+/// @param phase 揺れの位相（ラジアン）
+/// @param amplitude 横揺れの大きさ（縦は半分）
+/// @param waves 腕全体に入れる波の数
+VEC3 TentacleCalcWigglePoint(const VEC3& origin, const VEC3& tip, float s,
+	float phase, float amplitude, float waves);
+/// @brief -Y を始点から終点へ、-Z を指定方向へなるべく向ける直交単位軸を求める
+/// @param start 始点
+/// @param end 終点（始点と同じなら +Z へ向ける）
+/// @param down 吸盤側へ向けたい方向。腕と平行・ゼロなら補助軸で姿勢を決める
+TENTACLE_PIECE_AXES TentacleCalcPieceAxes(const VEC3& start, const VEC3& end, const VEC3& down);
+
 /// @brief 腕を待機に戻す（保持中の敵の解放は呼び出し側で行う）
 void TentacleCalcReset(TENTACLE& arm);
 /// @brief 肩からターゲットへ伸ばす水平の単位ベクトルを求める（距離の制限なし）

@@ -8,6 +8,7 @@
 #include "input/action.h"
 #include "input/pad.h"
 #include "render/shape.h"
+#include "render/model.h"
 
 // 調整用の値
 static constexpr TENTACLE_PARAMS PARAMS{ 8.0f, 24.0f, 30.0f, 3.0f, 0.18f };
@@ -27,11 +28,26 @@ static constexpr float HOLD_OFFSET = 1.0f;
 static constexpr float HOLD_FORWARD = 2.0f;
 static constexpr float HAND_HEIGHT = 1.35f;
 static constexpr float SPHERE_SPACING = 0.25f;
+static constexpr float MODEL_SCALE = 0.15f;
+static constexpr float BASE_LENGTH = 10.218f; // OBJ のつなぎ目間の長さ（cm）
+static constexpr float SEGMENT_LENGTH = 3.207f;
+static constexpr float TIP_LENGTH = 4.434f;
+static constexpr float MIN_STRETCH = 0.2f;
+static constexpr float MODEL_MIN_LENGTH = 0.00001f;
+static constexpr float WIGGLE_AMPLITUDE = 0.25f;
+static constexpr float WIGGLE_WAVES = 1.5f;
+static constexpr float WIGGLE_SPEED = 8.0f;
+static constexpr float WIGGLE_ARM_PHASE = 1.6f;
+static constexpr float WIGGLE_FULL_LENGTH = 3.0f;
+static constexpr float WIGGLE_HOLD_SCALE = 0.3f;
 static constexpr XMFLOAT4 LEFT_COLOR{ 0.8f, 0.3f, 0.65f, 1.0f };
 static constexpr XMFLOAT4 RIGHT_COLOR{ 0.35f, 0.8f, 0.6f, 1.0f };
 static constexpr XMFLOAT4 HOLD_COLOR{ 1.0f, 0.7f, 0.2f, 1.0f };
 
 static TENTACLE g_Arms[2];
+static int g_BaseModel = -1;
+static int g_SegmentModel = -1;
+static int g_TipModel = -1;
 
 static VEC3 Position(float side, float forward)
 {
@@ -43,6 +59,9 @@ static VEC3 Position(float side, float forward)
 
 void TentacleInitialize(void)
 {
+	g_BaseModel = ModelLoad("assets/models/tentacle_base.obj");
+	g_SegmentModel = ModelLoad("assets/models/tentacle_segment.obj");
+	g_TipModel = ModelLoad("assets/models/tentacle_tip.obj");
 	for (TENTACLE& arm : g_Arms) TentacleCalcReset(arm);
 }
 
@@ -111,6 +130,39 @@ void TentacleDraw(void)
 		const VEC3 delta = Vec3Sub(tip, origin);
 		const int steps = (int)ceilf(Vec3Length(delta) / SPHERE_SPACING) + 1;
 		const XMFLOAT4 color = arm.Target >= 0 ? HOLD_COLOR : (hand == 0 ? LEFT_COLOR : RIGHT_COLOR);
+		if (g_BaseModel >= 0 && g_SegmentModel >= 0 && g_TipModel >= 0) {
+			const float length = Vec3Length(delta);
+			const float remaining = length / MODEL_SCALE - BASE_LENGTH - TIP_LENGTH;
+			const int segments = remaining > 0.0f ? (int)floorf(remaining / SEGMENT_LENGTH + 0.5f) : 0;
+			const float total = BASE_LENGTH + segments * SEGMENT_LENGTH + TIP_LENGTH;
+			// 短すぎる腕は見た目だけ最低長まで伸ばす。判定や arm.Tip は変えない。
+			const float drawLength = fmaxf(length, total * MODEL_SCALE * MIN_STRETCH);
+			const float yaw = PlayerGetYaw();
+			const VEC3 direction = length < MODEL_MIN_LENGTH ? VEC3{ sinf(yaw), 0, cosf(yaw) }
+				: Vec3Scale(delta, 1.0f / length);
+			const VEC3 drawTip = Vec3Add(origin, Vec3Scale(direction, drawLength));
+			const float phase = GameTimeGetElapsed() * WIGGLE_SPEED + hand * WIGGLE_ARM_PHASE;
+			const float amplitude = WIGGLE_AMPLITUDE * fminf(1.0f, length / WIGGLE_FULL_LENGTH)
+				* (arm.State == TENTACLE_HOLDING ? WIGGLE_HOLD_SCALE : 1.0f);
+			float distance = 0.0f;
+			VEC3 start = origin;
+			for (int piece = 0; piece < segments + 2; ++piece) {
+				const bool base = piece == 0;
+				const bool last = piece == segments + 1;
+				const float sourceLength = base ? BASE_LENGTH : (last ? TIP_LENGTH : SEGMENT_LENGTH);
+				distance += sourceLength;
+				const VEC3 end = TentacleCalcWigglePoint(origin, drawTip, last ? 1.0f : distance / total,
+					phase, amplitude, WIGGLE_WAVES);
+				const TENTACLE_PIECE_AXES axes = TentacleCalcPieceAxes(start, end, { 0, -1, 0 });
+				const VEC3 x = Vec3Scale(axes.X, MODEL_SCALE);
+				const VEC3 y = Vec3Scale(axes.Y, Vec3Length(Vec3Sub(end, start)) / sourceLength);
+				const VEC3 z = Vec3Scale(axes.Z, MODEL_SCALE);
+				ModelDraw(base ? g_BaseModel : (last ? g_TipModel : g_SegmentModel),
+					{ start.X, start.Y, start.Z }, { x.X, x.Y, x.Z }, { y.X, y.Y, y.Z }, { z.X, z.Y, z.Z }, color);
+				start = end;
+			}
+			continue;
+		}
 		for (int i = 0; i <= steps; ++i) {
 			const VEC3 p = Vec3Add(origin, Vec3Scale(delta, (float)i / steps));
 			ShapeDrawSphere({ p.X, p.Y, p.Z }, PARAMS.Radius, color);

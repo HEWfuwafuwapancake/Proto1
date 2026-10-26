@@ -20,6 +20,7 @@
 #include "game/tentacle.h"
 #include "render/number2d.h"
 #include "render/shape.h"
+#include "render/model.h"
 
 #pragma comment (lib, "winmm.lib")
 
@@ -257,6 +258,7 @@ bool Initialize(HWND hWnd)
 
 	//形（箱・球・カプセル）の描画の部品の初期化
 	ShapeInitialize();
+	ModelInitialize();
 
 	//3Dオブジェクト初期化（プレイヤーは浮島の上に立たせるのでステージのあと、カメラはプレイヤーの後ろに置くのでプレイヤーのあと）
 	StageInitialize();
@@ -286,6 +288,7 @@ void Finalize(void)
 	DummyFinalize();
 	PlayerFinalize();
 	StageFinalize();
+	ModelFinalize();
 	ShapeFinalize();
 
 	PadFinalize();
