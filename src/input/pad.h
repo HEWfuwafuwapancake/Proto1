@@ -48,8 +48,16 @@ ACTION_AXIS PadGetRightStick(void);
 /// @param smallMotor 右の小さいモーターの強さ（0〜1。範囲外は切る）
 /// @param largeMotor 左の大きいモーターの強さ（0〜1。範囲外は切る）
 /// @param seconds 振動する秒数（0 以下なら今の振動を止める）
-/// @details 未接続・出力不可・ウィンドウが選ばれていないときは振動しない
+/// @details 振動をオフにしているとき・未接続・出力不可・ウィンドウが選ばれていないときは振動しない
 void PadRumble(float smallMotor, float largeMotor, float seconds);
+
+/// @brief 振動のオン・オフを設定する（true：振動する、false：振動しない。オフにした瞬間に今の振動も止める）
+/// @param enabled 振動するか
+void PadSetRumbleEnabled(bool enabled);
+
+/// @brief 振動がオンか
+/// @return オンなら true（はじめは pad.cpp の RUMBLE_ENABLED_AT_START）
+bool PadIsRumbleEnabled(void);
 
 /// @brief パッドのライトバーの色を設定する（未接続なら、次につないだときに使う）
 /// @param red 赤（0〜1。範囲外は切る）
