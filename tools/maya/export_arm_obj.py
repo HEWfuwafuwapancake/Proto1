@@ -27,9 +27,13 @@ ARMS = {
         "source": "grappling.mb", "root": "|gurappuru",
         "omit": ("pCylinder32",),  # 既存ワイヤー。ゲームで長さを変えて描く。
         "files": {
-            "arm_grapple_base.obj": {
-                "parts": ("pCube28", "polySurface16", "pCube26", "polySurface24", "polySurface9", "pCylinder18"),
+            "arm_grapple_upper.obj": {
+                "parts": ("pCube28", "polySurface16", "pCube26"),
                 "origin": ("pivot", "pCube28"), "rotate_x": 0.0,
+            },
+            "arm_grapple_lower.obj": {
+                "parts": ("polySurface24", "polySurface9", "pCylinder18"),
+                "origin": ("pivot", "polySurface24"), "rotate_x": 0.0,
             },
             "arm_grapple_hook.obj": {
                 "parts": ("pCylinder17", "polySurface26", "polySurface27"),
