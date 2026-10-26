@@ -105,6 +105,12 @@
     <ClCompile Include="src\render\shape.cpp">
       <Filter>src\render</Filter>
     </ClCompile>
+    <ClCompile Include="src\render\model.cpp">
+      <Filter>src\render</Filter>
+    </ClCompile>
+    <ClCompile Include="src\render\objcalc.cpp">
+      <Filter>src\render</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\core\debug_ostream.h">
@@ -192,6 +198,12 @@
       <Filter>src\game</Filter>
     </ClInclude>
     <ClInclude Include="src\render\shape.h">
+      <Filter>src\render</Filter>
+    </ClInclude>
+    <ClInclude Include="src\render\model.h">
+      <Filter>src\render</Filter>
+    </ClInclude>
+    <ClInclude Include="src\render\objcalc.h">
       <Filter>src\render</Filter>
     </ClInclude>
   </ItemGroup>

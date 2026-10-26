@@ -3,6 +3,55 @@
 
 // 調整用の値
 static constexpr float AIM_MIN_LENGTH = 0.00001f; // 水平の向きを決められる最小の長さ
+static constexpr float DRAW_MIN_LENGTH = 0.00001f; // 描画の方向を決められる最小の長さ
+static constexpr float WIGGLE_PI = 3.14159265358979323846f;
+static constexpr float WIGGLE_VERTICAL_SCALE = 0.5f;
+static constexpr float AXIS_VERTICAL_THRESHOLD = 0.9f; // 補助軸を切り替える垂直成分
+
+static VEC3 Cross(const VEC3& a, const VEC3& b)
+{
+	return { a.Y * b.Z - a.Z * b.Y, a.Z * b.X - a.X * b.Z, a.X * b.Y - a.Y * b.X };
+}
+
+static VEC3 Unit(const VEC3& v)
+{
+	return Vec3Scale(v, 1.0f / Vec3Length(v));
+}
+
+VEC3 TentacleCalcWigglePoint(const VEC3& origin, const VEC3& tip, float s,
+	float phase, float amplitude, float waves)
+{
+	if (s <= 0.0f) return origin;
+	if (s >= 1.0f) return tip;
+	const VEC3 delta = Vec3Sub(tip, origin);
+	if (Vec3Length(delta) < DRAW_MIN_LENGTH) return origin;
+	const VEC3 direction = Unit(delta);
+	VEC3 side = Cross(direction, { 0, 1, 0 });
+	if (Vec3Length(side) < DRAW_MIN_LENGTH) side = Cross(direction, { 0, 0, 1 });
+	side = Unit(side);
+	const VEC3 vertical = Unit(Cross(side, direction));
+	const float envelope = amplitude * sinf(WIGGLE_PI * s);
+	const float wave = 2.0f * WIGGLE_PI * waves * s - phase;
+	return Vec3Add(Vec3Add(origin, Vec3Scale(delta, s)),
+		Vec3Add(Vec3Scale(side, envelope * sinf(wave)),
+			Vec3Scale(vertical, envelope * WIGGLE_VERTICAL_SCALE * cosf(wave))));
+}
+
+TENTACLE_PIECE_AXES TentacleCalcPieceAxes(const VEC3& start, const VEC3& end, const VEC3& down)
+{
+	VEC3 direction = Vec3Sub(end, start);
+	direction = Vec3Length(direction) < DRAW_MIN_LENGTH ? VEC3{ 0, 0, 1 } : Unit(direction);
+	const VEC3 y = Vec3Scale(direction, -1.0f);
+	VEC3 normal = Vec3Sub(down, Vec3Scale(y, Vec3Dot(down, y)));
+	if (Vec3Length(normal) < DRAW_MIN_LENGTH) {
+		const VEC3 helper = fabsf(y.Y) < AXIS_VERTICAL_THRESHOLD ? VEC3{ 0, -1, 0 } : VEC3{ 0, 0, 1 };
+		normal = Vec3Sub(helper, Vec3Scale(y, Vec3Dot(helper, y)));
+	}
+	// 吸盤はモデルの ±Z の張り出しと -X 側に付いている。-X を下に向けると張り出しが水平になり、吸盤が下と横を向く。
+	const VEC3 x = Vec3Scale(Unit(normal), -1.0f);
+	const VEC3 z = Unit(Cross(x, y));
+	return { Unit(Cross(y, z)), y, z };
+}
 
 static VEC3 MoveTowards(const VEC3& from, const VEC3& to, float distance)
 {

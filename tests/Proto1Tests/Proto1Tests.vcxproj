@@ -104,6 +104,8 @@
     <ClCompile Include="..\..\src\physics\tentaclecalc.cpp" />
     <ClCompile Include="..\..\src\render\glyphcalc.cpp" />
     <ClCompile Include="glyphcalc_test.cpp" />
+    <ClCompile Include="objcalc_test.cpp" />
+    <ClCompile Include="..\..\src\render\objcalc.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

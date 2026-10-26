@@ -22,6 +22,67 @@ namespace Proto1Tests
 	TEST_CLASS(TentacleCalcTest)
 	{
 	public:
+		TEST_METHOD(Wiggle_ExactEndpointsAndZeroAmplitude)
+		{
+			const VEC3 a{ 1, 2, 3 }, b{ 5, 8, 11 };
+			const VEC3 first = TentacleCalcWigglePoint(a, b, 0, 2, 0.25f, 1.5f);
+			const VEC3 last = TentacleCalcWigglePoint(a, b, 1, 2, 0.25f, 1.5f);
+			Assert::AreEqual(0.0f, Vec3Length(Vec3Sub(first, a)));
+			Assert::AreEqual(0.0f, Vec3Length(Vec3Sub(last, b)));
+			const VEC3 middle = TentacleCalcWigglePoint(a, b, 0.25f, 2, 0, 1.5f);
+			Assert::AreEqual(0.0f, Vec3Length(Vec3Sub(middle, { 2, 3.5f, 5 })), 0.0001f);
+		}
+		TEST_METHOD(Wiggle_FormulaAndPerpendicularOffset)
+		{
+			// +Z の腕の横は -X。s=0.5、波=0.5、位相=0 で横揺れが最大。
+			const VEC3 p = TentacleCalcWigglePoint({}, { 0, 0, 4 }, 0.5f, 0, 0.25f, 0.5f);
+			Assert::AreEqual(-0.25f, p.X, 0.0001f);
+			Assert::AreEqual(0.0f, p.Y, 0.0001f);
+			Assert::AreEqual(2.0f, p.Z, 0.0001f);
+			const VEC3 vertical = TentacleCalcWigglePoint({}, { 0, 0, 4 }, 0.5f, 0, 0.25f, 0);
+			Assert::AreEqual(0.125f, vertical.Y, 0.0001f);
+			const VEC3 end{ 3, 4, 5 };
+			const VEC3 curved = TentacleCalcWigglePoint({}, end, 0.3f, 1, 0.25f, 1.5f);
+			Assert::AreEqual(0.0f, Vec3Dot(Vec3Sub(curved, Vec3Scale(end, 0.3f)), end), 0.0001f);
+		}
+		TEST_METHOD(Wiggle_VerticalAndZeroLength)
+		{
+			for (float height : { -4.0f, 4.0f }) {
+				const VEC3 p = TentacleCalcWigglePoint({}, { 0, height, 0 }, 0.5f, 0, 0.25f, 0.5f);
+				Assert::AreEqual(height * 0.5f, p.Y, 0.0001f);
+				Assert::AreEqual(0.25f, fabsf(p.X), 0.0001f);
+			}
+			const VEC3 p = TentacleCalcWigglePoint(origin, origin, 0.5f, 2, 0.25f, 1.5f);
+			Assert::AreEqual(0.0f, Vec3Length(Vec3Sub(p, origin)));
+		}
+		TEST_METHOD(PieceAxes_OrthonormalAndForwardIncludingDegenerateCases)
+		{
+			for (VEC3 end : { VEC3{ 2, 3, 4 }, VEC3{ 0, 4, 0 }, VEC3{ 0, -4, 0 }, VEC3{} }) {
+				for (VEC3 down : { VEC3{ 0, -1, 0 }, end, VEC3{} }) {
+					const auto axes = TentacleCalcPieceAxes({}, end, down);
+					Assert::AreEqual(1.0f, Vec3Length(axes.X), 0.0001f);
+					Assert::AreEqual(1.0f, Vec3Length(axes.Y), 0.0001f);
+					Assert::AreEqual(1.0f, Vec3Length(axes.Z), 0.0001f);
+					Assert::AreEqual(0.0f, Vec3Dot(axes.X, axes.Y), 0.0001f);
+					Assert::AreEqual(0.0f, Vec3Dot(axes.Y, axes.Z), 0.0001f);
+					Assert::AreEqual(0.0f, Vec3Dot(axes.Z, axes.X), 0.0001f);
+					const VEC3 direction = Vec3Length(end) > 0 ? Vec3Scale(end, 1.0f / Vec3Length(end)) : VEC3{ 0, 0, 1 };
+					Assert::AreEqual(-1.0f, Vec3Dot(axes.Y, direction), 0.0001f);
+					const VEC3 cross{ axes.X.Y * axes.Y.Z - axes.X.Z * axes.Y.Y,
+						axes.X.Z * axes.Y.X - axes.X.X * axes.Y.Z, axes.X.X * axes.Y.Y - axes.X.Y * axes.Y.X };
+					Assert::AreEqual(1.0f, Vec3Dot(cross, axes.Z), 0.0001f);
+				}
+			}
+		}
+		TEST_METHOD(PieceAxes_SuckersFaceProjectedDown)
+		{
+			const VEC3 end{ 0, 3, 4 };
+			const auto axes = TentacleCalcPieceAxes({}, end, { 0, -1, 0 });
+			// -X（吸盤側）が、下を腕に直角な面へ映した向き (0, -0.8, 0.6) になる
+			Assert::AreEqual(0.0f, axes.X.X, 0.0001f);
+			Assert::AreEqual(0.8f, axes.X.Y, 0.0001f);
+			Assert::AreEqual(-0.6f, axes.X.Z, 0.0001f);
+		}
 		TEST_METHOD(Aim_TargetGivesHorizontalUnitDirection)
 		{
 			const VEC3 direction = TentacleCalcAim({ 2, 1, -3 }, { 5, 1, 1 }, true, aim);
