@@ -182,6 +182,28 @@ void DummyHit(int index, const XMFLOAT3& direction, float damage, float power)
 #endif
 }
 
+void DummyAddDamage(int index, float damage)
+{
+	if (!DummyIsActive(index)) return;
+	DUMMY& dummy = g_Dummies[index];
+	dummy.Percent = KnockbackCalcAddDamage(dummy.Percent, damage);
+}
+
+void DummyLaunch(int index, const VEC3& direction, float damage, float power)
+{
+	if (!DummyIsActive(index)) return;
+	DUMMY& dummy = g_Dummies[index];
+	DummyAddDamage(index, damage);
+	const float speed = KnockbackCalcSpeed(dummy.Percent, power, KnockbackParams());
+	const VEC3 velocity = KnockbackCalcDirectedVelocity(direction, speed);
+	dummy.Body.VelocityX = velocity.X;
+	dummy.Body.VelocityY = velocity.Y;
+	dummy.Body.VelocityZ = velocity.Z;
+	dummy.Body.OnGround = false;
+	dummy.Held = false;
+	dummy.Launched = true;
+}
+
 int DummyGetTotalOutCount(void)
 {
 	int total = 0;

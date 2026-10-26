@@ -34,6 +34,18 @@ void DummyDraw(void);
 /// @param power 攻撃の強さ（1 でふつう。大きいほど速く飛ぶ）
 void DummyHit(int index, const XMFLOAT3& direction, float damage, float power);
 
+/// @brief ダメージ%だけを足す（速度・保持状態は変えない。無効な番号・復活待ちは何もしない）
+/// @param index ダミーの番号（0〜DUMMY_COUNT-1）
+/// @param damage 足すダメージ%（負なら 0）
+void DummyAddDamage(int index, float damage);
+
+/// @brief ダメージを足し、保持を解除して上下を含む指定方向へ吹っ飛ばす（無効な番号・復活待ちは何もしない）
+/// @param index ダミーの番号（0〜DUMMY_COUNT-1）
+/// @param direction 吹っ飛ばす向き（正規化して使う。ゼロなら真上）
+/// @param damage 足すダメージ%（負なら 0）
+/// @param power 攻撃の強さ（DummyRelease と同じ速さの計算）
+void DummyLaunch(int index, const VEC3& direction, float damage, float power);
+
 /// @brief 敵の体とつかめる状態を取得する（無効な番号なら空の候補）
 TENTACLE_TARGET DummyGetTarget(int index);
 /// @brief 敵が生存しているか取得する

@@ -29,7 +29,7 @@ static const ARM_FUNCTIONS TENTACLE_FUNCTIONS{
 static const ARM_FUNCTIONS* const ARM_TABLE[ARM_TYPE_COUNT] = {
 	&TENTACLE_FUNCTIONS, // 触腕
 	&ARM_GRAPPLE_FUNCTIONS, // グラップリング（No.36）
-	nullptr, // ドリル：&ARM_DRILL_FUNCTIONS（No.37）
+	&ARM_DRILL_FUNCTIONS, // ドリル（No.37）
 	nullptr, // 磁石：&ARM_MAGNET_FUNCTIONS（No.38）
 	nullptr, // デカ盾：&ARM_SHIELD_FUNCTIONS（No.39）
 	nullptr, // ハサミ：&ARM_HASAMI_FUNCTIONS（No.40）
