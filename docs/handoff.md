@@ -14,6 +14,8 @@
 
 - **No.35 は Codex が実装。Claude の確認待ち**（`feature/arm-common`）。左右の装備・関数表・共通の肩／色／モデル描画、片手ごとの触腕、装備入力とタイトルバーを追加。未実装の5種類は `nullptr` で選べず、新しい腕の動き・モデル読み込みは追加していない。`tentaclecalc` と触腕の調整値は変更なし。
   - 確認：vswhere で見つけた MSBuild（Enterprise）でゲーム本体の Debug x64 ビルド成功、警告・エラーなし。`armcalc_test.cpp` と十字キーのテストコードを追加。テスト実行・Release・計算を壊す確認・画面確認・PR・マージは未実施（Claude 担当）。`tasks.md` と Notion の No.35 は進行中。
+  - **Claude の確認（途中で一時停止、2026-10-26）**：コードはプランどおり（肩・色・保持位置の数値と計算順は同じ、未実装の腕は選べない、No.36 は `arm_grapple.cpp` と `ARM_TABLE` の1行で足せる）。`match.h` の古いコメント（`TentacleUpdate`）だけ直した。Debug / Release 警告0、`run-tests.ps1`（Debug / Release）197件すべて通過、armcalc と十字キーをまとめて壊すと9件失敗。タイトルバーは「左：触腕 右：触腕」で、2〜6・Shift＋2〜6・1・Shift＋1 を押しても変わらない。
+    **残り**：触腕の伸びる・つかむ・投げるの画面の確認（撮った画像を見る）→ tasks.md ✅・Notion「完了」・PR・マージ → No.36 のプラン。十字キー・□ ○ は管理者が実物のパッドで確かめる。
   - 迷ったところ：同じ種類の選択では腕を解除しない。同時入力は数字を優先し、複数の数字は最小番号、前後同時は巡回なし。保持位置の Y は肩の Y（従来の `p.y + HAND_HEIGHT`）を使い、XZ の式と計算順は残した。No.36 は `arm_grapple.cpp` に `ARM_GRAPPLE_FUNCTIONS` を定義し、`ARM_TABLE` の該当1行を差し替える（ファイルのプロジェクト登録・計算とテストの追加も行う）。
 
 - **No.34 は完了（2026-10-26）**。Codex が実装、Claude が確かめた（修正なし）。元の5つの `.mb` をそのまま LFS にコピーし、`tools/export-arm-obj.ps1` と `tools/maya/export_arm_obj.py` で10個の OBJ を書き出した。`src/` は変更なし。
