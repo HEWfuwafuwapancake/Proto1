@@ -1,5 +1,7 @@
 ﻿#pragma once
 
+#include "physics/tentaclecalc.h"
+
 /// @file armcalc.h
 /// @brief 使える腕の巡回・直接選択（DirectX と Windows を使わない）
 
@@ -17,3 +19,9 @@ int ArmCalcCycle(int current, int direction, const bool* available, int count);
 /// @param count 腕の数
 /// @return 使えるなら number。使えない腕・範囲外・不正な引数は -1
 int ArmCalcSelect(int number, const bool* available, int count);
+
+/// @brief 腕の長さ方向を保ち、X・Z 軸をひねる（X' = X cosθ + Z sinθ、Z' = Z cosθ - X sinθ）
+/// @param axes ひねる前の直交単位軸
+/// @param roll ひねりの角度（ラジアン。0 なら元の軸をそのまま返す）
+/// @return Y 軸を変えずにひねった軸
+TENTACLE_PIECE_AXES ArmCalcRollAxes(const TENTACLE_PIECE_AXES& axes, float roll);

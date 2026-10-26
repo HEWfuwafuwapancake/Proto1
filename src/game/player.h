@@ -46,6 +46,11 @@ XMFLOAT3 PlayerGetPosition(void);
 /// @param position 新しい足元の位置（ワールド座標）
 void PlayerSetPosition(const XMFLOAT3& position);
 
+/// @brief 引っぱられ中を設定する（true：歩く・ジャンプ・重力を止め、速度 0・空中にする、false：通常の更新に戻す）
+/// @details 場外の判定は続け、復活時は解除する。位置は腕の側から設定する。
+/// @param pulled 引っぱられ中にするか
+void PlayerSetPulled(bool pulled);
+
 /// @brief プレイヤーの高さ（カプセルの全体の高さ）を取得する
 /// @return 高さ（カメラが頭のあたりを見るのに使う）
 float PlayerGetHeight(void);
