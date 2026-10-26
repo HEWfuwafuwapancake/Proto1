@@ -7,11 +7,6 @@
 #include "input/mouse.h"
 #include "input/pad.h"
 
-#ifdef _DEBUG
-#include <iostream>
-#include "core/debug_ostream.h"
-#endif
-
 
 //------------------------------------------------------------------------------
 //	調整用の値
@@ -67,13 +62,6 @@ struct TARGET_MOUSE_SAMPLE
 	float Delta;	// 横の移動量
 };
 static std::deque<TARGET_MOUSE_SAMPLE> g_TargetMouseSamples;
-
-#ifdef _DEBUG
-// 確かめ用に出力ウィンドウに出す名前（ACTION の並びと同じ順番。No.8 でプレイヤーができたら消す）
-static const char* const ACTION_NAMES[ACTION_COUNT] = {
-	"ジャンプ", "左の触腕", "右の触腕", "やり直し", "ターゲット左", "ターゲット右",
-};
-#endif
 
 
 void ActionInitialize(void)
@@ -137,11 +125,6 @@ void ActionUpdate(void)
 		g_Press[i] = KeyboardIsPress(ACTION_KEYS[i]) || PadIsPress(ACTION_PAD_BUTTONS[i]);
 	}
 	UpdateTargetInput(GameTimeGetDeltaTime());
-#ifdef _DEBUG
-	for (int i = 0; i < ACTION_COUNT; ++i) {
-		if (ActionIsTrigger((ACTION)i)) hal::dout << "行動：" << ACTION_NAMES[i] << std::endl;
-	}
-#endif
 
 	// ---- 移動 ----
 	// キーボードと左スティックの、強く入れているほう
