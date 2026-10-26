@@ -9,6 +9,90 @@ namespace Proto1Tests
 	TEST_CLASS(ArmCalcTest)
 	{
 	public:
+		TEST_METHOD(Pitch_ZeroKeepsHorizontalForward)
+		{
+			const VEC3 forward{ 0.6f, 0, 0.8f };
+			const VEC3 actual = ArmCalcPitchDirection(forward, 0);
+			Assert::AreEqual(0.0f, Vec3Length(Vec3Sub(forward, actual)), 0.0001f);
+		}
+
+		TEST_METHOD(Pitch_Minus45HasEqualForwardAndDown)
+		{
+			const VEC3 actual = ArmCalcPitchDirection({ 0, 0, 1 }, -0.78539816339f);
+			Assert::AreEqual(0.0f, actual.X, 0.0001f);
+			Assert::AreEqual(-sqrtf(0.5f), actual.Y, 0.0001f);
+			Assert::AreEqual(sqrtf(0.5f), actual.Z, 0.0001f);
+		}
+
+		TEST_METHOD(Pitch_NormalizesHorizontalForward)
+		{
+			const float pitches[] = { -1.57079632679f, -0.78539816339f, 0.0f, 0.4f, 1.57079632679f };
+			for (float pitch : pitches) {
+				const VEC3 actual = ArmCalcPitchDirection({ 3, 0, 4 }, pitch);
+				Assert::AreEqual(1.0f, Vec3Length(actual), 0.0001f);
+				Assert::AreEqual(0.6f * cosf(pitch), actual.X, 0.0001f);
+				Assert::AreEqual(sinf(pitch), actual.Y, 0.0001f);
+				Assert::AreEqual(0.8f * cosf(pitch), actual.Z, 0.0001f);
+			}
+		}
+
+		TEST_METHOD(Pitch_IgnoresForwardHeight)
+		{
+			const VEC3 expected = ArmCalcPitchDirection({ 3, 0, 4 }, -0.78539816339f);
+			const float heights[] = { -20.0f, 20.0f };
+			for (float height : heights) {
+				const VEC3 actual = ArmCalcPitchDirection({ 3, height, 4 }, -0.78539816339f);
+				Assert::AreEqual(0.0f, Vec3Length(Vec3Sub(expected, actual)), 0.0001f);
+			}
+		}
+
+		TEST_METHOD(Pitch_NoHorizontalForwardUsesPositiveZ)
+		{
+			const VEC3 actual = ArmCalcPitchDirection({ 0, 5, 0 }, 0);
+			Assert::AreEqual(0.0f, Vec3Length(Vec3Sub(VEC3{ 0, 0, 1 }, actual)), 0.0001f);
+		}
+
+		TEST_METHOD(Blend_EndsKeepDirections)
+		{
+			const VEC3 a{ 0, -0.6f, 0.8f }, b{ 1, 0, 0 };
+			Assert::AreEqual(0.0f, Vec3Length(Vec3Sub(a, ArmCalcBlendDirection(a, b, 0))), 0.0001f);
+			Assert::AreEqual(0.0f, Vec3Length(Vec3Sub(b, ArmCalcBlendDirection(a, b, 1))), 0.0001f);
+		}
+
+		TEST_METHOD(Blend_NormalizesLinearMixture)
+		{
+			const VEC3 a{ 0, 0, 1 }, b{ 1, 0, 0 };
+			const float ratios[] = { 0.25f, 0.5f, 0.75f };
+			for (float ratio : ratios) {
+				const VEC3 actual = ArmCalcBlendDirection(a, b, ratio);
+				const float length = sqrtf(ratio * ratio + (1.0f - ratio) * (1.0f - ratio));
+				Assert::AreEqual(1.0f, Vec3Length(actual), 0.0001f);
+				Assert::AreEqual(ratio / length, actual.X, 0.0001f);
+				Assert::AreEqual(0.0f, actual.Y, 0.0001f);
+				Assert::AreEqual((1.0f - ratio) / length, actual.Z, 0.0001f);
+			}
+		}
+
+		TEST_METHOD(Blend_OppositeAndNearlyOppositeUseEndDirection)
+		{
+			const VEC3 a{ 0, 0, 1 };
+			const VEC3 ends[] = { { 0, 0, -1 }, { 0.000001f, 0, -1 } };
+			for (const VEC3& b : ends) {
+				const VEC3 actual = ArmCalcBlendDirection(a, b, 0.5f);
+				const VEC3 expected = Vec3Scale(b, 1.0f / Vec3Length(b));
+				Assert::AreEqual(1.0f, Vec3Length(actual), 0.0001f);
+				Assert::AreEqual(0.0f, Vec3Length(Vec3Sub(expected, actual)), 0.0001f);
+			}
+		}
+
+		TEST_METHOD(Blend_ClampsRatioAndNeverReturnsZeroForZeroInputs)
+		{
+			const VEC3 a{ 0, 0, 1 }, b{ 1, 0, 0 };
+			Assert::AreEqual(0.0f, Vec3Length(Vec3Sub(a, ArmCalcBlendDirection(a, b, -1))), 0.0001f);
+			Assert::AreEqual(0.0f, Vec3Length(Vec3Sub(b, ArmCalcBlendDirection(a, b, 2))), 0.0001f);
+			Assert::AreEqual(1.0f, Vec3Length(ArmCalcBlendDirection({}, {}, 0.5f)), 0.0001f);
+		}
+
 		TEST_METHOD(Roll_ZeroKeepsAxesExactly)
 		{
 			const TENTACLE_PIECE_AXES axes = TentacleCalcPieceAxes({ 1, 2, 3 }, { 4, 7, 8 }, { 0, -1, 0 });

@@ -20,6 +20,25 @@ int ArmCalcSelect(int number, const bool* available, int count)
 	return available[number] ? number : -1;
 }
 
+VEC3 ArmCalcPitchDirection(const VEC3& forward, float pitch)
+{
+	const VEC3 horizontal{ forward.X, 0.0f, forward.Z };
+	const float length = Vec3Length(horizontal);
+	const VEC3 direction = length > 0.00001f ? Vec3Scale(horizontal, 1.0f / length) : VEC3{ 0, 0, 1 };
+	const float c = cosf(pitch);
+	return { direction.X * c, sinf(pitch), direction.Z * c };
+}
+
+VEC3 ArmCalcBlendDirection(const VEC3& a, const VEC3& b, float ratio)
+{
+	const float t = fmaxf(0.0f, fminf(1.0f, ratio));
+	const VEC3 mixed = Vec3Add(Vec3Scale(a, 1.0f - t), Vec3Scale(b, t));
+	const float length = Vec3Length(mixed);
+	if (length > 0.00001f) return Vec3Scale(mixed, 1.0f / length);
+	const float bLength = Vec3Length(b);
+	return bLength > 0.00001f ? Vec3Scale(b, 1.0f / bLength) : VEC3{ 0, 0, 1 };
+}
+
 TENTACLE_PIECE_AXES ArmCalcRollAxes(const TENTACLE_PIECE_AXES& axes, float roll)
 {
 	if (roll == 0.0f) return axes;
