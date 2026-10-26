@@ -24,7 +24,7 @@ void ModelFinalize(void)
 	g_Models.clear();
 }
 
-int ModelLoad(const char* path)
+int ModelLoad(const char* path, bool mirrorX)
 {
 	if (!path || !DirectXGetDevice()) return -1;
 	std::ifstream file(path, std::ios::binary);
@@ -32,6 +32,7 @@ int ModelLoad(const char* path)
 	const std::string source((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 	std::vector<OBJ_VERTEX> parsed;
 	if (file.bad() || !ObjCalcParse(source, parsed)) return -1;
+	if (mirrorX) ObjCalcMirrorX(parsed);
 	if (parsed.size() > (std::numeric_limits<UINT>::max)() / sizeof(VERTEX_3D)
 		|| g_Models.size() >= static_cast<size_t>((std::numeric_limits<int>::max)())) return -1;
 	std::vector<VERTEX_3D> vertices;

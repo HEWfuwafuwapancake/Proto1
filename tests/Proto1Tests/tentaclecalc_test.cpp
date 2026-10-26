@@ -78,10 +78,10 @@ namespace Proto1Tests
 		{
 			const VEC3 end{ 0, 3, 4 };
 			const auto axes = TentacleCalcPieceAxes({}, end, { 0, -1, 0 });
-			// -X（吸盤側）が、下を腕に直角な面へ映した向き (0, -0.8, 0.6) になる
-			Assert::AreEqual(0.0f, axes.X.X, 0.0001f);
-			Assert::AreEqual(0.8f, axes.X.Y, 0.0001f);
-			Assert::AreEqual(-0.6f, axes.X.Z, 0.0001f);
+			// -Z が、下を腕に直角な面へ映した向き (0, -0.8, 0.6) になる
+			Assert::AreEqual(0.0f, axes.Z.X, 0.0001f);
+			Assert::AreEqual(0.8f, axes.Z.Y, 0.0001f);
+			Assert::AreEqual(-0.6f, axes.Z.Z, 0.0001f);
 		}
 		TEST_METHOD(Aim_TargetGivesHorizontalUnitDirection)
 		{

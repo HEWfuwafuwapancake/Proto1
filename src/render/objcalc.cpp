@@ -1,5 +1,6 @@
 ﻿#include "render/objcalc.h"
 #include <cmath>
+#include <utility>
 #include <sstream>
 #include <locale>
 
@@ -110,4 +111,14 @@ bool ObjCalcParse(const std::string& source, std::vector<OBJ_VERTEX>& vertices)
 	if (result.empty()) return false;
 	vertices.swap(result);
 	return true;
+}
+
+void ObjCalcMirrorX(std::vector<OBJ_VERTEX>& vertices)
+{
+	for (OBJ_VERTEX& v : vertices) {
+		v.Position.X = -v.Position.X;
+		v.Normal.X = -v.Normal.X;
+	}
+	// 鏡写しで回る向きが逆になるので、2番目と3番目を入れ替えて時計回りに戻す。
+	for (size_t i = 0; i + 2 < vertices.size(); i += 3) std::swap(vertices[i + 1], vertices[i + 2]);
 }
