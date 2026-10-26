@@ -4,13 +4,23 @@
 **作業を始めるときに読み、作業を終えるときに更新します。** タスクの一覧は [tasks.md](tasks.md)、同じ内容を Notion の
 「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」データベースでも管理しています。
 
-- 最終更新：2026-10-26（Claude。Shota の共有 Proto1、No.42 グラップリングの構えを確かめて完了。次は No.37 ドリルを Codex に頼む）
+- 最終更新：2026-10-26（Claude。Shota の共有 Proto1、No.37 ドリルを確かめてマージ。次は No.38 磁石のプラン）
 
 ---
 
 ## 1. 今の状態
 
-タスクごとの状態は [tasks.md](tasks.md) を見る（次は No.37 ドリル。中は No.18・No.19 が残っている）。
+タスクごとの状態は [tasks.md](tasks.md) を見る（次は No.38 磁石。中は No.18・No.19 が残っている）。
+
+- **No.37（ドリル）は完了（2026-10-26）**。Codex が実装、Claude が確かめた。
+  - **Claude が直したこと**：付け根 `arm_drill_base.obj` に長さ 0 の法線（`vn 0 0 0`）が8個あり、`ObjCalcParse` が OBJ ごと読み込みを止めて**付け根が描かれていなかった**（ビットだけが肩から 1.2 先に浮いていた。エラーも出ない）。法線が 0 になるのは面積 0 の面（6面）なので、書き出しスクリプト（`tools/maya/export_arm_obj.py`）でその面を書かないようにし、書き出し直した（1572 → 1560 三角形。見た目は同じ）。
+    **`arm_hasami_base.obj`（24個）と `arm_shield_plate.obj`（1個）も同じ**。No.39・No.40 の前に `.\tools\export-arm-obj.ps1 shield`／`hasami` で書き出し直す。
+  - Claude の確認：プランどおり（伸びない・当たりはビットの線分だけ・触腕／グラップリング・`DummyHit`／`DummyRelease` は変更なし）／Debug / Release 警告0／`run-tests.ps1`（Debug・Release）248件通過、drillcalc を9か所まとめて壊すと足したテスト 11件が失敗／画面：3・Shift＋3 で「左：ドリル 右：ドリル」、待機は肩から 45° 下（肩を中心にした一時ビルドで横・斜め前から確認）、遠くで押すと突き出すだけで 0%、近づいて押すと 4→…→20% で黄色になり押し出される、くい込み中に歩いて離れると 12% で止まる、1・Shift＋1 で触腕に戻る。
+  - **残っている確認（管理者）**：付け根とビットの取付位置・向き（拡大画像はこのセッションで見せた）／押し出しの強さ・距離（今の値で遊んで決める）。
+  - Codex の実装メモ：作業ブランチは `feature/arm-drill`。固定長の付け根＋ビット、0.4秒の突き、くい込み中は4%×5回、最後に強さ1.5・水平＋上0.15で押し出す。くい込み中も敵は保持せず、プレイヤーは歩ける。描画の構えは0.1秒で移り、ビットだけ回る。
+  - 追加：`arm_drill.cpp`、DirectX なしの `drillcalc.h/.cpp`、`drillcalc_test.cpp`（16件）。`ARM_TABLE` のドリルの行、`dummy` の2関数、プロジェクト登録と構成資料を更新。触腕・グラップリングのコード・値、`DummyHit`・`DummyRelease` は変更なし。
+  - 迷った点：プランの「3以上には当たらない」は、指定のカプセル判定だと半径も含むため一致しない。線分の終点2.65＋ビット半径0.35＋ダミー半径0.5なので、正面の敵の中心が3.0でも当たり、3.5以上なら外れる。指定のカプセル判定を採用し、遠い敵のテストは3.6、3.0で当たるテストも追加した。取付位置のオフセットはプランの小数2桁、モデル長は書き出しの小数6桁。命中したフレームの終わりから0.1秒ごとの加算時間を数える。
+  - 確認：vswhere で見つけた Enterprise の MSBuild で Debug x64 のソリューションビルド成功（ゲーム本体・テストコードとも警告・エラーなし）。テスト実行・Release・壊す確認・画面・PR・マージは未実施で Claude 担当。Notion の No.37 は「進行中」に更新済み。
 
 - **No.42（グラップリングの構え）は完了（2026-10-26）**。Codex が実装、Claude が確かめた（直したところはなし）。
   - Claude の確認：書き出し直しても OBJ の差分なし・上腕＋前腕 942＋1294＝2236（develop の旧付け根と同じ）・肩→ひじ・ひじ→フックの差が Maya の pivot どおり／Debug / Release 警告0／`run-tests.ps1`（Debug・Release）232件通過、`ArmCalcPitchDirection` と `GrappleCalcModelPoint` の鏡写しを壊すと足した2件が失敗／画面：待機は上腕 45° 下・ひじで曲げて前腕は水平（横からの一時ビルドで確認）、撃つとまっすぐ伸びる、引っぱって ＋5%・途中で離す・落ちながら撃って戻るは今までどおり、戻ると構えに戻る。
@@ -49,7 +59,7 @@
 | arm_grapple_upper.obj | gurappuru 内：pCube28, polySurface16, pCube26 | pCube28 の肩 pivot (4.022263,18.307728,-1.617523) | 11.352817 | 942 | なし |
 | arm_grapple_lower.obj | gurappuru 内：polySurface24, polySurface9, pCylinder18 | polySurface24 のひじ pivot (2.408051,7.408151,-1.858509) | 11.820275 | 1294 | なし |
 | arm_grapple_hook.obj | gurappuru 内：pCylinder17, polySurface26, polySurface27 | pCylinder32 の下端中央 (2.408076,-6.814474,-1.858183) | 6.108507 | 620 | なし |
-| arm_drill_base.obj | doriru 内：polySurface4, pCylinder10, pCylinder11, pCylinder12, pCube8, pCube7, pCube5, pCylinder9, polySurface5 | polySurface4 の肩 pivot (-0.311337,14.661158,0.016734) | 15.189075 | 1572 | なし |
+| arm_drill_base.obj | doriru 内：polySurface4, pCylinder10, pCylinder11, pCylinder12, pCube8, pCube7, pCube5, pCylinder9, polySurface5 | polySurface4 の肩 pivot (-0.311337,14.661158,0.016734) | 15.189075 | 1560 | なし |
 | arm_drill_bit.obj | doriru 内：polySurface1, pCylinder8 | pCylinder8 の軸後端 (0,8.941722,-5.065007) | 18.060484 | 376 | X +45° |
 | arm_shield_base.obj | tanku 内：pCube14, pCylinder20, polySurface11, polySurface17, pCube15, pCylinder22, polySurface18, pCube13, pCube16, pCube17, pCube18, pCube22, pCube23, pCube19, pCube20, pCube21 | pCube14 の肩 pivot (1.964752,16.668694,0) | 19.250364 | 2696 | なし |
 | arm_shield_plate.obj | tanku 内：polySurface14（腕に付いている盾） | 同部品の取付 pivot (2.193827,1.646374,0.102787) | 2.901904 | 644 | なし |
@@ -98,10 +108,11 @@
 - No.29（なめらかな自由カメラ）は完了。カメラの細かい値は、カメラ関係（No.32・No.33）が全部終わってから管理者が触って決める（2026-10-24、管理者）。
 - **メインPC でまだやっていないこと**：Claude に許可を足す設定（下の「3. 決まったこと」の「Claude の許可」）。
 
-## 2. 次にやること：Codex が No.37（ドリル）を実装する
+## 2. 次にやること：No.38（磁石）のプラン
 
-- **次は Codex の担当分**：No.42 は develop にマージ済み。管理者が下の「No.37 を Codex に頼むプロンプト」を Codex に貼る。Codex の保存のあと、「No.37 を Claude が確かめるときのプロンプト」を Claude に貼る。
-  - 画面の確認のヒント（No.41 で分かったこと）：カメラは敵を見続けるので、腕を横から見たいときは `camera.cpp` の `MakeMatrices` でビューを横からに置きかえた一時ビルドを、OutDir・IntDir を scratchpad に分けて作る（コミットしない。終わったら `git checkout` で戻す）。
+- **次は No.38 磁石のプラン（まだ）**：Claude がプランを書いて管理者に確認してもらい、No.37 と同じく「Codex に頼むプロンプト」→「Claude が確かめるときのプロンプト」で進める。
+  - プランに入れること：仕様は下の「新しいアームの仕様」の磁石の行（押すとターゲット（いなければ正面）を自分の前まで引き寄せる・引き寄せている間にもう一度押すと反発して強く吹っ飛ばす・反発で % ＋8）。モデル `arm_magnet.obj` は腕が +Z（ゲームの上）へ大きく曲がり、先は肩から約 (-2.9, -17.4, +9.7) cm（No.34 のメモ）。引き寄せ中の敵は触腕と同じ `DummyGrab`・`DummyMoveHeld`・`DummyRelease` で動かすか、`dummy` に「引き寄せる」関数を足すかを決める。
+- 画面の確認のヒント（No.41・No.37 で分かったこと）：カメラは敵を見続けるので、腕を横から見たいときは `camera.cpp` の `MakeMatrices` でビューを置きかえた一時ビルドを、OutDir・IntDir を scratchpad に分けて作る（コミットしない。終わったら `git checkout` で戻す）。**ビューの見ている点を `ArmGetShoulder(手)` にすると、肩が画面の真ん中に来て、部品が肩についているか分かる**。
 
 - **2026-10-26、管理者が最優先にした**：ドリル（No.37）の前に、触腕とグラップリングの構えを変える。プランは2つに分けた（No.41 は今のモデルのまま、No.42 はグラップリングの OBJ をひじで分けて書き出し直すため）。No.41 → No.42 → No.37 の順。
 - 順番（管理者が決めた）：No.34 モデル → No.35 腕の共通の仕組み → No.36 グラップリング → **No.41 触腕の構え → No.42 グラップリングの構え** → No.37 ドリル → No.38 磁石 → No.39 デカ盾 → No.40 ハサミ（最後）。

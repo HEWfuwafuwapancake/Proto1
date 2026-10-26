@@ -173,11 +173,20 @@ def write_obj(path, shapes, origin, degrees):
             for i in range(3):
                 lo[i], hi[i] = min(lo[i], q[i]), max(hi[i], q[i])
             lines.append("v %.6f %.6f %.6f" % q)
-        for n in normals:
+        # 面積 0 の面は法線が 0 になり、ゲームの objcalc が OBJ ごと読み込みを止める。
+        # その面は書かず、使われない法線は番号をずらさないよう +Y で埋める。
+        zero = set()
+        for i, n in enumerate(normals):
+            if n.length() < 1e-6:
+                zero.add(i)
+                lines.append("vn 0.000000 1.000000 0.000000")
+                continue
             q = om.MVector(rotate_x((n.x, n.y, n.z), degrees)).normal()
             lines.append("vn %.6f %.6f %.6f" % (q.x, q.y, q.z))
         for face in range(fn.numPolygons):
             verts, nids = fn.getPolygonVertices(face), fn.getFaceNormalIds(face)
+            if any(n in zero for n in nids):
+                continue
             lines.append("f " + " ".join("%d//%d" % (v + v_base, n + n_base) for v, n in zip(verts, nids)))
             triangles += len(verts) - 2
         v_base += len(points)

@@ -91,6 +91,8 @@
     <ClCompile Include="actioncalc_test.cpp" />
     <ClCompile Include="armcalc_test.cpp" />
     <ClCompile Include="grapplecalc_test.cpp" />
+    <ClCompile Include="drillcalc_test.cpp" />
+    <ClCompile Include="..\..\src\physics\drillcalc.cpp" />
     <ClCompile Include="..\..\src\physics\grapplecalc.cpp" />
     <ClCompile Include="cameracalc_test.cpp" />
     <ClCompile Include="collision_test.cpp" />

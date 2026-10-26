@@ -230,10 +230,19 @@
     <ClCompile Include="src\game\arm_grapple.cpp">
       <Filter>src\game</Filter>
     </ClCompile>
+    <ClCompile Include="src\game\arm_drill.cpp">
+      <Filter>src\game</Filter>
+    </ClCompile>
+    <ClCompile Include="src\physics\drillcalc.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
     <ClCompile Include="src\physics\grapplecalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
     <ClInclude Include="src\physics\grapplecalc.h">
+      <Filter>src\physics</Filter>
+    </ClInclude>
+    <ClInclude Include="src\physics\drillcalc.h">
       <Filter>src\physics</Filter>
     </ClInclude>
     <ClCompile Include="src\physics\armcalc.cpp">
