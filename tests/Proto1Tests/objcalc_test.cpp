@@ -56,6 +56,26 @@ namespace Proto1Tests
 			Assert::AreEqual(size_t(3), v.size());
 			Assert::AreEqual(3.0f, v[1].Position.Y, OBJ_EPSILON);
 		}
+		TEST_METHOD(MirrorX_FlipsXAndKeepsFrontFace)
+		{
+			std::vector<OBJ_VERTEX> v;
+			Assert::IsTrue(ObjCalcParse(std::string("v 1 0 0\nv 3 0 0\nv 1 2 0\nvn 1 0 0\nf 1//1 2//1 3//1\n"), v));
+			ObjCalcMirrorX(v);
+			Assert::AreEqual(size_t(3), v.size());
+			// 読んだ直後の並びは (1,0,0)・(1,2,0)・(3,0,0)。X を反転し、2番目と3番目を入れ替える
+			Assert::AreEqual(-1.0f, v[0].Position.X, OBJ_EPSILON);
+			Assert::AreEqual(-3.0f, v[1].Position.X, OBJ_EPSILON);
+			Assert::AreEqual(-1.0f, v[2].Position.X, OBJ_EPSILON);
+			Assert::AreEqual(2.0f, v[2].Position.Y, OBJ_EPSILON);
+			Assert::AreEqual(-1.0f, v[0].Normal.X, OBJ_EPSILON);
+			// 面の向きから求めた法線（表の向き）が、鏡写しの前後で同じ -Z のまま
+			std::vector<OBJ_VERTEX> plain;
+			Assert::IsTrue(ObjCalcParse(std::string("v 1 0 0\nv 3 0 0\nv 1 2 0\nf 1 2 3\n"), plain));
+			ObjCalcMirrorX(plain);
+			const VEC3 u = Vec3Sub(plain[1].Position, plain[0].Position);
+			const VEC3 w = Vec3Sub(plain[2].Position, plain[0].Position);
+			Assert::AreEqual(-1.0f, (u.X * w.Y - u.Y * w.X) / Vec3Length(u) / Vec3Length(w), OBJ_EPSILON);
+		}
 		TEST_METHOD(BrokenLines_FailAndClearOutput)
 		{
 			for (const char* broken : { "v 1 2", "v x 2 3", "v 1 2 3bad", "vn 1 2", "vn 0 0 0",

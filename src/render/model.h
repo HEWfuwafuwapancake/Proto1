@@ -7,8 +7,9 @@ void ModelInitialize(void);
 void ModelFinalize(void);
 /// @brief 作業フォルダからの相対パスで OBJ を読み込み、頂点バッファを作る
 /// @param path OBJ のパス
+/// @param mirrorX X について鏡写しにするかを設定する（true：鏡写しにする（右手用から左手用を作る）、false：そのまま）
 /// @return モデル番号。ファイル・OBJ・バッファ作成の失敗時は -1
-int ModelLoad(const char* path);
+int ModelLoad(const char* path, bool mirrorX = false);
 /// @brief モデルを原点と大きさ込みの直交する3軸で配置し、指定色で描く
 /// @param model ModelLoad が返した番号（無効な番号は描かない）
 /// @param origin モデルの原点を置くワールド座標
