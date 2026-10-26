@@ -20,6 +20,19 @@ int ArmCalcCycle(int current, int direction, const bool* available, int count);
 /// @return 使えるなら number。使えない腕・範囲外・不正な引数は -1
 int ArmCalcSelect(int number, const bool* available, int count);
 
+/// @brief キャラの水平の正面を上下へ傾けた単位方向を求める
+/// @param forward 正面の向き（Y は使わず XZ を正規化する。水平の長さがほぼ 0 なら +Z）
+/// @param pitch 上下の角度（ラジアン。負なら下）
+/// @return 傾けた長さ 1 の方向
+VEC3 ArmCalcPitchDirection(const VEC3& forward, float pitch);
+
+/// @brief 2つの方向を線形にまぜ、長さ 1 にする
+/// @param a 始めの方向
+/// @param b 終わりの方向
+/// @param ratio まぜる割合（0〜1 に収める。0 は a、1 は b）
+/// @return まぜた単位方向。長さがほぼ 0 なら b を正規化し、b もほぼ 0 なら +Z
+VEC3 ArmCalcBlendDirection(const VEC3& a, const VEC3& b, float ratio);
+
 /// @brief 腕の長さ方向を保ち、X・Z 軸をひねる（X' = X cosθ + Z sinθ、Z' = Z cosθ - X sinθ）
 /// @param axes ひねる前の直交単位軸
 /// @param roll ひねりの角度（ラジアン。0 なら元の軸をそのまま返す）

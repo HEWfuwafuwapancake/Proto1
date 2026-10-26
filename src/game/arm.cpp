@@ -11,7 +11,8 @@
 #include <iostream>
 #endif
 
-// 調整用の値（触腕からそのまま移した肩の位置・色）
+// 調整用の値（腕に共通の待機角度・肩の位置・色）
+static constexpr float ARM_REST_PITCH = -XM_PI / 4.0f; // 待機の腕を正面から 45° 下げる
 static constexpr float SHOULDER_OFFSET = 0.65f;
 static constexpr float HAND_HEIGHT = 1.35f;
 static constexpr XMFLOAT4 LEFT_COLOR{ 0.8f, 0.3f, 0.65f, 1.0f };
@@ -126,6 +127,11 @@ VEC3 ArmGetShoulder(int hand)
 	const float yaw = PlayerGetYaw();
 	return { p.x + cosf(yaw) * side + sinf(yaw) * forward, p.y + HAND_HEIGHT,
 		p.z - sinf(yaw) * side + cosf(yaw) * forward };
+}
+
+float ArmGetRestPitch(void)
+{
+	return ARM_REST_PITCH;
 }
 
 XMFLOAT4 ArmGetColor(int hand, bool active)

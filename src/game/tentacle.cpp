@@ -7,6 +7,7 @@
 #include "core/mathutil.h"
 #include "game/arm.h"
 #include "input/pad.h"
+#include "physics/armcalc.h"
 #include "render/shape.h"
 
 // 調整用の値
@@ -30,6 +31,7 @@ static constexpr float BASE_LENGTH = 10.218f; // OBJ のつなぎ目間の長さ
 static constexpr float SEGMENT_LENGTH = 3.207f;
 static constexpr float TIP_LENGTH = 4.434f;
 static constexpr float MIN_STRETCH = 0.2f;
+static constexpr float IDLE_LENGTH = 1.2f; // 待機中・短い伸縮中に描く長さ（判定には使わない）
 static constexpr float MODEL_MIN_LENGTH = 0.00001f;
 static constexpr float WIGGLE_AMPLITUDE = 0.25f;
 static constexpr float WIGGLE_WAVES = 1.5f;
@@ -120,7 +122,17 @@ void TentacleDrawHand(int hand)
 {
 	const TENTACLE& arm = g_Arms[hand];
 	const VEC3 origin = ArmGetShoulder(hand);
-	const VEC3 tip = arm.State == TENTACLE_IDLE ? origin : arm.Tip;
+	VEC3 tip = arm.State == TENTACLE_IDLE ? origin : arm.Tip;
+	if (arm.State != TENTACLE_HOLDING) {
+		// 描画する先端だけを変える。計算上の arm.Tip・長さ・判定はそのまま。
+		const VEC3 extended = Vec3Sub(tip, origin);
+		const float length = Vec3Length(extended);
+		const float yaw = PlayerGetYaw();
+		const VEC3 rest = ArmCalcPitchDirection({ sinf(yaw), 0, cosf(yaw) }, ArmGetRestPitch());
+		const VEC3 aim = length < MODEL_MIN_LENGTH ? rest : Vec3Scale(extended, 1.0f / length);
+		const VEC3 direction = ArmCalcBlendDirection(rest, aim, length / IDLE_LENGTH);
+		tip = Vec3Add(origin, Vec3Scale(direction, fmaxf(length, IDLE_LENGTH)));
+	}
 	const VEC3 delta = Vec3Sub(tip, origin);
 	const int steps = (int)ceilf(Vec3Length(delta) / SPHERE_SPACING) + 1;
 	const XMFLOAT4 color = ArmGetColor(hand, arm.Target >= 0);
