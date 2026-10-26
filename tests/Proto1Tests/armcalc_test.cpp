@@ -9,6 +9,39 @@ namespace Proto1Tests
 	TEST_CLASS(ArmCalcTest)
 	{
 	public:
+		TEST_METHOD(Roll_ZeroKeepsAxesExactly)
+		{
+			const TENTACLE_PIECE_AXES axes = TentacleCalcPieceAxes({ 1, 2, 3 }, { 4, 7, 8 }, { 0, -1, 0 });
+			const TENTACLE_PIECE_AXES actual = ArmCalcRollAxes(axes, 0);
+			Assert::AreEqual(0.0f, Vec3Length(Vec3Sub(axes.X, actual.X)));
+			Assert::AreEqual(0.0f, Vec3Length(Vec3Sub(axes.Y, actual.Y)));
+			Assert::AreEqual(0.0f, Vec3Length(Vec3Sub(axes.Z, actual.Z)));
+		}
+
+		TEST_METHOD(Roll_90ExchangesXAndZWithSigns)
+		{
+			const TENTACLE_PIECE_AXES axes{ { 1, 0, 0 }, { 0, 1, 0 }, { 0, 0, 1 } };
+			const float signs[] = { -1.0f, 1.0f };
+			for (float sign : signs) {
+				const TENTACLE_PIECE_AXES actual = ArmCalcRollAxes(axes, sign * 1.57079632679f);
+				Assert::AreEqual(0.0f, Vec3Length(Vec3Sub(Vec3Scale(axes.Z, sign), actual.X)), 0.0001f);
+				Assert::AreEqual(0.0f, Vec3Length(Vec3Sub(Vec3Scale(axes.X, -sign), actual.Z)), 0.0001f);
+				Assert::AreEqual(0.0f, Vec3Length(Vec3Sub(axes.Y, actual.Y)));
+			}
+		}
+
+		TEST_METHOD(Roll_PreservesUnitLengthsAndOrthogonality)
+		{
+			const TENTACLE_PIECE_AXES axes = TentacleCalcPieceAxes({}, { 1, 2, 3 }, { 0, -1, 0 });
+			const TENTACLE_PIECE_AXES actual = ArmCalcRollAxes(axes, 0.7f);
+			Assert::AreEqual(1.0f, Vec3Length(actual.X), 0.0001f);
+			Assert::AreEqual(1.0f, Vec3Length(actual.Y), 0.0001f);
+			Assert::AreEqual(1.0f, Vec3Length(actual.Z), 0.0001f);
+			Assert::AreEqual(0.0f, Vec3Dot(actual.X, actual.Y), 0.0001f);
+			Assert::AreEqual(0.0f, Vec3Dot(actual.X, actual.Z), 0.0001f);
+			Assert::AreEqual(0.0f, Vec3Dot(actual.Y, actual.Z), 0.0001f);
+		}
+
 		TEST_METHOD(Cycle_Next)
 		{
 			const bool available[] = { true, true, true, true, true, true };

@@ -27,7 +27,7 @@ static const ARM_FUNCTIONS TENTACLE_FUNCTIONS{
 // nullptr の種類は読み込まず、数字キー・巡回のどちらでも選べない。
 static const ARM_FUNCTIONS* const ARM_TABLE[ARM_TYPE_COUNT] = {
 	&TENTACLE_FUNCTIONS, // 触腕
-	nullptr, // グラップリング：&ARM_GRAPPLE_FUNCTIONS（No.36）
+	&ARM_GRAPPLE_FUNCTIONS, // グラップリング（No.36）
 	nullptr, // ドリル：&ARM_DRILL_FUNCTIONS（No.37）
 	nullptr, // 磁石：&ARM_MAGNET_FUNCTIONS（No.38）
 	nullptr, // デカ盾：&ARM_SHIELD_FUNCTIONS（No.39）
@@ -133,9 +133,9 @@ XMFLOAT4 ArmGetColor(int hand, bool active)
 	return active ? HOLD_COLOR : (hand == 0 ? LEFT_COLOR : RIGHT_COLOR);
 }
 
-void ArmDrawPiece(int model, VEC3 start, VEC3 end, float sourceLength, float thickness, const XMFLOAT4& color)
+void ArmDrawPiece(int model, VEC3 start, VEC3 end, float sourceLength, float thickness, const XMFLOAT4& color, float roll)
 {
-	const TENTACLE_PIECE_AXES axes = TentacleCalcPieceAxes(start, end, { 0, -1, 0 });
+	const TENTACLE_PIECE_AXES axes = ArmCalcRollAxes(TentacleCalcPieceAxes(start, end, { 0, -1, 0 }), roll);
 	const VEC3 x = Vec3Scale(axes.X, thickness);
 	const VEC3 y = Vec3Scale(axes.Y, Vec3Length(Vec3Sub(end, start)) / sourceLength);
 	const VEC3 z = Vec3Scale(axes.Z, thickness);

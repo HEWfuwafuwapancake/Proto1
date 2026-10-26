@@ -90,6 +90,8 @@
     <ClCompile Include="..\..\src\physics\stagecalc.cpp" />
     <ClCompile Include="actioncalc_test.cpp" />
     <ClCompile Include="armcalc_test.cpp" />
+    <ClCompile Include="grapplecalc_test.cpp" />
+    <ClCompile Include="..\..\src\physics\grapplecalc.cpp" />
     <ClCompile Include="cameracalc_test.cpp" />
     <ClCompile Include="collision_test.cpp" />
     <ClCompile Include="dummycalc_test.cpp" />

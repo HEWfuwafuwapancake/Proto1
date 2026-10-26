@@ -19,3 +19,11 @@ int ArmCalcSelect(int number, const bool* available, int count)
 	if (available == nullptr || number < 0 || number >= count) return -1;
 	return available[number] ? number : -1;
 }
+
+TENTACLE_PIECE_AXES ArmCalcRollAxes(const TENTACLE_PIECE_AXES& axes, float roll)
+{
+	if (roll == 0.0f) return axes;
+	const float c = cosf(roll), s = sinf(roll);
+	return { Vec3Add(Vec3Scale(axes.X, c), Vec3Scale(axes.Z, s)), axes.Y,
+		Vec3Sub(Vec3Scale(axes.Z, c), Vec3Scale(axes.X, s)) };
+}

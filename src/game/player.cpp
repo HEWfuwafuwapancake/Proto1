@@ -30,6 +30,7 @@ static constexpr XMFLOAT4 BODY_COLOR = { 0.95f, 0.45f, 0.35f, 1.0f };	// 色（�
 static PLAYER_BODY g_Body = {};	// 位置・速度・立っているか
 static float g_Yaw = 0.0f;		// キャラの左右の向き（ラジアン）
 static bool g_Respawned = false;
+static bool g_Pulled = false;
 
 
 // 浮島の真ん中に立たせる
@@ -41,6 +42,7 @@ static void Respawn(void)
 	g_Body.Y = stage.TopY;
 	g_Body.Z = stage.CenterZ;
 	g_Body.OnGround = true;
+	g_Pulled = false;
 	g_Yaw = 0.0f;
 }
 
@@ -71,7 +73,9 @@ void PlayerUpdate(void)
 	params.MoveSpeed = MOVE_SPEED;
 	params.JumpSpeed = JUMP_SPEED;
 	params.Gravity = GRAVITY;
-	PlayerCalcStep(g_Body, moveX, moveZ, ActionIsTrigger(ACTION_JUMP), GameTimeGetDeltaTime(), params, StageGet());
+	if (!g_Pulled) {
+		PlayerCalcStep(g_Body, moveX, moveZ, ActionIsTrigger(ACTION_JUMP), GameTimeGetDeltaTime(), params, StageGet());
+	}
 
 	// 場外に落ちたら、浮島の真ん中に戻す（試合の流れは No.14 で作る）
 	if (StageCalcIsOut(StageGet(), g_Body.Y)) {
@@ -123,6 +127,15 @@ void PlayerSetPosition(const XMFLOAT3& position)
 	g_Body.X = position.x;
 	g_Body.Y = position.y;
 	g_Body.Z = position.z;
+}
+
+void PlayerSetPulled(bool pulled)
+{
+	g_Pulled = pulled;
+	if (pulled) {
+		g_Body.VelocityX = g_Body.VelocityY = g_Body.VelocityZ = 0.0f;
+		g_Body.OnGround = false;
+	}
 }
 
 float PlayerGetHeight(void)

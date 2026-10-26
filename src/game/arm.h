@@ -74,14 +74,15 @@ VEC3 ArmGetShoulder(int hand);
 /// @param active 色の切り替えを設定する（true：効いている色、false：左右の基本色。触腕は保持中だけ true）
 /// @return 色（RGBA）
 XMFLOAT4 ArmGetColor(int hand, bool active);
-/// @brief モデルの -Y を始点から終点へ向けて描く（X は横、-Z はなるべく下）
+/// @brief モデルの -Y を始点から終点へ向けて描く（ひねり 0 なら X は横、-Z はなるべく下）
 /// @param model モデル番号
 /// @param start 始点のワールド座標
 /// @param end 終点のワールド座標
 /// @param sourceLength 元のモデルの長さ（cm。0 より大きい値）
 /// @param thickness 横の太さの倍率（cm からゲーム単位への倍率）
 /// @param color 色（RGBA）
-void ArmDrawPiece(int model, VEC3 start, VEC3 end, float sourceLength, float thickness, const XMFLOAT4& color);
+/// @param roll 腕の長さ方向のひねり（ラジアン。省略すると 0）
+void ArmDrawPiece(int model, VEC3 start, VEC3 end, float sourceLength, float thickness, const XMFLOAT4& color, float roll = 0.0f);
 /// @brief 片手用の OBJ を読む（右手だけ X を鏡写しにする）
 /// @param path 作業フォルダからの相対パス
 /// @param hand 左 0・右 1

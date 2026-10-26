@@ -1,6 +1,7 @@
 ﻿#include "core/dx11.h"
 #include "core/shader.h"
 #include "render/shape.h"
+#include "physics/tentaclecalc.h"
 
 
 //------------------------------------------------------------------------------
@@ -200,6 +201,19 @@ void ShapeDrawBox(const XMFLOAT3& center, const XMFLOAT3& size, const XMFLOAT4& 
 void ShapeDrawSphere(const XMFLOAT3& center, float radius, const XMFLOAT4& color)
 {
 	DrawMesh(g_Sphere, XMMatrixScaling(radius, radius, radius) * XMMatrixTranslation(center.x, center.y, center.z), color);
+}
+
+void ShapeDrawCylinder(const XMFLOAT3& start, const XMFLOAT3& end, float radius, const XMFLOAT4& color)
+{
+	const VEC3 from{ start.x, start.y, start.z }, to{ end.x, end.y, end.z };
+	const float length = Vec3Length(Vec3Sub(to, from));
+	if (length <= 0.0f || radius <= 0.0f) return;
+	const TENTACLE_PIECE_AXES axes = TentacleCalcPieceAxes(from, to, { 0, -1, 0 });
+	const VEC3 x = Vec3Scale(axes.X, radius), y = Vec3Scale(axes.Y, length), z = Vec3Scale(axes.Z, radius);
+	const VEC3 center = Vec3Scale(Vec3Add(from, to), 0.5f);
+	const XMMATRIX world = XMMatrixSet(x.X, x.Y, x.Z, 0, y.X, y.Y, y.Z, 0,
+		z.X, z.Y, z.Z, 0, center.X, center.Y, center.Z, 1);
+	DrawMesh(g_Cylinder, world, color);
 }
 
 void ShapeDrawCapsule(const XMFLOAT3& bottom, float radius, float height, const XMFLOAT4& color)
