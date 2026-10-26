@@ -224,6 +224,12 @@
     <ClCompile Include="src\game\tentacle.cpp">
       <Filter>src\game</Filter>
     </ClCompile>
+    <ClCompile Include="src\game\arm.cpp">
+      <Filter>src\game</Filter>
+    </ClCompile>
+    <ClCompile Include="src\physics\armcalc.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
     <ClCompile Include="src\physics\tentaclecalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
@@ -235,6 +241,12 @@
     </ClCompile>
     <ClInclude Include="src\game\tentacle.h">
       <Filter>src\game</Filter>
+    </ClInclude>
+    <ClInclude Include="src\game\arm.h">
+      <Filter>src\game</Filter>
+    </ClInclude>
+    <ClInclude Include="src\physics\armcalc.h">
+      <Filter>src\physics</Filter>
     </ClInclude>
     <ClInclude Include="src\physics\tentaclecalc.h">
       <Filter>src\physics</Filter>

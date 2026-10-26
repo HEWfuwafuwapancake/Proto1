@@ -18,6 +18,10 @@ static constexpr int ACTION_KEYS[ACTION_COUNT] = {
 	VK_RBUTTON,		// ACTION_ARM_RIGHT（右クリック）
 	'R',			// ACTION_RESTART
 	'V',			// ACTION_RUMBLE_TOGGLE
+	0,				// ACTION_EQUIP_LEFT_PREV（キー割り当てなし）
+	0,				// ACTION_EQUIP_LEFT_NEXT（キー割り当てなし）
+	0,				// ACTION_EQUIP_RIGHT_PREV（キー割り当てなし）
+	0,				// ACTION_EQUIP_RIGHT_NEXT（キー割り当てなし）
 	VK_LEFT,		// ACTION_TARGET_LEFT
 	VK_RIGHT,		// ACTION_TARGET_RIGHT
 };
@@ -29,6 +33,10 @@ static constexpr PAD_BUTTON ACTION_PAD_BUTTONS[ACTION_TARGET_LEFT] = {
 	PAD_BUTTON_R1,		// ACTION_ARM_RIGHT（R1）
 	PAD_BUTTON_OPTIONS,	// ACTION_RESTART（OPTIONS）
 	PAD_BUTTON_SHARE,	// ACTION_RUMBLE_TOGGLE（SHARE）
+	PAD_BUTTON_DPAD_LEFT,	// ACTION_EQUIP_LEFT_PREV（十字キー ←）
+	PAD_BUTTON_DPAD_RIGHT,	// ACTION_EQUIP_LEFT_NEXT（十字キー →）
+	PAD_BUTTON_SQUARE,	// ACTION_EQUIP_RIGHT_PREV（□）
+	PAD_BUTTON_CIRCLE,	// ACTION_EQUIP_RIGHT_NEXT（○）
 };
 
 // 移動のキー
@@ -56,6 +64,7 @@ static bool g_Press[ACTION_COUNT] = {};		// 今のフレームで押している
 static bool g_OldPress[ACTION_COUNT] = {};	// 1つ前のフレームで押していたか
 static ACTION_AXIS g_Move = {};				// 移動の向き
 static ACTION_AXIS g_Look = {};				// このフレームでカメラを回す角度
+static ACTION_EQUIP_KEY g_EquipKey{ -1, -1 };	// 数字キーを押した瞬間の装備選択
 static bool g_TargetPadReady = true;			// 遊びへ戻るまで次の切り替えを止める
 static float g_TargetMouseCooldown = 0.0f;	// マウスで次の切り替えを受け付けるまでの残り秒数
 struct TARGET_MOUSE_SAMPLE
@@ -74,6 +83,7 @@ void ActionInitialize(void)
 	}
 	g_Move = { 0.0f, 0.0f };
 	g_Look = { 0.0f, 0.0f };
+	g_EquipKey = { -1, -1 };
 	g_TargetPadReady = true;
 	g_TargetMouseCooldown = 0.0f;
 	g_TargetMouseSamples.clear();
@@ -124,9 +134,16 @@ void ActionUpdate(void)
 	// キーボードとパッドの「どちらかを押している」。押した瞬間・離した瞬間は、まとめたあとの状態で判定する
 	for (int i = 0; i < ACTION_TARGET_LEFT; i++) {
 		g_OldPress[i] = g_Press[i];
-		g_Press[i] = KeyboardIsPress(ACTION_KEYS[i]) || PadIsPress(ACTION_PAD_BUTTONS[i]);
+		g_Press[i] = (ACTION_KEYS[i] != 0 && KeyboardIsPress(ACTION_KEYS[i])) || PadIsPress(ACTION_PAD_BUTTONS[i]);
 	}
 	UpdateTargetInput(GameTimeGetDeltaTime());
+	g_EquipKey = { -1, -1 };
+	for (int number = 0; number < 6; ++number) {
+		if (KeyboardIsTrigger('1' + number)) {
+			g_EquipKey = { KeyboardIsPress(VK_SHIFT) ? 1 : 0, number };
+			break;
+		}
+	}
 
 	// ---- 移動 ----
 	// キーボードと左スティックの、強く入れているほう
@@ -178,4 +195,9 @@ ACTION_AXIS ActionGetMove(void)
 ACTION_AXIS ActionGetLook(void)
 {
 	return g_Look;
+}
+
+ACTION_EQUIP_KEY ActionGetEquipKey(void)
+{
+	return g_EquipKey;
 }

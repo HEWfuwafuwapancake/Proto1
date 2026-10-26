@@ -28,7 +28,7 @@ void PlayerFinalize(void);
 void PlayerUpdate(void);
 
 /// @brief ターゲット、いなければ歩く方向へ向き、腕の操作中は画面の正面へ向く
-/// @details PlayerUpdate・CameraUpdate のあと、TentacleUpdate の前に呼ぶ
+/// @details PlayerUpdate・CameraUpdate のあと、ArmUpdate の前に呼ぶ
 void PlayerUpdateFacing(void);
 
 /// @brief プレイヤーの左右の向きを取得する

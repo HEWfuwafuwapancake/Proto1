@@ -4,7 +4,7 @@
 #include "game/camera.h"
 #include "game/dummy.h"
 #include "game/player.h"
-#include "game/tentacle.h"
+#include "game/arm.h"
 #include "input/action.h"
 #include "input/pad.h"
 
@@ -40,7 +40,7 @@ void MatchUpdate(void)
 {
 	// やり直し：離す → 戻す（ダミーを戻す前に触腕を離す。カメラはプレイヤーを見るので、プレイヤーのあと）
 	if (ActionIsTrigger(ACTION_RESTART)) {
-		TentacleReset();
+		ArmReset();
 		PlayerInitialize();
 		DummyInitialize();
 		CameraInitialize();
@@ -60,7 +60,7 @@ void MatchUpdate(void)
 	if (event == MATCH_EVENT_TIME_UP) {
 		PadRumble(0.0f, 0.0f, 0.0f);
 		PadSetLightColor(FINISHED_LIGHT_COLOR[0], FINISHED_LIGHT_COLOR[1], FINISHED_LIGHT_COLOR[2]);
-		TentacleReset();	// つかんでいる敵を離してから止める
+		ArmReset();	// つかんでいる敵を離してから止める
 #ifdef _DEBUG
 		hal::dout << "試合：時間切れ（得点 " << g_Match.Score << "）" << std::endl;
 #endif

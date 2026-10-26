@@ -15,6 +15,10 @@ enum ACTION
 	ACTION_ARM_RIGHT,	///< 右の触腕：同上（R1／右クリック）
 	ACTION_RESTART,		///< やり直し（OPTIONS／R）
 	ACTION_RUMBLE_TOGGLE,	///< 振動のオン・オフの切り替え（SHARE／V）
+	ACTION_EQUIP_LEFT_PREV,	///< 左手を前の使える腕へ切り替える（十字キー ←。キー割り当てなし）
+	ACTION_EQUIP_LEFT_NEXT,	///< 左手を次の使える腕へ切り替える（十字キー →。キー割り当てなし）
+	ACTION_EQUIP_RIGHT_PREV,	///< 右手を前の使える腕へ切り替える（□。キー割り当てなし）
+	ACTION_EQUIP_RIGHT_NEXT,	///< 右手を次の使える腕へ切り替える（○。キー割り当てなし）
 	ACTION_TARGET_LEFT,	///< 左の次の敵へ切り替え（←／右スティック・マウスを左へ弾く。1フレームだけ）
 	ACTION_TARGET_RIGHT,	///< 右の次の敵へ切り替え（→／右スティック・マウスを右へ弾く。1フレームだけ）
 
@@ -50,3 +54,7 @@ ACTION_AXIS ActionGetMove(void);
 /// @brief このフレームでカメラを回す角度を取得する（マウスの移動量 ＋ 矢印キー ＋ 右スティック）
 /// @return X：左右に回す角度（ラジアン。右がプラス）、Y：上下に回す角度（ラジアン。上がプラス）
 ACTION_AXIS ActionGetLook(void);
+
+/// @brief このフレームで押した数字キー 1〜6 の装備選択を取得する（Shift 同時押しで右手）
+/// @return 手と腕の番号。入力なしは両方 -1。同時に複数押したときは小さい番号を使う
+ACTION_EQUIP_KEY ActionGetEquipKey(void);

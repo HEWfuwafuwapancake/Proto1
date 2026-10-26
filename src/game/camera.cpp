@@ -5,7 +5,7 @@
 #include "game/match.h"
 #include "game/stage.h"
 #include "game/dummy.h"
-#include "game/tentacle.h"
+#include "game/arm.h"
 #include <limits>
 #include "input/action.h"
 #include "physics/cameracalc.h"
@@ -101,7 +101,7 @@ static VEC3 LockFocusPoint(const VEC3& player, const CAMERA_FOCUS_TARGET* target
 
 static void UpdateLockTarget(const CAMERA_FOCUS_TARGET* targets)
 {
-	const bool holding = TentacleIsHolding();
+	const bool holding = ArmIsHolding();
 	if (holding) {
 		if (!g_WasHolding) {
 			g_SavedTarget = g_LockTarget;
@@ -302,7 +302,7 @@ float CameraGetYaw(void)
 int CameraGetTarget(void)
 {
 	// 触腕はカメラのあとに更新されるので、つかんだフレームから公開上も解除する。
-	return TentacleIsHolding() ? -1 : g_LockTarget;
+	return ArmIsHolding() ? -1 : g_LockTarget;
 }
 
 XMFLOAT3 CameraGetDirection(void)

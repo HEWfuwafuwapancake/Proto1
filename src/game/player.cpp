@@ -3,7 +3,7 @@
 #include "game/dummy.h"
 #include "game/player.h"
 #include "game/stage.h"
-#include "game/tentacle.h"
+#include "game/arm.h"
 #include "input/action.h"
 #include "physics/playercalc.h"
 #include "physics/cameracalc.h"
@@ -90,7 +90,7 @@ void PlayerUpdateFacing(void)
 		g_Yaw = CameraGetYaw();
 		return;
 	}
-	const bool armActive = TentacleIsActive()
+	const bool armActive = ArmIsActive()
 		|| ActionIsTrigger(ACTION_ARM_LEFT) || ActionIsTrigger(ACTION_ARM_RIGHT);
 	const int target = CameraGetTarget();
 	float targetYaw = g_Yaw;

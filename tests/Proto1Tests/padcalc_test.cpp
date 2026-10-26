@@ -119,15 +119,51 @@ namespace Proto1Tests
 				| PAD_BUTTON_SHARE | PAD_BUTTON_L3 | PAD_BUTTON_R3 | PAD_BUTTON_PS), state.Buttons);
 		}
 
-		// 方向キーはゲームのボタンにしない（下位4ビットが何でも、□×○△ にならない）
-		TEST_METHOD(Parse_DpadIsIgnored)
+		// 十字キーの8方向。ななめは2つの方向の同時押しにする。
+		TEST_METHOD(Parse_DpadEightDirections)
 		{
 			unsigned char report[64];
 			MakeNeutralReport(report);
-			report[5] = 0x07;	// 方向キーの左上
+			const unsigned int expected[] = {
+				PAD_BUTTON_DPAD_UP,
+				PAD_BUTTON_DPAD_UP | PAD_BUTTON_DPAD_RIGHT,
+				PAD_BUTTON_DPAD_RIGHT,
+				PAD_BUTTON_DPAD_RIGHT | PAD_BUTTON_DPAD_DOWN,
+				PAD_BUTTON_DPAD_DOWN,
+				PAD_BUTTON_DPAD_DOWN | PAD_BUTTON_DPAD_LEFT,
+				PAD_BUTTON_DPAD_LEFT,
+				PAD_BUTTON_DPAD_LEFT | PAD_BUTTON_DPAD_UP,
+			};
 			PAD_STATE state{};
-			Assert::IsTrue(PadCalcParseDs4UsbReport(report, 64, state));
-			Assert::AreEqual(0u, state.Buttons);
+			for (int direction = 0; direction < 8; ++direction) {
+				report[5] = (unsigned char)direction;
+				Assert::IsTrue(PadCalcParseDs4UsbReport(report, 64, state));
+				Assert::AreEqual(expected[direction], state.Buttons);
+				// 下位4ビットだけを読む。□×○△ と同時でも方向が変わらない。
+				report[5] |= 0xF0;
+				Assert::IsTrue(PadCalcParseDs4UsbReport(report, 64, state));
+				Assert::AreEqual(expected[direction] | PAD_BUTTON_SQUARE | PAD_BUTTON_CROSS
+					| PAD_BUTTON_CIRCLE | PAD_BUTTON_TRIANGLE, state.Buttons);
+			}
+		}
+
+		// 8〜15 は方向を押していない。直前の方向が残らず、ほかのボタンは読める。
+		TEST_METHOD(Parse_DpadNeutralAndReservedValues)
+		{
+			unsigned char report[64];
+			MakeNeutralReport(report);
+			PAD_STATE state{};
+			for (int direction = 8; direction < 16; ++direction) {
+				report[5] = 0x07;
+				Assert::IsTrue(PadCalcParseDs4UsbReport(report, 64, state));
+				report[5] = (unsigned char)direction;
+				Assert::IsTrue(PadCalcParseDs4UsbReport(report, 64, state));
+				Assert::AreEqual(0u, state.Buttons);
+				report[5] |= 0xF0;
+				Assert::IsTrue(PadCalcParseDs4UsbReport(report, 64, state));
+				Assert::AreEqual((unsigned int)(PAD_BUTTON_SQUARE | PAD_BUTTON_CROSS
+					| PAD_BUTTON_CIRCLE | PAD_BUTTON_TRIANGLE), state.Buttons);
+			}
 		}
 
 		// 読めないレポート（短い・番号が違う・null）は false で、状態を書き換えない
