@@ -18,7 +18,7 @@ extern "C" {
 //	調整用の値
 //------------------------------------------------------------------------------
 static constexpr float STICK_DEAD_ZONE = 0.12f;	// スティックの遊び（手を離したときのずれを 0 にする大きさ。0〜1）
-static constexpr bool RUMBLE_ENABLED = false;	// 振動（true：振動する、false：振動しない。ライトバーはどちらでも光る）
+static constexpr bool RUMBLE_ENABLED_AT_START = false;	// 起動したときの振動（true：振動する、false：振動しない）。ゲーム中は SHARE／V で切り替える
 
 // DUALSHOCK 4 の見分け方（USB の VID と PID）
 static constexpr DWORD DS4_VENDOR_ID = 0x054C;		// ソニー
@@ -37,6 +37,7 @@ static HANDLE g_OutputDevice = INVALID_HANDLE_VALUE; // 入力とは別に開く
 static bool g_OutputAttempted = false;   // 接続ごとに一度だけ開く（失敗しても入力は続ける）
 static bool g_OutputWarningShown = false;
 static PAD_RUMBLE g_Rumble = {};
+static bool g_RumbleEnabled = RUMBLE_ENABLED_AT_START;	// 振動するか（ライトバーはどちらでも光る）
 static float g_LightColor[3] = {};
 static std::vector<unsigned char> g_OutputReport;
 static std::vector<unsigned char> g_LastOutput;
@@ -269,13 +270,24 @@ ACTION_AXIS PadGetRightStick(void)
 
 void PadRumble(float smallMotor, float largeMotor, float seconds)
 {
-	if (!RUMBLE_ENABLED || g_OutputDevice == INVALID_HANDLE_VALUE || g_Window == NULL || GetForegroundWindow() != g_Window) {
+	if (!g_RumbleEnabled || g_OutputDevice == INVALID_HANDLE_VALUE || g_Window == NULL || GetForegroundWindow() != g_Window) {
 		g_Rumble = {};
 	}
 	else {
 		PadCalcRumble(g_Rumble, smallMotor, largeMotor, seconds);
 	}
 	SendOutput();
+}
+
+void PadSetRumbleEnabled(bool enabled)
+{
+	g_RumbleEnabled = enabled;
+	if (!enabled) PadRumble(0.0f, 0.0f, 0.0f);
+}
+
+bool PadIsRumbleEnabled(void)
+{
+	return g_RumbleEnabled;
 }
 
 void PadSetLightColor(float red, float green, float blue)

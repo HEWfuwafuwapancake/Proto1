@@ -31,6 +31,10 @@
 static constexpr char WINDOW_CLASS[] = "Proto1"; // メインウィンドウクラス名
 static constexpr char TITLE[] = "Proto1";        // タイトルバーのテキスト
 
+// 振動をオンにしたときに知らせる短い振動（強さ 0〜1・秒）
+static constexpr float RUMBLE_ON_NOTICE_STRENGTH = 0.5f;
+static constexpr float RUMBLE_ON_NOTICE_SECONDS = 0.2f;
+
 
 /*------------------------------------------------------------------------------
 	ウィンドウプロシージャ プロトタイプ宣言
@@ -39,11 +43,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 static DWORD g_Fps = 0;	// 直近1秒の FPS
 
-/// タイトルバーに FPS を出す（残り時間・得点は画面に出す。hud.cpp）
+/// タイトルバーに FPS と振動のオン・オフを出す（残り時間・得点は画面に出す。hud.cpp）
 static void RefreshTitle(HWND hWnd)
 {
-	char title[64];
-	sprintf_s(title, "%s  FPS: %lu", TITLE, g_Fps);
+	char title[96];
+	sprintf_s(title, "%s  FPS: %lu  振動: %s（SHARE / V）", TITLE, g_Fps, PadIsRumbleEnabled() ? "オン" : "オフ");
 	SetWindowText(hWnd, title);
 }
 
@@ -326,6 +330,12 @@ void Update(void)
 
 	//キーボード・マウスの状態を「行動」に変える（ロックの切り替えのあとなので、切り替えた瞬間はマウスの移動量が 0）
 	ActionUpdate();
+
+	//SHARE / V で振動のオン・オフを切り替える（オンにしたら短く振動して知らせる。タイトルバーにも出す）
+	if (ActionIsTrigger(ACTION_RUMBLE_TOGGLE)) {
+		PadSetRumbleEnabled(!PadIsRumbleEnabled());
+		if (PadIsRumbleEnabled()) PadRumble(RUMBLE_ON_NOTICE_STRENGTH, RUMBLE_ON_NOTICE_STRENGTH, RUMBLE_ON_NOTICE_SECONDS);
+	}
 
 	//プレイヤーを動かし、ダミーがプレイヤーに押されてから、カメラがプレイヤーを追いかける
 	//（時間切れのあとは、プレイヤー・ダミー・触腕を止める。カメラは回せる）

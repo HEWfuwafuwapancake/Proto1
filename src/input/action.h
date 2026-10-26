@@ -14,6 +14,7 @@ enum ACTION
 	ACTION_ARM_LEFT,	///< 左の触腕：伸ばしてつかむ／つかんでいる間にもう一度で投げる（L1／左クリック）
 	ACTION_ARM_RIGHT,	///< 右の触腕：同上（R1／右クリック）
 	ACTION_RESTART,		///< やり直し（OPTIONS／R）
+	ACTION_RUMBLE_TOGGLE,	///< 振動のオン・オフの切り替え（SHARE／V）
 	ACTION_TARGET_LEFT,	///< 左の次の敵へ切り替え（←／右スティック・マウスを左へ弾く。1フレームだけ）
 	ACTION_TARGET_RIGHT,	///< 右の次の敵へ切り替え（→／右スティック・マウスを右へ弾く。1フレームだけ）
 
