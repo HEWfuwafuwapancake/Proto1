@@ -82,12 +82,14 @@
     <ClCompile Include="..\..\src\input\actioncalc.cpp" />
     <ClCompile Include="..\..\src\input\padcalc.cpp" />
     <ClCompile Include="..\..\src\physics\cameracalc.cpp" />
+    <ClCompile Include="..\..\src\physics\armcalc.cpp" />
     <ClCompile Include="..\..\src\physics\collision.cpp" />
     <ClCompile Include="..\..\src\physics\dummycalc.cpp" />
     <ClCompile Include="..\..\src\physics\knockbackcalc.cpp" />
     <ClCompile Include="..\..\src\physics\playercalc.cpp" />
     <ClCompile Include="..\..\src\physics\stagecalc.cpp" />
     <ClCompile Include="actioncalc_test.cpp" />
+    <ClCompile Include="armcalc_test.cpp" />
     <ClCompile Include="cameracalc_test.cpp" />
     <ClCompile Include="collision_test.cpp" />
     <ClCompile Include="dummycalc_test.cpp" />

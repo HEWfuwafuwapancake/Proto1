@@ -11,6 +11,13 @@ struct ACTION_AXIS
 	float Y;	///< 前後・上下（前・上がプラス）
 };
 
+/// @brief 数字キーを押した瞬間の装備の直接選択（DirectX・Windows に依存しない）
+struct ACTION_EQUIP_KEY
+{
+	int Hand; ///< 選ぶ手（左 0・右 1。入力なしは -1）
+	int Number; ///< 選ぶ腕の番号（0〜5。入力なしは -1）
+};
+
 /// @brief 4つのキーから移動の向きを作る
 /// @details 斜めは長さを 1 に直す（斜めだけ速くならないように）。反対のキーを同時に押すと、その向きは 0
 /// @param forward 前のキーを押しているか（true：押している、false：押していない）

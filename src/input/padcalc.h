@@ -22,6 +22,10 @@ enum PAD_BUTTON : unsigned int
 	PAD_BUTTON_L3 = 1u << 10,		///< L3（左スティックの押し込み）
 	PAD_BUTTON_R3 = 1u << 11,		///< R3（右スティックの押し込み）
 	PAD_BUTTON_PS = 1u << 12,		///< PS ボタン
+	PAD_BUTTON_DPAD_UP = 1u << 13,	///< 十字キー上
+	PAD_BUTTON_DPAD_RIGHT = 1u << 14,	///< 十字キー右
+	PAD_BUTTON_DPAD_DOWN = 1u << 15,	///< 十字キー下
+	PAD_BUTTON_DPAD_LEFT = 1u << 16,	///< 十字キー左
 };
 
 /// @brief パッド1台の状態

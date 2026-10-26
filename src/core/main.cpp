@@ -17,7 +17,7 @@
 #include "game/match.h"
 #include "game/player.h"
 #include "game/stage.h"
-#include "game/tentacle.h"
+#include "game/arm.h"
 #include "render/number2d.h"
 #include "render/shape.h"
 #include "render/model.h"
@@ -43,11 +43,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 static DWORD g_Fps = 0;	// 直近1秒の FPS
 
-/// タイトルバーに FPS と振動のオン・オフを出す（残り時間・得点は画面に出す。hud.cpp）
+/// タイトルバーに FPS・装備・振動のオン・オフを出す（残り時間・得点は画面に出す。hud.cpp）
 static void RefreshTitle(HWND hWnd)
 {
-	char title[96];
-	sprintf_s(title, "%s  FPS: %lu  振動: %s（SHARE / V）", TITLE, g_Fps, PadIsRumbleEnabled() ? "オン" : "オフ");
+	char title[192];
+	sprintf_s(title, "%s  FPS: %lu  左：%s 右：%s  振動: %s（SHARE / V）", TITLE, g_Fps,
+		ArmGetName(ArmGetType(0)), ArmGetName(ArmGetType(1)), PadIsRumbleEnabled() ? "オン" : "オフ");
 	SetWindowText(hWnd, title);
 }
 
@@ -104,6 +105,7 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
 	}
 
 
+	RefreshTitle(hWnd);
 	ShowWindow(hWnd, nCmdShow);
 	UpdateWindow(hWnd);
 
@@ -160,7 +162,10 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
 				dwExecLastTime = dwCurrentTime;	// 大きく遅れたとき（ウィンドウをつかんで動かしていた など）は追いつこうとせず仕切り直す
 			}
 
+			const ARM_TYPE oldLeft = ArmGetType(0);
+			const ARM_TYPE oldRight = ArmGetType(1);
 			Update();			// 更新処理
+			if (oldLeft != ArmGetType(0) || oldRight != ArmGetType(1)) RefreshTitle(hWnd);
 			Draw();				// 描画処理
 
 			dwFrameCount++;		// 処理回数のカウントを加算
@@ -269,7 +274,7 @@ bool Initialize(HWND hWnd)
 	PlayerInitialize();
 	DummyInitialize();
 	CameraInitialize();
-	TentacleInitialize();
+	ArmInitialize();
 	MatchInitialize();
 
 	//画面表示（2D の四角・数字・文字の部品のあとに、残り時間・スコアなどの表示）
@@ -287,7 +292,7 @@ void Finalize(void)
 	Number2DFinalize();
 
 	MatchFinalize();
-	TentacleFinalize();
+	ArmFinalize();
 	CameraFinalize();
 	DummyFinalize();
 	PlayerFinalize();
@@ -347,8 +352,9 @@ void Update(void)
 	CameraUpdate();
 	if (MatchIsPlaying()) {
 		PlayerUpdateFacing();	// 腕の入力と同じフレームのカメラへ向いてから、肩の位置を計算する
-		TentacleUpdate();
 	}
+	// 装備切り替えは時間切れのあとも受け付け、腕の動きは試合中だけ更新する。
+	ArmUpdate(MatchIsPlaying());
 	//試合の流れ（場外の回数を数える・時間切れ・やり直し）はダミーが動いたあとに呼ぶ
 	MatchUpdate();
 	HudUpdate();
@@ -375,7 +381,7 @@ void Draw(void)
 	StageDraw();
 	PlayerDraw();
 	DummyDraw();
-	TentacleDraw();
+	ArmDraw();
 
 	// ---- 2D描画（UI）：3Dの上に重ねるので最後に描く ----
 	SetDepthEnable(false);

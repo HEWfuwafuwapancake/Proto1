@@ -75,6 +75,11 @@ bool PadCalcParseDs4UsbReport(const unsigned char* data, int size, PAD_STATE& st
 
 	// ボタン
 	unsigned int buttons = 0;
+	const unsigned char dpad = data[5] & 0x0F;
+	if (dpad == 0 || dpad == 1 || dpad == 7) buttons |= PAD_BUTTON_DPAD_UP;
+	if (dpad == 1 || dpad == 2 || dpad == 3) buttons |= PAD_BUTTON_DPAD_RIGHT;
+	if (dpad == 3 || dpad == 4 || dpad == 5) buttons |= PAD_BUTTON_DPAD_DOWN;
+	if (dpad == 5 || dpad == 6 || dpad == 7) buttons |= PAD_BUTTON_DPAD_LEFT;
 	if (data[5] & 0x10) buttons |= PAD_BUTTON_SQUARE;
 	if (data[5] & 0x20) buttons |= PAD_BUTTON_CROSS;
 	if (data[5] & 0x40) buttons |= PAD_BUTTON_CIRCLE;

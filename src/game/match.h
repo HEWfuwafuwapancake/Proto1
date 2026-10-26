@@ -14,7 +14,7 @@ void MatchInitialize(void);
 void MatchFinalize(void);
 
 /// @brief やり直しの入力を調べてから、場外の回数を数えて時間を進める
-/// @details 毎フレーム、DummyUpdate のあと（TentacleUpdate のあと）に呼ぶ。やり直すときは触腕・プレイヤー・ダミー・カメラを最初に戻す
+/// @details 毎フレーム、DummyUpdate のあと（ArmUpdate のあと）に呼ぶ。やり直すときは触腕・プレイヤー・ダミー・カメラを最初に戻す
 void MatchUpdate(void);
 
 /// @brief 試合中か取得する（時間切れのあとは、プレイヤー・ダミー・触腕を動かさないために使う）

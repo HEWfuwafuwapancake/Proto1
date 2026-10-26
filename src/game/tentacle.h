@@ -5,19 +5,25 @@
 
 /// @brief 左右の触腕を待機状態にする（ダミー初期化後）
 void TentacleInitialize(void);
-/// @brief つかんでいる敵をダメージなしで離し、左右の触腕を待機状態に戻す（時間切れ・やり直しのとき）
-void TentacleReset(void);
+/// @brief つかんでいる敵をダメージなしで離し、片手の触腕を待機状態に戻す
+/// @param hand 左 0・右 1
+void TentacleResetHand(int hand);
 /// @brief 保持している敵を離して終了する
 void TentacleFinalize(void);
-/// @brief カメラ更新後に、入力・命中・保持・投げを更新する
-void TentacleUpdate(void);
-/// @brief 球を並べて左右の触腕を描く
-void TentacleDraw(void);
+/// @brief カメラ更新後に、片手の入力・命中・保持・投げを更新する
+/// @param hand 左 0・右 1
+/// @param trigger 押した瞬間かを設定する（true：押した瞬間、false：それ以外）
+void TentacleUpdateHand(int hand, bool trigger);
+/// @brief 片手の触腕を描く（OBJ をつなぐ。読み込み失敗時は球）
+/// @param hand 左 0・右 1
+void TentacleDrawHand(int hand);
 
-/// @brief どちらかの腕が出ているか返す（キャラを画面の正面へ向け続けるため）
-/// @return 左右いずれかが伸長・保持・収縮中ならtrue、両方とも待機中ならfalse
-bool TentacleIsActive(void);
+/// @brief 片手の腕が出ているか返す（キャラを画面の正面へ向け続けるため）
+/// @param hand 左 0・右 1
+/// @return 伸長・保持・収縮中なら true、待機中なら false
+bool TentacleIsActiveHand(int hand);
 
-/// @brief どちらかの腕が敵をつかんでいるか返す（No.33 のロックオン停止に使う）
-/// @return 左右いずれかの腕が保持中ならtrue、どちらも保持中でなければfalse
-bool TentacleIsHolding(void);
+/// @brief 片手の腕が敵をつかんでいるか返す（No.33 のロックオン停止に使う）
+/// @param hand 左 0・右 1
+/// @return 保持中なら true、それ以外は false
+bool TentacleIsHoldingHand(int hand);
