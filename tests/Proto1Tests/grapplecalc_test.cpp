@@ -1,5 +1,6 @@
 ﻿#include "CppUnitTest.h"
 #include "physics/grapplecalc.h"
+#include "physics/armcalc.h"
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
@@ -273,6 +274,51 @@ namespace Proto1Tests
 			// 箱は元モデルの -X 側。左右の鏡写しと逆向きのひねりで、両方とも下。
 			AssertPoint({ 0, -1, 0 }, GrappleCalcModelPoint({ -1, 0, 0 }, {}, { 0, 0, 1 }, 1, false, HALF_PI));
 			AssertPoint({ 0, -1, 0 }, GrappleCalcModelPoint({ -1, 0, 0 }, {}, { 0, 0, 1 }, 1, true, -HALF_PI));
+		}
+
+		TEST_METHOD(ModelPoint_StraightElbowMatchesFormerBaseForBothHands)
+		{
+			const VEC3 shoulder{ 2, 3, -4 };
+			const VEC3 directions[] = { { 0, 0, 1 }, { 1, 0, 0 }, { 0, 0.6f, -0.8f } };
+			for (const VEC3& direction : directions) {
+				for (int hand = 0; hand < 2; ++hand) {
+					const bool mirror = hand == 0;
+					const float roll = mirror ? -HALF_PI : HALF_PI;
+					const VEC3 facing = Vec3Add(shoulder, direction);
+					const VEC3 elbow = GrappleCalcModelPoint({ -1.614f, -10.900f, 0.241f },
+						shoulder, facing, 0.08f, mirror, roll);
+					const VEC3 lowerFacing = Vec3Add(elbow, direction);
+					AssertPoint(GrappleCalcModelPoint({ -1.614f, -22.720f, 0.241f }, shoulder, facing, 0.08f, mirror, roll),
+						GrappleCalcModelPoint({ 0, -11.820f, 0 }, elbow, lowerFacing, 0.08f, mirror, roll));
+					AssertPoint(GrappleCalcModelPoint({ -1.614f, -25.122f, 0.241f }, shoulder, facing, 0.08f, mirror, roll),
+						GrappleCalcModelPoint({ 0, -14.222f, 0 }, elbow, lowerFacing, 0.08f, mirror, roll));
+					if (direction.Z == 1.0f) {
+						AssertPoint({ 2.0f + (mirror ? 0.01928f : -0.01928f), 2.87088f, -3.128f }, elbow);
+					}
+				}
+			}
+		}
+
+		TEST_METHOD(ModelPoint_BendingForearmRaisesHookForBothHands)
+		{
+			const VEC3 shoulder{ 2, 3, -4 };
+			const VEC3 forward{ 0, 0, 1 };
+			const VEC3 upper = ArmCalcPitchDirection(forward, -HALF_PI * 0.5f);
+			const VEC3 lower = ArmCalcPitchDirection(forward, 0.0f);
+			for (int hand = 0; hand < 2; ++hand) {
+				const bool mirror = hand == 0;
+				const float roll = mirror ? -HALF_PI : HALF_PI;
+				const VEC3 elbow = GrappleCalcModelPoint({ -1.614f, -10.900f, 0.241f },
+					shoulder, Vec3Add(shoulder, upper), 0.08f, mirror, roll);
+				const VEC3 straightHook = GrappleCalcModelPoint({ 0, -14.222f, 0 },
+					elbow, Vec3Add(elbow, upper), 0.08f, mirror, roll);
+				const VEC3 bentHook = GrappleCalcModelPoint({ 0, -14.222f, 0 },
+					elbow, Vec3Add(elbow, lower), 0.08f, mirror, roll);
+				Assert::IsTrue(bentHook.Y > straightHook.Y);
+				Assert::AreEqual(elbow.Y, bentHook.Y, GRAPPLE_EPSILON);
+				Assert::AreEqual(14.222f * 0.08f, Vec3Length(Vec3Sub(bentHook, elbow)), GRAPPLE_EPSILON);
+				Assert::AreEqual(14.222f * 0.08f * sqrtf(0.5f), bentHook.Y - straightHook.Y, GRAPPLE_EPSILON);
+			}
 		}
 	};
 }

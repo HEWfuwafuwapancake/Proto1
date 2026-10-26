@@ -5,6 +5,7 @@
 #include "game/stage.h"
 #include "core/gametime.h"
 #include "input/pad.h"
+#include "physics/armcalc.h"
 #include "physics/grapplecalc.h"
 #include "render/model.h"
 #include "render/shape.h"
@@ -18,11 +19,15 @@ static constexpr float MODEL_SCALE = 0.08f;
 static constexpr float WIRE_RADIUS = 0.03f;
 static constexpr float GRAPPLE_ROLL = XMConvertToRadians(90.0f);
 static constexpr bool GRAPPLE_MIRROR_LEFT = true;
-static constexpr float BASE_LENGTH = 22.72f;
+static constexpr float UPPER_LENGTH = 11.352817f;
+static constexpr float LOWER_LENGTH = 11.820275f;
 static constexpr float HOOK_LENGTH = 6.11f;
-// No.34 の原点の差。Maya の Z = -0.241 は OBJ 読み込み後の +0.241 に直して使う。
-static constexpr VEC3 HOOK_OFFSET{ -1.614f, -25.122f, 0.241f };
-static constexpr VEC3 WIRE_OFFSET{ -1.614f, -22.720f, 0.241f };
+// Maya の肩→ひじ→各取付点（cm）。Z は OBJ 読み込み後の向き。
+static constexpr VEC3 UPPER_ELBOW_OFFSET{ -1.614f, -10.900f, 0.241f };
+static constexpr VEC3 ELBOW_WIRE_OFFSET{ 0.0f, -11.820f, 0.0f };
+static constexpr VEC3 ELBOW_HOOK_OFFSET{ 0.0f, -14.222f, 0.0f };
+static constexpr float GRAPPLE_IDLE_ELBOW = XMConvertToRadians(45.0f);
+static constexpr float GRAPPLE_STRAIGHTEN_SECONDS = 0.1f;
 // 触腕の「つかむ」「投げる」と同じ強さ・秒数。
 static constexpr float ATTACH_RUMBLE_SMALL = 0.4f;
 static constexpr float ATTACH_RUMBLE_LARGE = 0.0f;
@@ -32,7 +37,9 @@ static constexpr float HIT_RUMBLE_LARGE = 0.6f;
 static constexpr float HIT_RUMBLE_SECONDS = 0.15f;
 
 static GRAPPLE g_Arms[2];
-static int g_BaseModel[2] = { -1, -1 };
+static float g_Straighten[2] = {}; // 描画だけのまっすぐ度（0：待機の構え、1：フックの向き）。
+static int g_UpperModel[2] = { -1, -1 };
+static int g_LowerModel[2] = { -1, -1 };
 static int g_HookModel[2] = { -1, -1 };
 static int g_PullingHand = -1;
 
@@ -44,6 +51,7 @@ static bool MirrorHand(int hand)
 static void ResetHand(int hand)
 {
 	GrappleCalcReset(g_Arms[hand]);
+	g_Straighten[hand] = 0.0f;
 	if (g_PullingHand == hand) {
 		g_PullingHand = -1;
 		PlayerSetPulled(false);
@@ -55,7 +63,9 @@ static void Initialize(void)
 	g_PullingHand = -1;
 	for (int hand = 0; hand < 2; ++hand) {
 		GrappleCalcReset(g_Arms[hand]);
-		g_BaseModel[hand] = ModelLoad("assets/models/arm_grapple_base.obj", MirrorHand(hand));
+		g_Straighten[hand] = 0.0f;
+		g_UpperModel[hand] = ModelLoad("assets/models/arm_grapple_upper.obj", MirrorHand(hand));
+		g_LowerModel[hand] = ModelLoad("assets/models/arm_grapple_lower.obj", MirrorHand(hand));
 		g_HookModel[hand] = ModelLoad("assets/models/arm_grapple_hook.obj", MirrorHand(hand));
 	}
 }
@@ -112,6 +122,11 @@ static void UpdateHand(int hand, bool trigger)
 			PlayerSetPulled(false);
 		}
 	}
+	// 動きの状態には触れず、描画の構えだけを一定の速さで変える。
+	const float step = fmaxf(0.0f, GameTimeGetDeltaTime()) / GRAPPLE_STRAIGHTEN_SECONDS;
+	g_Straighten[hand] = arm.State == GRAPPLE_IDLE
+		? fmaxf(0.0f, g_Straighten[hand] - step)
+		: fminf(1.0f, g_Straighten[hand] + step);
 }
 
 static void DrawHand(int hand)
@@ -120,18 +135,29 @@ static void DrawHand(int hand)
 	const VEC3 origin = ArmGetShoulder(hand);
 	const float yaw = PlayerGetYaw();
 	const VEC3 forward{ sinf(yaw), 0.0f, cosf(yaw) };
-	const VEC3 facing = arm.State == GRAPPLE_IDLE ? Vec3Add(origin, forward) : arm.Hook;
+	// 距離によってまぜ方が変わらないよう、フックへの向きも先に長さ 1 にする。
+	const VEC3 hookDirection = arm.State == GRAPPLE_IDLE ? forward
+		: ArmCalcBlendDirection(forward, Vec3Sub(arm.Hook, origin), 1.0f);
+	const VEC3 upperDirection = ArmCalcBlendDirection(
+		ArmCalcPitchDirection(forward, ArmGetRestPitch()), hookDirection, g_Straighten[hand]);
+	const VEC3 lowerDirection = ArmCalcBlendDirection(
+		ArmCalcPitchDirection(forward, ArmGetRestPitch() + GRAPPLE_IDLE_ELBOW), hookDirection, g_Straighten[hand]);
 	const bool mirror = MirrorHand(hand);
 	const float roll = mirror ? -GRAPPLE_ROLL : GRAPPLE_ROLL;
 	const XMFLOAT4 color = ArmGetColor(hand, arm.State == GRAPPLE_PULLING);
-	// 付け根は伸縮させず、フックへの向きだけを使う。
-	const VEC3 baseEnd = GrappleCalcModelPoint({ 0, -BASE_LENGTH, 0 }, origin, facing, MODEL_SCALE, false, roll);
-	ArmDrawPiece(g_BaseModel[hand], origin, baseEnd, BASE_LENGTH, MODEL_SCALE, color, roll);
-	const VEC3 wire = GrappleCalcModelPoint(WIRE_OFFSET, origin, facing, MODEL_SCALE, mirror, roll);
+	// 各部品は伸縮させず、作者が置いたひじをつないで描く。
+	const VEC3 upperFacing = Vec3Add(origin, upperDirection);
+	const VEC3 upperEnd = GrappleCalcModelPoint({ 0, -UPPER_LENGTH, 0 }, origin, upperFacing, MODEL_SCALE, false, roll);
+	ArmDrawPiece(g_UpperModel[hand], origin, upperEnd, UPPER_LENGTH, MODEL_SCALE, color, roll);
+	const VEC3 elbow = GrappleCalcModelPoint(UPPER_ELBOW_OFFSET, origin, upperFacing, MODEL_SCALE, mirror, roll);
+	const VEC3 lowerFacing = Vec3Add(elbow, lowerDirection);
+	const VEC3 lowerEnd = GrappleCalcModelPoint({ 0, -LOWER_LENGTH, 0 }, elbow, lowerFacing, MODEL_SCALE, false, roll);
+	ArmDrawPiece(g_LowerModel[hand], elbow, lowerEnd, LOWER_LENGTH, MODEL_SCALE, color, roll);
+	const VEC3 wire = GrappleCalcModelPoint(ELBOW_WIRE_OFFSET, elbow, lowerFacing, MODEL_SCALE, mirror, roll);
 	const VEC3 hook = arm.State == GRAPPLE_IDLE
-		? GrappleCalcModelPoint(HOOK_OFFSET, origin, facing, MODEL_SCALE, mirror, roll) : arm.Hook;
-	// フックも付け根と同じ進む向き・ひねりで置く。
-	const VEC3 hookEnd = Vec3Add(hook, Vec3Scale(Vec3Sub(baseEnd, origin), HOOK_LENGTH / BASE_LENGTH));
+		? GrappleCalcModelPoint(ELBOW_HOOK_OFFSET, elbow, lowerFacing, MODEL_SCALE, mirror, roll) : arm.Hook;
+	// フックは前腕と同じ向き・ひねりで置く。
+	const VEC3 hookEnd = Vec3Add(hook, Vec3Scale(lowerDirection, HOOK_LENGTH * MODEL_SCALE));
 	ArmDrawPiece(g_HookModel[hand], hook, hookEnd, HOOK_LENGTH, MODEL_SCALE, color, roll);
 	ShapeDrawCylinder({ wire.X, wire.Y, wire.Z }, { hook.X, hook.Y, hook.Z }, WIRE_RADIUS, color);
 }
