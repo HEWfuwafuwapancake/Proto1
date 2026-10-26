@@ -101,5 +101,76 @@ namespace Proto1Tests
 			Assert::AreEqual(-0.2f, result.X, ACTION_EPSILON);
 			Assert::AreEqual(0.1f, result.Y, ACTION_EPSILON);
 		}
+
+		// 切り替えモードのキーだけでは選ばず、モードに入る
+		TEST_METHOD(EquipKey_ModeKeyEntersModeWithoutSelecting)
+		{
+			int mode = -1;
+			ACTION_EQUIP_KEY key = ActionCalcEquipKey(mode, false, true, -1, false);
+			Assert::AreEqual(1, mode);
+			Assert::AreEqual(-1, key.Hand);
+			Assert::AreEqual(-1, key.Number);
+			mode = -1;
+			ActionCalcEquipKey(mode, true, false, -1, false);
+			Assert::AreEqual(0, mode);
+		}
+
+		// モード中の数字キーはその手を選び、モードを抜ける（Shift は見ない）
+		TEST_METHOD(EquipKey_NumberInModeSelectsThatHandAndLeavesMode)
+		{
+			int mode = 1;
+			ACTION_EQUIP_KEY key = ActionCalcEquipKey(mode, false, false, 2, false);
+			Assert::AreEqual(1, key.Hand);
+			Assert::AreEqual(2, key.Number);
+			Assert::AreEqual(-1, mode);
+			mode = 0;
+			key = ActionCalcEquipKey(mode, false, false, 1, true);
+			Assert::AreEqual(0, key.Hand);
+			Assert::AreEqual(1, key.Number);
+			Assert::AreEqual(-1, mode);
+		}
+
+		// 同じモードキーをもう一度押すと抜け、別のキーなら乗りかえる。両方押したら右手
+		TEST_METHOD(EquipKey_ModeKeysToggleAndSwitch)
+		{
+			int mode = 0;
+			ActionCalcEquipKey(mode, true, false, -1, false);
+			Assert::AreEqual(-1, mode);
+			mode = 0;
+			ActionCalcEquipKey(mode, false, true, -1, false);
+			Assert::AreEqual(1, mode);
+			const int starts[] = { -1, 0, 1 };
+			for (int start : starts) {
+				mode = start;
+				ActionCalcEquipKey(mode, true, true, -1, false);
+				Assert::AreEqual(1, mode);
+			}
+		}
+
+		// モードキーと数字キーを同じフレームで押しても、その手を選ぶ
+		TEST_METHOD(EquipKey_ModeKeyAndNumberSameFrame)
+		{
+			int mode = -1;
+			const ACTION_EQUIP_KEY key = ActionCalcEquipKey(mode, true, false, 3, true);
+			Assert::AreEqual(0, key.Hand);
+			Assert::AreEqual(3, key.Number);
+			Assert::AreEqual(-1, mode);
+		}
+
+		// モードでないときは今までどおり（Shift なしで左手・ありで右手）
+		TEST_METHOD(EquipKey_NoModeUsesShift)
+		{
+			int mode = -1;
+			ACTION_EQUIP_KEY key = ActionCalcEquipKey(mode, false, false, 0, false);
+			Assert::AreEqual(0, key.Hand);
+			Assert::AreEqual(0, key.Number);
+			key = ActionCalcEquipKey(mode, false, false, 5, true);
+			Assert::AreEqual(1, key.Hand);
+			Assert::AreEqual(5, key.Number);
+			Assert::AreEqual(-1, mode);
+			key = ActionCalcEquipKey(mode, false, false, -1, true);
+			Assert::AreEqual(-1, key.Hand);
+			Assert::AreEqual(-1, key.Number);
+		}
 	};
 }

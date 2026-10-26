@@ -45,6 +45,10 @@ static constexpr int MOVE_KEY_BACK = 'S';
 static constexpr int MOVE_KEY_LEFT = 'A';
 static constexpr int MOVE_KEY_RIGHT = 'D';
 
+// 腕の切り替えモードのキー（押したあと数字キー 1〜6 で、その手の腕を選ぶ）
+static constexpr int EQUIP_MODE_KEY_LEFT = 'Q';
+static constexpr int EQUIP_MODE_KEY_RIGHT = 'E';
+
 // マウス感度：マウスを1カウント動かしたときに回る角度（ラジアン）
 // 大きくすると速く回る。0.001f（ゆっくり）〜 0.005f（速い）くらいが目安
 static constexpr float MOUSE_SENSITIVITY = 0.00125f;
@@ -65,6 +69,7 @@ static bool g_OldPress[ACTION_COUNT] = {};	// 1つ前のフレームで押して
 static ACTION_AXIS g_Move = {};				// 移動の向き
 static ACTION_AXIS g_Look = {};				// このフレームでカメラを回す角度
 static ACTION_EQUIP_KEY g_EquipKey{ -1, -1 };	// 数字キーを押した瞬間の装備選択
+static int g_EquipMode = -1;					// 腕の切り替えモード（左 0・右 1・モードなし -1）
 static bool g_TargetPadReady = true;			// 遊びへ戻るまで次の切り替えを止める
 static float g_TargetMouseCooldown = 0.0f;	// マウスで次の切り替えを受け付けるまでの残り秒数
 struct TARGET_MOUSE_SAMPLE
@@ -84,6 +89,7 @@ void ActionInitialize(void)
 	g_Move = { 0.0f, 0.0f };
 	g_Look = { 0.0f, 0.0f };
 	g_EquipKey = { -1, -1 };
+	g_EquipMode = -1;
 	g_TargetPadReady = true;
 	g_TargetMouseCooldown = 0.0f;
 	g_TargetMouseSamples.clear();
@@ -137,13 +143,15 @@ void ActionUpdate(void)
 		g_Press[i] = (ACTION_KEYS[i] != 0 && KeyboardIsPress(ACTION_KEYS[i])) || PadIsPress(ACTION_PAD_BUTTONS[i]);
 	}
 	UpdateTargetInput(GameTimeGetDeltaTime());
-	g_EquipKey = { -1, -1 };
+	int pressed = -1;
 	for (int number = 0; number < 6; ++number) {
 		if (KeyboardIsTrigger('1' + number)) {
-			g_EquipKey = { KeyboardIsPress(VK_SHIFT) ? 1 : 0, number };
+			pressed = number;
 			break;
 		}
 	}
+	g_EquipKey = ActionCalcEquipKey(g_EquipMode, KeyboardIsTrigger(EQUIP_MODE_KEY_LEFT),
+		KeyboardIsTrigger(EQUIP_MODE_KEY_RIGHT), pressed, KeyboardIsPress(VK_SHIFT));
 
 	// ---- 移動 ----
 	// キーボードと左スティックの、強く入れているほう
@@ -200,4 +208,9 @@ ACTION_AXIS ActionGetLook(void)
 ACTION_EQUIP_KEY ActionGetEquipKey(void)
 {
 	return g_EquipKey;
+}
+
+int ActionGetEquipMode(void)
+{
+	return g_EquipMode;
 }

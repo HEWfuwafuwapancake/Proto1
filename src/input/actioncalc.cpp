@@ -35,3 +35,13 @@ ACTION_AXIS ActionCalcCombineAxis(ACTION_AXIS a, ACTION_AXIS b)
 {
 	return LengthSq(b) > LengthSq(a) ? b : a;
 }
+
+ACTION_EQUIP_KEY ActionCalcEquipKey(int& mode, bool leftMode, bool rightMode, int number, bool shift)
+{
+	if (leftMode) mode = mode == 0 ? -1 : 0;
+	if (rightMode) mode = mode == 1 ? -1 : 1;
+	if (number < 0) return { -1, -1 };
+	const int hand = mode >= 0 ? mode : (shift ? 1 : 0);
+	mode = -1;
+	return { hand, number };
+}

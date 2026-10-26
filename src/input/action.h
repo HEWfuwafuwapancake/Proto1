@@ -55,6 +55,10 @@ ACTION_AXIS ActionGetMove(void);
 /// @return X：左右に回す角度（ラジアン。右がプラス）、Y：上下に回す角度（ラジアン。上がプラス）
 ACTION_AXIS ActionGetLook(void);
 
-/// @brief このフレームで押した数字キー 1〜6 の装備選択を取得する（Shift 同時押しで右手）
+/// @brief このフレームで押した数字キー 1〜6 の装備選択を取得する（Q・E の切り替えモード中はその手。モードでなければ Shift 同時押しで右手）
 /// @return 手と腕の番号。入力なしは両方 -1。同時に複数押したときは小さい番号を使う
 ACTION_EQUIP_KEY ActionGetEquipKey(void);
+
+/// @brief 腕の切り替えモード（Q：左手、E：右手）を取得する
+/// @return 左 0・右 1・モードなし -1
+int ActionGetEquipMode(void);

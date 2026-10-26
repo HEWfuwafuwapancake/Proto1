@@ -4,13 +4,15 @@
 **作業を始めるときに読み、作業を終えるときに更新します。** タスクの一覧は [tasks.md](tasks.md)、同じ内容を Notion の
 「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」データベースでも管理しています。
 
-- 最終更新：2026-10-26（Claude。Shota の共有 Proto1、No.41 を確かめて PR・マージ。次は Codex が No.42）
+- 最終更新：2026-10-26（Claude。Shota の共有 Proto1、No.41 を確かめて PR・マージ。管理者に頼まれて Q／E の腕の切り替えモードを追加。次は Codex が No.42）
 
 ---
 
 ## 1. 今の状態
 
 タスクごとの状態は [tasks.md](tasks.md) を見る（次は No.42。中は No.18・No.19 が残っている）。
+
+- **腕の切り替えキーを足した（2026-10-26、管理者が頼んだ。Claude が実装）**：Q で左腕、E で右腕の切り替えモードに入り、続けて数字キー 1〜6 でその手の腕を選ぶ（同じキーをもう一度押すとモードを抜ける。モード中はタイトルバーに「[右腕を切り替え中：数字キー 1-6]」）。今までの 1〜6（左手）・Shift＋1〜6（右手）もそのまま使える。計算は `ActionCalcEquipKey`（`input/actioncalc`、テスト5件）。
 
 - **No.41（触腕の構え）は完了（2026-10-26）**。Codex が実装、Claude が確かめた（直したところはなし）。`ARM_REST_PITCH` -45°（`arm.cpp`）・`IDLE_LENGTH` 1.2（`tentacle.cpp`）、DirectX なしの `ArmCalcPitchDirection`・`ArmCalcBlendDirection` とテスト9件。変えたのは待機・伸び縮み中の描画だけ（つかんでいる間・`tentaclecalc`・判定・`arm.Tip`・値は前と同じ）。
   - Claude の確認：Debug / Release 警告0／`run-tests.ps1`（Debug・Release）225件通過、2つの関数を壊すと足した9件が失敗（2通りの壊し方で全部）／画面：伸ばす・つかむ（黄色）・投げる（12%）は今までどおり、投げたあと 45° 下の構えに戻る。

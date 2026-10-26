@@ -46,9 +46,12 @@ static DWORD g_Fps = 0;	// 直近1秒の FPS
 /// タイトルバーに FPS・装備・振動のオン・オフを出す（残り時間・得点は画面に出す。hud.cpp）
 static void RefreshTitle(HWND hWnd)
 {
-	char title[192];
-	sprintf_s(title, "%s  FPS: %lu  左：%s 右：%s  振動: %s（SHARE / V）", TITLE, g_Fps,
-		ArmGetName(ArmGetType(0)), ArmGetName(ArmGetType(1)), PadIsRumbleEnabled() ? "オン" : "オフ");
+	char title[224];
+	const int mode = ActionGetEquipMode();
+	sprintf_s(title, "%s  FPS: %lu  左：%s 右：%s%s  振動: %s（SHARE / V）", TITLE, g_Fps,
+		ArmGetName(ArmGetType(0)), ArmGetName(ArmGetType(1)),
+		mode == 0 ? "  [左腕を切り替え中：数字キー 1-6]" : (mode == 1 ? "  [右腕を切り替え中：数字キー 1-6]" : ""),
+		PadIsRumbleEnabled() ? "オン" : "オフ");
 	SetWindowText(hWnd, title);
 }
 
@@ -164,8 +167,9 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
 
 			const ARM_TYPE oldLeft = ArmGetType(0);
 			const ARM_TYPE oldRight = ArmGetType(1);
+			const int oldMode = ActionGetEquipMode();
 			Update();			// 更新処理
-			if (oldLeft != ArmGetType(0) || oldRight != ArmGetType(1)) RefreshTitle(hWnd);
+			if (oldLeft != ArmGetType(0) || oldRight != ArmGetType(1) || oldMode != ActionGetEquipMode()) RefreshTitle(hWnd);
 			Draw();				// 描画処理
 
 			dwFrameCount++;		// 処理回数のカウントを加算

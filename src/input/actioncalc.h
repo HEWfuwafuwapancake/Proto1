@@ -18,6 +18,17 @@ struct ACTION_EQUIP_KEY
 	int Number; ///< 選ぶ腕の番号（0〜5。入力なしは -1）
 };
 
+/// @brief 切り替えモードのキーと数字キーから、装備の直接選択を作る
+/// @details 左のモードキーで左手、右のモードキーで右手の選択モードに入る（同じキーをもう一度押すと抜ける。両方押したら右手）。
+///          モード中に数字キーを押すとその手を選んでモードを抜ける。モードでないときの数字キーは、Shift なしで左手・ありで右手
+/// @param mode 今の選択モード（左 0・右 1・モードなし -1）。このフレームの結果に書き換える
+/// @param leftMode 左手のモードキーを押した瞬間か（true：押した、false：押していない）
+/// @param rightMode 右手のモードキーを押した瞬間か（true：押した、false：押していない）
+/// @param number 押した瞬間の数字キーの腕の番号（0〜5。押していなければ -1）
+/// @param shift Shift を押しているか（true：押している、false：押していない）
+/// @return 選んだ手と腕の番号。数字キーを押していなければ両方 -1
+ACTION_EQUIP_KEY ActionCalcEquipKey(int& mode, bool leftMode, bool rightMode, int number, bool shift);
+
 /// @brief 4つのキーから移動の向きを作る
 /// @details 斜めは長さを 1 に直す（斜めだけ速くならないように）。反対のキーを同時に押すと、その向きは 0
 /// @param forward 前のキーを押しているか（true：押している、false：押していない）
