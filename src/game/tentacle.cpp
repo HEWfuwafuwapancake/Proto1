@@ -45,7 +45,7 @@ static constexpr XMFLOAT4 RIGHT_COLOR{ 0.35f, 0.8f, 0.6f, 1.0f };
 static constexpr XMFLOAT4 HOLD_COLOR{ 1.0f, 0.7f, 0.2f, 1.0f };
 
 static TENTACLE g_Arms[2];
-// モデル番号（[0]：左手（右手用を鏡写しにしたもの）、[1]：右手）
+// モデル番号（[0]：左手、[1]：右手（左手用のモデルを鏡写しにしたもの））
 static int g_BaseModel[2] = { -1, -1 };
 static int g_SegmentModel[2] = { -1, -1 };
 static int g_TipModel[2] = { -1, -1 };
@@ -60,9 +60,9 @@ static VEC3 Position(float side, float forward)
 
 void TentacleInitialize(void)
 {
-	// モデルは右手用なので、左手は X を鏡写しにして読む
+	// ゲームの中ではモデルのままが左手に合うので、右手は X を鏡写しにして読む
 	for (int hand = 0; hand < 2; ++hand) {
-		const bool mirror = hand == 0;
+		const bool mirror = hand == 1;
 		g_BaseModel[hand] = ModelLoad("assets/models/tentacle_base.obj", mirror);
 		g_SegmentModel[hand] = ModelLoad("assets/models/tentacle_segment.obj", mirror);
 		g_TipModel[hand] = ModelLoad("assets/models/tentacle_tip.obj", mirror);

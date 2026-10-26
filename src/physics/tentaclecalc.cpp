@@ -47,7 +47,7 @@ TENTACLE_PIECE_AXES TentacleCalcPieceAxes(const VEC3& start, const VEC3& end, co
 		const VEC3 helper = fabsf(y.Y) < AXIS_VERTICAL_THRESHOLD ? VEC3{ 0, -1, 0 } : VEC3{ 0, 0, 1 };
 		normal = Vec3Sub(helper, Vec3Scale(y, Vec3Dot(helper, y)));
 	}
-	// モデルの X は左右の違いがある向き（右手用）なので横に、左右対称な Z を縦にする。
+	// モデルの X は左右の違いがある向き（片手用）なので横に、左右対称な Z を縦にする。
 	const VEC3 z = Vec3Scale(Unit(normal), -1.0f);
 	const VEC3 x = Unit(Cross(y, z));
 	return { x, y, Unit(Cross(x, y)) };
