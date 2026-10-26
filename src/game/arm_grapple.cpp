@@ -77,7 +77,7 @@ static void UpdateHand(int hand, bool trigger)
 	const bool hasTarget = target >= 0 && target < DUMMY_COUNT;
 	const VEC3 targetCenter = hasTarget
 		? Vec3Scale(Vec3Add(targets[target].Body.Start, targets[target].Body.End), 0.5f) : VEC3{};
-	const VEC3 aim = TentacleCalcAim(origin, targetCenter, hasTarget, forward);
+	const VEC3 aim = GrappleCalcAim(origin, targetCenter, hasTarget, forward);
 	const XMFLOAT3 position = PlayerGetPosition();
 	const float halfHeight = PlayerGetHeight() * 0.5f;
 	VEC3 center{ position.x, position.y + halfHeight, position.z };

@@ -234,6 +234,29 @@ namespace Proto1Tests
 			}
 		}
 
+		TEST_METHOD(Aim_TargetIncludesHeightAndFallbackIsHorizontal)
+		{
+			AssertPoint({ 0, 0.6f, 0.8f }, GrappleCalcAim({ 0, -6, -4 }, { 0, 0, 4 }, true, { 1, 0, 0 }));
+			AssertPoint({ 1, 0, 0 }, GrappleCalcAim({ 0, -6, -4 }, { 0, 0, 4 }, false, { 2, 5, 0 }));
+			AssertPoint({ 1, 0, 0 }, GrappleCalcAim({ 1, 2, 3 }, { 1, 2, 3 }, true, { 1, 0, 0 }));
+		}
+
+		TEST_METHOD(Aim_FromBelowHitsStageBottom)
+		{
+			// 浮島（上の面 2・厚さ 1）より下から、上のターゲットへ撃つと浮島に刺さる。
+			const VEC3 origin{ 0, -3, -6 };
+			GRAPPLE arm;
+			GrappleCalcReset(arm);
+			VEC3 center{};
+			GRAPPLE_EVENT e{};
+			for (int i = 0; i < 30 && !e.Attached; ++i) {
+				e = GrappleCalcStep(arm, origin, GrappleCalcAim(origin, { 0, 3, 0 }, true, { 0, 0, 1 }), center,
+					i == 0, false, 1.0f / 60, GRAPPLE_TEST_PARAMS, nullptr, 0, TEST_STAGE);
+			}
+			Assert::IsTrue(e.Attached);
+			Assert::IsTrue(e.OnStage);
+		}
+
 		TEST_METHOD(ModelPoint_ZeroRollUsesHorizontalXForwardMinusYAndDownMinusZ)
 		{
 			const VEC3 start{ 1, 2, 3 }, end{ 1, 2, 4 };

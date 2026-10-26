@@ -24,6 +24,14 @@ void GrappleCalcReset(GRAPPLE& grapple)
 	grapple.Target = -1;
 }
 
+VEC3 GrappleCalcAim(const VEC3& origin, const VEC3& target, bool hasTarget, const VEC3& fallback)
+{
+	const VEC3 delta = Vec3Sub(target, origin);
+	const float length = Vec3Length(delta);
+	if (hasTarget && length > MIN_LENGTH) return Vec3Scale(delta, 1.0f / length);
+	return TentacleCalcAim(origin, target, false, fallback);
+}
+
 bool GrappleCalcPull(VEC3& center, const VEC3& anchor, float speed, float distance, float dt)
 {
 	const VEC3 delta = Vec3Sub(anchor, center);

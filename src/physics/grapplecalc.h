@@ -53,6 +53,14 @@ struct GRAPPLE_EVENT
 /// @brief フックを待機に戻す
 void GrappleCalcReset(GRAPPLE& grapple);
 
+/// @brief 撃つ向きを求める（ターゲットがいれば上下も含めて体の中心へ。浮島の下から撃ってもふちに刺さる）
+/// @param origin 肩の位置
+/// @param target ターゲットの体の中心
+/// @param hasTarget ターゲットの有無を設定する（true：target へ向ける、false：fallback の水平の向き）
+/// @param fallback ターゲットがいないときの向き（画面の正面。上下は使わない）
+/// @return 単位方向（向きが決まらないときは +Z）
+VEC3 GrappleCalcAim(const VEC3& origin, const VEC3& target, bool hasTarget, const VEC3& fallback);
+
 /// @brief 体の中心を到着距離まで引っぱる（行き過ぎず、到着後はそれ以上動かさない）
 /// @param center 体の中心（移動後の位置を書き戻す）
 /// @param anchor 刺さった所
