@@ -18,6 +18,7 @@ extern "C" {
 //	調整用の値
 //------------------------------------------------------------------------------
 static constexpr float STICK_DEAD_ZONE = 0.12f;	// スティックの遊び（手を離したときのずれを 0 にする大きさ。0〜1）
+static constexpr bool RUMBLE_ENABLED = false;	// 振動（true：振動する、false：振動しない。ライトバーはどちらでも光る）
 
 // DUALSHOCK 4 の見分け方（USB の VID と PID）
 static constexpr DWORD DS4_VENDOR_ID = 0x054C;		// ソニー
@@ -268,7 +269,7 @@ ACTION_AXIS PadGetRightStick(void)
 
 void PadRumble(float smallMotor, float largeMotor, float seconds)
 {
-	if (g_OutputDevice == INVALID_HANDLE_VALUE || g_Window == NULL || GetForegroundWindow() != g_Window) {
+	if (!RUMBLE_ENABLED || g_OutputDevice == INVALID_HANDLE_VALUE || g_Window == NULL || GetForegroundWindow() != g_Window) {
 		g_Rumble = {};
 	}
 	else {
