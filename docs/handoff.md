@@ -4,7 +4,7 @@
 **作業を始めるときに読み、作業を終えるときに更新します。** タスクの一覧は [tasks.md](tasks.md)、同じ内容を Notion の
 「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」データベースでも管理しています。
 
-- 最終更新：2026-10-26（Claude。Shota の共有 Proto1、No.36 を確かめてマージ。最優先の No.41・No.42（腕の構え）と No.37 のプランを書いた）
+- 最終更新：2026-10-26（Claude。Shota の共有 Proto1、No.36 を確かめてマージ。最優先の No.41・No.42（腕の構え）のプランが確認済みになり、Codex 用・確認用のプロンプトを書いた。No.37 のプランは確認待ち）
 
 ---
 
@@ -84,18 +84,18 @@
 - No.29（なめらかな自由カメラ）は完了。カメラの細かい値は、カメラ関係（No.32・No.33）が全部終わってから管理者が触って決める（2026-10-24、管理者）。
 - **メインPC でまだやっていないこと**：Claude に許可を足す設定（下の「3. 決まったこと」の「Claude の許可」）。
 
-## 2. 次にやること：最優先の No.41・No.42（腕の構え）のプランを管理者が確かめる
+## 2. 次にやること：最優先の No.41・No.42（腕の構え）を Codex が実装する
 
 - **2026-10-26、管理者が最優先にした**：ドリル（No.37）の前に、触腕とグラップリングの構えを変える。プランは2つに分けた（No.41 は今のモデルのまま、No.42 はグラップリングの OBJ をひじで分けて書き出し直すため）。No.41 → No.42 → No.37 の順。
 - 順番（管理者が決めた）：No.34 モデル → No.35 腕の共通の仕組み → No.36 グラップリング → **No.41 触腕の構え → No.42 グラップリングの構え** → No.37 ドリル → No.38 磁石 → No.39 デカ盾 → No.40 ハサミ（最後）。
-- 確認が取れたら、Claude が Codex に頼むプロンプトと Claude が確かめるときのプロンプトを書く（No.36 と同じ流れ）。No.37 のプランも確認待ちのまま残す。
+- **No.41・No.42 のプランは管理者確認済み（2026-10-26。待機の長さ 1.2・ひじ 45° のまま）**。下のプロンプトで、No.41（Codex → Claude の確認・マージ）→ No.42（同じ）の順に進める。No.42 は No.41 のマージのあとに始める（`ARM_REST_PITCH`・`ArmCalcPitchDirection`・`ArmCalcBlendDirection` を使うため）。No.37 のプランは確認待ちのまま残す。
 
 ### 両方の腕で同じこと（No.41・No.42）
 
 - **待機の向き**：今は肩からキャラの正面へ水平。これを**正面へ 45° 下げた向き**にする（`arm.cpp` の「調整用の値」に `ARM_REST_PITCH`（-45°）を足し、両方の腕が使う）。
 - 計算は `src/physics/armcalc` に `ArmCalcPitchDirection(水平の正面, 角度)`（正面を上下に傾けた単位方向。角度が負なら下）を足してテストする。
 
-### No.41 のプラン：触腕の構え（管理者の確認待ち、2026-10-26 Claude）
+### No.41 のプラン：触腕の構え（管理者確認済み、2026-10-26）
 
 - **今**：待機中は長さ 0 で、見た目だけ最低の長さ（約 0.44）まで縮めて描くので、肩に箱が付いているだけに見え、触腕を装備していると分かりにくい。
 - **やること**（`tentacle.cpp` の描画だけ。判定・`arm.Tip`・伸びる速さ・届く距離は変えない）：
@@ -104,9 +104,9 @@
   - つかんでいる間・投げは今のまま。`MIN_STRETCH` は待機以外で残す（今の決まりどおり）。
 - **テスト**：`armcalc_test.cpp` に `ArmCalcPitchDirection`（0° で同じ・-45° で前と下が同じ大きさ・長さ 1）、`ArmCalcBlendDirection`（0 と 1 で端の向き・途中も長さ 1・逆向きどうしでも長さ 0 にならない）。
 - **確かめること（Claude）**：Debug / Release 警告0、テスト、壊す確認。画面：開始直後から左右の触腕が正面 45° 下へ出ている／伸ばすと縮まずに狙いの向きへ伸び、つかむ・投げるは今までどおり。
-- **管理者に聞くこと**：待機の長さ 1.2（キャラの高さ 1.8 の2/3くらい）でよいか。遊んで決める値として `IDLE_LENGTH` と `ARM_REST_PITCH` を一覧に入れる。
+- **管理者が決めたこと**：待機の長さは 1.2 でよい（2026-10-26）。遊んで決める値として `IDLE_LENGTH` と `ARM_REST_PITCH` を No.19 の一覧に入れる。
 
-### No.42 のプラン：グラップリングの構え（管理者の確認待ち、2026-10-26 Claude）
+### No.42 のプラン：グラップリングの構え（管理者確認済み、2026-10-26）
 
 - **今**：付け根（`arm_grapple_base.obj`）は1つの固い部品で、待機中もキャラの正面へまっすぐ水平。
 - **モデル**：Maya のシーンは「肩 `pCube28` → 上腕 `polySurface16` → `pCube26` → 前腕 `polySurface24`（＋`polySurface9`・発射機構 `pCylinder18`）」の親子になっていて、前腕の pivot (2.408, 7.408, -1.859) cm が作者の置いたひじ。ここで分ける（Claude が mayapy で確かめた）。
@@ -118,7 +118,101 @@
   - ひねり（肩の箱を下に向ける 90°）・左手の鏡写しは今のまま、上腕・前腕・フックとも同じひねり。
 - **テスト**：ひじ・前腕の先の位置（`GrappleCalcModelPoint` を上腕→前腕の順に使う）が、まっすぐのとき今の1本の付け根と同じ位置になる／曲げたとき前腕の先が上がる。
 - **確かめること（Claude）**：書き出し直した OBJ の範囲と三角形数（上腕＋前腕で今の 2236）、Debug / Release 警告0、テスト、壊す確認。画面：待機で 45° 下げてひじで曲がっている（拡大して管理者に見せる）／撃つとまっすぐ伸び、引っぱり・体当たり・ふちに戻るは今までどおり／戻ると曲げた構えに戻る。
-- **管理者に聞くこと**：ひじの曲げ 45°（前腕がほぼ水平）でよいか。画面を見て決めてもよい。
+- **管理者が決めたこと**：ひじの曲げは 45° でよい（2026-10-26）。`GRAPPLE_IDLE_ELBOW`・`GRAPPLE_STRAIGHTEN_SECONDS` も No.19 の一覧に入れる。
+
+### No.41 を Codex に頼むプロンプト
+
+```text
+Proto1 の No.41「触腕の構え」を実装してください。プランは docs/handoff.md の「両方の腕で同じこと」と「No.41 のプラン：触腕の構え（管理者確認済み）」です。プランにないことはしません。
+
+## 始める前に
+- CLAUDE.md・AGENTS.md・docs/lessons.md・docs/handoff.md・docs/tasks.md・docs/dev/01_DX11基盤の構成.md を読み、Claude が作業中でないことを確かめる（git status）。
+- .\tools\start-work.ps1 arm-pose-tentacle
+- docs/tasks.md の No.41 を 🔄 にする（Notion を書き換えられなければ、最後に「No.41 を進行中に」と管理者に伝える）。
+
+## いちばん大事なこと
+- 変えるのは触腕の「描画」だけ。tentaclecalc の計算・当たり判定・arm.Tip・伸びる速さ・届く距離・つかむ・投げる・振動は1つも変えない。
+- 計算（上下に傾けた向き・向きのまぜ方）は DirectX を使わない src/physics/armcalc に置き、テストを書く。
+
+## やること
+1. src/physics/armcalc：ArmCalcPitchDirection(水平の正面, 角度)（正面を上下に傾けた単位方向。角度が負なら下。正面の上下の成分は使わない）と ArmCalcBlendDirection(a, b, 割合)（線形にまぜて長さ 1。逆向きどうしで長さがほぼ 0 になるときは b を返すなど、長さ 0 を返さない）を足す。Doxygen コメントも書く。
+2. src/game/arm.h / arm.cpp：調整用の値 ARM_REST_PITCH（-45°）を足し、ArmGetRestPitch() など腕の .cpp から読める形で公開する（グラップリングも No.42 で使う）。
+3. src/game/tentacle.cpp の TentacleDrawHand：調整用の値 IDLE_LENGTH（1.2）を足す。
+   - 待機中：キャラの正面（PlayerGetYaw）を ARM_REST_PITCH で下げた向きへ、長さ IDLE_LENGTH で今と同じ部品の並びとうねうねで描く。
+   - 待機以外：描く長さは max(伸びた長さ, IDLE_LENGTH)（今の MIN_STRETCH の最低長も残す）。向きは、伸びた長さ ÷ IDLE_LENGTH（0〜1）で「45° 下」→「肩から arm.Tip への向き」を ArmCalcBlendDirection でまぜる。つかんでいる間・投げは今のまま。
+4. テスト：tests/Proto1Tests/armcalc_test.cpp に ArmCalcPitchDirection（0° で同じ・-45° で前と下が同じ大きさ・長さ 1・正面に上下の成分があっても無視）と ArmCalcBlendDirection（0 と 1 で端の向き・途中も長さ 1・逆向きどうしでも長さ 0 にならない）。
+5. C++ は BOM付きUTF-8・CRLF。docs/dev/01_DX11基盤の構成.md に触腕の待機の構えを短く書く。
+6. Debug のビルドが通ることだけ確かめ、.\tools\save-work.ps1 "No.41 触腕の構え" で保存する。docs/handoff.md の「今の状態」に「No.41 は Codex が実装。Claude の確認待ち」と、迷ったことを短く書く。
+
+## やらないこと
+- run-tests.ps1・Release のビルド・わざと壊す確認・画面の確認・PR・マージ（Claude がやる）。
+- グラップリング（No.42）・ほかの腕・HUD・エフェクト。触腕の値（IDLE_LENGTH・ARM_REST_PITCH 以外）を変えること。
+
+## 報告すること（短く）
+- 足した・変えたファイル
+- プランと違うことをしたところ、迷ったところ
+```
+
+### No.41 を Claude が確かめるときのプロンプト（モデル：Opus。Codex の保存のあと、管理者が Claude Code の新しいセッションに貼る）
+
+```text
+Proto1 の No.41（触腕の構え）を Codex が feature/arm-pose-tentacle に push しました。Claude の担当分（確かめる → PR → マージ）をやってください。
+- CLAUDE.md の手順どおり handoff.md・lessons.md・tasks.md を読み、Codex が作業中でないことを確かめてから .\tools\start-work.ps1 arm-pose-tentacle。
+- プラン（handoff.md の No.41）と違うところがないかコードを読む。特に「触腕は描画だけの変更（tentaclecalc・判定・値は前と同じ）」「計算が armcalc にありテストがある」「ARM_REST_PITCH -45°・IDLE_LENGTH 1.2」。
+- Debug / Release 警告0、.\tools\run-tests.ps1 -Release も含めて全部通る。ArmCalcPitchDirection・ArmCalcBlendDirection をまとめて壊すと、足したテストが失敗する。
+- 画面を撮る（ゲームが前に出ていることを確かめてから入力を送る。lessons.md の 2026-10-26 の項目）：
+  開始直後から左右の触腕が正面 45° 下へ 1.2 くらい出ている（拡大して管理者に見せる）／伸ばすと縮まずに狙いの向きへ伸び、つかむ・投げるは今までどおり／戻ると 45° 下の構えに戻る。
+- 直すところはこのブランチに直接コミットしてよい。tasks.md の No.41 を ✅、Notion の No.41 を「完了」にして PR のリンクを入れ、PR を出してマージする（テストが通っていれば聞かずにマージしてよい）。
+- 終わったら handoff.md の「次にやること」を No.42 にし、管理者に「No.42 を Codex に頼むプロンプト」を貼るよう伝える。
+```
+
+### No.42 を Codex に頼むプロンプト（No.41 のマージのあと）
+
+```text
+Proto1 の No.42「グラップリングの構え」を実装してください。プランは docs/handoff.md の「両方の腕で同じこと」と「No.42 のプラン：グラップリングの構え（管理者確認済み）」です。No.41 は develop にマージ済みのはずです（ARM_REST_PITCH・ArmCalcPitchDirection・ArmCalcBlendDirection を使う。なければ止めて管理者に伝える）。プランにないことはしません。
+
+## 始める前に
+- CLAUDE.md・AGENTS.md・docs/lessons.md・docs/handoff.md・docs/tasks.md・docs/dev/01_DX11基盤の構成.md を読み、Claude が作業中でないことを確かめる（git status）。
+- .\tools\start-work.ps1 arm-pose-grapple
+- docs/tasks.md の No.42 を 🔄 にする（Notion を書き換えられなければ、最後に「No.42 を進行中に」と管理者に伝える）。
+
+## いちばん大事なこと
+- 変えるのはグラップリングの「モデルの分け方」と「描画」だけ。grapplecalc の飛ぶ・刺さる・引っぱる・着地点の計算、調整用の値（PARAMS など）、触腕は変えない。
+- 元の .mb は保存しない・書き換えない。OBJ は tools/export-arm-obj.ps1 で書き出す（Git LFS）。
+
+## やること
+1. tools/maya/export_arm_obj.py の grapple：arm_grapple_base.obj をやめ、arm_grapple_upper.obj（pCube28, polySurface16, pCube26。原点は今と同じ pCube28 の pivot）と arm_grapple_lower.obj（polySurface24, polySurface9, pCylinder18。原点は polySurface24 の pivot ＝ひじ）に分ける。hook はそのまま。.\tools\export-arm-obj.ps1 grapple で書き出し、assets/models/arm_grapple_base.obj は git rm する。上腕＋前腕の三角形数が今の 2236 と同じこと、原点・長さの表示を報告する。
+2. src/game/arm_grapple.cpp：
+   - 調整用の値：BASE_LENGTH・HOOK_OFFSET・WIRE_OFFSET を、UPPER_ELBOW_OFFSET (-1.614, -10.900, +0.241)・ELBOW_WIRE_OFFSET (0, -11.820, 0)・ELBOW_HOOK_OFFSET (0, -14.222, 0)（cm。Z は OBJ 読み込み後の向き）と、上腕・前腕の長さ（書き出しの「原点→-Y先端」の値）に置きかえる。GRAPPLE_IDLE_ELBOW（45°）・GRAPPLE_STRAIGHTEN_SECONDS（0.1）を足す。
+   - 片手ごとに「まっすぐ度」0〜1 を持ち、待機以外は 1 へ、待機は 0 へ、1 ÷ GRAPPLE_STRAIGHTEN_SECONDS の速さで近づける（UpdateHand で更新。ResetHand・Initialize で 0）。
+   - 描画：上腕の向き＝ArmCalcBlendDirection(正面を ARM_REST_PITCH で下げた向き, フックへの向き, まっすぐ度)。前腕の向き＝ArmCalcBlendDirection(正面を ARM_REST_PITCH＋GRAPPLE_IDLE_ELBOW で傾けた向き, フックへの向き, まっすぐ度)。
+     ひじ＝GrappleCalcModelPoint(UPPER_ELBOW_OFFSET, 肩, 肩＋上腕の向き, …)。前腕・ワイヤー出口・待機のフックはひじから前腕の向きで同じように置く。ひねり（鏡写しなし +90°／あり -90°）と GRAPPLE_MIRROR_LEFT は今のまま、3つの部品とも同じひねり。
+3. 計算を足すなら DirectX を使わない src/physics/grapplecalc に置き、テストを書く。少なくとも tests/Proto1Tests/grapplecalc_test.cpp に「上腕と前腕が同じ向きのとき、肩→ひじ→ワイヤー出口・フックの位置が今の1本の付け根のときの位置（WIRE (-1.614,-22.720,+0.241)・HOOK (-1.614,-25.122,+0.241)）と同じ」「前腕を上へ曲げるとフックが上がる」を足す。
+4. C++ は BOM付きUTF-8・CRLF。docs/dev/01_DX11基盤の構成.md のグラップリングの節と、handoff.md の No.34 の表（OBJ の一覧）を直す。
+5. Debug のビルドが通ることだけ確かめ、.\tools\save-work.ps1 "No.42 グラップリングの構え" で保存する。docs/handoff.md の「今の状態」に「No.42 は Codex が実装。Claude の確認待ち」と、迷ったことを短く書く。
+
+## やらないこと
+- run-tests.ps1・Release のビルド・わざと壊す確認・画面の確認・PR・マージ（Claude がやる）。
+- ほかの腕・HUD・エフェクト。グラップリングの動きの値・計算を変えること。
+
+## 報告すること（短く）
+- 足した・変えた・消したファイル、OBJ の三角形数と原点
+- プランと違うことをしたところ、迷ったところ
+```
+
+### No.42 を Claude が確かめるときのプロンプト（モデル：Opus。Codex の保存のあと、管理者が Claude Code の新しいセッションに貼る）
+
+```text
+Proto1 の No.42（グラップリングの構え）を Codex が feature/arm-pose-grapple に push しました。Claude の担当分（確かめる → PR → マージ）をやってください。
+- CLAUDE.md の手順どおり handoff.md・lessons.md・tasks.md を読み、Codex が作業中でないことを確かめてから .\tools\start-work.ps1 arm-pose-grapple。
+- プラン（handoff.md の No.42）と違うところがないかコードを読む。特に「grapplecalc の動きの計算・値は前と同じ」「ひじの位置・オフセットが Maya の pivot どおり」「ひねり・GRAPPLE_MIRROR_LEFT が前と同じ」。
+- OBJ：上腕＋前腕の三角形数が 2236、書き出し直しても git diff が出ない、arm_grapple_base.obj が残っていない。
+- Debug / Release 警告0、.\tools\run-tests.ps1 -Release も含めて全部通る。新しい計算をまとめて壊すと、足したテストが失敗する。
+- 画面を撮る（ゲームが前に出ていることを確かめてから入力を送る）：
+  2・Shift＋2 で待機の腕が 45° 下がり、ひじで曲がっている（拡大して管理者に見せる）／撃つと 0.1 秒でまっすぐ伸びる／敵へ引っぱられて ＋5%・途中で離す・浮島の外へ落ちながら撃って戻る、は今までどおり／戻ると曲げた構えに戻る。
+- 直すところはこのブランチに直接コミットしてよい。tasks.md の No.42 を ✅、Notion の No.42 を「完了」にして PR のリンクを入れ、PR を出してマージする（テストが通っていれば聞かずにマージしてよい）。
+- 終わったら handoff.md の「次にやること」を No.37 ドリル（プランは確認待ち）に戻し、管理者に No.37 のプランの確認を頼む。
+```
 
 - No.18 シーン・No.19 調整用の値の整理はプランがまだ（アームのあとで管理者が選ぶ）。
 
