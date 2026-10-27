@@ -4,7 +4,7 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）。
 決まったことは [decisions.md](decisions.md)、腕のモデルの原点と長さは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、終わったタスクの記録は [archive/](archive/)（普段は読まない）。
 
-- 最終更新：2026-10-27（Claude。Shota の共有 Proto1。ドリルの握り直しを確認してマージ）
+- 最終更新：2026-10-27（Claude。Shota の共有 Proto1。ドリルの握り直しを確認してマージ。右手の鏡写しは今のままに決まった）
 
 ---
 
