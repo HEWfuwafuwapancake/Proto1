@@ -4,7 +4,7 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）。
 決まったことは [decisions.md](decisions.md)、腕のモデルの原点と長さは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、終わったタスクの記録は [archive/](archive/)（普段は読まない）。
 
-- 最終更新：2026-10-27（Claude。Shota の共有 Proto1。No.44 段階 B をマージ。No.45 のプランを書いた。次は No.45 → No.44 段階 C）
+- 最終更新：2026-10-27（Claude。Shota の共有 Proto1。No.45 は Codex がまだ push していない。No.44 段階 C のプランとプロンプトを詳しくした（管理者の確認待ち）。次は No.45 → No.44 段階 C）
 
 ---
 
@@ -19,7 +19,7 @@
 ## 2. 次にやること：No.45（テストを減らす）→ No.44 段階 C
 
 - **直近は No.45**：管理者が下の「No.45 を Codex に頼むプロンプト」を Codex に貼る。Codex の保存のあと「No.45 を Claude が確かめるときのプロンプト」を Claude に貼る。マージしたら No.44 段階 C へ。
-- **そのあと No.44 段階 C**：管理者が下の「No.44 を Codex に頼むプロンプト」の `<段階>` を C にして Codex に貼る。Codex の保存のあと「No.44 を Claude が確かめるときのプロンプト」（`<段階>` = C）を Claude に貼る。
+- **そのあと No.44 段階 C**：段階 C のプラン（下。2026-10-27 に詳しくした）を管理者が確かめてから、「No.44 段階 C を Codex に頼むプロンプト」を Codex に貼る。Codex の保存のあと「No.44 段階 C を Claude が確かめるときのプロンプト」を Claude に貼る。
 
 ### No.45 のプラン：いらないテストを消す（管理者確認済み、2026-10-27。「中くらい」に減らす）
 
@@ -83,7 +83,7 @@ Proto1 の No.45（いらないテストを消す）を Codex が feature/test-t
 ```
 
 - 順番（管理者が決めた、2026-10-27）：**No.44 を No.38 より先にやる**。段階 A → B → C → D を1つずつ「実装 → Claude の確認 → PR → マージ」で進める（1段階＝1ブランチ＝1 PR）。
-- 管理者が段階ごとに「No.44 を Codex に頼むプロンプト」の `<段階>` を書きかえて Codex に貼り、Codex の保存のあと「No.44 を Claude が確かめるときのプロンプト」を Claude に貼る（段階 D は Claude が書く）。
+- 段階 A・B はマージ済み。残りは段階 C（Codex が実装）と段階 D（Claude が書く）。
 - 全部マージしたら、Claude が下の「No.38 のプラン」とプロンプトを新しい作り（`MagnetArm` クラス）に書き直してから、Codex に頼む。
 
 ### No.44 のプラン：構造体のクラス化（管理者確認済み、2026-10-27）
@@ -120,59 +120,76 @@ Proto1 の No.45（いらないテストを消す）を Codex が feature/test-t
 - `ArmGetShoulder`・`ArmGetRestDirection`・`ArmGetColor`・`ArmDrawPiece`・`ArmLoadModel` などの共通の部品と、`ArmUpdate`・`ArmIsHolding` などの外への関数は、段階 C まで今のまま。
 - 確認：Debug / Release 警告0、`run-tests.ps1`。画面：1〜3 と Shift＋1〜3 で全部の腕が前と同じに構える・動く（触腕でつかんで投げる／グラップリングで飛ぶ／ドリルで % が増えて押し出す）。
 
-#### 段階 C：ゲームの部品と `Game` クラス（`src/game/`・`main.cpp`）
+#### 段階 C：ゲームの部品と `Game` クラス（`src/game/`・`main.cpp`）（**管理者の確認待ち**、2026-10-27 に詳しくした）
 
-- `Stage`・`Player`・`DummyManager`・`Camera`・`ArmManager`（左右の装備）・`Match`・`Hud` をクラスにし、ファイルの中のグローバル変数をメンバー変数にする。
-- 新しい `src/game/game.h/.cpp` の `class Game` がこれらを持ち、`Initialize / Finalize / Update / Draw` で今の `main.cpp` と同じ順に呼ぶ。`main.cpp` は DX11・入力などの基盤と `Game` を呼ぶだけにする（`main.cpp` の依存の例外は今のまま）。
-- `PlayerGetPosition()` のようなグローバルの取得関数はなくし、使う相手への参照を `Initialize` で受け取って持つ（例：`TentacleArm` は `Player&`・`DummyManager&`・`Camera&`）。
-- `Game` のインスタンスは `main.cpp` に1つだけ。
-- 確認：段階 B と同じ ＋ 試合の流れ（90 秒・場外で +1・R でやり直し）、ダミーの % 表示、ロックオン・カメラ。
+- `Stage`・`Player`・`DummyManager`・`Camera`・`ArmManager`（左右の装備）・`Match`・`Hud` をクラスにし、ファイルの中のグローバル変数（`g_〇〇`）をメンバー変数（`m_〇〇`）にする。ファイルは今のまま（`stage.h/.cpp` に `Stage` など）。`field.cpp` は触らない。
+- **関数の名前**：`〇〇Initialize / Finalize / Update / Draw` → メンバー関数 `Initialize / Finalize / Update / Draw`。`〇〇Get△△`・`〇〇Is△△` などは頭の `〇〇` を取ったメンバー関数（`PlayerGetPosition` → `Player::GetPosition`、`StageGet` → `Stage::GetStage`、`DummyGetTarget` → `DummyManager::GetTarget`、`ArmGetType` → `ArmManager::GetType`、`PlayerUpdateFacing` → `Player::UpdateFacing`）。読むだけの関数は `const`。ファイルの中の `static` 関数（`camera.cpp` の `PlayerHead`・`SnapToPlayer` など、`dummy.cpp` の `PlaceAtSpawn`）は `private` のメンバー関数にする。調整用の値（`static constexpr`）と `DUMMY_COUNT` はそのまま。`dummy.cpp` の `DUMMY` はデータだけの struct として `DummyManager` の中（`private`）に置いてよい。
+- **お互いの参照**：今は関数を呼び合っている（プレイヤー ↔ カメラ ↔ ダミー ↔ 腕）ので、`Initialize` で相手の参照を受け取り、ポインタのメンバー（例：`Camera* m_Camera`。読むだけなら `const Camera*`）に持つ。`Initialize` の中では、先に初期化された相手だけを使う（今の初期化の順と同じ）。
+  | クラス | `Initialize` で受け取る相手 |
+  |---|---|
+  | `Stage` | なし |
+  | `Player` | `Stage`・`Camera`・`DummyManager`・`ArmManager` |
+  | `DummyManager` | `Stage`・`Player`（押されたときに位置を直す）・`Camera` |
+  | `Camera` | `Stage`・`Player`・`DummyManager`・`ArmManager`・`Match` |
+  | `ArmManager` | `Stage`・`Player`・`DummyManager`・`Camera`（腕を作るときに渡す） |
+  | `Match` | `DummyManager`・`ArmManager` |
+  | `Hud` | `Camera`・`DummyManager`・`Match` |
+- **やり直し**：各クラスに、今の `〇〇Initialize` の中身（状態を最初に戻す）を `Reset()` として持たせ、`Initialize` は参照を持ってから `Reset()` を呼ぶ。R のやり直しは `Match` から `Game` に移す：`Game::Update` で今 `MatchUpdate()` を呼んでいる所を「`ACTION_RESTART` なら `Restart()`（腕 → プレイヤー → ダミー → カメラ → 試合の順に `Reset()`。デバッグ出力も移す）、そうでなければ `m_Match.Update()`」にする（呼ぶ順と動きは今と同じ）。時間切れの `ArmReset` は `Match` が `ArmManager::Reset()` を呼ぶ。
+- **腕**（段階 B の作りに足す）：
+  - 腕のクラスが使う相手は、データだけの struct `ARM_LINKS`（`Player*`・`DummyManager*`・`const Camera*`・`const Stage*`。メンバーは全部 Doxygen で説明）にまとめ、`Arm` のコンストラクタ `Arm(int hand, const ARM_LINKS& links)` で受け取る。派生クラスは `protected` の `GetPlayer()`・`GetDummies()`・`GetCamera()`・`GetStage()` で使う。作る表は `CreateArm<T>(int hand, const ARM_LINKS& links)` にする。
+  - 共通の部品 `ArmGetShoulder`・`ArmGetRestDirection`・`ArmGetColor`・`ArmDrawPiece`・`ArmLoadModel` は `Arm` の `protected` メンバー関数 `GetShoulder()`・`GetRestDirection(pitchOffset)`・`GetColor(active)`・`DrawPiece(…)`・`LoadModel(path)` にする（手は `m_Hand` を使う。値と計算は `arm.cpp` のまま）。`ArmGetName` は状態を使わないので自由関数のまま。
+  - `ArmUpdate` などの外への関数は `ArmManager` のメンバー（`Update(bool playing)`・`Draw`・`Reset`・`IsActive`・`IsHolding`・`GetType`）。`g_Types`・`g_Arms` はメンバーに、`ConnectOtherArm` は今のまま。
+- **`Game`**（新しい `src/game/game.h/.cpp`）：上の7つをメンバーに持ち、`Initialize` は今の `main.cpp` と同じ順（ステージ → プレイヤー → ダミー → カメラ → 腕 → 試合 → HUD）、`Finalize` はその逆。`Update` は今の `main.cpp` の `StageUpdate()` から `HudUpdate()` まで（`MatchIsPlaying()` での止め方も同じ）、`Draw` は今の `main.cpp` の `SetDepthEnable(true)` から `HudDraw()` まで（ライトの設定も含む）。タイトルバー用に `const ArmManager& GetArms() const`。
+- **`main.cpp`**：`static Game g_Game;` を1つだけ持つ。DX11・シェーダー・時間・入力・`Shape`・`Model`・`Number2D` の初期化のあとに `g_Game.Initialize()`、終了は `g_Game.Finalize()` のあとに基盤を逆順。`Update` は時間・入力・`ActionUpdate`・振動の切り替えのあと `g_Game.Update()`、`Draw` は `Shader_Begin`・`Clear` → `g_Game.Draw()` → `Present`。`RefreshTitle` と装備の変化の確認は `g_Game.GetArms().GetType(手)` を使う。クラスのコンストラクタでは DirectX を使わない（`g_Game` は `WinMain` より前に作られる）。
+- **なくすもの**：`src/game/` の `g_〇〇`（`field.cpp` 以外）と、`PlayerGetPosition()` のような外から呼ぶ自由関数（`ArmGetName` は残す）。
+- 確認：Debug / Release 警告0、`run-tests.ps1`（テストは変えない）。画面：段階 B と同じ（1〜3 と Shift＋1〜3 の全部の腕・触腕でつかんで投げる・グラップリングで飛ぶ・ドリル）＋ 試合の流れ（残り時間が減る・ダミーを場外に出すと +1・R でやり直すと全部最初に戻る）、ダミーの頭の上の %、ロックオン・カメラ（つかんでいる間は外れて、離すと戻る）。
 
 #### 段階 D：決まりの書き直し（Claude）
 
 - `docs/dev/01_DX11基盤の構成.md` の「オブジェクトの足し方」と腕の足し方を、クラスを足す手順に書き直す。`CLAUDE.md`・`AGENTS.md` の古い書き方（`〇〇Initialize` の関数・`ARM_FUNCTIONS`）を直す。`docs/decisions.md` の「作り方」に1行足す。
 - No.38 のプランとプロンプトを `MagnetArm` に書き直す（`MAGNET` も `class MagnetCalc` にする）。
 
-### No.44 を Codex に頼むプロンプト（`<段階>` を A・B・C のどれかに書きかえる）
+### No.44 段階 C を Codex に頼むプロンプト（No.45 のマージと、段階 C のプランの管理者確認のあと）
 
 ```text
-Proto1 の No.44「構造体のクラス化」の段階 <段階> を実装してください。プランは docs/handoff.md の「No.44 のプラン：構造体のクラス化（管理者確認済み）」です。プランにないことはしません。
+Proto1 の No.44「構造体のクラス化」の段階 C（ゲームの部品と Game クラス）を実装してください。プランは docs/handoff.md の「No.44 のプラン：構造体のクラス化（管理者確認済み）」の「段階 C」です。プランにないことはしません。
 
 ## 始める前に
 - CLAUDE.md・AGENTS.md・docs/handoff.md・docs/tasks.md・docs/dev/01_DX11基盤の構成.md と Notion の開発ログ（C++・文字コード・ビルドの行）を読み、Claude が作業中でないことを確かめる（git status）。
-- 前の段階がマージ済みか確かめてから .\tools\start-work.ps1 class-<段階の英小文字>（例：class-a）
-- 段階 A のときだけ docs/tasks.md の No.44 を 🔄 にする（Notion を書き換えられなければ、最後に「No.44 を進行中に」と管理者に伝える）。
+- 段階 B と No.45 がマージ済みか確かめてから .\tools\start-work.ps1 class-c
 
 ## いちばん大事なこと
-- ゲームの動き・調整用の値・計算の結果を変えない。作りを変えるだけ。不具合を見つけても直さずに報告する。
-- プランの「変えないもの」は触らない（データだけの struct・状態のない計算の関数・core / input / render・field.cpp・enum）。
-- この段階の範囲だけ。次の段階のことを先にしない。
+- ゲームの動き・調整用の値・計算の結果・Update と Draw で呼ぶ順を変えない。作りを変えるだけ。不具合を見つけても直さずに報告する。
+- お互いの参照はプランの表のとおり Initialize で受け取ってポインタのメンバーに持つ。Initialize の中で、まだ初期化していない相手を使わない。クラスのコンストラクタで DirectX を使わない（main.cpp の g_Game は WinMain より前に作られる）。
+- 触らないもの：src/core（main.cpp 以外）・src/input・src/render・src/physics・tests・field.cpp・調整用の値。
 
 ## やること
-1. プランのこの段階の表・箇条書きのとおりにクラスにし、呼んでいるところ（game/・tests/）を置きかえる。メンバー変数は private で m_ を頭に付け、クラス・public のメンバーは全部 Doxygen の日本語コメント（bool を受け取る関数は「〜を設定する（true：〜、false：〜）」）。
-2. 段階 A ではテストを同じ内容のまま新しい呼び方に直す（数を減らさない）。CLAUDE.md の「コードの約束」にプランの「名前の付け方」を足す。
-3. 新しいファイルは .vcxproj と .vcxproj.filters に登録する（フィルター名は既存の登録を読んでそろえる）。C++ は BOM付きUTF-8・CRLF。
-4. Debug のビルドが通ることだけ確かめ、.\tools\save-work.ps1 "No.44 段階 <段階> クラス化" で保存する。docs/handoff.md の「今の状態」に「No.44 段階 <段階> は Codex が実装。Claude の確認待ち」と、迷ったことを短く書く。
+1. src/game の Stage・Player・DummyManager・Camera・ArmManager・Match・Hud をクラスにする（ファイルは今のまま）。g_〇〇 はメンバー変数 m_〇〇、ファイルの中の static 関数は private のメンバー関数、外から呼ぶ自由関数はメンバー関数（プランの「関数の名前」）。今の 〇〇Initialize の中身は Reset() にし、Initialize は参照を持ってから Reset() を呼ぶ。
+2. 腕：ARM_LINKS を足し、Arm のコンストラクタ・CreateArm・各腕のコンストラクタで受け取る。ArmGetShoulder などの共通の部品は Arm の protected メンバー関数にする（プランの「腕」）。tentacle.cpp・arm_grapple.cpp・arm_drill.cpp は、呼び方を置きかえるだけ。
+3. src/game/game.h/.cpp に Game を作り、main.cpp を「基盤の初期化 → g_Game.Initialize()」「入力 → g_Game.Update()」「Shader_Begin・Clear → g_Game.Draw() → Present」にする。R のやり直しは Game::Restart() に移す（プランの「やり直し」）。
+4. メンバー変数は private で m_ を頭に付け、クラス・public のメンバー・ARM_LINKS のメンバーは全部 Doxygen の日本語コメント（bool を受け取る関数は「〜を設定する（true：〜、false：〜）」）。新しいファイルは .vcxproj と .vcxproj.filters に登録する（フィルター名は既存の登録を読んでそろえる）。C++ は BOM付きUTF-8・CRLF。
+5. src/game に g_ が field.cpp の分しか残っていないこと（Select-String で確かめる）と、Debug のビルドが通ることを確かめ、.\tools\save-work.ps1 "No.44 段階 C クラス化" で保存する。docs/handoff.md の「今の状態」に「No.44 段階 C は Codex が実装。Claude の確認待ち」と、迷ったことを短く書く。
 
 ## やらないこと
 - run-tests.ps1・Release のビルド・画面の確認・PR・マージ（Claude がやる）。
-- 磁石・ほかの腕の追加、調整用の値の変更、プランにないファイルの整理。
+- 段階 D（docs/dev・CLAUDE.md・AGENTS.md の書き直し）、磁石・ほかの腕の追加、調整用の値の変更、プランにないファイルの整理。
 
 ## 報告すること（短く）
 - 足した・変えたファイル
-- プランと違うことをしたところ、迷ったところ
+- プランと違うことをしたところ、迷ったところ（特に、参照の表にない相手が要ったところ）
 ```
 
-### No.44 を Claude が確かめるときのプロンプト（モデル：Opus。Codex の保存のあと、管理者が Claude Code の新しいセッションに貼る）
+### No.44 段階 C を Claude が確かめるときのプロンプト（モデル：Opus。Codex の保存のあと、管理者が Claude Code の新しいセッションに貼る）
 
 ```text
-Proto1 の No.44 段階 <段階> を Codex が feature/class-<段階の英小文字> に push しました。Claude の担当分（確かめる → PR → マージ）をやってください。
-- CLAUDE.md の手順どおり handoff.md・tasks.md と Notion の開発ログを読み、Codex が作業中でないことを確かめてから .\tools\start-work.ps1 class-<段階の英小文字>。
-- プラン（handoff.md の No.44）と違うところがないか差分を読む。特に「動き・調整用の値・計算の中身が変わっていない」「変えないもの（データだけの struct・core / input / render）を触っていない」「この段階の範囲だけ」「Doxygen コメントと m_」。
-- Debug / Release 警告0、.\tools\run-tests.ps1 -Release も含めて全部通り、テストの数が前と同じ（段階 A）。
-- 段階 B・C は画面を撮る（ゲームが前に出ていることを確かめてから入力を送る。Notion の開発ログ）：プランのその段階の「確認」のとおり。
-- 直すところはこのブランチに直接コミットしてよい。PR を出してマージする（テストが通っていれば聞かずにマージしてよい）。段階 C のあとは段階 D を自分でやり、tasks.md の No.44 を ✅、Notion の No.44 を「完了」にして PR のリンクを入れる。
-- 終わったら handoff.md の「今の状態」「次にやること」を次の段階（D のあとは No.38 磁石）に書き直す。
+Proto1 の No.44 段階 C を Codex が feature/class-c に push しました。Claude の担当分（確かめる → PR → マージ → 段階 D）をやってください。
+- CLAUDE.md の手順どおり handoff.md・tasks.md と Notion の開発ログを読み、Codex が作業中でないことを確かめてから .\tools\start-work.ps1 class-c。
+- プラン（handoff.md の No.44 段階 C）と違うところがないか差分を読む。特に「動き・調整用の値・計算の中身・Update と Draw の呼ぶ順が変わっていない」「Initialize で、まだ初期化していない相手を使っていない」「やり直しの順（腕 → プレイヤー → ダミー → カメラ → 試合）」「src/game に g_ が field.cpp の分しか残っていない」「core / input / render / physics・tests を触っていない」「Doxygen コメントと m_」。
+- Debug / Release 警告0、.\tools\run-tests.ps1 と .\tools\run-tests.ps1 -Release が全部通る（件数は No.45 のあとと同じ）。
+- 画面を撮る（ゲームが前に出ていることを確かめてから入力を送る。Notion の開発ログ）：プランの段階 C の「確認」のとおり。
+- 直すところはこのブランチに直接コミットしてよい。PR を出してマージする（テストが通っていれば聞かずにマージしてよい）。
+- そのあと段階 D を自分でやり、tasks.md の No.44 を ✅、Notion の No.44 を「完了」にして PR のリンクを入れる。
+- 終わったら handoff.md の「今の状態」「次にやること」を No.38 磁石（プランとプロンプトを新しい作りに書き直す）にし、No.44 のプランとプロンプトを消す。
 ```
 
 ## 3. そのあと：No.38（磁石）の実装
