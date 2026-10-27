@@ -60,7 +60,7 @@ Notion の「委譲先」「レビュー担当」は当面、作業の制約に�
 - [ ] C++（`.cpp` / `.h`）は BOM付きUTF-8、シェーダー（`.hlsl` / `.hlsli`）は BOMなしUTF-8
 - [ ] 足したファイルが `.vcxproj` と `.vcxproj.filters` に入っている
 - [ ] 定数バッファの構造体（`shader.h` / `shader.cpp`）と HLSL 側（`shaderCommon.hlsli`）の並び・番号がそろっている
-- [ ] 書き方がひな形に合っている（`〇〇Initialize / Finalize / Update / Draw`、作ったものは `Finalize` で `SAFE_RELEASE`）
+- [ ] 書き方がひな形に合っている（`core`・`input`・`render` は `〇〇Initialize / Finalize / Update / Draw`、`src/game` はクラスのメンバー関数。作ったものは `Finalize` で `SAFE_RELEASE`）
 - [ ] スクリプトを変えたときは `docs/team/04_コマンド一覧.md` も直っている
 
 **中身**
