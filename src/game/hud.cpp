@@ -32,19 +32,19 @@ static constexpr float RESTART_Y = 470.0f;				// 「PRESS R / OPTIONS」の上�
 
 
 // ダミーの頭の上に「12%」を出す（復活待ち・カメラの後ろのときは出さない）
-static void DrawDummyPercent(int index)
+void Hud::DrawDummyPercent(int index) const
 {
-	if (!DummyIsActive(index)) return;
+	if (!m_Dummies->IsActive(index)) return;
 
 	// 頭のてっぺん（縦のカプセルの上の端 ＋ 半径）の少し上
-	const CAPSULE body = DummyGetTarget(index).Body;
+	const CAPSULE body = m_Dummies->GetTarget(index).Body;
 	const float top = (body.Start.Y > body.End.Y ? body.Start.Y : body.End.Y) + body.Radius;
 	const XMFLOAT3 head = { body.Start.X, top + PERCENT_HEAD_OFFSET, body.Start.Z };
 	XMFLOAT2 screen;
-	if (!CameraWorldToScreen(head, &screen)) return;
+	if (!m_Camera->WorldToScreen(head, &screen)) return;
 
 	// 数字と「%」を合わせた幅の真ん中を頭に合わせ、下の端を頭の上の点にそろえる
-	const int percent = GlyphCalcDisplayPercent(DummyGetPercent(index));
+	const int percent = GlyphCalcDisplayPercent(m_Dummies->GetPercent(index));
 	const float height = PERCENT_DIGIT_WIDTH * 2.0f;
 	const float dot = height / 7.0f;	// 「%」は数字と同じ高さ（7 ドット）
 	const float numberWidth = GlyphCalcNumberWidth(percent, 1, PERCENT_DIGIT_WIDTH);
@@ -56,22 +56,22 @@ static void DrawDummyPercent(int index)
 }
 
 
-void HudInitialize(void)
+void Hud::Reset(void)
 {
 
 }
 
-void HudFinalize(void)
+void Hud::Finalize(void)
 {
 
 }
 
-void HudUpdate(void)
+void Hud::Update(void)
 {
 
 }
 
-void HudDraw(void)
+void Hud::Draw(void) const
 {
 	const float centerX = (float)SCREEN_WIDTH * 0.5f;
 
@@ -79,17 +79,25 @@ void HudDraw(void)
 		DrawDummyPercent(i);
 	}
 
-	if (MatchGetState() == MATCH_STATE_FINISHED) {
+	if (m_Match->GetState() == MATCH_STATE_FINISHED) {
 		// 時間切れ：おおいの上に TIME UP・スコア・やり直しの案内（左上のスコアは出さない）
 		Number2DDrawBox({ 0.0f, 0.0f, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT }, COVER_COLOR);
 		Number2DDrawText("TIME UP", centerX, TIME_UP_Y, TIME_UP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
-		Number2DDrawNumber(MatchGetScore(), 1, centerX, FINAL_SCORE_Y, FINAL_SCORE_DIGIT_WIDTH, GLYPH_ALIGN_CENTER, TEXT_COLOR);
+		Number2DDrawNumber(m_Match->GetScore(), 1, centerX, FINAL_SCORE_Y, FINAL_SCORE_DIGIT_WIDTH, GLYPH_ALIGN_CENTER, TEXT_COLOR);
 		Number2DDrawText("PRESS R / OPTIONS", centerX, RESTART_Y, RESTART_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
 	}
 	else {
-		Number2DDrawNumber(MatchGetScore(), 1, SCORE_X, SCORE_Y, SCORE_DIGIT_WIDTH, GLYPH_ALIGN_LEFT, TEXT_COLOR);
+		Number2DDrawNumber(m_Match->GetScore(), 1, SCORE_X, SCORE_Y, SCORE_DIGIT_WIDTH, GLYPH_ALIGN_LEFT, TEXT_COLOR);
 	}
 
 	// 残り秒数（時間切れでも 0 のまま、おおいの上に出す）
-	Number2DDrawNumber(MatchGetRemainingSeconds(), 1, centerX, SECONDS_Y, SECONDS_DIGIT_WIDTH, GLYPH_ALIGN_CENTER, TEXT_COLOR);
+	Number2DDrawNumber(m_Match->GetRemainingSeconds(), 1, centerX, SECONDS_Y, SECONDS_DIGIT_WIDTH, GLYPH_ALIGN_CENTER, TEXT_COLOR);
+}
+
+void Hud::Initialize(const Camera& camera, const DummyManager& dummies, const Match& match)
+{
+	m_Camera = &camera;
+	m_Dummies = &dummies;
+	m_Match = &match;
+	Reset();
 }

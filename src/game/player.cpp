@@ -27,41 +27,35 @@ static constexpr float BODY_HEIGHT = 1.8f;		// カプセルの高さ
 static constexpr XMFLOAT4 BODY_COLOR = { 0.95f, 0.45f, 0.35f, 1.0f };	// 色（仮。サーモンピンク）
 
 
-static PlayerBodyCalc g_Body = {};	// 位置・速度・立っているか
-static float g_Yaw = 0.0f;		// キャラの左右の向き（ラジアン）
-static bool g_Respawned = false;
-static bool g_Pulled = false;
-
-
 // 浮島の真ん中に立たせる
-static void Respawn(void)
+void Player::Respawn(void)
 {
-	const STAGE& stage = StageGet();
-	g_Body = {};
-	g_Body.SetPosition({ stage.CenterX, stage.TopY, stage.CenterZ });
-	g_Body.SetOnGround(true);
-	g_Pulled = false;
-	g_Yaw = 0.0f;
+	const STAGE& stage = m_Stage->GetStage();
+	m_Body = {};
+	m_Body.SetPosition({ stage.CenterX, stage.TopY, stage.CenterZ });
+	m_Body.SetOnGround(true);
+	m_Pulled = false;
+	m_Yaw = 0.0f;
 }
 
 
-void PlayerInitialize(void)
+void Player::Reset(void)
 {
-	g_Respawned = false;
+	m_Respawned = false;
 	Respawn();
 }
 
-void PlayerFinalize(void)
+void Player::Finalize(void)
 {
 
 }
 
-void PlayerUpdate(void)
+void Player::Update(void)
 {
-	g_Respawned = false;
+	m_Respawned = false;
 	// 移動の向き（前 = カメラが向いている向き。上下には傾けない）を、ワールドの向きに直す
 	const ACTION_AXIS move = ActionGetMove();
-	const float yaw = CameraGetYaw();
+	const float yaw = m_Camera->GetYaw();
 	const float forwardX = sinf(yaw), forwardZ = cosf(yaw);
 	const float rightX = cosf(yaw), rightZ = -sinf(yaw);
 	const float moveX = rightX * move.X + forwardX * move.Y;
@@ -71,80 +65,89 @@ void PlayerUpdate(void)
 	params.MoveSpeed = MOVE_SPEED;
 	params.JumpSpeed = JUMP_SPEED;
 	params.Gravity = GRAVITY;
-	if (!g_Pulled) {
-		g_Body.Step(moveX, moveZ, ActionIsTrigger(ACTION_JUMP), GameTimeGetDeltaTime(), params, StageGet());
+	if (!m_Pulled) {
+		m_Body.Step(moveX, moveZ, ActionIsTrigger(ACTION_JUMP), GameTimeGetDeltaTime(), params, m_Stage->GetStage());
 	}
 
 	// 場外に落ちたら、浮島の真ん中に戻す（試合の流れは No.14 で作る）
-	if (StageCalcIsOut(StageGet(), g_Body.GetY())) {
+	if (StageCalcIsOut(m_Stage->GetStage(), m_Body.GetY())) {
 #ifdef _DEBUG
 		hal::dout << "プレイヤー：場外 → 浮島の真ん中に戻した" << std::endl;
 #endif
 		Respawn();
-		g_Respawned = true;
+		m_Respawned = true;
 	}
 }
 
-void PlayerUpdateFacing(void)
+void Player::UpdateFacing(void)
 {
 	// カメラ更新後の向きに合わせる。復活したフレームの腕は解除される。
-	if (g_Respawned) {
-		g_Yaw = CameraGetYaw();
+	if (m_Respawned) {
+		m_Yaw = m_Camera->GetYaw();
 		return;
 	}
-	const bool armActive = ArmIsActive()
+	const bool armActive = m_Arms->IsActive()
 		|| ActionIsTrigger(ACTION_ARM_LEFT) || ActionIsTrigger(ACTION_ARM_RIGHT);
-	const int target = CameraGetTarget();
-	float targetYaw = g_Yaw;
+	const int target = m_Camera->GetTarget();
+	float targetYaw = m_Yaw;
 	if (target >= 0) {
-		const CAPSULE body = DummyGetTarget(target).Body;
+		const CAPSULE body = m_Dummies->GetTarget(target).Body;
 		const VEC3 center = Vec3Scale(Vec3Add(body.Start, body.End), 0.5f);
-		targetYaw = CameraCalcYawTo({ g_Body.GetX(), g_Body.GetY(), g_Body.GetZ() }, center, g_Yaw);
+		targetYaw = CameraCalcYawTo({ m_Body.GetX(), m_Body.GetY(), m_Body.GetZ() }, center, m_Yaw);
 	}
-	g_Yaw = PlayerCalcFacing(g_Yaw, g_Body.GetVelocityX(), g_Body.GetVelocityZ(), CameraGetYaw(),
+	m_Yaw = PlayerCalcFacing(m_Yaw, m_Body.GetVelocityX(), m_Body.GetVelocityZ(), m_Camera->GetYaw(),
 		armActive, TURN_SPEED, GameTimeGetDeltaTime(), target >= 0, targetYaw);
 }
 
-float PlayerGetYaw(void)
+float Player::GetYaw(void) const
 {
-	return g_Yaw;
+	return m_Yaw;
 }
 
-void PlayerDraw(void)
+void Player::Draw(void) const
 {
-	ShapeDrawCapsule({ g_Body.GetX(), g_Body.GetY(), g_Body.GetZ() }, BODY_RADIUS, BODY_HEIGHT, BODY_COLOR);
+	ShapeDrawCapsule({ m_Body.GetX(), m_Body.GetY(), m_Body.GetZ() }, BODY_RADIUS, BODY_HEIGHT, BODY_COLOR);
 }
 
-XMFLOAT3 PlayerGetPosition(void)
+XMFLOAT3 Player::GetPosition(void) const
 {
-	return { g_Body.GetX(), g_Body.GetY(), g_Body.GetZ() };
+	return { m_Body.GetX(), m_Body.GetY(), m_Body.GetZ() };
 }
 
-void PlayerSetPosition(const XMFLOAT3& position)
+void Player::SetPosition(const XMFLOAT3& position)
 {
-	g_Body.SetPosition({ position.x, position.y, position.z });
+	m_Body.SetPosition({ position.x, position.y, position.z });
 }
 
-void PlayerSetPulled(bool pulled)
+void Player::SetPulled(bool pulled)
 {
-	g_Pulled = pulled;
+	m_Pulled = pulled;
 	if (pulled) {
-		g_Body.SetVelocity({ 0.0f, 0.0f, 0.0f });
-		g_Body.SetOnGround(false);
+		m_Body.SetVelocity({ 0.0f, 0.0f, 0.0f });
+		m_Body.SetOnGround(false);
 	}
 }
 
-float PlayerGetHeight(void)
+float Player::GetHeight(void) const
 {
 	return BODY_HEIGHT;
 }
 
-bool PlayerDidRespawn(void)
+bool Player::DidRespawn(void) const
 {
-	return g_Respawned;
+	return m_Respawned;
 }
 
-bool PlayerIsOnGround(void)
+bool Player::IsOnGround(void) const
 {
-	return g_Body.GetOnGround();
+	return m_Body.GetOnGround();
+}
+
+void Player::Initialize(const Stage& stage, const Camera& camera, const DummyManager& dummies, const ArmManager& arms)
+{
+	m_Stage = &stage;
+	m_Camera = &camera;
+	m_Dummies = &dummies;
+	m_Arms = &arms;
+	Reset();
 }

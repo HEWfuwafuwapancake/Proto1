@@ -12,7 +12,8 @@ class TentacleArm : public Arm
 public:
 	/// @brief 片手のモデルを読み、待機状態にする（ダミー初期化後）
 	/// @param hand 左 0・右 1
-	explicit TentacleArm(int hand);
+	/// @param links 腕が使うゲームの部品への参照
+	TentacleArm(int hand, const ARM_LINKS& links);
 	/// @brief 保持している敵をダメージなしで離して終了する
 	~TentacleArm() override;
 	/// @brief カメラ更新後に入力・命中・保持・投げを更新する
@@ -28,6 +29,7 @@ public:
 	bool IsHolding() const override;
 
 private:
+	VEC3 HoldPosition(float side, float forward, float height) const;
 	TentacleCalc m_Arm;
 	int m_BaseModel = -1;
 	int m_SegmentModel = -1;

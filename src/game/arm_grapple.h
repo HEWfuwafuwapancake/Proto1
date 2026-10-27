@@ -12,7 +12,8 @@ class GrappleArm : public Arm
 public:
 	/// @brief 片手のモデルを読み、待機状態にする
 	/// @param hand 左 0・右 1
-	explicit GrappleArm(int hand);
+	/// @param links 腕が使うゲームの部品への参照
+	GrappleArm(int hand, const ARM_LINKS& links);
 	/// @brief 自分が引き寄せ中なら解除して終了する
 	~GrappleArm() override;
 	/// @brief 左右の腕を接続し、引き寄せの所有権を渡せるようにする（起動時に1回）
@@ -31,6 +32,7 @@ public:
 	bool IsHolding() const override;
 
 private:
+	bool MirrorHand(int hand) const;
 	GrappleCalc m_Arm;
 	float m_Straighten = 0.0f; // 描画だけのまっすぐ度（0：待機の構え、1：フックの向き）。
 	int m_UpperModel = -1;

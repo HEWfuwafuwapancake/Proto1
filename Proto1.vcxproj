@@ -127,6 +127,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\game\game.cpp" />
     <ClCompile Include="src\game\camera.cpp" />
     <ClCompile Include="src\core\debug_ostream.cpp" />
     <ClCompile Include="src\core\dx11.cpp" />
@@ -168,6 +169,7 @@
     <ClCompile Include="src\core\timer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\game\game.h" />
     <ClInclude Include="src\game\camera.h" />
     <ClInclude Include="src\core\debug_ostream.h" />
     <ClInclude Include="src\core\dx11.h" />

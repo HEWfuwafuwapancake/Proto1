@@ -40,27 +40,27 @@ static constexpr float WIGGLE_ARM_PHASE = 1.6f;
 static constexpr float WIGGLE_FULL_LENGTH = 3.0f;
 static constexpr float WIGGLE_HOLD_SCALE = 0.3f;
 
-static VEC3 HoldPosition(float side, float forward, float height)
+VEC3 TentacleArm::HoldPosition(float side, float forward, float height) const
 {
-	const XMFLOAT3 p = PlayerGetPosition();
-	const float yaw = PlayerGetYaw();
+	const XMFLOAT3 p = GetPlayer().GetPosition();
+	const float yaw = GetPlayer().GetYaw();
 	return { p.x + cosf(yaw) * side + sinf(yaw) * forward, height,
 		p.z - sinf(yaw) * side + cosf(yaw) * forward };
 }
 
-TentacleArm::TentacleArm(int hand) : Arm(hand)
+TentacleArm::TentacleArm(int hand, const ARM_LINKS& links) : Arm(hand, links)
 {
 	// ゲームの中ではモデルのままが左手に合うので、右手は X を鏡写しにして読む
-	m_BaseModel = ArmLoadModel("assets/models/tentacle_base.obj", hand);
-	m_SegmentModel = ArmLoadModel("assets/models/tentacle_segment.obj", hand);
-	m_TipModel = ArmLoadModel("assets/models/tentacle_tip.obj", hand);
+	m_BaseModel = LoadModel("assets/models/tentacle_base.obj");
+	m_SegmentModel = LoadModel("assets/models/tentacle_segment.obj");
+	m_TipModel = LoadModel("assets/models/tentacle_tip.obj");
 	m_Arm.Reset();
 }
 
 void TentacleArm::Reset()
 {
 	TentacleCalc& arm = m_Arm;
-	DummyRelease(arm.GetTarget(), false, {}, 0.0f, 0.0f);
+	GetDummies().Release(arm.GetTarget(), false, {}, 0.0f, 0.0f);
 	arm.Reset();
 }
 
@@ -72,38 +72,38 @@ TentacleArm::~TentacleArm()
 void TentacleArm::Update(bool trigger)
 {
 	const int hand = GetHand();
-	const float yaw = CameraGetYaw();
+	const float yaw = GetCamera().GetYaw();
 	const VEC3 cameraForward{ sinf(yaw), 0.0f, cosf(yaw) };
 	TentacleCalc& arm = m_Arm;
 	// 左腕がつかんだ状態を右腕へ反映するため、候補は各腕の直前に取得する。
 	TENTACLE_TARGET targets[DUMMY_COUNT];
-	for (int i = 0; i < DUMMY_COUNT; ++i) targets[i] = DummyGetTarget(i);
+	for (int i = 0; i < DUMMY_COUNT; ++i) targets[i] = GetDummies().GetTarget(i);
 	const float side = hand == 0 ? -1.0f : 1.0f;
-	const VEC3 origin = ArmGetShoulder(hand);
+	const VEC3 origin = GetShoulder();
 	// 肩と同じ高さ（従来の p.y + HAND_HEIGHT）。XZ の計算順は従来の Position と同じ。
 	const VEC3 hold = HoldPosition(side * HOLD_OFFSET, HOLD_FORWARD, origin.Y);
 	VEC3 aim = cameraForward;
 	if (trigger && arm.GetState() == TENTACLE_IDLE) {
-		const int target = CameraGetTarget();
+		const int target = GetCamera().GetTarget();
 		const bool hasTarget = target >= 0 && target < DUMMY_COUNT;
 		const VEC3 center = hasTarget
 			? Vec3Scale(Vec3Add(targets[target].Body.Start, targets[target].Body.End), 0.5f) : VEC3{};
 		// 各肩からの向きを開始時だけ決める。伸長中は追いかけず、投げる向きとも分ける。
 		aim = TentacleCalcAim(origin, center, hasTarget, cameraForward);
 	}
-	const bool cancel = PlayerDidRespawn() || (arm.GetTarget() >= 0 && !DummyIsActive(arm.GetTarget()));
+	const bool cancel = GetPlayer().DidRespawn() || (arm.GetTarget() >= 0 && !GetDummies().IsActive(arm.GetTarget()));
 	const TENTACLE_EVENT event = arm.Step(origin, aim, hold,
 		trigger, cancel,
-		GameTimeGetDeltaTime(), PARAMS, targets, DUMMY_COUNT, StageGet());
+		GameTimeGetDeltaTime(), PARAMS, targets, DUMMY_COUNT, GetStage().GetStage());
 	if (event.Grabbed >= 0) {
-		if (DummyGrab(event.Grabbed)) PadRumble(GRAB_RUMBLE_SMALL, GRAB_RUMBLE_LARGE, GRAB_RUMBLE_SECONDS);
+		if (GetDummies().Grab(event.Grabbed)) PadRumble(GRAB_RUMBLE_SMALL, GRAB_RUMBLE_LARGE, GRAB_RUMBLE_SECONDS);
 		else arm.Reset();
 	}
 	if (event.Released >= 0) {
-		DummyRelease(event.Released, event.Throw, cameraForward, THROW_DAMAGE, THROW_POWER);
+		GetDummies().Release(event.Released, event.Throw, cameraForward, THROW_DAMAGE, THROW_POWER);
 		if (event.Throw) PadRumble(THROW_RUMBLE_SMALL, THROW_RUMBLE_LARGE, THROW_RUMBLE_SECONDS);
 	}
-	if (arm.GetTarget() >= 0) DummyMoveHeld(arm.GetTarget(), arm.GetTip());
+	if (arm.GetTarget() >= 0) GetDummies().MoveHeld(arm.GetTarget(), arm.GetTip());
 	if (arm.GetState() == TENTACLE_EXTENDING) {
 		// 伸びるほど強くする（PadRumble は強いほうを残すので、毎フレーム足すと右肩上がりになる）
 		const float strength = Lerp(EXTEND_RUMBLE_START, EXTEND_RUMBLE_END, arm.GetExtendRatio(PARAMS));
@@ -115,20 +115,20 @@ void TentacleArm::Draw()
 {
 	const int hand = GetHand();
 	const TentacleCalc& arm = m_Arm;
-	const VEC3 origin = ArmGetShoulder(hand);
+	const VEC3 origin = GetShoulder();
 	VEC3 tip = arm.GetState() == TENTACLE_IDLE ? origin : arm.GetTip();
 	if (arm.GetState() != TENTACLE_HOLDING) {
 		// 描画する先端だけを変える。計算上の arm.GetTip()・長さ・判定はそのまま。
 		const VEC3 extended = Vec3Sub(tip, origin);
 		const float length = Vec3Length(extended);
-		const VEC3 rest = ArmGetRestDirection(hand);
+		const VEC3 rest = GetRestDirection();
 		const VEC3 aim = length < MODEL_MIN_LENGTH ? rest : Vec3Scale(extended, 1.0f / length);
 		const VEC3 direction = ArmCalcBlendDirection(rest, aim, length / IDLE_LENGTH);
 		tip = Vec3Add(origin, Vec3Scale(direction, fmaxf(length, IDLE_LENGTH)));
 	}
 	const VEC3 delta = Vec3Sub(tip, origin);
 	const int steps = (int)ceilf(Vec3Length(delta) / SPHERE_SPACING) + 1;
-	const XMFLOAT4 color = ArmGetColor(hand, arm.GetTarget() >= 0);
+	const XMFLOAT4 color = GetColor(arm.GetTarget() >= 0);
 	if (m_BaseModel >= 0 && m_SegmentModel >= 0 && m_TipModel >= 0) {
 		const float length = Vec3Length(delta);
 		const float remaining = length / MODEL_SCALE - BASE_LENGTH - TIP_LENGTH;
@@ -136,7 +136,7 @@ void TentacleArm::Draw()
 		const float total = BASE_LENGTH + segments * SEGMENT_LENGTH + TIP_LENGTH;
 		// 短すぎる腕は見た目だけ最低長まで伸ばす。判定や arm.GetTip() は変えない。
 		const float drawLength = fmaxf(length, total * MODEL_SCALE * MIN_STRETCH);
-		const float yaw = PlayerGetYaw();
+		const float yaw = GetPlayer().GetYaw();
 		const VEC3 direction = length < MODEL_MIN_LENGTH ? VEC3{ sinf(yaw), 0, cosf(yaw) }
 			: Vec3Scale(delta, 1.0f / length);
 		const VEC3 drawTip = Vec3Add(origin, Vec3Scale(direction, drawLength));
@@ -152,7 +152,7 @@ void TentacleArm::Draw()
 			distance += sourceLength;
 			const VEC3 end = TentacleCalcWigglePoint(origin, drawTip, last ? 1.0f : distance / total,
 				phase, amplitude, WIGGLE_WAVES);
-			ArmDrawPiece(base ? m_BaseModel : (last ? m_TipModel : m_SegmentModel),
+			DrawPiece(base ? m_BaseModel : (last ? m_TipModel : m_SegmentModel),
 				start, end, sourceLength, MODEL_SCALE, color);
 			start = end;
 		}

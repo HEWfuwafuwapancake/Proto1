@@ -11,13 +11,7 @@
 #include "input/keyboard.h"
 #include "input/mouse.h"
 #include "input/pad.h"
-#include "game/camera.h"
-#include "game/dummy.h"
-#include "game/hud.h"
-#include "game/match.h"
-#include "game/player.h"
-#include "game/stage.h"
-#include "game/arm.h"
+#include "game/game.h"
 #include "render/number2d.h"
 #include "render/shape.h"
 #include "render/model.h"
@@ -41,6 +35,8 @@ static constexpr float RUMBLE_ON_NOTICE_SECONDS = 0.2f;
 ------------------------------------------------------------------------------*/
 LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
+static Game g_Game;
+
 static DWORD g_Fps = 0;	// 直近1秒の FPS
 
 /// タイトルバーに FPS・装備・振動のオン・オフを出す（残り時間・得点は画面に出す。hud.cpp）
@@ -49,7 +45,7 @@ static void RefreshTitle(HWND hWnd)
 	char title[224];
 	const int mode = ActionGetEquipMode();
 	sprintf_s(title, "%s  FPS: %lu  左：%s 右：%s%s  振動: %s（SHARE / V）", TITLE, g_Fps,
-		ArmGetName(ArmGetType(0)), ArmGetName(ArmGetType(1)),
+		ArmGetName(g_Game.GetArms().GetType(0)), ArmGetName(g_Game.GetArms().GetType(1)),
 		mode == 0 ? "  [左腕を切り替え中：数字キー 1-6]" : (mode == 1 ? "  [右腕を切り替え中：数字キー 1-6]" : ""),
 		PadIsRumbleEnabled() ? "オン" : "オフ");
 	SetWindowText(hWnd, title);
@@ -168,11 +164,11 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
 				dwExecLastTime = dwCurrentTime;	// 大きく遅れたとき（ウィンドウをつかんで動かしていた など）は追いつこうとせず仕切り直す
 			}
 
-			const ARM_TYPE oldLeft = ArmGetType(0);
-			const ARM_TYPE oldRight = ArmGetType(1);
+			const ARM_TYPE oldLeft = g_Game.GetArms().GetType(0);
+			const ARM_TYPE oldRight = g_Game.GetArms().GetType(1);
 			const int oldMode = ActionGetEquipMode();
 			Update();			// 更新処理
-			if (oldLeft != ArmGetType(0) || oldRight != ArmGetType(1) || oldMode != ActionGetEquipMode()) RefreshTitle(hWnd);
+			if (oldLeft != g_Game.GetArms().GetType(0) || oldRight != g_Game.GetArms().GetType(1) || oldMode != ActionGetEquipMode()) RefreshTitle(hWnd);
 			Draw();				// 描画処理
 
 			dwFrameCount++;		// 処理回数のカウントを加算
@@ -276,17 +272,9 @@ bool Initialize(HWND hWnd)
 	ShapeInitialize();
 	ModelInitialize();
 
-	//3Dオブジェクト初期化（プレイヤーは浮島の上に立たせるのでステージのあと、カメラはプレイヤーの後ろに置くのでプレイヤーのあと）
-	StageInitialize();
-	PlayerInitialize();
-	DummyInitialize();
-	CameraInitialize();
-	ArmInitialize();
-	MatchInitialize();
-
-	//画面表示（2D の四角・数字・文字の部品のあとに、残り時間・スコアなどの表示）
+	//画面表示の描画部品まで初期化してから、ゲームを初期化する
 	Number2DInitialize();
-	HudInitialize();
+	g_Game.Initialize();
 
 	return true;
 }
@@ -295,15 +283,9 @@ bool Initialize(HWND hWnd)
 void Finalize(void)
 {
 	//初期化と逆の順番で終了処理をする
-	HudFinalize();
+	g_Game.Finalize();
 	Number2DFinalize();
 
-	MatchFinalize();
-	ArmFinalize();
-	CameraFinalize();
-	DummyFinalize();
-	PlayerFinalize();
-	StageFinalize();
 	ModelFinalize();
 	ShapeFinalize();
 
@@ -349,22 +331,7 @@ void Update(void)
 		if (PadIsRumbleEnabled()) PadRumble(RUMBLE_ON_NOTICE_STRENGTH, RUMBLE_ON_NOTICE_STRENGTH, RUMBLE_ON_NOTICE_SECONDS);
 	}
 
-	//プレイヤーを動かし、ダミーがプレイヤーに押されてから、カメラがプレイヤーを追いかける
-	//（時間切れのあとは、プレイヤー・ダミー・触腕を止める。カメラは回せる）
-	StageUpdate();
-	if (MatchIsPlaying()) {
-		PlayerUpdate();
-		DummyUpdate();
-	}
-	CameraUpdate();
-	if (MatchIsPlaying()) {
-		PlayerUpdateFacing();	// 腕の入力と同じフレームのカメラへ向いてから、肩の位置を計算する
-	}
-	// 装備切り替えは時間切れのあとも受け付け、腕の動きは試合中だけ更新する。
-	ArmUpdate(MatchIsPlaying());
-	//試合の流れ（場外の回数を数える・時間切れ・やり直し）はダミーが動いたあとに呼ぶ
-	MatchUpdate();
-	HudUpdate();
+	g_Game.Update();
 }
 
 void Draw(void)
@@ -373,29 +340,7 @@ void Draw(void)
 
 	Clear();
 
-	// ---- 3D描画 ----
-	SetDepthEnable(true);
-	CameraDraw();
-
-	// ライト（斜め上から当たる白い光）
-	LIGHT light{};
-	light.Enable = TRUE;
-	light.Direction = { 0.5f, -1.0f, 0.8f, 0.0f };
-	light.Diffuse = { 1.0f, 1.0f, 1.0f, 1.0f };
-	light.Ambient = { 0.3f, 0.3f, 0.3f, 1.0f };
-	Shader_SetLight(light);
-
-	StageDraw();
-	PlayerDraw();
-	DummyDraw();
-	ArmDraw();
-
-	// ---- 2D描画（UI）：3Dの上に重ねるので最後に描く ----
-	SetDepthEnable(false);
-	light.Enable = FALSE;
-	Shader_SetLight(light);
-
-	HudDraw();
+	g_Game.Draw();
 
 	Present();
 }

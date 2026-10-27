@@ -37,22 +37,8 @@ static constexpr float KNOCKBACK_FRICTION = 20.0f;		// 地面の摩擦（浮島�
 static constexpr float KNOCKBACK_STOP_SPEED = 0.5f;		// 浮島の上でこれより遅くなったら止まる
 
 
-
-// ダミー1体
-struct DUMMY
-{
-	PlayerBodyCalc Body;	// 位置・速度・立っているか（立っている間はプレイヤーと同じ計算で動かす）
-	DummyLifeCalc Life;	// 場外に落ちて復活する流れ
-	float Percent;		// ダメージ%（復活したら 0 に戻る）
-	bool Launched;		// 吹っ飛ばされているか（自分では止まれない。浮島の上で止まったら false）
-	bool Held;          // 触腕が保持しているか
-};
-
-static DUMMY g_Dummies[DUMMY_COUNT] = {};
-
-
 // 吹っ飛びの調整用の値
-static KNOCKBACK_PARAMS KnockbackParams(void)
+KNOCKBACK_PARAMS DummyManager::KnockbackParams(void) const
 {
 	KNOCKBACK_PARAMS params{};
 	params.BaseSpeed = KNOCKBACK_BASE_SPEED;
@@ -66,10 +52,10 @@ static KNOCKBACK_PARAMS KnockbackParams(void)
 }
 
 // 最初の場所に立たせ、ダメージ%を 0 に戻す
-static void PlaceAtSpawn(int index)
+void DummyManager::PlaceAtSpawn(int index)
 {
-	const STAGE& stage = StageGet();
-	DUMMY& dummy = g_Dummies[index];
+	const STAGE& stage = m_Stage->GetStage();
+	DUMMY& dummy = m_Dummies[index];
 	dummy.Body = {};
 	dummy.Body.SetPosition({ stage.CenterX + SPAWN_X[index], stage.TopY, stage.CenterZ + SPAWN_Z[index] });
 	dummy.Body.SetOnGround(true);
@@ -79,31 +65,30 @@ static void PlaceAtSpawn(int index)
 }
 
 
-
-void DummyInitialize(void)
+void DummyManager::Reset(void)
 {
 	for (int i = 0; i < DUMMY_COUNT; i++) {
 		PlaceAtSpawn(i);
-		g_Dummies[i].Life.Reset();
+		m_Dummies[i].Life.Reset();
 	}
 }
 
-void DummyFinalize(void)
+void DummyManager::Finalize(void)
 {
 
 }
 
-void DummyUpdate(void)
+void DummyManager::Update(void)
 {
 	const float dt = GameTimeGetDeltaTime();
-	const STAGE& stage = StageGet();
+	const STAGE& stage = m_Stage->GetStage();
 
 	PLAYER_PARAMS params{};
 	params.Gravity = GRAVITY;	// 自分では動かないので、歩く速さ・ジャンプは 0
 
 
 	for (int i = 0; i < DUMMY_COUNT; i++) {
-		DUMMY& dummy = g_Dummies[i];
+		DUMMY& dummy = m_Dummies[i];
 
 		if (dummy.Life.GetState() == DUMMY_STATE_ACTIVE && !dummy.Held) {
 			if (dummy.Launched) {
@@ -115,12 +100,12 @@ void DummyUpdate(void)
 				dummy.Body.Step(0.0f, 0.0f, false, dt, params, stage);
 
 				// プレイヤーに押される（真上から乗られたときは、プレイヤーのほうが押し出される）
-				const XMFLOAT3 p = PlayerGetPosition();
+				const XMFLOAT3 p = m_Player->GetPosition();
 				VEC3 playerFeet = { p.x, p.y, p.z };
 				VEC3 dummyFeet = { dummy.Body.GetX(), dummy.Body.GetY(), dummy.Body.GetZ() };
 				if (DummyCalcPushByPlayer(playerFeet, dummyFeet, BODY_RADIUS, BODY_HEIGHT)) {
 					dummy.Body.SetPosition({ dummyFeet.X, dummy.Body.GetY(), dummyFeet.Z });
-					PlayerSetPosition({ playerFeet.X, playerFeet.Y, playerFeet.Z });
+					m_Player->SetPosition({ playerFeet.X, playerFeet.Y, playerFeet.Z });
 				}
 			}
 		}
@@ -132,7 +117,7 @@ void DummyUpdate(void)
 		}
 #ifdef _DEBUG
 		if (event == DUMMY_EVENT_OUT) {
-			hal::dout << "ダミー" << i << "：場外（合計 " << DummyGetTotalOutCount() << " 回）" << std::endl;
+			hal::dout << "ダミー" << i << "：場外（合計 " << GetTotalOutCount() << " 回）" << std::endl;
 		}
 		if (event == DUMMY_EVENT_RESPAWN) {
 			hal::dout << "ダミー" << i << "：復活（0%）" << std::endl;
@@ -141,11 +126,11 @@ void DummyUpdate(void)
 	}
 }
 
-void DummyDraw(void)
+void DummyManager::Draw(void) const
 {
-	const int target = CameraGetTarget();
+	const int target = m_Camera->GetTarget();
 	for (int i = 0; i < DUMMY_COUNT; i++) {
-		const DUMMY& dummy = g_Dummies[i];
+		const DUMMY& dummy = m_Dummies[i];
 		if (dummy.Life.GetState() != DUMMY_STATE_ACTIVE) {
 			continue;	// 復活を待っている間は見えない
 		}
@@ -156,12 +141,12 @@ void DummyDraw(void)
 	}
 }
 
-void DummyHit(int index, const XMFLOAT3& direction, float damage, float power)
+void DummyManager::Hit(int index, const XMFLOAT3& direction, float damage, float power)
 {
-	if (index < 0 || index >= DUMMY_COUNT || g_Dummies[index].Life.GetState() != DUMMY_STATE_ACTIVE) {
+	if (index < 0 || index >= DUMMY_COUNT || m_Dummies[index].Life.GetState() != DUMMY_STATE_ACTIVE) {
 		return;
 	}
-	DUMMY& dummy = g_Dummies[index];
+	DUMMY& dummy = m_Dummies[index];
 	const KNOCKBACK_PARAMS params = KnockbackParams();
 
 	// スマブラと同じく、ダメージを足してから、足したあとの % で吹っ飛ぶ速さを決める
@@ -177,18 +162,18 @@ void DummyHit(int index, const XMFLOAT3& direction, float damage, float power)
 #endif
 }
 
-void DummyAddDamage(int index, float damage)
+void DummyManager::AddDamage(int index, float damage)
 {
-	if (!DummyIsActive(index)) return;
-	DUMMY& dummy = g_Dummies[index];
+	if (!IsActive(index)) return;
+	DUMMY& dummy = m_Dummies[index];
 	dummy.Percent = KnockbackCalcAddDamage(dummy.Percent, damage);
 }
 
-void DummyLaunch(int index, const VEC3& direction, float damage, float power)
+void DummyManager::Launch(int index, const VEC3& direction, float damage, float power)
 {
-	if (!DummyIsActive(index)) return;
-	DUMMY& dummy = g_Dummies[index];
-	DummyAddDamage(index, damage);
+	if (!IsActive(index)) return;
+	DUMMY& dummy = m_Dummies[index];
+	AddDamage(index, damage);
 	const float speed = KnockbackCalcSpeed(dummy.Percent, power, KnockbackParams());
 	const VEC3 velocity = KnockbackCalcDirectedVelocity(direction, speed);
 	dummy.Body.SetVelocity({ velocity.X, velocity.Y, velocity.Z });
@@ -197,38 +182,38 @@ void DummyLaunch(int index, const VEC3& direction, float damage, float power)
 	dummy.Launched = true;
 }
 
-int DummyGetTotalOutCount(void)
+int DummyManager::GetTotalOutCount(void) const
 {
 	int total = 0;
 	for (int i = 0; i < DUMMY_COUNT; i++) {
-		total += g_Dummies[i].Life.GetOutCount();
+		total += m_Dummies[i].Life.GetOutCount();
 	}
 	return total;
 }
 
-float DummyGetPercent(int index)
+float DummyManager::GetPercent(int index) const
 {
 	if (index < 0 || index >= DUMMY_COUNT) return 0.0f;
-	return g_Dummies[index].Percent;
+	return m_Dummies[index].Percent;
 }
 
-bool DummyIsActive(int index)
+bool DummyManager::IsActive(int index) const
 {
-	return index >= 0 && index < DUMMY_COUNT && g_Dummies[index].Life.GetState() == DUMMY_STATE_ACTIVE;
+	return index >= 0 && index < DUMMY_COUNT && m_Dummies[index].Life.GetState() == DUMMY_STATE_ACTIVE;
 }
 
-TENTACLE_TARGET DummyGetTarget(int index)
+TENTACLE_TARGET DummyManager::GetTarget(int index) const
 {
-	if (!DummyIsActive(index)) return {};
-	const DUMMY& dummy = g_Dummies[index];
+	if (!IsActive(index)) return {};
+	const DUMMY& dummy = m_Dummies[index];
 	const VEC3 feet{ dummy.Body.GetX(), dummy.Body.GetY(), dummy.Body.GetZ() };
 	return { DummyCalcBodyCapsule(feet, BODY_RADIUS, BODY_HEIGHT), !dummy.Held };
 }
 
-bool DummyGrab(int index)
+bool DummyManager::Grab(int index)
 {
-	if (!DummyIsActive(index) || g_Dummies[index].Held) return false;
-	DUMMY& dummy = g_Dummies[index];
+	if (!IsActive(index) || m_Dummies[index].Held) return false;
+	DUMMY& dummy = m_Dummies[index];
 	dummy.Held = true;
 	dummy.Launched = false;
 	dummy.Body.SetVelocity({ 0.0f, 0.0f, 0.0f });
@@ -236,22 +221,30 @@ bool DummyGrab(int index)
 	return true;
 }
 
-void DummyMoveHeld(int index, const VEC3& center)
+void DummyManager::MoveHeld(int index, const VEC3& center)
 {
-	if (!DummyIsActive(index) || !g_Dummies[index].Held) return;
-	DUMMY& dummy = g_Dummies[index];
+	if (!IsActive(index) || !m_Dummies[index].Held) return;
+	DUMMY& dummy = m_Dummies[index];
 	dummy.Body.SetPosition({ center.X, center.Y - BODY_HEIGHT * 0.5f, center.Z });
 }
 
-void DummyRelease(int index, bool throwTarget, const VEC3& direction, float damage, float power)
+void DummyManager::Release(int index, bool throwTarget, const VEC3& direction, float damage, float power)
 {
 	if (index < 0 || index >= DUMMY_COUNT) return;
-	DUMMY& dummy = g_Dummies[index];
+	DUMMY& dummy = m_Dummies[index];
 	dummy.Held = false;
-	if (!DummyIsActive(index) || !throwTarget) return;
+	if (!IsActive(index) || !throwTarget) return;
 	// ダメージと速さは従来の攻撃と同じ経路、投げる方向だけ3Dにする。
-	DummyHit(index, { direction.X, direction.Y, direction.Z }, damage, power);
+	Hit(index, { direction.X, direction.Y, direction.Z }, damage, power);
 	const float speed = KnockbackCalcSpeed(dummy.Percent, power, KnockbackParams());
 	const VEC3 velocity = KnockbackCalcDirectedVelocity(direction, speed);
 	dummy.Body.SetVelocity({ velocity.X, velocity.Y, velocity.Z });
+}
+
+void DummyManager::Initialize(const Stage& stage, Player& player, const Camera& camera)
+{
+	m_Stage = &stage;
+	m_Player = &player;
+	m_Camera = &camera;
+	Reset();
 }

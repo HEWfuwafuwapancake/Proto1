@@ -46,11 +46,11 @@ void DrillArm::Reset()
 	m_Spin = 0.0f;
 }
 
-DrillArm::DrillArm(int hand) : Arm(hand)
+DrillArm::DrillArm(int hand, const ARM_LINKS& links) : Arm(hand, links)
 {
 	Reset();
-	m_BaseModel = ArmLoadModel("assets/models/arm_drill_base.obj", hand);
-	m_BitModel = ArmLoadModel("assets/models/arm_drill_bit.obj", hand);
+	m_BaseModel = LoadModel("assets/models/arm_drill_base.obj");
+	m_BitModel = LoadModel("assets/models/arm_drill_bit.obj");
 }
 
 DrillArm::~DrillArm()
@@ -67,25 +67,25 @@ void DrillArm::Update(bool trigger)
 {
 	const int hand = GetHand();
 	DrillCalc& arm = m_Arm;
-	const VEC3 origin = ArmGetShoulder(hand);
-	const float yaw = CameraGetYaw();
+	const VEC3 origin = GetShoulder();
+	const float yaw = GetCamera().GetYaw();
 	const VEC3 forward{ sinf(yaw), 0.0f, cosf(yaw) };
 	TENTACLE_TARGET targets[DUMMY_COUNT];
-	for (int i = 0; i < DUMMY_COUNT; ++i) targets[i] = DummyGetTarget(i);
-	const int target = CameraGetTarget();
+	for (int i = 0; i < DUMMY_COUNT; ++i) targets[i] = GetDummies().GetTarget(i);
+	const int target = GetCamera().GetTarget();
 	const bool hasTarget = target >= 0 && target < DUMMY_COUNT;
 	const VEC3 center = hasTarget
 		? Vec3Scale(Vec3Add(targets[target].Body.Start, targets[target].Body.End), 0.5f) : VEC3{};
 	const VEC3 aim = TentacleCalcAim(origin, center, hasTarget, forward);
 	const float dt = fmaxf(0.0f, GameTimeGetDeltaTime());
-	const DRILL_EVENT event = arm.Step(origin, aim, hand == 1, trigger, PlayerDidRespawn(),
+	const DRILL_EVENT event = arm.Step(origin, aim, hand == 1, trigger, GetPlayer().DidRespawn(),
 		dt, PARAMS, targets, DUMMY_COUNT);
 	for (int tick = 0; tick < event.DamageTicks; ++tick) {
-		DummyAddDamage(event.Target, TICK_DAMAGE);
+		GetDummies().AddDamage(event.Target, TICK_DAMAGE);
 		PadRumble(TICK_RUMBLE_SMALL, TICK_RUMBLE_LARGE, TICK_RUMBLE_SECONDS);
 	}
 	if (event.Push) {
-		DummyLaunch(event.Target, DrillCalcPushDirection(arm.GetDirection(), PUSH_UP), 0.0f, PUSH_POWER);
+		GetDummies().Launch(event.Target, DrillCalcPushDirection(arm.GetDirection(), PUSH_UP), 0.0f, PUSH_POWER);
 		PadRumble(PUSH_RUMBLE_SMALL, PUSH_RUMBLE_LARGE, PUSH_RUMBLE_SECONDS);
 	}
 	const float step = dt / DRILL_AIM_SECONDS;
@@ -99,17 +99,17 @@ void DrillArm::Draw()
 {
 	const int hand = GetHand();
 	const DrillCalc& arm = m_Arm;
-	const VEC3 origin = ArmGetShoulder(hand);
+	const VEC3 origin = GetShoulder();
 	const VEC3 direction = ArmCalcBlendDirection(
-		ArmGetRestDirection(hand),
+		GetRestDirection(),
 		DrillCalcThrustArmDirection(arm.GetDirection(), PARAMS.Grip), m_Straighten);
-	const XMFLOAT4 color = ArmGetColor(hand, arm.GetState() == DRILL_BORING);
+	const XMFLOAT4 color = GetColor(arm.GetState() == DRILL_BORING);
 	// 付け根もビットも、常に同じ長さ・倍率で描く。間の円柱や伸縮はない。
 	const VEC3 end = Vec3Add(origin, Vec3Scale(direction, BASE_LENGTH * MODEL_SCALE));
-	ArmDrawPiece(m_BaseModel, origin, end, BASE_LENGTH, MODEL_SCALE, color, XM_PI);
+	DrawPiece(m_BaseModel, origin, end, BASE_LENGTH, MODEL_SCALE, color, XM_PI);
 	const DRILL_AXIS axis = DrillCalcAxis(origin, direction, PARAMS.Grip, hand == 1);
 	const VEC3 tip = Vec3Add(axis.Rear, Vec3Scale(axis.Direction, BIT_LENGTH * MODEL_SCALE));
-	ArmDrawPiece(m_BitModel, axis.Rear, tip, BIT_LENGTH, MODEL_SCALE, color, m_Spin);
+	DrawPiece(m_BitModel, axis.Rear, tip, BIT_LENGTH, MODEL_SCALE, color, m_Spin);
 }
 
 bool DrillArm::IsActive() const
