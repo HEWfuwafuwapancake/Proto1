@@ -182,6 +182,15 @@ void DummyManager::Launch(int index, const VEC3& direction, float damage, float 
 	dummy.Launched = true;
 }
 
+void DummyManager::Push(int index, const VEC3& velocity)
+{
+	if (!IsActive(index) || m_Dummies[index].Held) return;
+	DUMMY& dummy = m_Dummies[index];
+	dummy.Body.SetVelocity({ velocity.X, velocity.Y, velocity.Z });
+	dummy.Body.SetOnGround(false);
+	dummy.Launched = true;
+}
+
 int DummyManager::GetTotalOutCount(void) const
 {
 	int total = 0;

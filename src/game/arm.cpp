@@ -3,6 +3,7 @@
 #include "game/arm_grapple.h"
 #include "game/arm_drill.h"
 #include "game/arm_magnet.h"
+#include "game/arm_shield.h"
 #include "game/tentacle.h"
 #include "input/action.h"
 #include "physics/armcalc.h"
@@ -39,7 +40,7 @@ static const ArmFactory ARM_FACTORIES[ARM_TYPE_COUNT] = {
 	CreateArm<GrappleArm>, // グラップリング（No.36）
 	CreateArm<DrillArm>, // ドリル（No.37）
 	CreateArm<MagnetArm>, // 磁石（No.38）
-	nullptr, // デカ盾（No.39）
+	CreateArm<ShieldArm>, // デカ盾（No.39）
 	nullptr, // ハサミ（No.40）
 };
 static const char* const ARM_NAMES[ARM_TYPE_COUNT] = {
@@ -126,6 +127,11 @@ bool ArmManager::IsHolding(void) const
 ARM_TYPE ArmManager::GetType(int hand) const
 {
 	return hand >= 0 && hand < 2 ? m_Types[hand] : ARM_TYPE_COUNT;
+}
+
+float ArmManager::GetMoveScale() const
+{
+	return fminf(m_Arms[0][m_Types[0]]->GetMoveScale(), m_Arms[1][m_Types[1]]->GetMoveScale());
 }
 
 const char* ArmGetName(ARM_TYPE type)

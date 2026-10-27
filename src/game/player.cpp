@@ -62,7 +62,7 @@ void Player::Update(void)
 	const float moveZ = rightZ * move.X + forwardZ * move.Y;
 
 	PLAYER_PARAMS params{};
-	params.MoveSpeed = MOVE_SPEED;
+	params.MoveSpeed = MOVE_SPEED * m_Arms->GetMoveScale();
 	params.JumpSpeed = JUMP_SPEED;
 	params.Gravity = GRAVITY;
 	if (!m_Pulled) {

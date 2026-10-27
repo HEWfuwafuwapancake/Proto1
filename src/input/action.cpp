@@ -144,14 +144,19 @@ void ActionUpdate(void)
 	}
 	UpdateTargetInput(GameTimeGetDeltaTime());
 	int pressed = -1;
+	bool equipShift = false;
 	for (int number = 0; number < 6; ++number) {
-		if (KeyboardIsTrigger('1' + number)) {
+		const int topKey = '1' + number;
+		const int padKey = VK_NUMPAD1 + number;
+		const int key = KeyboardIsTrigger(topKey) ? topKey : padKey;
+		if (KeyboardIsTrigger(key)) {
 			pressed = number;
+			equipShift = KeyboardWasShiftDown(key);
 			break;
 		}
 	}
 	g_EquipKey = ActionCalcEquipKey(g_EquipMode, KeyboardIsTrigger(EQUIP_MODE_KEY_LEFT),
-		KeyboardIsTrigger(EQUIP_MODE_KEY_RIGHT), pressed, KeyboardIsPress(VK_SHIFT));
+		KeyboardIsTrigger(EQUIP_MODE_KEY_RIGHT), pressed, equipShift);
 
 	// ---- 移動 ----
 	// キーボードと左スティックの、強く入れているほう

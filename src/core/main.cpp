@@ -210,6 +210,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		break;
 
 	case WM_ACTIVATE: // ウィンドウが選ばれた／選ばれなくなった
+		if (LOWORD(wParam) == WA_INACTIVE) KeyboardReset();
 		// 選ばれている間だけマウスでカメラを回す（終了確認のメッセージボックスが出たときなどは自動で解除）
 		// 【マウス操作は一旦止めている】カーソルを取られないように、ロックしない（2026-10-24、管理者の指示）。
 		// 戻すときは、この行と Update の Tab の3行のコメントを外す。
@@ -217,6 +218,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		return DefWindowProc(hWnd, uMsg, wParam, lParam);
 
 	case WM_KEYDOWN:
+		KeyboardOnKeyDown((int)wParam, (lParam & (1LL << 30)) != 0);
 		if (wParam == VK_ESCAPE)
 		{
 			SendMessage(hWnd, WM_CLOSE, 0, 0);

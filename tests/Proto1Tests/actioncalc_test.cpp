@@ -2,6 +2,7 @@
 #include <math.h>
 #include "CppUnitTest.h"
 #include "input/actioncalc.h"
+#include "input/keyboardcalc.h"
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
@@ -17,6 +18,50 @@ namespace Proto1Tests
 	TEST_CLASS(ActionCalcTest)
 	{
 	public:
+		// Q と 5 の短い押下を記憶し、両手の盾を選べる。Shift は押下時の値を使う。
+		TEST_METHOD(EquipKey_ShortPressIsRememberedUntilUpdate)
+		{
+			for (int hand = 0; hand < 2; ++hand) {
+				KeyboardTriggerCalc modeKey, numberKey;
+				int mode = -1;
+				modeKey.Press(false, false);
+				modeKey.Update();
+				ActionCalcEquipKey(mode, hand == 0 && modeKey.IsTriggered(),
+					hand == 1 && modeKey.IsTriggered(), -1, false);
+				numberKey.Press(false, false);
+				numberKey.Update(); // 更新前に離していても押下が残る
+				const auto key = ActionCalcEquipKey(mode, false, false,
+					numberKey.IsTriggered() ? 4 : -1, numberKey.HadShift());
+				Assert::AreEqual(hand, key.Hand);
+				Assert::AreEqual(4, key.Number);
+				numberKey.Update();
+				Assert::IsFalse(numberKey.IsTriggered());
+			}
+			KeyboardTriggerCalc numberKey;
+			numberKey.Press(false, true);
+			numberKey.Update();
+			int mode = -1;
+			const auto key = ActionCalcEquipKey(mode, false, false, 4, numberKey.HadShift());
+			Assert::AreEqual(1, key.Hand);
+		}
+
+		// 長押しでモードを連続反転させず、非選択中の押下も復帰時に持ち越さない。
+		TEST_METHOD(EquipKey_RepeatAndFocusLossDoNotLeaveTriggers)
+		{
+			KeyboardTriggerCalc key;
+			key.Press(false, false);
+			key.Update();
+			Assert::IsTrue(key.IsTriggered());
+			key.Press(true, false);
+			key.Update();
+			Assert::IsFalse(key.IsTriggered());
+			key.Press(false, true);
+			key.Reset();
+			key.Update();
+			Assert::IsFalse(key.IsTriggered());
+			Assert::IsFalse(key.HadShift());
+		}
+
 		// 前・後ろ・左・右は、それぞれの向きに長さ 1
 		TEST_METHOD(MoveFromKeys_SingleKeys)
 		{

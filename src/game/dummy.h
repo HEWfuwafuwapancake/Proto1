@@ -62,6 +62,11 @@ public:
 	/// @param power 攻撃の強さ（DummyManager::Release と同じ速さの計算）
 	void Launch(int index, const VEC3& direction, float damage, float power);
 
+	/// @brief 保持されていない敵を、ダメージ%を変えず指定した速度で押し出す（無効な番号・復活待ち・保持中は何もしない）
+	/// @param index ダミーの番号（0〜DUMMY_COUNT-1）
+	/// @param velocity ダメージ%に依存しない押し出し速度
+	void Push(int index, const VEC3& velocity);
+
 	/// @brief 敵の体とつかめる状態を取得する（無効な番号なら空の候補）
 	TENTACLE_TARGET GetTarget(int index) const;
 	/// @brief 敵が生存しているか取得する

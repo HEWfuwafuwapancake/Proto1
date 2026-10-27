@@ -185,6 +185,9 @@
     <ClInclude Include="src\input\keyboard.h">
       <Filter>src\input</Filter>
     </ClInclude>
+    <ClInclude Include="src\input\keyboardcalc.h">
+      <Filter>src\input</Filter>
+    </ClInclude>
     <ClInclude Include="src\input\mouse.h">
       <Filter>src\input</Filter>
     </ClInclude>
@@ -242,6 +245,12 @@
     <ClCompile Include="src\game\arm_magnet.cpp">
       <Filter>src\game</Filter>
     </ClCompile>
+    <ClCompile Include="src\game\arm_shield.cpp">
+      <Filter>src\game</Filter>
+    </ClCompile>
+    <ClCompile Include="src\physics\shieldcalc.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
     <ClCompile Include="src\physics\magnetcalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
@@ -283,6 +292,12 @@
     </ClInclude>
     <ClInclude Include="src\game\arm_magnet.h">
       <Filter>src\game</Filter>
+    </ClInclude>
+    <ClInclude Include="src\game\arm_shield.h">
+      <Filter>src\game</Filter>
+    </ClInclude>
+    <ClInclude Include="src\physics\shieldcalc.h">
+      <Filter>src\physics</Filter>
     </ClInclude>
     <ClInclude Include="src\physics\magnetcalc.h">
       <Filter>src\physics</Filter>

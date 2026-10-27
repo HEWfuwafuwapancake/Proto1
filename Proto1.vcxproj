@@ -157,6 +157,8 @@
     <ClCompile Include="src\game\arm_grapple.cpp" />
     <ClCompile Include="src\game\arm_drill.cpp" />
     <ClCompile Include="src\game\arm_magnet.cpp" />
+    <ClCompile Include="src\game\arm_shield.cpp" />
+    <ClCompile Include="src\physics\shieldcalc.cpp" />
     <ClCompile Include="src\physics\magnetcalc.cpp" />
     <ClCompile Include="src\physics\drillcalc.cpp" />
     <ClCompile Include="src\physics\grapplecalc.cpp" />
@@ -180,6 +182,7 @@
     <ClInclude Include="src\input\action.h" />
     <ClInclude Include="src\input\actioncalc.h" />
     <ClInclude Include="src\input\keyboard.h" />
+    <ClInclude Include="src\input\keyboardcalc.h" />
     <ClInclude Include="src\core\main.h" />
     <ClInclude Include="src\core\mathutil.h" />
     <ClInclude Include="src\input\mouse.h" />
@@ -202,6 +205,8 @@
     <ClInclude Include="src\game\arm_grapple.h" />
     <ClInclude Include="src\game\arm_drill.h" />
     <ClInclude Include="src\game\arm_magnet.h" />
+    <ClInclude Include="src\game\arm_shield.h" />
+    <ClInclude Include="src\physics\shieldcalc.h" />
     <ClInclude Include="src\physics\magnetcalc.h" />
     <ClInclude Include="src\physics\grapplecalc.h" />
     <ClInclude Include="src\physics\drillcalc.h" />
