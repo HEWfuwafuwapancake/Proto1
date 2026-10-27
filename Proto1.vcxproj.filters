@@ -239,6 +239,12 @@
     <ClCompile Include="src\game\arm_drill.cpp">
       <Filter>src\game</Filter>
     </ClCompile>
+    <ClCompile Include="src\game\arm_magnet.cpp">
+      <Filter>src\game</Filter>
+    </ClCompile>
+    <ClCompile Include="src\physics\magnetcalc.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
     <ClCompile Include="src\physics\drillcalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
@@ -274,6 +280,12 @@
     </ClInclude>
     <ClInclude Include="src\game\arm_drill.h">
       <Filter>src\game</Filter>
+    </ClInclude>
+    <ClInclude Include="src\game\arm_magnet.h">
+      <Filter>src\game</Filter>
+    </ClInclude>
+    <ClInclude Include="src\physics\magnetcalc.h">
+      <Filter>src\physics</Filter>
     </ClInclude>
     <ClInclude Include="src\physics\armcalc.h">
       <Filter>src\physics</Filter>
