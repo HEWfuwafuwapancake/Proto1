@@ -4,7 +4,7 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）。
 決まったことは [decisions.md](decisions.md)、腕のモデルの原点と長さは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、終わったタスクの記録は [archive/](archive/)（普段は読まない）。
 
-- 最終更新：2026-10-27（Claude。Shota の共有 Proto1。No.45 は Codex がまだ push していない。No.44 段階 C のプランとプロンプトを詳しくした（管理者の確認待ち）。次は No.45 → No.44 段階 C）
+- 最終更新：2026-10-27（Claude。Shota の共有 Proto1。No.45 は Codex がまだ push していない。No.44 段階 C のプランとプロンプトを詳しくした（管理者確認済み）。次は No.45 → No.44 段階 C）
 
 ---
 
@@ -19,7 +19,7 @@
 ## 2. 次にやること：No.45（テストを減らす）→ No.44 段階 C
 
 - **直近は No.45**：管理者が下の「No.45 を Codex に頼むプロンプト」を Codex に貼る。Codex の保存のあと「No.45 を Claude が確かめるときのプロンプト」を Claude に貼る。マージしたら No.44 段階 C へ。
-- **そのあと No.44 段階 C**：段階 C のプラン（下。2026-10-27 に詳しくした）を管理者が確かめてから、「No.44 段階 C を Codex に頼むプロンプト」を Codex に貼る。Codex の保存のあと「No.44 段階 C を Claude が確かめるときのプロンプト」を Claude に貼る。
+- **そのあと No.44 段階 C**：No.45 のマージのあと、管理者が「No.44 段階 C を Codex に頼むプロンプト」を Codex に貼る（段階 C のプランは管理者確認済み）。Codex の保存のあと「No.44 段階 C を Claude が確かめるときのプロンプト」を Claude に貼る。
 
 ### No.45 のプラン：いらないテストを消す（管理者確認済み、2026-10-27。「中くらい」に減らす）
 
@@ -120,7 +120,7 @@ Proto1 の No.45（いらないテストを消す）を Codex が feature/test-t
 - `ArmGetShoulder`・`ArmGetRestDirection`・`ArmGetColor`・`ArmDrawPiece`・`ArmLoadModel` などの共通の部品と、`ArmUpdate`・`ArmIsHolding` などの外への関数は、段階 C まで今のまま。
 - 確認：Debug / Release 警告0、`run-tests.ps1`。画面：1〜3 と Shift＋1〜3 で全部の腕が前と同じに構える・動く（触腕でつかんで投げる／グラップリングで飛ぶ／ドリルで % が増えて押し出す）。
 
-#### 段階 C：ゲームの部品と `Game` クラス（`src/game/`・`main.cpp`）（**管理者の確認待ち**、2026-10-27 に詳しくした）
+#### 段階 C：ゲームの部品と `Game` クラス（`src/game/`・`main.cpp`）（管理者確認済み、2026-10-27 に詳しくした）
 
 - `Stage`・`Player`・`DummyManager`・`Camera`・`ArmManager`（左右の装備）・`Match`・`Hud` をクラスにし、ファイルの中のグローバル変数（`g_〇〇`）をメンバー変数（`m_〇〇`）にする。ファイルは今のまま（`stage.h/.cpp` に `Stage` など）。`field.cpp` は触らない。
 - **関数の名前**：`〇〇Initialize / Finalize / Update / Draw` → メンバー関数 `Initialize / Finalize / Update / Draw`。`〇〇Get△△`・`〇〇Is△△` などは頭の `〇〇` を取ったメンバー関数（`PlayerGetPosition` → `Player::GetPosition`、`StageGet` → `Stage::GetStage`、`DummyGetTarget` → `DummyManager::GetTarget`、`ArmGetType` → `ArmManager::GetType`、`PlayerUpdateFacing` → `Player::UpdateFacing`）。読むだけの関数は `const`。ファイルの中の `static` 関数（`camera.cpp` の `PlayerHead`・`SnapToPlayer` など、`dummy.cpp` の `PlaceAtSpawn`）は `private` のメンバー関数にする。調整用の値（`static constexpr`）と `DUMMY_COUNT` はそのまま。`dummy.cpp` の `DUMMY` はデータだけの struct として `DummyManager` の中（`private`）に置いてよい。
@@ -149,7 +149,7 @@ Proto1 の No.45（いらないテストを消す）を Codex が feature/test-t
 - `docs/dev/01_DX11基盤の構成.md` の「オブジェクトの足し方」と腕の足し方を、クラスを足す手順に書き直す。`CLAUDE.md`・`AGENTS.md` の古い書き方（`〇〇Initialize` の関数・`ARM_FUNCTIONS`）を直す。`docs/decisions.md` の「作り方」に1行足す。
 - No.38 のプランとプロンプトを `MagnetArm` に書き直す（`MAGNET` も `class MagnetCalc` にする）。
 
-### No.44 段階 C を Codex に頼むプロンプト（No.45 のマージと、段階 C のプランの管理者確認のあと）
+### No.44 段階 C を Codex に頼むプロンプト（No.45 のマージのあと）
 
 ```text
 Proto1 の No.44「構造体のクラス化」の段階 C（ゲームの部品と Game クラス）を実装してください。プランは docs/handoff.md の「No.44 のプラン：構造体のクラス化（管理者確認済み）」の「段階 C」です。プランにないことはしません。
