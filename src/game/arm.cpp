@@ -13,7 +13,7 @@
 
 // 調整用の値（今後追加する腕も、取付位置と待機方向はここを使う）
 static constexpr float ARM_REST_PITCH = -XM_PI / 4.0f; // 待機の腕を正面から 45° 下げる
-static constexpr float ARM_REST_SPREAD = XMConvertToRadians(15.0f); // 片側ずつ外へ開く角度
+static constexpr float ARM_REST_SPREAD = XMConvertToRadians(25.0f); // 片側ずつ外へ開く角度
 static constexpr float SHOULDER_OFFSET = 0.65f;
 static constexpr float SHOULDER_FORWARD = -0.1f; // 肩を少し後ろへ引いて胸を張る
 static constexpr float HAND_HEIGHT = 1.35f;
