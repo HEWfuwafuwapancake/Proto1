@@ -156,6 +156,8 @@
     <ClCompile Include="src\game\arm.cpp" />
     <ClCompile Include="src\game\arm_grapple.cpp" />
     <ClCompile Include="src\game\arm_drill.cpp" />
+    <ClCompile Include="src\game\arm_magnet.cpp" />
+    <ClCompile Include="src\physics\magnetcalc.cpp" />
     <ClCompile Include="src\physics\drillcalc.cpp" />
     <ClCompile Include="src\physics\grapplecalc.cpp" />
     <ClCompile Include="src\physics\armcalc.cpp" />
@@ -199,6 +201,8 @@
     <ClInclude Include="src\game\arm.h" />
     <ClInclude Include="src\game\arm_grapple.h" />
     <ClInclude Include="src\game\arm_drill.h" />
+    <ClInclude Include="src\game\arm_magnet.h" />
+    <ClInclude Include="src\physics\magnetcalc.h" />
     <ClInclude Include="src\physics\grapplecalc.h" />
     <ClInclude Include="src\physics\drillcalc.h" />
     <ClInclude Include="src\physics\armcalc.h" />

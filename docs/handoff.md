@@ -4,18 +4,19 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）。
 決まったことは [decisions.md](decisions.md)、腕のモデルの原点と長さは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、終わったタスクの記録は [archive/](archive/)（普段は読まない）。
 
-- 最終更新：2026-10-27（Claude。Shota の共有 Proto1。No.44 を完了し、No.38 のプランとプロンプトを新しい作りに書き直した）
+- 最終更新：2026-10-27（Codex。Shota の共有 Proto1。No.38 を実装し、Debug x64 ビルド成功。Claude の確認待ち）
 
 ---
 
 ## 1. 今の状態
 
-- **No.44（構造体のクラス化）は完了**。ゲームの部品は `Game` が持つクラス（`Stage`・`Player`・`DummyManager`・`Camera`・`ArmManager`・`Match`・`Hud`）、腕は `Arm` の派生（`TentacleArm`・`GrappleArm`・`DrillArm`）、計算は `〇〇Calc` クラス。足し方は [dev/01_DX11基盤の構成.md](dev/01_DX11基盤の構成.md) の「新しいオブジェクトを足すとき」「腕を足すとき」。テストは 186 件。
+- **No.38 は Codex が実装。Claude の確認待ち**。作業ブランチは `feature/arm-magnet`。`MagnetArm`・`MagnetCalc`・主な動きのテストコード6件を追加。`Proto1.sln` の Debug x64 ビルドはゲーム・テストDLLとも成功（警告・エラーなし）。テスト実行・Release・わざと壊す確認・画面確認・PR・マージは未実施、Claude 担当。Notion の No.38 と `tasks.md` は進行中。
+- 実装上の扱い：射程10はプランのカプセルの線分長として使い、端は半径込みの `CollisionCapsuleCapsule` で判定する。つかんだ次のフレームから引き寄せ、保持1.5秒は到着した次のフレームから数える。保持中の `Available=false` は消失と扱わず、ゲーム側の `IsActive()` で消失を通知する。
 - 管理者が遊んで決めること：全種類の構えが普段の画面で分かるか／グラップリング・ドリルの取付位置と強さ（No.19）／実物のパッドでの腕切り替え。マウス操作は止めたまま（[decisions.md](decisions.md)）。
 
-## 2. 次にやること：No.38（磁石）を Codex に頼む
+## 2. 次にやること：No.38（磁石）を Claude が確かめる
 
-- 管理者が下の「No.38 を Codex に頼むプロンプト」を Codex に貼る。Codex の保存のあと、「No.38 を Claude が確かめるときのプロンプト」を Claude Code の新しいセッションに貼る。
+- 管理者が下の「No.38 を Claude が確かめるときのプロンプト」を Claude Code の新しいセッションに貼る。同じ `feature/arm-magnet` で確認を続ける。下の確認済みプランは、Claude の確認が終わるまで残す。
 - 順番（管理者が決めた）：No.38 磁石 → No.39 デカ盾 → No.40 ハサミ（最後）。No.18・No.19 はプランがまだ（アームのあとで管理者が選ぶ）。
 - 画面の確認のヒント：カメラは敵を見続けるので、腕を横から見たいときは `camera.cpp` の `Camera::MakeMatrices` でビューを置きかえた一時ビルドを、OutDir・IntDir を scratchpad に分けて作る（コミットしない。終わったら `git checkout` で戻す）。**ビューの見ている点を肩（`ArmCalcShoulder` に `Player` の位置・向きを渡した点）にすると、肩が画面の真ん中に来て、部品が肩についているか分かる**。
 

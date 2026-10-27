@@ -2,6 +2,7 @@
 #include "game/player.h"
 #include "game/arm_grapple.h"
 #include "game/arm_drill.h"
+#include "game/arm_magnet.h"
 #include "game/tentacle.h"
 #include "input/action.h"
 #include "physics/armcalc.h"
@@ -37,7 +38,7 @@ static const ArmFactory ARM_FACTORIES[ARM_TYPE_COUNT] = {
 	CreateArm<TentacleArm>, // 触腕
 	CreateArm<GrappleArm>, // グラップリング（No.36）
 	CreateArm<DrillArm>, // ドリル（No.37）
-	nullptr, // 磁石（No.38）
+	CreateArm<MagnetArm>, // 磁石（No.38）
 	nullptr, // デカ盾（No.39）
 	nullptr, // ハサミ（No.40）
 };
