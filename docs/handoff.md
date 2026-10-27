@@ -4,22 +4,117 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）。
 決まったことは [decisions.md](decisions.md)、腕のモデルの原点と長さは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、終わったタスクの記録は [archive/](archive/)（普段は読まない）。
 
-- 最終更新：2026-10-27（Claude。Shota の共有 Proto1。No.43 を確認してマージ）
+- 最終更新：2026-10-27（Claude。Shota の共有 Proto1。No.44 クラス化のプランを書いた（管理者確認済み））
 
 ---
 
 ## 1. 今の状態
 
 - No.1〜17・20・22・29〜37・41〜43 は完了。No.43（腕の共通の構え）は Claude が確認してマージ済み：肩を0.1後ろ・待機の腕を片側15°開く（`arm.cpp` の調整用の値）。今後の腕も `ArmGetShoulder(hand)`・`ArmGetRestDirection(hand)` を使う。
-- 次は **No.38 磁石**（プランは管理者確認済み・Codex の実装待ち）。残りは No.39 デカ盾・No.40 ハサミ・No.18 シーン・No.19 調整用の値の整理ほか。
+- 次は **No.44 構造体のクラス化**（プランは管理者確認済み、2026-10-27）。No.38 磁石はそのあと（プランは確認済みだが、No.44 の新しい作りに合わせて書き直してから Codex に頼む）。残りは No.39 デカ盾・No.40 ハサミ・No.18 シーン・No.19 調整用の値の整理ほか。
 - モデル読み込みの失敗対策はマージ済み：盾・ハサミの OBJ を書き出し直し（長さ 0 の法線なし）、`ObjCalcTest::AssetModels_AllObjFilesParse` が `assets/models/` の全 OBJ を読む。Debug では `ModelLoad` の失敗理由とパスが出力に出る。
 - **管理者が遊んで決めること**：全種類の構え（共通の `SHOULDER_FORWARD`・`ARM_REST_SPREAD`・`ARM_REST_PITCH`、触腕の `IDLE_LENGTH`）が普段の画面で分かるか／グラップリング・ドリルの取付位置と強さ（各 `arm_〇〇.cpp` の「調整用の値」。No.19 の一覧に入れる）／実物のパッドで十字キー ← →・□ ○ の腕の切り替え。
 - マウス操作は止めてある（[decisions.md](decisions.md) の最初の項目）。
 
-## 2. 次にやること：No.38（磁石）の実装
+## 2. 次にやること：No.44（構造体のクラス化）
 
-- 管理者が「No.38 を Codex に頼むプロンプト」を Codex に貼り、Codex の保存のあと「No.38 を Claude が確かめるときのプロンプト」を Claude に貼る。
-- 順番（管理者が決めた）：No.38 磁石 → No.39 デカ盾 → No.40 ハサミ（最後）。No.18・No.19 はプランがまだ（アームのあとで管理者が選ぶ）。
+- 順番（管理者が決めた、2026-10-27）：**No.44 を No.38 より先にやる**。段階 A → B → C → D を1つずつ「実装 → Claude の確認 → PR → マージ」で進める（1段階＝1ブランチ＝1 PR）。
+- 管理者が段階ごとに「No.44 を Codex に頼むプロンプト」の `<段階>` を書きかえて Codex に貼り、Codex の保存のあと「No.44 を Claude が確かめるときのプロンプト」を Claude に貼る（段階 D は Claude が書く）。
+- 全部マージしたら、Claude が下の「No.38 のプラン」とプロンプトを新しい作り（`MagnetArm` クラス）に書き直してから、Codex に頼む。
+
+### No.44 のプラン：構造体のクラス化（管理者確認済み、2026-10-27）
+
+- **ねらい**：状態を外から直接書き換える「構造体＋関数」と、ファイルの中のグローバル変数・関数ポインタの表をやめ、状態を `private` に持つクラスのメンバー関数で動かす。腕は基本クラスから派生させて足す。
+- **どの段階でも、ゲームの動き・調整用の値・計算の結果は変えない**（作りを変えるだけ。見つけた不具合は直さずに報告する）。
+- **変えないもの**：
+  - データだけの構造体は `struct` のまま：`VERTEX_3D`・`MATERIAL`・`LIGHT`（`shaderCommon.hlsli` と並びをそろえる）、`VEC3`・`SPHERE`・`CAPSULE`・`BOX`・`HIT_RESULT`・`STAGE`、`〇〇_PARAMS`（`static constexpr` の調整用の値）、計算が返す結果（`〇〇_EVENT`・`TENTACLE_TARGET`・`TENTACLE_PIECE_AXES`・`DRILL_GRIP`・`DRILL_AXIS`・`CAMERA_FOCUS_TARGET`）。
+  - 状態を持たない計算の関数（`collision`・`vec3`・`knockbackcalc`・`cameracalc`・`armcalc`・`stagecalc`、`TentacleCalcAim` などの状態を使わない関数）は今の自由関数のまま。
+  - `src/core`・`src/input`・`src/render`（授業のひな形の部分。`TIMER`・`PAD_STATE` などもそのまま）、`field.cpp`（使っていない）、enum。
+- **名前の付け方**（段階 A で `CLAUDE.md` の「コードの約束」に足す）：クラスは `TentacleCalc`・`Player` のような形、メンバー変数は `private` で `m_` を頭に付け、読むのは `GetXxx() const`。授業のひな形の流れに合わせ `Initialize / Finalize / Update / Draw` はメンバー関数の名前で残す。クラスと `public` なメンバー関数・メンバー変数は全部 Doxygen の日本語コメントを付ける。
+
+#### 段階 A：計算のクラス化（`src/physics/` とテスト）
+
+| 今 | 変えたあと |
+|---|---|
+| `TENTACLE`＋`TentacleCalcReset`・`TentacleCalcStep`・`TentacleCalcExtendRatio` | `class TentacleCalc`（`Reset`・`Step`・`GetExtendRatio`・状態を読む `Get〇〇`） |
+| `GRAPPLE`＋`GrappleCalcReset`・`GrappleCalcStep` | `class GrappleCalc` |
+| `DRILL`＋`DrillCalcReset`・`DrillCalcStep` | `class DrillCalc` |
+| `MATCH`＋`MatchCalcStart`・`MatchCalcStep` | `class MatchCalc` |
+| `DUMMY_LIFE`＋`DummyCalcResetLife`・`DummyCalcUpdateLife` | `class DummyLifeCalc` |
+| `PLAYER_BODY`＋`PlayerCalcStep` | `class PlayerBodyCalc`（位置・速度・着地を読む・位置を設定する関数つき） |
+| `HIT_RECORD`＋`HitRecordClear`・`HitRecordContains`・`HitRecordTryAdd` | `class HitRecord` |
+
+- 引数・戻り値・計算の中身は今の関数と同じにする。`game/` の呼んでいるところは、新しい呼び方に置きかえるだけ。
+- テストは同じ内容のまま新しい呼び方に直す（テストの数を減らさない。`run-tests.ps1` の数が前と同じ）。
+- 確認：Debug / Release 警告0、`run-tests.ps1`（Debug / Release）。わざと壊す確認は要らない（新しい計算はない）。画面は撮らない。
+
+#### 段階 B：腕を基本クラスと派生クラスにする（`src/game/arm*`・`tentacle*`）
+
+- `arm.h` に基本クラス `class Arm`（純粋仮想関数：`Update(bool trigger)`・`Draw()`・`Reset()`・`IsActive() const`・`IsHolding() const`、仮想デストラクタ）。1つのインスタンスが1本の手（左 0・右 1）を受け持つ。
+- `TentacleArm`（`tentacle.cpp`）・`GrappleArm`（`arm_grapple.cpp`）・`DrillArm`（`arm_drill.cpp`）が `Arm` を派生する。今の `g_〇〇[2]` はメンバー変数にする。モデルは左右で別に読むので、今どおりインスタンスごとに持つ。
+- `arm.cpp` の `ARM_FUNCTIONS`・`ARM_TABLE`・`ARM_〇〇_FUNCTIONS` をなくし、腕の種類から作る表（`ARM_TYPE` → 作る関数、未実装は `nullptr`）にする。左右それぞれ、全種類のインスタンスを起動時に作って持ち、切り替えは今と同じく前の腕を `Reset()` してから変える。
+- `ArmGetShoulder`・`ArmGetRestDirection`・`ArmGetColor`・`ArmDrawPiece`・`ArmLoadModel` などの共通の部品と、`ArmUpdate`・`ArmIsHolding` などの外への関数は、段階 C まで今のまま。
+- 確認：Debug / Release 警告0、`run-tests.ps1`。画面：1〜3 と Shift＋1〜3 で全部の腕が前と同じに構える・動く（触腕でつかんで投げる／グラップリングで飛ぶ／ドリルで % が増えて押し出す）。
+
+#### 段階 C：ゲームの部品と `Game` クラス（`src/game/`・`main.cpp`）
+
+- `Stage`・`Player`・`DummyManager`・`Camera`・`ArmManager`（左右の装備）・`Match`・`Hud` をクラスにし、ファイルの中のグローバル変数をメンバー変数にする。
+- 新しい `src/game/game.h/.cpp` の `class Game` がこれらを持ち、`Initialize / Finalize / Update / Draw` で今の `main.cpp` と同じ順に呼ぶ。`main.cpp` は DX11・入力などの基盤と `Game` を呼ぶだけにする（`main.cpp` の依存の例外は今のまま）。
+- `PlayerGetPosition()` のようなグローバルの取得関数はなくし、使う相手への参照を `Initialize` で受け取って持つ（例：`TentacleArm` は `Player&`・`DummyManager&`・`Camera&`）。
+- `Game` のインスタンスは `main.cpp` に1つだけ。
+- 確認：段階 B と同じ ＋ 試合の流れ（90 秒・場外で +1・R でやり直し）、ダミーの % 表示、ロックオン・カメラ。
+
+#### 段階 D：決まりの書き直し（Claude）
+
+- `docs/dev/01_DX11基盤の構成.md` の「オブジェクトの足し方」と腕の足し方を、クラスを足す手順に書き直す。`CLAUDE.md`・`AGENTS.md` の古い書き方（`〇〇Initialize` の関数・`ARM_FUNCTIONS`）を直す。`docs/decisions.md` の「作り方」に1行足す。
+- No.38 のプランとプロンプトを `MagnetArm` に書き直す（`MAGNET` も `class MagnetCalc` にする）。
+
+### No.44 を Codex に頼むプロンプト（`<段階>` を A・B・C のどれかに書きかえる）
+
+```text
+Proto1 の No.44「構造体のクラス化」の段階 <段階> を実装してください。プランは docs/handoff.md の「No.44 のプラン：構造体のクラス化（管理者確認済み）」です。プランにないことはしません。
+
+## 始める前に
+- CLAUDE.md・AGENTS.md・docs/handoff.md・docs/tasks.md・docs/dev/01_DX11基盤の構成.md と Notion の開発ログ（C++・文字コード・ビルドの行）を読み、Claude が作業中でないことを確かめる（git status）。
+- 前の段階がマージ済みか確かめてから .\tools\start-work.ps1 class-<段階の英小文字>（例：class-a）
+- 段階 A のときだけ docs/tasks.md の No.44 を 🔄 にする（Notion を書き換えられなければ、最後に「No.44 を進行中に」と管理者に伝える）。
+
+## いちばん大事なこと
+- ゲームの動き・調整用の値・計算の結果を変えない。作りを変えるだけ。不具合を見つけても直さずに報告する。
+- プランの「変えないもの」は触らない（データだけの struct・状態のない計算の関数・core / input / render・field.cpp・enum）。
+- この段階の範囲だけ。次の段階のことを先にしない。
+
+## やること
+1. プランのこの段階の表・箇条書きのとおりにクラスにし、呼んでいるところ（game/・tests/）を置きかえる。メンバー変数は private で m_ を頭に付け、クラス・public のメンバーは全部 Doxygen の日本語コメント（bool を受け取る関数は「〜を設定する（true：〜、false：〜）」）。
+2. 段階 A ではテストを同じ内容のまま新しい呼び方に直す（数を減らさない）。CLAUDE.md の「コードの約束」にプランの「名前の付け方」を足す。
+3. 新しいファイルは .vcxproj と .vcxproj.filters に登録する（フィルター名は既存の登録を読んでそろえる）。C++ は BOM付きUTF-8・CRLF。
+4. Debug のビルドが通ることだけ確かめ、.\tools\save-work.ps1 "No.44 段階 <段階> クラス化" で保存する。docs/handoff.md の「今の状態」に「No.44 段階 <段階> は Codex が実装。Claude の確認待ち」と、迷ったことを短く書く。
+
+## やらないこと
+- run-tests.ps1・Release のビルド・画面の確認・PR・マージ（Claude がやる）。
+- 磁石・ほかの腕の追加、調整用の値の変更、プランにないファイルの整理。
+
+## 報告すること（短く）
+- 足した・変えたファイル
+- プランと違うことをしたところ、迷ったところ
+```
+
+### No.44 を Claude が確かめるときのプロンプト（モデル：Opus。Codex の保存のあと、管理者が Claude Code の新しいセッションに貼る）
+
+```text
+Proto1 の No.44 段階 <段階> を Codex が feature/class-<段階の英小文字> に push しました。Claude の担当分（確かめる → PR → マージ）をやってください。
+- CLAUDE.md の手順どおり handoff.md・tasks.md と Notion の開発ログを読み、Codex が作業中でないことを確かめてから .\tools\start-work.ps1 class-<段階の英小文字>。
+- プラン（handoff.md の No.44）と違うところがないか差分を読む。特に「動き・調整用の値・計算の中身が変わっていない」「変えないもの（データだけの struct・core / input / render）を触っていない」「この段階の範囲だけ」「Doxygen コメントと m_」。
+- Debug / Release 警告0、.\tools\run-tests.ps1 -Release も含めて全部通り、テストの数が前と同じ（段階 A）。
+- 段階 B・C は画面を撮る（ゲームが前に出ていることを確かめてから入力を送る。Notion の開発ログ）：プランのその段階の「確認」のとおり。
+- 直すところはこのブランチに直接コミットしてよい。PR を出してマージする（テストが通っていれば聞かずにマージしてよい）。段階 C のあとは段階 D を自分でやり、tasks.md の No.44 を ✅、Notion の No.44 を「完了」にして PR のリンクを入れる。
+- 終わったら handoff.md の「今の状態」「次にやること」を次の段階（D のあとは No.38 磁石）に書き直す。
+```
+
+## 3. そのあと：No.38（磁石）の実装
+
+- No.44 のあと、Claude が下のプランとプロンプトを新しい作りに書き直してから、管理者が Codex に貼る（下のプロンプトは今の `ARM_FUNCTIONS` の作りのままなので、**そのまま貼らない**）。
+- 順番（管理者が決めた）：No.44 クラス化 → No.38 磁石 → No.39 デカ盾 → No.40 ハサミ（最後）。No.18・No.19 はプランがまだ（アームのあとで管理者が選ぶ）。
 - 画面の確認のヒント：カメラは敵を見続けるので、腕を横から見たいときは `camera.cpp` の `MakeMatrices` でビューを置きかえた一時ビルドを、OutDir・IntDir を scratchpad に分けて作る（コミットしない。終わったら `git checkout` で戻す）。**ビューの見ている点を `ArmGetShoulder(手)` にすると、肩が画面の真ん中に来て、部品が肩についているか分かる**。
 
 ### 新しいアームの仕様（管理者確認済み、2026-10-26。各腕の細かい値は、その腕のプランで決める）
