@@ -4,22 +4,21 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）。
 決まったことは [decisions.md](decisions.md)、腕のモデルの原点と長さは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、終わったタスクの記録は [archive/](archive/)（普段は読まない）。
 
-- 最終更新：2026-10-27（Claude。Shota の共有 Proto1。No.44 段階 A を確認してマージ、次は段階 B）
+- 最終更新：2026-10-27（Claude。Shota の共有 Proto1。No.44 段階 B を確認してマージ。次は段階 C）
 
 ---
 
 ## 1. 今の状態
 
-- No.1〜17・20・22・29〜37・41〜43 は完了。No.43（腕の共通の構え）は Claude が確認してマージ済み：肩を0.1後ろ・待機の腕を片側15°開く（`arm.cpp` の調整用の値）。今後の腕も `ArmGetShoulder(hand)`・`ArmGetRestDirection(hand)` を使う。
-- **No.44 段階 A は完了**（Codex が実装、Claude が確認してマージ）。計算の7種類（`TentacleCalc`・`GrappleCalc`・`DrillCalc`・`MatchCalc`・`DummyLifeCalc`・`PlayerBodyCalc`・`HitRecord`）がクラスになった。テストは 259 件のまま全部通る。
-- 段階 A で決めたこと：テストで途中の状態を作るため、触腕・グラップリング・ドリルは初期状態を指定するコンストラクタを持つ。`KnockbackCalcStep` は自由関数のまま `PlayerBodyCalc` の取得・設定関数でつなぐ。
-- モデル読み込みの失敗対策はマージ済み：盾・ハサミの OBJ を書き出し直し（長さ 0 の法線なし）、`ObjCalcTest::AssetModels_AllObjFilesParse` が `assets/models/` の全 OBJ を読む。Debug では `ModelLoad` の失敗理由とパスが出力に出る。
+- **No.44 段階 A・B はマージ済み**。腕は基本クラス `Arm` と派生クラス `TentacleArm`・`GrappleArm`・`DrillArm`（片手1インスタンス）。`arm.cpp` は腕の種類 → 生成関数の表と、左右全種類のインスタンスを持つ。グラップリングの左右の所有権は `ConnectOtherArm`・`m_Pulling`。
+- 段階 B の確認：Debug / Release 警告 0、テスト 259 件（Debug / Release）。画面で触腕のつかむ・投げる（+12%）、グラップリングで飛ぶ（+5%）、ドリル（+20% で押し出し）、左右グラップリング、切り替え・やり直しのあと歩けることを確認。時間切れ（90 秒）は待っていない（やり直しと同じ `ArmReset`）。
+- 段階 D で直す古い説明：`docs/dev/01_DX11基盤の構成.md` の `ARM_FUNCTIONS`・`TentacleInitialize`・`TentacleUpdateHand`。
 - **管理者が遊んで決めること**：全種類の構え（共通の `SHOULDER_FORWARD`・`ARM_REST_SPREAD`・`ARM_REST_PITCH`、触腕の `IDLE_LENGTH`）が普段の画面で分かるか／グラップリング・ドリルの取付位置と強さ（各 `arm_〇〇.cpp` の「調整用の値」。No.19 の一覧に入れる）／実物のパッドで十字キー ← →・□ ○ の腕の切り替え。
 - マウス操作は止めてある（[decisions.md](decisions.md) の最初の項目）。
 
 ## 2. 次にやること：No.44（構造体のクラス化）
 
-- **直近は段階 B**：管理者が下の「Codex に頼むプロンプト」を `<段階>` = B として Codex に貼る（ブランチは `feature/class-b`）。Codex の保存のあと、確認用プロンプトを Claude に貼る。
+- **直近は段階 C**：管理者が下の「No.44 を Codex に頼むプロンプト」の `<段階>` を C にして Codex に貼る。Codex の保存のあと「No.44 を Claude が確かめるときのプロンプト」（`<段階>` = C）を Claude に貼る。
 
 - 順番（管理者が決めた、2026-10-27）：**No.44 を No.38 より先にやる**。段階 A → B → C → D を1つずつ「実装 → Claude の確認 → PR → マージ」で進める（1段階＝1ブランチ＝1 PR）。
 - 管理者が段階ごとに「No.44 を Codex に頼むプロンプト」の `<段階>` を書きかえて Codex に貼り、Codex の保存のあと「No.44 を Claude が確かめるときのプロンプト」を Claude に貼る（段階 D は Claude が書く）。
