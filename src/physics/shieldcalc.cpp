@@ -2,7 +2,7 @@
 #include "physics/tentaclecalc.h"
 
 // 調整用の値
-static constexpr float TIME_EPSILON = 0.000001f; // 秒数を足したときの丸め誤差だけを吸収する。
+static constexpr float TIME_EPSILON = 0.00001f; // 60fpsで2秒を足したときの丸め誤差だけを吸収する。
 
 CAPSULE ShieldCalcBashCapsule(const VEC3& shoulder, const VEC3& forward, const SHIELD_PARAMS& params)
 {

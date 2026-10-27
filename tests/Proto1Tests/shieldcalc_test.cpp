@@ -49,9 +49,12 @@ namespace Proto1Tests
 		{
 			ShieldCalc arm;
 			arm.Step(true, false, 0.01f, SHIELD_TEST_PARAMS);
-			Assert::IsFalse(arm.Step(false, false, 1.9f, SHIELD_TEST_PARAMS));
+			// 実際の60fpsと同じ刻みで2秒を数え、累積誤差でも1フレーム遅れないことを確かめる。
+			for (int frame = 0; frame < 119; ++frame) {
+				Assert::IsFalse(arm.Step(false, false, 1.0f / 60.0f, SHIELD_TEST_PARAMS));
+			}
 			Assert::AreEqual((int)SHIELD_GUARDING, (int)arm.GetState());
-			Assert::IsFalse(arm.Step(false, false, 0.1f, SHIELD_TEST_PARAMS));
+			Assert::IsFalse(arm.Step(false, false, 1.0f / 60.0f, SHIELD_TEST_PARAMS));
 			Assert::AreEqual((int)SHIELD_COOLDOWN, (int)arm.GetState());
 			Assert::AreEqual(0.0f, arm.GetTime(), SHIELD_EPSILON);
 		}
