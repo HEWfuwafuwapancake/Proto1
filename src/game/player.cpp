@@ -27,7 +27,7 @@ static constexpr float BODY_HEIGHT = 1.8f;		// カプセルの高さ
 static constexpr XMFLOAT4 BODY_COLOR = { 0.95f, 0.45f, 0.35f, 1.0f };	// 色（仮。サーモンピンク）
 
 
-static PLAYER_BODY g_Body = {};	// 位置・速度・立っているか
+static PlayerBodyCalc g_Body = {};	// 位置・速度・立っているか
 static float g_Yaw = 0.0f;		// キャラの左右の向き（ラジアン）
 static bool g_Respawned = false;
 static bool g_Pulled = false;
@@ -38,10 +38,8 @@ static void Respawn(void)
 {
 	const STAGE& stage = StageGet();
 	g_Body = {};
-	g_Body.X = stage.CenterX;
-	g_Body.Y = stage.TopY;
-	g_Body.Z = stage.CenterZ;
-	g_Body.OnGround = true;
+	g_Body.SetPosition({ stage.CenterX, stage.TopY, stage.CenterZ });
+	g_Body.SetOnGround(true);
 	g_Pulled = false;
 	g_Yaw = 0.0f;
 }
@@ -74,11 +72,11 @@ void PlayerUpdate(void)
 	params.JumpSpeed = JUMP_SPEED;
 	params.Gravity = GRAVITY;
 	if (!g_Pulled) {
-		PlayerCalcStep(g_Body, moveX, moveZ, ActionIsTrigger(ACTION_JUMP), GameTimeGetDeltaTime(), params, StageGet());
+		g_Body.Step(moveX, moveZ, ActionIsTrigger(ACTION_JUMP), GameTimeGetDeltaTime(), params, StageGet());
 	}
 
 	// 場外に落ちたら、浮島の真ん中に戻す（試合の流れは No.14 で作る）
-	if (StageCalcIsOut(StageGet(), g_Body.Y)) {
+	if (StageCalcIsOut(StageGet(), g_Body.GetY())) {
 #ifdef _DEBUG
 		hal::dout << "プレイヤー：場外 → 浮島の真ん中に戻した" << std::endl;
 #endif
@@ -101,9 +99,9 @@ void PlayerUpdateFacing(void)
 	if (target >= 0) {
 		const CAPSULE body = DummyGetTarget(target).Body;
 		const VEC3 center = Vec3Scale(Vec3Add(body.Start, body.End), 0.5f);
-		targetYaw = CameraCalcYawTo({ g_Body.X, g_Body.Y, g_Body.Z }, center, g_Yaw);
+		targetYaw = CameraCalcYawTo({ g_Body.GetX(), g_Body.GetY(), g_Body.GetZ() }, center, g_Yaw);
 	}
-	g_Yaw = PlayerCalcFacing(g_Yaw, g_Body.VelocityX, g_Body.VelocityZ, CameraGetYaw(),
+	g_Yaw = PlayerCalcFacing(g_Yaw, g_Body.GetVelocityX(), g_Body.GetVelocityZ(), CameraGetYaw(),
 		armActive, TURN_SPEED, GameTimeGetDeltaTime(), target >= 0, targetYaw);
 }
 
@@ -114,27 +112,25 @@ float PlayerGetYaw(void)
 
 void PlayerDraw(void)
 {
-	ShapeDrawCapsule({ g_Body.X, g_Body.Y, g_Body.Z }, BODY_RADIUS, BODY_HEIGHT, BODY_COLOR);
+	ShapeDrawCapsule({ g_Body.GetX(), g_Body.GetY(), g_Body.GetZ() }, BODY_RADIUS, BODY_HEIGHT, BODY_COLOR);
 }
 
 XMFLOAT3 PlayerGetPosition(void)
 {
-	return { g_Body.X, g_Body.Y, g_Body.Z };
+	return { g_Body.GetX(), g_Body.GetY(), g_Body.GetZ() };
 }
 
 void PlayerSetPosition(const XMFLOAT3& position)
 {
-	g_Body.X = position.x;
-	g_Body.Y = position.y;
-	g_Body.Z = position.z;
+	g_Body.SetPosition({ position.x, position.y, position.z });
 }
 
 void PlayerSetPulled(bool pulled)
 {
 	g_Pulled = pulled;
 	if (pulled) {
-		g_Body.VelocityX = g_Body.VelocityY = g_Body.VelocityZ = 0.0f;
-		g_Body.OnGround = false;
+		g_Body.SetVelocity({ 0.0f, 0.0f, 0.0f });
+		g_Body.SetOnGround(false);
 	}
 }
 
@@ -150,5 +146,5 @@ bool PlayerDidRespawn(void)
 
 bool PlayerIsOnGround(void)
 {
-	return g_Body.OnGround;
+	return g_Body.GetOnGround();
 }

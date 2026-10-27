@@ -38,7 +38,7 @@ static constexpr float PUSH_RUMBLE_SMALL = 0.6f;
 static constexpr float PUSH_RUMBLE_LARGE = 0.6f;
 static constexpr float PUSH_RUMBLE_SECONDS = 0.15f;
 
-static DRILL g_Arms[2];
+static DrillCalc g_Arms[2];
 static float g_Straighten[2] = {}; // 描画だけのまっすぐ度（0：待機、1：水平の突き）。
 static float g_Spin[2] = {};
 static int g_BaseModel[2] = { -1, -1 };
@@ -46,7 +46,7 @@ static int g_BitModel[2] = { -1, -1 };
 
 static void ResetHand(int hand)
 {
-	DrillCalcReset(g_Arms[hand]);
+	g_Arms[hand].Reset();
 	g_Straighten[hand] = 0.0f;
 	g_Spin[hand] = 0.0f;
 }
@@ -67,12 +67,12 @@ static void Finalize(void)
 
 static bool IsThrusting(int hand)
 {
-	return g_Arms[hand].State == DRILL_STRIKING || g_Arms[hand].State == DRILL_BORING;
+	return g_Arms[hand].GetState() == DRILL_STRIKING || g_Arms[hand].GetState() == DRILL_BORING;
 }
 
 static void UpdateHand(int hand, bool trigger)
 {
-	DRILL& arm = g_Arms[hand];
+	DrillCalc& arm = g_Arms[hand];
 	const VEC3 origin = ArmGetShoulder(hand);
 	const float yaw = CameraGetYaw();
 	const VEC3 forward{ sinf(yaw), 0.0f, cosf(yaw) };
@@ -84,14 +84,14 @@ static void UpdateHand(int hand, bool trigger)
 		? Vec3Scale(Vec3Add(targets[target].Body.Start, targets[target].Body.End), 0.5f) : VEC3{};
 	const VEC3 aim = TentacleCalcAim(origin, center, hasTarget, forward);
 	const float dt = fmaxf(0.0f, GameTimeGetDeltaTime());
-	const DRILL_EVENT event = DrillCalcStep(arm, origin, aim, hand == 1, trigger, PlayerDidRespawn(),
+	const DRILL_EVENT event = arm.Step(origin, aim, hand == 1, trigger, PlayerDidRespawn(),
 		dt, PARAMS, targets, DUMMY_COUNT);
 	for (int tick = 0; tick < event.DamageTicks; ++tick) {
 		DummyAddDamage(event.Target, TICK_DAMAGE);
 		PadRumble(TICK_RUMBLE_SMALL, TICK_RUMBLE_LARGE, TICK_RUMBLE_SECONDS);
 	}
 	if (event.Push) {
-		DummyLaunch(event.Target, DrillCalcPushDirection(arm.Direction, PUSH_UP), 0.0f, PUSH_POWER);
+		DummyLaunch(event.Target, DrillCalcPushDirection(arm.GetDirection(), PUSH_UP), 0.0f, PUSH_POWER);
 		PadRumble(PUSH_RUMBLE_SMALL, PUSH_RUMBLE_LARGE, PUSH_RUMBLE_SECONDS);
 	}
 	const float step = dt / DRILL_AIM_SECONDS;
@@ -103,12 +103,12 @@ static void UpdateHand(int hand, bool trigger)
 
 static void DrawHand(int hand)
 {
-	const DRILL& arm = g_Arms[hand];
+	const DrillCalc& arm = g_Arms[hand];
 	const VEC3 origin = ArmGetShoulder(hand);
 	const VEC3 direction = ArmCalcBlendDirection(
 		ArmGetRestDirection(hand),
-		DrillCalcThrustArmDirection(arm.Direction, PARAMS.Grip), g_Straighten[hand]);
-	const XMFLOAT4 color = ArmGetColor(hand, arm.State == DRILL_BORING);
+		DrillCalcThrustArmDirection(arm.GetDirection(), PARAMS.Grip), g_Straighten[hand]);
+	const XMFLOAT4 color = ArmGetColor(hand, arm.GetState() == DRILL_BORING);
 	// 付け根もビットも、常に同じ長さ・倍率で描く。間の円柱や伸縮はない。
 	const VEC3 end = Vec3Add(origin, Vec3Scale(direction, BASE_LENGTH * MODEL_SCALE));
 	ArmDrawPiece(g_BaseModel[hand], origin, end, BASE_LENGTH, MODEL_SCALE, color, XM_PI);
@@ -119,7 +119,7 @@ static void DrawHand(int hand)
 
 static bool IsActiveHand(int hand)
 {
-	return g_Arms[hand].State != DRILL_IDLE;
+	return g_Arms[hand].GetState() != DRILL_IDLE;
 }
 
 static bool IsHoldingHand(int)

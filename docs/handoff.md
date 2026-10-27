@@ -4,19 +4,22 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）。
 決まったことは [decisions.md](decisions.md)、腕のモデルの原点と長さは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、終わったタスクの記録は [archive/](archive/)（普段は読まない）。
 
-- 最終更新：2026-10-27（Claude。Shota の共有 Proto1。No.44 クラス化のプランを書いた（管理者確認済み））
+- 最終更新：2026-10-27（Codex。Shota の共有 Proto1。No.44 段階 A を実装、Claude の確認待ち）
 
 ---
 
 ## 1. 今の状態
 
 - No.1〜17・20・22・29〜37・41〜43 は完了。No.43（腕の共通の構え）は Claude が確認してマージ済み：肩を0.1後ろ・待機の腕を片側15°開く（`arm.cpp` の調整用の値）。今後の腕も `ArmGetShoulder(hand)`・`ArmGetRestDirection(hand)` を使う。
-- 次は **No.44 構造体のクラス化**（プランは管理者確認済み、2026-10-27）。No.38 磁石はそのあと（プランは確認済みだが、No.44 の新しい作りに合わせて書き直してから Codex に頼む）。残りは No.39 デカ盾・No.40 ハサミ・No.18 シーン・No.19 調整用の値の整理ほか。
+- **No.44 段階 A は Codex が実装。Claude の確認待ち**。ブランチは `feature/class-a`。計算の7種類をクラスにし、game/ と既存テストの呼び方、`CLAUDE.md` の命名規約を更新。`Proto1.sln` の Debug x64 ビルドは成功（ゲーム・テスト DLL、警告なし）。テスト実行・Release・PR・マージは Claude が行う。
+- 判断した点：既存テストの途中状態・範囲外の値を同じ条件で渡すため、触腕・グラップリング・ドリルに初期状態を指定するコンストラクタを設けた。`PlayerBodyCalc` は位置・速度・着地の設定関数を持ち、`KnockbackCalcStep` は自由関数のまま取得・設定関数でつなぐ。計算式・調整値は変更していない。
 - モデル読み込みの失敗対策はマージ済み：盾・ハサミの OBJ を書き出し直し（長さ 0 の法線なし）、`ObjCalcTest::AssetModels_AllObjFilesParse` が `assets/models/` の全 OBJ を読む。Debug では `ModelLoad` の失敗理由とパスが出力に出る。
 - **管理者が遊んで決めること**：全種類の構え（共通の `SHOULDER_FORWARD`・`ARM_REST_SPREAD`・`ARM_REST_PITCH`、触腕の `IDLE_LENGTH`）が普段の画面で分かるか／グラップリング・ドリルの取付位置と強さ（各 `arm_〇〇.cpp` の「調整用の値」。No.19 の一覧に入れる）／実物のパッドで十字キー ← →・□ ○ の腕の切り替え。
 - マウス操作は止めてある（[decisions.md](decisions.md) の最初の項目）。
 
 ## 2. 次にやること：No.44（構造体のクラス化）
+
+- **直近は Claude が段階 A を確認する**。下の確認用プロンプトを `<段階>` = A、ブランチ = `feature/class-a` として使う。Debug / Release のテスト実行とビルド、PR・マージのあとに段階 B へ進む。
 
 - 順番（管理者が決めた、2026-10-27）：**No.44 を No.38 より先にやる**。段階 A → B → C → D を1つずつ「実装 → Claude の確認 → PR → マージ」で進める（1段階＝1ブランチ＝1 PR）。
 - 管理者が段階ごとに「No.44 を Codex に頼むプロンプト」の `<段階>` を書きかえて Codex に貼り、Codex の保存のあと「No.44 を Claude が確かめるときのプロンプト」を Claude に貼る（段階 D は Claude が書く）。

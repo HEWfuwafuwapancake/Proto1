@@ -5,29 +5,29 @@ static constexpr float MIN_HORIZONTAL = 0.1f;		// 押す向きの横の成分が
 static constexpr float SEPARATION_MARGIN = 0.001f;	// 押し出すときに余分に離す距離（ちょうど触れたままにならないように）
 
 
-void DummyCalcResetLife(DUMMY_LIFE& life)
+void DummyLifeCalc::Reset()
 {
-	life.State = DUMMY_STATE_ACTIVE;
-	life.RespawnTimer = {};
-	life.OutCount = 0;
+	m_State = DUMMY_STATE_ACTIVE;
+	m_RespawnTimer = {};
+	m_OutCount = 0;
 }
 
-DUMMY_EVENT DummyCalcUpdateLife(DUMMY_LIFE& life, bool isOut, float respawnSeconds, float dt)
+DUMMY_EVENT DummyLifeCalc::Update(bool isOut, float respawnSeconds, float dt)
 {
-	if (life.State == DUMMY_STATE_ACTIVE) {
+	if (m_State == DUMMY_STATE_ACTIVE) {
 		if (isOut) {
-			life.State = DUMMY_STATE_WAITING;
-			life.OutCount++;
-			TimerStart(life.RespawnTimer, respawnSeconds);
+			m_State = DUMMY_STATE_WAITING;
+			m_OutCount++;
+			TimerStart(m_RespawnTimer, respawnSeconds);
 			return DUMMY_EVENT_OUT;
 		}
 		return DUMMY_EVENT_NONE;
 	}
 
 	// 復活を待っている
-	TimerUpdate(life.RespawnTimer, dt);
-	if (TimerIsFinished(life.RespawnTimer)) {
-		life.State = DUMMY_STATE_ACTIVE;
+	TimerUpdate(m_RespawnTimer, dt);
+	if (TimerIsFinished(m_RespawnTimer)) {
+		m_State = DUMMY_STATE_ACTIVE;
 		return DUMMY_EVENT_RESPAWN;
 	}
 	return DUMMY_EVENT_NONE;

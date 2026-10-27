@@ -15,9 +15,9 @@ namespace Proto1Tests
 	{
 		return { { { 0, 0.5f, z }, { 0, 1.3f, z }, 0.5f }, true };
 	}
-	static TENTACLE_EVENT Step(TENTACLE& arm, bool press, float dt, TENTACLE_TARGET* targets = nullptr, int count = 0)
+	static TENTACLE_EVENT Step(TentacleCalc& arm, bool press, float dt, TENTACLE_TARGET* targets = nullptr, int count = 0)
 	{
-		return TentacleCalcStep(arm, origin, aim, hold, press, false, dt, params, targets, count, stage);
+		return arm.Step(origin, aim, hold, press, false, dt, params, targets, count, stage);
 	}
 	TEST_CLASS(TentacleCalcTest)
 	{
@@ -158,59 +158,59 @@ namespace Proto1Tests
 		}
 		TEST_METHOD(Aim_DistantTargetKeepsInitialDirectionAndMaximumLength)
 		{
-			TENTACLE arm; TentacleCalcReset(arm);
+			TentacleCalc arm; arm.Reset();
 			const VEC3 initial = TentacleCalcAim(origin, { 30, 10, 40 }, true, aim);
-			TentacleCalcStep(arm, origin, initial, hold, true, false, 0.05f, params, nullptr, 0, stage);
+			arm.Step(origin, initial, hold, true, false, 0.05f, params, nullptr, 0, stage);
 			const VEC3 moved = TentacleCalcAim(origin, { -40, -10, 30 }, true, aim);
-			TentacleCalcStep(arm, origin, moved, hold, false, false, 0.05f, params, nullptr, 0, stage);
-			Assert::AreEqual(1.44f, arm.Tip.X, 0.0001f);
-			Assert::AreEqual(origin.Y, arm.Tip.Y, 0.0001f);
-			Assert::AreEqual(1.92f, arm.Tip.Z, 0.0001f);
-			TentacleCalcStep(arm, origin, moved, hold, false, false, 1, params, nullptr, 0, stage);
-			Assert::AreEqual(4.8f, arm.Tip.X, 0.0001f);
-			Assert::AreEqual(6.4f, arm.Tip.Z, 0.0001f);
-			Assert::AreEqual(8.0f, arm.Length, 0.0001f);
-			Assert::AreEqual((int)TENTACLE_RETURNING, (int)arm.State);
+			arm.Step(origin, moved, hold, false, false, 0.05f, params, nullptr, 0, stage);
+			Assert::AreEqual(1.44f, arm.GetTip().X, 0.0001f);
+			Assert::AreEqual(origin.Y, arm.GetTip().Y, 0.0001f);
+			Assert::AreEqual(1.92f, arm.GetTip().Z, 0.0001f);
+			arm.Step(origin, moved, hold, false, false, 1, params, nullptr, 0, stage);
+			Assert::AreEqual(4.8f, arm.GetTip().X, 0.0001f);
+			Assert::AreEqual(6.4f, arm.GetTip().Z, 0.0001f);
+			Assert::AreEqual(8.0f, arm.GetLength(), 0.0001f);
+			Assert::AreEqual((int)TENTACLE_RETURNING, (int)arm.GetState());
 		}
 		TEST_METHOD(Miss_ReturnsAndCanExtendAgain)
 		{
-			TENTACLE arm; TentacleCalcReset(arm);
+			TentacleCalc arm; arm.Reset();
 			Step(arm, true, 1);
-			Assert::AreEqual((int)TENTACLE_RETURNING, (int)arm.State);
-			Assert::AreEqual(8.0f, arm.Tip.Z, 0.0001f);
+			Assert::AreEqual((int)TENTACLE_RETURNING, (int)arm.GetState());
+			Assert::AreEqual(8.0f, arm.GetTip().Z, 0.0001f);
 			Step(arm, true, 1); // 戻る途中の連打を予約しない
-			Assert::AreEqual((int)TENTACLE_IDLE, (int)arm.State);
+			Assert::AreEqual((int)TENTACLE_IDLE, (int)arm.GetState());
 			Step(arm, false, 0.1f);
-			Assert::AreEqual((int)TENTACLE_IDLE, (int)arm.State);
+			Assert::AreEqual((int)TENTACLE_IDLE, (int)arm.GetState());
 			Step(arm, true, 0.1f);
-			Assert::AreEqual((int)TENTACLE_EXTENDING, (int)arm.State);
+			Assert::AreEqual((int)TENTACLE_EXTENDING, (int)arm.GetState());
 		}
 		TEST_METHOD(LongStep_ChoosesNearTargetRegardlessOfArrayOrder)
 		{
-			TENTACLE arm; TentacleCalcReset(arm);
+			TentacleCalc arm; arm.Reset();
 			TENTACLE_TARGET targets[]{ Target(6), Target(3) };
 			const auto event = Step(arm, true, 1, targets, 2);
 			Assert::AreEqual(1, event.Grabbed);
-			Assert::IsTrue(HitRecordContains(arm.Hits, 1));
+			Assert::IsTrue(arm.GetHits().Contains(1));
 			Assert::IsFalse(event.Throw);
 		}
 		TEST_METHOD(Grab_PullsTowardHandAndThrowsOnlyOnce)
 		{
-			TENTACLE arm; TentacleCalcReset(arm);
+			TentacleCalc arm; arm.Reset();
 			TENTACLE_TARGET target = Target(6);
 			Step(arm, true, 0.3f, &target, 1);
 			target.Available = false; // 自分が保持中でも引き寄せる
 			Step(arm, false, 0.1f, &target, 1);
-			Assert::IsTrue(arm.Tip.Z < 6 && arm.Tip.Z > 2);
+			Assert::IsTrue(arm.GetTip().Z < 6 && arm.GetTip().Z > 2);
 			const auto event = Step(arm, true, 0.01f, &target, 1);
 			Assert::AreEqual(0, event.Released);
 			Assert::IsTrue(event.Throw);
-			Assert::AreEqual(-1, arm.Target);
+			Assert::AreEqual(-1, arm.GetTarget());
 			Assert::AreEqual(-1, Step(arm, true, 0.01f, &target, 1).Released);
 		}
 		TEST_METHOD(Timeout_ReleasesWithoutDamage)
 		{
-			TENTACLE arm; TentacleCalcReset(arm);
+			TentacleCalc arm; arm.Reset();
 			TENTACLE_TARGET target = Target(3);
 			Step(arm, true, 0.2f, &target, 1);
 			const auto event = Step(arm, false, 3, &target, 1);
@@ -219,58 +219,58 @@ namespace Proto1Tests
 		}
 		TEST_METHOD(TwoArms_CannotGrabSameEnemy)
 		{
-			TENTACLE left, right; TentacleCalcReset(left); TentacleCalcReset(right);
+			TentacleCalc left, right; left.Reset(); right.Reset();
 			TENTACLE_TARGET targets[]{ Target(3), Target(6) };
 			const auto first = Step(left, true, 1, targets, 2);
 			targets[first.Grabbed].Available = false;
 			Assert::AreEqual(1, Step(right, true, 1, targets, 2).Grabbed);
-			Assert::AreEqual(0, left.Target);
+			Assert::AreEqual(0, left.GetTarget());
 		}
 		TEST_METHOD(UnavailableEnemy_IsIgnored)
 		{
-			TENTACLE arm; TentacleCalcReset(arm);
+			TentacleCalc arm; arm.Reset();
 			TENTACLE_TARGET target = Target(3); target.Available = false;
 			Assert::AreEqual(-1, Step(arm, true, 1, &target, 1).Grabbed);
 		}
 		TEST_METHOD(Cancel_ReleasesAtOldPositionEvenWhenTimeStopped)
 		{
-			TENTACLE arm; TentacleCalcReset(arm);
+			TentacleCalc arm; arm.Reset();
 			TENTACLE_TARGET target = Target(3);
 			Step(arm, true, 0.2f, &target, 1);
-			const auto event = TentacleCalcStep(arm, { 100, 1, 100 }, aim, hold, true, true, 0,
+			const auto event = arm.Step({ 100, 1, 100 }, aim, hold, true, true, 0,
 				params, &target, 1, stage);
 			Assert::AreEqual(0, event.Released);
 			Assert::IsFalse(event.Throw);
-			Assert::AreEqual(-1, arm.Target);
-			Assert::AreEqual((int)TENTACLE_IDLE, (int)arm.State);
+			Assert::AreEqual(-1, arm.GetTarget());
+			Assert::AreEqual((int)TENTACLE_IDLE, (int)arm.GetState());
 		}
 		TEST_METHOD(TimeStopped_DoesNotExtendOrThrow)
 		{
-			TENTACLE arm; TentacleCalcReset(arm);
+			TentacleCalc arm; arm.Reset();
 			Step(arm, true, 0);
-			Assert::AreEqual((int)TENTACLE_IDLE, (int)arm.State);
+			Assert::AreEqual((int)TENTACLE_IDLE, (int)arm.GetState());
 			TENTACLE_TARGET target = Target(3);
 			Step(arm, true, 0.2f, &target, 1);
 			Assert::AreEqual(-1, Step(arm, true, 0, &target, 1).Released);
-			Assert::AreEqual(0.0f, arm.HoldTime);
+			Assert::AreEqual(0.0f, arm.GetHoldTime());
 		}
 		TEST_METHOD(Direction_RemainsFixedWhileExtending)
 		{
-			TENTACLE arm; TentacleCalcReset(arm);
+			TentacleCalc arm; arm.Reset();
 			Step(arm, true, 0.05f);
-			TentacleCalcStep(arm, origin, { 1, 0, 0 }, hold, true, false, 0.05f, params, nullptr, 0, stage);
-			Assert::AreEqual(0.0f, arm.Tip.X, 0.0001f);
-			Assert::AreEqual(2.4f, arm.Tip.Z, 0.0001f);
+			arm.Step(origin, { 1, 0, 0 }, hold, true, false, 0.05f, params, nullptr, 0, stage);
+			Assert::AreEqual(0.0f, arm.GetTip().X, 0.0001f);
+			Assert::AreEqual(2.4f, arm.GetTip().Z, 0.0001f);
 		}
 		TEST_METHOD(Stage_BlocksDownwardReach)
 		{
-			TENTACLE arm; TentacleCalcReset(arm);
+			TentacleCalc arm; arm.Reset();
 			TENTACLE_TARGET target{ { { 0, -4, 0 }, { 0, -3, 0 }, 0.5f }, true };
-			const auto event = TentacleCalcStep(arm, origin, { 0, -1, 0 }, hold, true, false, 1,
+			const auto event = arm.Step(origin, { 0, -1, 0 }, hold, true, false, 1,
 				params, &target, 1, stage);
 			Assert::AreEqual(-1, event.Grabbed);
-			Assert::IsTrue(arm.Tip.Y >= params.Radius);
-			Assert::AreEqual((int)TENTACLE_RETURNING, (int)arm.State);
+			Assert::IsTrue(arm.GetTip().Y >= params.Radius);
+			Assert::AreEqual((int)TENTACLE_RETURNING, (int)arm.GetState());
 		}
 		TEST_METHOD(HeldBody_DoesNotPassThroughPlatform)
 		{
@@ -283,42 +283,40 @@ namespace Proto1Tests
 		}
 		TEST_METHOD(ExtendRatio_GrowsWhileExtending)
 		{
-			TENTACLE arm{};
-			TentacleCalcReset(arm);
-			Assert::AreEqual(0.0f, TentacleCalcExtendRatio(arm, params));
+			TentacleCalc arm{};
+			arm.Reset();
+			Assert::AreEqual(0.0f, arm.GetExtendRatio(params));
 			Step(arm, true, 0.1f);
-			Assert::IsTrue(arm.State == TENTACLE_EXTENDING);
-			const float first = TentacleCalcExtendRatio(arm, params);
-			Assert::AreEqual(arm.Length / params.MaxLength, first, 0.0001f);
+			Assert::IsTrue(arm.GetState() == TENTACLE_EXTENDING);
+			const float first = arm.GetExtendRatio(params);
+			Assert::AreEqual(arm.GetLength() / params.MaxLength, first, 0.0001f);
 			Assert::IsTrue(first > 0.0f);
 			Step(arm, false, 0.1f);
-			Assert::IsTrue(TentacleCalcExtendRatio(arm, params) > first);
+			Assert::IsTrue(arm.GetExtendRatio(params) > first);
 		}
 		TEST_METHOD(ExtendRatio_ZeroWhenNotExtending)
 		{
-			TENTACLE arm{};
-			TentacleCalcReset(arm);
-			arm.Length = 4.0f;
-			arm.State = TENTACLE_RETURNING;
-			Assert::AreEqual(0.0f, TentacleCalcExtendRatio(arm, params));
-			arm.State = TENTACLE_HOLDING;
-			Assert::AreEqual(0.0f, TentacleCalcExtendRatio(arm, params));
-			arm.State = TENTACLE_EXTENDING;
-			Assert::AreEqual(0.5f, TentacleCalcExtendRatio(arm, params), 0.0001f);
+			TentacleCalc arm{};
+			arm.Reset();
+			arm = { TENTACLE_RETURNING, {}, {}, 4.0f, 0, -1 };
+			Assert::AreEqual(0.0f, arm.GetExtendRatio(params));
+			arm = { TENTACLE_HOLDING, {}, {}, arm.GetLength(), 0, -1 };
+			Assert::AreEqual(0.0f, arm.GetExtendRatio(params));
+			arm = { TENTACLE_EXTENDING, {}, {}, arm.GetLength(), 0, -1 };
+			Assert::AreEqual(0.5f, arm.GetExtendRatio(params), 0.0001f);
 			const TENTACLE_PARAMS zero{ 0, 24, 30, 3, 0.18f };
-			Assert::AreEqual(0.0f, TentacleCalcExtendRatio(arm, zero));
+			Assert::AreEqual(0.0f, arm.GetExtendRatio(zero));
 		}
 		TEST_METHOD(ExtendRatio_ClampsToOne)
 		{
-			TENTACLE arm{};
-			TentacleCalcReset(arm);
-			arm.State = TENTACLE_EXTENDING;
-			arm.Length = 20.0f;
-			Assert::AreEqual(1.0f, TentacleCalcExtendRatio(arm, params));
-			arm.Length = 8.0f;
-			Assert::AreEqual(1.0f, TentacleCalcExtendRatio(arm, params), 0.0001f);
-			arm.Length = -1.0f;
-			Assert::AreEqual(0.0f, TentacleCalcExtendRatio(arm, params));
+			TentacleCalc arm{};
+			arm.Reset();
+			arm = { TENTACLE_EXTENDING, {}, {}, 20.0f, 0, -1 };
+			Assert::AreEqual(1.0f, arm.GetExtendRatio(params));
+			arm = { TENTACLE_EXTENDING, {}, {}, 8.0f, 0, -1 };
+			Assert::AreEqual(1.0f, arm.GetExtendRatio(params), 0.0001f);
+			arm = { TENTACLE_EXTENDING, {}, {}, -1.0f, 0, -1 };
+			Assert::AreEqual(0.0f, arm.GetExtendRatio(params));
 		}
 		TEST_METHOD(DirectedThrow_UsesPitchAndNormalizesSpeed)
 		{

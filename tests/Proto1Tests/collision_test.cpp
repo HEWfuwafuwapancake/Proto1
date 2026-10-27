@@ -1,4 +1,4 @@
-﻿// physics/collision.h（球・カプセル・箱の当たり判定、HIT_RECORD）の単体テスト
+﻿// physics/collision.h（球・カプセル・箱の当たり判定、HitRecord）の単体テスト
 #include "CppUnitTest.h"
 #include "physics/collision.h"
 
@@ -173,34 +173,34 @@ namespace Proto1Tests
 			Assert::AreEqual(1.5f, hit.Depth, COLLISION_EPSILON);
 		}
 
-		// ---- HIT_RECORD ----
+		// ---- HitRecord ----
 
 		// 同じ相手には2回目は当たらない。空にするとまた当たる
 		TEST_METHOD(HitRecord_OncePerAttack)
 		{
-			HIT_RECORD record;
-			HitRecordClear(record);
-			Assert::IsTrue(HitRecordTryAdd(record, 2));
-			Assert::IsTrue(HitRecordTryAdd(record, 5));
-			Assert::IsFalse(HitRecordTryAdd(record, 2));
-			Assert::IsTrue(HitRecordContains(record, 5));
-			Assert::IsFalse(HitRecordContains(record, 7));
+			HitRecord record;
+			record.Clear();
+			Assert::IsTrue(record.TryAdd(2));
+			Assert::IsTrue(record.TryAdd(5));
+			Assert::IsFalse(record.TryAdd(2));
+			Assert::IsTrue(record.Contains(5));
+			Assert::IsFalse(record.Contains(7));
 
-			HitRecordClear(record);
-			Assert::IsFalse(HitRecordContains(record, 2));
-			Assert::IsTrue(HitRecordTryAdd(record, 2));
+			record.Clear();
+			Assert::IsFalse(record.Contains(2));
+			Assert::IsTrue(record.TryAdd(2));
 		}
 
 		// いっぱいになったら、新しい相手にも当てない（覚えられない相手に何度も当たらないように）
 		TEST_METHOD(HitRecord_FullRejects)
 		{
-			HIT_RECORD record;
-			HitRecordClear(record);
+			HitRecord record;
+			record.Clear();
 			for (int i = 0; i < HIT_RECORD_MAX; i++) {
-				Assert::IsTrue(HitRecordTryAdd(record, i));
+				Assert::IsTrue(record.TryAdd(i));
 			}
-			Assert::IsFalse(HitRecordTryAdd(record, 100));
-			Assert::AreEqual(HIT_RECORD_MAX, record.Count);
+			Assert::IsFalse(record.TryAdd(100));
+			Assert::AreEqual(HIT_RECORD_MAX, record.GetCount());
 		}
 	};
 }

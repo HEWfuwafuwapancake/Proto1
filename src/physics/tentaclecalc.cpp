@@ -60,10 +60,10 @@ static VEC3 MoveTowards(const VEC3& from, const VEC3& to, float distance)
 	return length <= distance || length < 0.00001f ? to : Vec3Add(from, Vec3Scale(delta, distance / length));
 }
 
-void TentacleCalcReset(TENTACLE& arm)
+void TentacleCalc::Reset()
 {
-	arm = {};
-	arm.Target = -1;
+	*this = {};
+	m_Target = -1;
 }
 
 VEC3 TentacleCalcAim(const VEC3& origin, const VEC3& target, bool hasTarget, const VEC3& fallback)
@@ -78,10 +78,10 @@ VEC3 TentacleCalcAim(const VEC3& origin, const VEC3& target, bool hasTarget, con
 	return length < AIM_MIN_LENGTH ? VEC3{ 0.0f, 0.0f, 1.0f } : Vec3Scale(direction, 1.0f / length);
 }
 
-float TentacleCalcExtendRatio(const TENTACLE& arm, const TENTACLE_PARAMS& params)
+float TentacleCalc::GetExtendRatio(const TENTACLE_PARAMS& params) const
 {
-	if (arm.State != TENTACLE_EXTENDING || params.MaxLength <= 0.0f) return 0.0f;
-	const float ratio = arm.Length / params.MaxLength;
+	if (m_State != TENTACLE_EXTENDING || params.MaxLength <= 0.0f) return 0.0f;
+	const float ratio = m_Length / params.MaxLength;
 	return ratio < 0.0f ? 0.0f : (ratio > 1.0f ? 1.0f : ratio);
 }
 
@@ -116,58 +116,58 @@ VEC3 TentacleCalcClip(const VEC3& from, const VEC3& to, const STAGE& stage, floa
 	return Vec3Add(from, Vec3Scale(delta, t));
 }
 
-TENTACLE_EVENT TentacleCalcStep(TENTACLE& arm, const VEC3& origin, const VEC3& aim,
+TENTACLE_EVENT TentacleCalc::Step(const VEC3& origin, const VEC3& aim,
 	const VEC3& holdPosition, bool trigger, bool cancel, float dt, const TENTACLE_PARAMS& params,
 	const TENTACLE_TARGET* targets, int count, const STAGE& stage)
 {
 	TENTACLE_EVENT event{ -1, -1, false };
 	if (cancel) {
-		event.Released = arm.Target;
-		TentacleCalcReset(arm);
-		arm.Tip = origin;
+		event.Released = m_Target;
+		Reset();
+		m_Tip = origin;
 		return event;
 	}
 	if (dt <= 0.0f) return event;
-	if (arm.State == TENTACLE_IDLE) {
-		arm.Tip = origin;
+	if (m_State == TENTACLE_IDLE) {
+		m_Tip = origin;
 		if (!trigger) return event;
 		const float length = Vec3Length(aim);
 		if (length < 0.00001f) return event;
-		arm.Direction = Vec3Scale(aim, 1.0f / length);
-		arm.Length = 0.0f;
-		HitRecordClear(arm.Hits);
-		arm.State = TENTACLE_EXTENDING;
+		m_Direction = Vec3Scale(aim, 1.0f / length);
+		m_Length = 0.0f;
+		m_Hits.Clear();
+		m_State = TENTACLE_EXTENDING;
 	}
-	else if (arm.State == TENTACLE_HOLDING) {
-		arm.HoldTime += dt;
-		if (trigger || arm.HoldTime >= params.HoldSeconds) {
-			event.Released = arm.Target;
+	else if (m_State == TENTACLE_HOLDING) {
+		m_HoldTime += dt;
+		if (trigger || m_HoldTime >= params.HoldSeconds) {
+			event.Released = m_Target;
 			event.Throw = trigger;
-			arm.Target = -1;
-			arm.State = TENTACLE_RETURNING;
+			m_Target = -1;
+			m_State = TENTACLE_RETURNING;
 			return event;
 		}
-		const CAPSULE& body = targets[arm.Target].Body;
+		const CAPSULE& body = targets[m_Target].Body;
 		const float halfHeight = Vec3Length(Vec3Sub(body.End, body.Start)) * 0.5f + body.Radius;
-		arm.Tip = TentacleCalcClip(arm.Tip, MoveTowards(arm.Tip, holdPosition, params.ReturnSpeed * dt),
+		m_Tip = TentacleCalcClip(m_Tip, MoveTowards(m_Tip, holdPosition, params.ReturnSpeed * dt),
 			stage, body.Radius, halfHeight);
 		return event;
 	}
-	if (arm.State == TENTACLE_RETURNING) {
-		arm.Tip = MoveTowards(arm.Tip, origin, params.ReturnSpeed * dt);
-		if (Vec3LengthSq(Vec3Sub(arm.Tip, origin)) < 0.000001f) TentacleCalcReset(arm);
+	if (m_State == TENTACLE_RETURNING) {
+		m_Tip = MoveTowards(m_Tip, origin, params.ReturnSpeed * dt);
+		if (Vec3LengthSq(Vec3Sub(m_Tip, origin)) < 0.000001f) Reset();
 		return event;
 	}
 
-	arm.Length = (std::min)(params.MaxLength, arm.Length + params.ExtendSpeed * dt);
-	const VEC3 desired = Vec3Add(origin, Vec3Scale(arm.Direction, arm.Length));
+	m_Length = (std::min)(params.MaxLength, m_Length + params.ExtendSpeed * dt);
+	const VEC3 desired = Vec3Add(origin, Vec3Scale(m_Direction, m_Length));
 	const VEC3 end = TentacleCalcClip(origin, desired, stage, params.Radius, params.Radius);
 	// 腕全体を調べるので、一度に大きく伸びても敵を飛び越えない。
 	const CAPSULE reach{ origin, end, params.Radius };
 	float firstTime = 2.0f;
 	int first = -1;
 	for (int i = 0; i < count; ++i) {
-		if (!targets[i].Available || HitRecordContains(arm.Hits, i)
+		if (!targets[i].Available || m_Hits.Contains(i)
 			|| !CollisionCapsuleCapsule(reach, targets[i].Body).Hit) continue;
 		// 最初の接触位置を二分探索し、配列の順番ではなく手前を選ぶ。
 		float low = 0.0f, high = 1.0f;
@@ -179,16 +179,16 @@ TENTACLE_EVENT TentacleCalcStep(TENTACLE& arm, const VEC3& origin, const VEC3& a
 		}
 		if (high < firstTime) { firstTime = high; first = i; }
 	}
-	arm.Tip = end;
-	if (first >= 0 && HitRecordTryAdd(arm.Hits, first)) {
-		arm.Target = first;
-		arm.HoldTime = 0.0f;
-		arm.State = TENTACLE_HOLDING;
-		arm.Tip = Vec3Scale(Vec3Add(targets[first].Body.Start, targets[first].Body.End), 0.5f);
+	m_Tip = end;
+	if (first >= 0 && m_Hits.TryAdd(first)) {
+		m_Target = first;
+		m_HoldTime = 0.0f;
+		m_State = TENTACLE_HOLDING;
+		m_Tip = Vec3Scale(Vec3Add(targets[first].Body.Start, targets[first].Body.End), 0.5f);
 		event.Grabbed = first;
 	}
-	else if (arm.Length >= params.MaxLength || Vec3LengthSq(Vec3Sub(end, desired)) > 0.000001f) {
-		arm.State = TENTACLE_RETURNING;
+	else if (m_Length >= params.MaxLength || Vec3LengthSq(Vec3Sub(end, desired)) > 0.000001f) {
+		m_State = TENTACLE_RETURNING;
 	}
 	return event;
 }
