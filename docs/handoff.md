@@ -4,26 +4,19 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）。
 決まったことは [decisions.md](decisions.md)、腕のモデルの原点と長さは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、終わったタスクの記録は [archive/](archive/)（普段は読まない）。
 
-- 最終更新：2026-10-27（Codex。Shota の共有 Proto1。No.43 腕の共通の構えを実装）
+- 最終更新：2026-10-27（Claude。Shota の共有 Proto1。No.43 を確認してマージ）
 
 ---
 
 ## 1. 今の状態
 
-- **No.43 は Codex が実装。Claude の確認待ち**（`feature/arm-open-stance`）。3種類の肩を共通で0.1後ろへ引き、待機の腕を片側15°開いた。共通計算のテストコードを6件追加。Debug x64 ビルド成功（警告0・エラー0）。見た目・テスト実行・Release の確認は Claude が行う。
-- No.1〜17・20・22・29〜37・41・42 は完了（No.37 のドリルは元の握り・案Aに直した）。No.43 の確認後は **No.38 磁石**（プランは管理者確認済み・Codex の実装待ち）。残りは No.39 デカ盾・No.40 ハサミ・No.18 シーン・No.19 調整用の値の整理ほか。
+- No.1〜17・20・22・29〜37・41〜43 は完了。No.43（腕の共通の構え）は Claude が確認してマージ済み：肩を0.1後ろ・待機の腕を片側15°開く（`arm.cpp` の調整用の値）。今後の腕も `ArmGetShoulder(hand)`・`ArmGetRestDirection(hand)` を使う。
+- 次は **No.38 磁石**（プランは管理者確認済み・Codex の実装待ち）。残りは No.39 デカ盾・No.40 ハサミ・No.18 シーン・No.19 調整用の値の整理ほか。
 - モデル読み込みの失敗対策はマージ済み：盾・ハサミの OBJ を書き出し直し（長さ 0 の法線なし）、`ObjCalcTest::AssetModels_AllObjFilesParse` が `assets/models/` の全 OBJ を読む。Debug では `ModelLoad` の失敗理由とパスが出力に出る。
 - **管理者が遊んで決めること**：全種類の構え（共通の `SHOULDER_FORWARD`・`ARM_REST_SPREAD`・`ARM_REST_PITCH`、触腕の `IDLE_LENGTH`）が普段の画面で分かるか／グラップリング・ドリルの取付位置と強さ（各 `arm_〇〇.cpp` の「調整用の値」。No.19 の一覧に入れる）／実物のパッドで十字キー ← →・□ ○ の腕の切り替え。
 - マウス操作は止めてある（[decisions.md](decisions.md) の最初の項目）。
 
-## 2. 次にやること：Claude が No.43（腕の共通の構え）を確認
-
-- 同じ `feature/arm-open-stance` で確認する。Debug / Release 警告0、`run-tests.ps1`（Debug / Release）。追加済みの計算は既存の `armcalc` 内（新規ファイルなし）。
-- 普段のカメラで 1〜3 / Shift＋1〜3 を選び、左右の腕が軽く開いて見える／キャラが回っても肩と構えがついてくる／グラップリングのひじとドリルの握りが保たれる／攻撃時は狙いへ向かい、戻ると構えも戻ることを確認する。必要なら下記の肩を中心にした一時ビルドで、肩とのつながりも見る。見た目の数値は仮なので管理者に見せる。
-- 今後の腕にも `ArmGetShoulder(hand)`・`ArmGetRestDirection(hand)` を使う（前腕の上下角度だけ加算する場合は第2引数）。古い `ArmGetRestPitch()` は置き換え済み。No.38 の下のプラン・プロンプトも合わせた。
-- 修正はこのブランチに直接コミットしてよい。確認後に PR・マージし、tasks.md / Notion の No.43 を完了にする。そのあと No.38 の実装へ戻る。
-
-### No.43 の確認後：No.38（磁石）
+## 2. 次にやること：No.38（磁石）の実装
 
 - 管理者が「No.38 を Codex に頼むプロンプト」を Codex に貼り、Codex の保存のあと「No.38 を Claude が確かめるときのプロンプト」を Claude に貼る。
 - 順番（管理者が決めた）：No.38 磁石 → No.39 デカ盾 → No.40 ハサミ（最後）。No.18・No.19 はプランがまだ（アームのあとで管理者が選ぶ）。
