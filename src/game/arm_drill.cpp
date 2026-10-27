@@ -8,8 +8,12 @@
 #include "input/pad.h"
 
 // 調整用の値
-static constexpr float BIT_START = 1.2f;
-static constexpr float REACH = 2.65f;
+static constexpr float MODEL_SCALE = 0.08f;
+static constexpr DRILL_GRIP DRILL_MODEL_GRIP{
+	{ 0.311337f, -5.719436f, -5.081741f }, { 0.0f, -0.707106781f, 0.707106781f }, MODEL_SCALE
+};
+static constexpr float HIT_START = 12.0f;
+static constexpr float HIT_END = 18.060484f;
 static constexpr float BIT_RADIUS = 0.35f;
 static constexpr float STRIKE_SECONDS = 0.4f;
 static constexpr float BORE_SECONDS = 0.5f;
@@ -17,17 +21,15 @@ static constexpr float TICK_SECONDS = 0.1f;
 static constexpr int TICK_COUNT = 5;
 static constexpr float COOLDOWN_SECONDS = 0.3f;
 static constexpr DRILL_PARAMS PARAMS{
-	BIT_START, REACH, BIT_RADIUS, STRIKE_SECONDS, BORE_SECONDS, TICK_SECONDS, TICK_COUNT, COOLDOWN_SECONDS
+	DRILL_MODEL_GRIP, HIT_START, HIT_END, BIT_RADIUS, STRIKE_SECONDS, BORE_SECONDS, TICK_SECONDS, TICK_COUNT, COOLDOWN_SECONDS
 };
 static constexpr float TICK_DAMAGE = 4.0f;
 static constexpr float PUSH_POWER = 1.5f;
 static constexpr float PUSH_UP = 0.15f;
 static constexpr float DRILL_AIM_SECONDS = 0.1f;
 static constexpr float SPIN_SPEED = 20.0f;
-static constexpr float MODEL_SCALE = 0.08f;
 static constexpr float BASE_LENGTH = 15.189075f;
 static constexpr float BIT_LENGTH = 18.060484f;
-static constexpr VEC3 BIT_OFFSET{ 0.31f, -15.19f, 0.0f };
 // 触腕の「つかむ」「投げる」と同じ強さ・秒数。
 static constexpr float TICK_RUMBLE_SMALL = 0.4f;
 static constexpr float TICK_RUMBLE_LARGE = 0.0f;
@@ -82,7 +84,7 @@ static void UpdateHand(int hand, bool trigger)
 		? Vec3Scale(Vec3Add(targets[target].Body.Start, targets[target].Body.End), 0.5f) : VEC3{};
 	const VEC3 aim = TentacleCalcAim(origin, center, hasTarget, forward);
 	const float dt = fmaxf(0.0f, GameTimeGetDeltaTime());
-	const DRILL_EVENT event = DrillCalcStep(arm, origin, aim, trigger, PlayerDidRespawn(),
+	const DRILL_EVENT event = DrillCalcStep(arm, origin, aim, hand == 1, trigger, PlayerDidRespawn(),
 		dt, PARAMS, targets, DUMMY_COUNT);
 	for (int tick = 0; tick < event.DamageTicks; ++tick) {
 		DummyAddDamage(event.Target, TICK_DAMAGE);
@@ -106,18 +108,15 @@ static void DrawHand(int hand)
 	const float yaw = PlayerGetYaw();
 	const VEC3 forward{ sinf(yaw), 0.0f, cosf(yaw) };
 	const VEC3 direction = ArmCalcBlendDirection(
-		ArmCalcPitchDirection(forward, ArmGetRestPitch()), arm.Direction, g_Straighten[hand]);
+		ArmCalcPitchDirection(forward, ArmGetRestPitch()),
+		DrillCalcThrustArmDirection(arm.Direction, PARAMS.Grip), g_Straighten[hand]);
 	const XMFLOAT4 color = ArmGetColor(hand, arm.State == DRILL_BORING);
 	// 付け根もビットも、常に同じ長さ・倍率で描く。間の円柱や伸縮はない。
 	const VEC3 end = Vec3Add(origin, Vec3Scale(direction, BASE_LENGTH * MODEL_SCALE));
-	ArmDrawPiece(g_BaseModel[hand], origin, end, BASE_LENGTH, MODEL_SCALE, color);
-	const TENTACLE_PIECE_AXES axes = TentacleCalcPieceAxes(origin, end, { 0, -1, 0 });
-	const VEC3 x = Vec3Scale(axes.X, (hand == 1 ? -BIT_OFFSET.X : BIT_OFFSET.X) * MODEL_SCALE);
-	const VEC3 y = Vec3Scale(axes.Y, BIT_OFFSET.Y * MODEL_SCALE);
-	const VEC3 z = Vec3Scale(axes.Z, BIT_OFFSET.Z * MODEL_SCALE);
-	const VEC3 bit = Vec3Add(origin, Vec3Add(x, Vec3Add(y, z)));
-	const VEC3 tip = Vec3Add(bit, Vec3Scale(direction, BIT_LENGTH * MODEL_SCALE));
-	ArmDrawPiece(g_BitModel[hand], bit, tip, BIT_LENGTH, MODEL_SCALE, color, g_Spin[hand]);
+	ArmDrawPiece(g_BaseModel[hand], origin, end, BASE_LENGTH, MODEL_SCALE, color, XM_PI);
+	const DRILL_AXIS axis = DrillCalcAxis(origin, direction, PARAMS.Grip, hand == 1);
+	const VEC3 tip = Vec3Add(axis.Rear, Vec3Scale(axis.Direction, BIT_LENGTH * MODEL_SCALE));
+	ArmDrawPiece(g_BitModel[hand], axis.Rear, tip, BIT_LENGTH, MODEL_SCALE, color, g_Spin[hand]);
 }
 
 static bool IsActiveHand(int hand)
