@@ -4,21 +4,21 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）。
 決まったことは [decisions.md](decisions.md)、腕のモデルの原点と長さは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、終わったタスクの記録は [archive/](archive/)（普段は読まない）。
 
-- 最終更新：2026-10-27（Codex。Shota の共有 Proto1。No.44 段階 B を実装、Claude の確認待ち）
+- 最終更新：2026-10-27（Claude。Shota の共有 Proto1。No.44 段階 B を確認してマージ。次は段階 C）
 
 ---
 
 ## 1. 今の状態
 
-- **No.44 段階 B は Codex が実装。Claude の確認待ち**（`feature/class-b`）。`Arm` の派生クラス `TentacleArm`・`GrappleArm`・`DrillArm` が片手ごとの状態・モデルを持ち、`arm.cpp` は生成関数の表と左右全種類の `unique_ptr` を持つ。外への `ArmUpdate` などはそのまま。
-- グラップリングは `ConnectOtherArm` で左右を接続し、各インスタンスの `m_Pulling` で所有権を渡す。後から刺さった手へ移すときは、従来と同じ引数で先の手の `Step` を呼ぶ。モデル読み込みはコンストラクタ、終了時のリセットはデストラクタで行う。
-- Debug x64 ビルド成功（警告 0・エラー 0）。計算・調整用の値・テストは変更していない。単体テスト・Release・画面確認・PR・マージは Claude の担当。前段階のテスト数は 259 件。既存コードの `ARM_REST_SPREAD` は 25°（古い説明は 15°）で、値を変えずに維持した。
+- **No.44 段階 A・B はマージ済み**。腕は基本クラス `Arm` と派生クラス `TentacleArm`・`GrappleArm`・`DrillArm`（片手1インスタンス）。`arm.cpp` は腕の種類 → 生成関数の表と、左右全種類のインスタンスを持つ。グラップリングの左右の所有権は `ConnectOtherArm`・`m_Pulling`。
+- 段階 B の確認：Debug / Release 警告 0、テスト 259 件（Debug / Release）。画面で触腕のつかむ・投げる（+12%）、グラップリングで飛ぶ（+5%）、ドリル（+20% で押し出し）、左右グラップリング、切り替え・やり直しのあと歩けることを確認。時間切れ（90 秒）は待っていない（やり直しと同じ `ArmReset`）。
+- 段階 D で直す古い説明：`docs/dev/01_DX11基盤の構成.md` の `ARM_FUNCTIONS`・`TentacleInitialize`・`TentacleUpdateHand`。
 - **管理者が遊んで決めること**：全種類の構え（共通の `SHOULDER_FORWARD`・`ARM_REST_SPREAD`・`ARM_REST_PITCH`、触腕の `IDLE_LENGTH`）が普段の画面で分かるか／グラップリング・ドリルの取付位置と強さ（各 `arm_〇〇.cpp` の「調整用の値」。No.19 の一覧に入れる）／実物のパッドで十字キー ← →・□ ○ の腕の切り替え。
 - マウス操作は止めてある（[decisions.md](decisions.md) の最初の項目）。
 
 ## 2. 次にやること：No.44（構造体のクラス化）
 
-- **直近は段階 B の Claude 確認**：下の「No.44 を Claude が確かめるときのプロンプト」を `<段階>` = B として Claude に貼る。`feature/class-b` で差分・Debug / Release・単体テスト・3種類の腕の画面を確かめ、PR・マージする。左右グラップリングの所有権移動と、切り替え・時間切れ・やり直しでの解除も確認する。マージ後に次の段階 C へ進む。
+- **直近は段階 C**：管理者が下の「No.44 を Codex に頼むプロンプト」の `<段階>` を C にして Codex に貼る。Codex の保存のあと「No.44 を Claude が確かめるときのプロンプト」（`<段階>` = C）を Claude に貼る。
 
 - 順番（管理者が決めた、2026-10-27）：**No.44 を No.38 より先にやる**。段階 A → B → C → D を1つずつ「実装 → Claude の確認 → PR → マージ」で進める（1段階＝1ブランチ＝1 PR）。
 - 管理者が段階ごとに「No.44 を Codex に頼むプロンプト」の `<段階>` を書きかえて Codex に貼り、Codex の保存のあと「No.44 を Claude が確かめるときのプロンプト」を Claude に貼る（段階 D は Claude が書く）。
