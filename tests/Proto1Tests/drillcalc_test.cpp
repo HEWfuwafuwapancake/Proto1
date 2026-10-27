@@ -1,12 +1,18 @@
 ﻿#include "CppUnitTest.h"
 #include "physics/drillcalc.h"
+#include "physics/armcalc.h"
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
 namespace Proto1Tests
 {
 	static constexpr float DRILL_EPSILON = 0.0001f;
-	static constexpr DRILL_PARAMS DRILL_TEST_PARAMS{ 1.2f, 2.65f, 0.35f, 0.4f, 0.5f, 0.1f, 5, 0.3f };
+	static constexpr DRILL_GRIP DRILL_TEST_GRIP{
+		{ 0.311337f, -5.719436f, -5.081741f }, { 0.0f, -0.707106781f, 0.707106781f }, 0.08f
+	};
+	static constexpr DRILL_PARAMS DRILL_TEST_PARAMS{
+		DRILL_TEST_GRIP, 12.0f, 18.060484f, 0.35f, 0.4f, 0.5f, 0.1f, 5, 0.3f
+	};
 
 	static TENTACLE_TARGET DrillTarget(float z, bool available = true)
 	{
@@ -14,9 +20,10 @@ namespace Proto1Tests
 	}
 
 	static DRILL_EVENT StepDrill(DRILL& arm, float dt, const TENTACLE_TARGET* targets = nullptr,
-		int count = 0, bool trigger = false, bool cancel = false, VEC3 origin = {}, VEC3 aim = { 0, 0, 1 })
+		int count = 0, bool trigger = false, bool cancel = false, VEC3 origin = {},
+		VEC3 aim = { 0, 0, 1 }, bool mirrored = false)
 	{
-		return DrillCalcStep(arm, origin, aim, trigger, cancel, dt, DRILL_TEST_PARAMS, targets, count);
+		return DrillCalcStep(arm, origin, aim, mirrored, trigger, cancel, dt, DRILL_TEST_PARAMS, targets, count);
 	}
 
 	static DRILL BoringDrill()
@@ -57,27 +64,89 @@ namespace Proto1Tests
 			Assert::AreEqual(0.6f, arm.Direction.X, DRILL_EPSILON);
 		}
 
-		TEST_METHOD(Bit_UsesOnlyFixedBitSegmentAndFollowsShoulder)
+		TEST_METHOD(Axis_RestPitchMakesBitHorizontalForwardAndBelowShoulder)
 		{
-			const CAPSULE bit = DrillCalcBit({ 4, 5, 6 }, { 0, 8, 2 }, DRILL_TEST_PARAMS);
-			Assert::AreEqual(4.0f, bit.Start.X, DRILL_EPSILON);
-			Assert::AreEqual(5.0f, bit.Start.Y, DRILL_EPSILON);
-			Assert::AreEqual(7.2f, bit.Start.Z, DRILL_EPSILON);
-			Assert::AreEqual(8.65f, bit.End.Z, DRILL_EPSILON);
+			const VEC3 shoulder{ 4, 5, 6 };
+			const VEC3 rest = ArmCalcPitchDirection({ 0, 0, 1 }, -0.785398163f);
+			const DRILL_AXIS axis = DrillCalcAxis(shoulder, rest, DRILL_TEST_GRIP, false);
+			Assert::AreEqual(0.0f, axis.Direction.X, DRILL_EPSILON);
+			Assert::AreEqual(0.0f, axis.Direction.Y, DRILL_EPSILON);
+			Assert::AreEqual(1.0f, axis.Direction.Z, DRILL_EPSILON);
+			Assert::AreEqual(4.0f - 0.02490696f, axis.Rear.X, DRILL_EPSILON);
+			Assert::AreEqual(5.0f - 0.6110248f, axis.Rear.Y, DRILL_EPSILON);
+			Assert::AreEqual(6.0f + 0.0360735f, axis.Rear.Z, DRILL_EPSILON);
+		}
+
+		TEST_METHOD(ThrustArmDirection_MakesAxisMatchHorizontalAimForBothHands)
+		{
+			for (const VEC3 aim : { VEC3{ 3, 20, 4 }, VEC3{ -1, 0, 0 }, VEC3{} }) {
+				const VEC3 expected = TentacleCalcAim({}, {}, false, aim);
+				const VEC3 armDirection = DrillCalcThrustArmDirection(aim, DRILL_TEST_GRIP);
+				Assert::AreEqual(1.0f, Vec3Length(armDirection), DRILL_EPSILON);
+				for (bool mirrored : { false, true }) {
+					const DRILL_AXIS axis = DrillCalcAxis({ 4, 5, 6 }, armDirection, DRILL_TEST_GRIP, mirrored);
+					Assert::AreEqual(expected.X, axis.Direction.X, DRILL_EPSILON);
+					Assert::AreEqual(expected.Y, axis.Direction.Y, DRILL_EPSILON);
+					Assert::AreEqual(expected.Z, axis.Direction.Z, DRILL_EPSILON);
+					Assert::AreEqual(1.0f, Vec3Length(axis.Direction), DRILL_EPSILON);
+				}
+			}
+			DRILL_GRIP grip = DRILL_TEST_GRIP;
+			grip.AxisDirection = { 0, -0.866025404f, 0.5f }; // 握りが 30° なら腕は -30°。
+			const VEC3 direction = DrillCalcThrustArmDirection({ 0, 0, 1 }, grip);
+			Assert::AreEqual(-0.5f, direction.Y, DRILL_EPSILON);
+			Assert::AreEqual(0.866025404f, direction.Z, DRILL_EPSILON);
+		}
+
+		TEST_METHOD(Axis_MirroringReversesOnlyRearLateralOffset)
+		{
+			const VEC3 shoulder{ 4, 5, 6 };
+			const VEC3 direction = DrillCalcThrustArmDirection({ 0, 0, 1 }, DRILL_TEST_GRIP);
+			const DRILL_AXIS left = DrillCalcAxis(shoulder, direction, DRILL_TEST_GRIP, false);
+			const DRILL_AXIS right = DrillCalcAxis(shoulder, direction, DRILL_TEST_GRIP, true);
+			Assert::AreEqual(-0.02490696f, left.Rear.X - shoulder.X, DRILL_EPSILON);
+			Assert::AreEqual(0.02490696f, right.Rear.X - shoulder.X, DRILL_EPSILON);
+			Assert::AreEqual(left.Rear.Y, right.Rear.Y, DRILL_EPSILON);
+			Assert::AreEqual(left.Rear.Z, right.Rear.Z, DRILL_EPSILON);
+			Assert::AreEqual(left.Direction.X, right.Direction.X, DRILL_EPSILON);
+			Assert::AreEqual(left.Direction.Y, right.Direction.Y, DRILL_EPSILON);
+			Assert::AreEqual(left.Direction.Z, right.Direction.Z, DRILL_EPSILON);
+		}
+
+		TEST_METHOD(Bit_UsesHitStartAndEndOnAxisAndFollowsShoulder)
+		{
+			const VEC3 shoulder{ 4, 5, 6 };
+			const VEC3 direction = DrillCalcThrustArmDirection({ 0, 0, 1 }, DRILL_TEST_GRIP);
+			const CAPSULE bit = DrillCalcBit(shoulder, direction, false, DRILL_TEST_PARAMS);
+			Assert::AreEqual(4.0f - 0.02490696f, bit.Start.X, DRILL_EPSILON);
+			Assert::AreEqual(5.0f - 0.6110248f, bit.Start.Y, DRILL_EPSILON);
+			Assert::AreEqual(6.0f + 0.0360735f + 12.0f * 0.08f, bit.Start.Z, DRILL_EPSILON);
+			Assert::AreEqual(bit.Start.X, bit.End.X, DRILL_EPSILON);
+			Assert::AreEqual(bit.Start.Y, bit.End.Y, DRILL_EPSILON);
+			Assert::AreEqual(6.0f + 0.0360735f + 18.060484f * 0.08f, bit.End.Z, DRILL_EPSILON);
 			Assert::AreEqual(0.35f, bit.Radius, DRILL_EPSILON);
-			const CAPSULE fallback = DrillCalcBit({}, {}, DRILL_TEST_PARAMS);
-			Assert::AreEqual(2.65f, fallback.End.Z, DRILL_EPSILON);
+			// 腕が水平な途中の姿と鏡写しでも、軸から外れない。
+			for (bool mirrored : { false, true }) {
+				const DRILL_AXIS axis = DrillCalcAxis(shoulder, { 0.6f, 0, 0.8f }, DRILL_TEST_GRIP, mirrored);
+				const CAPSULE tilted = DrillCalcBit(shoulder, { 0.6f, 0, 0.8f }, mirrored, DRILL_TEST_PARAMS);
+				const VEC3 startOffset = Vec3Sub(tilted.Start, axis.Rear);
+				const VEC3 endOffset = Vec3Sub(tilted.End, axis.Rear);
+				Assert::AreEqual(12.0f * 0.08f, Vec3Length(startOffset), DRILL_EPSILON);
+				Assert::AreEqual(18.060484f * 0.08f, Vec3Length(endOffset), DRILL_EPSILON);
+				Assert::AreEqual(Vec3Length(startOffset), Vec3Dot(startOffset, axis.Direction), DRILL_EPSILON);
+				Assert::AreEqual(Vec3Length(endOffset), Vec3Dot(endOffset, axis.Direction), DRILL_EPSILON);
+			}
 		}
 
 		TEST_METHOD(Strike_HitsNearEnemyButNotFarEnemyOrShoulder)
 		{
-			// 距離はカプセルの半径も含む。中心 3.6 なら、ビット半径 0.35＋体半径 0.5 の外。
-			for (float distance : { 2.65f, 3.6f, 0.0f }) {
+			// 軸後端は肩より約 0.61 下、先端は前へ約 1.48。半径も含めて比べる。
+			for (float distance : { 1.48f, 2.5f, 0.0f }) {
 				DRILL arm;
 				DrillCalcReset(arm);
 				const TENTACLE_TARGET target = DrillTarget(distance);
 				const DRILL_EVENT e = StepDrill(arm, 0.01f, &target, 1, true);
-				Assert::AreEqual((int)(distance == 2.65f ? DRILL_BORING : DRILL_STRIKING), (int)arm.State);
+				Assert::AreEqual((int)(distance == 1.48f ? DRILL_BORING : DRILL_STRIKING), (int)arm.State);
 				Assert::AreEqual(0, e.DamageTicks);
 				Assert::IsFalse(e.Push);
 			}
@@ -87,16 +156,29 @@ namespace Proto1Tests
 		{
 			DRILL arm;
 			DrillCalcReset(arm);
-			const TENTACLE_TARGET target = DrillTarget(3.0f);
+			const TENTACLE_TARGET target = DrillTarget(1.9f);
 			StepDrill(arm, 0.01f, &target, 1, true);
 			Assert::AreEqual((int)DRILL_BORING, (int)arm.State);
+		}
+
+		TEST_METHOD(Strike_UsesShoulderAndMirroredGripForCollision)
+		{
+			// 左の判定の横端にだけ重なる小さな敵。肩の移動と右手の X 反転を確認する。
+			const VEC3 center{ 4.0f - 0.37f, 5.0f - 0.6110248f, 6.0f + 1.2f };
+			const TENTACLE_TARGET target{ { center, center, 0.01f }, true };
+			for (bool mirrored : { false, true }) {
+				DRILL arm;
+				DrillCalcReset(arm);
+				StepDrill(arm, 0.01f, &target, 1, true, false, { 4, 5, 6 }, { 0, 0, 1 }, mirrored);
+				Assert::AreEqual((int)(mirrored ? DRILL_STRIKING : DRILL_BORING), (int)arm.State);
+			}
 		}
 
 		TEST_METHOD(Strike_SkipsUnavailableAndChoosesNearestOverlappingEnemy)
 		{
 			DRILL arm;
 			DrillCalcReset(arm);
-			const TENTACLE_TARGET targets[]{ DrillTarget(1.3f, false), DrillTarget(2.6f), DrillTarget(1.6f) };
+			const TENTACLE_TARGET targets[]{ DrillTarget(1.1f, false), DrillTarget(1.6f), DrillTarget(1.3f) };
 			StepDrill(arm, 0.01f, targets, 3, true);
 			Assert::AreEqual(2, arm.Target);
 			Assert::AreEqual((int)DRILL_BORING, (int)arm.State);
