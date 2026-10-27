@@ -45,16 +45,6 @@ namespace Proto1Tests
 			const VEC3 curved = TentacleCalcWigglePoint({}, end, 0.3f, 1, 0.25f, 1.5f);
 			Assert::AreEqual(0.0f, Vec3Dot(Vec3Sub(curved, Vec3Scale(end, 0.3f)), end), 0.0001f);
 		}
-		TEST_METHOD(Wiggle_VerticalAndZeroLength)
-		{
-			for (float height : { -4.0f, 4.0f }) {
-				const VEC3 p = TentacleCalcWigglePoint({}, { 0, height, 0 }, 0.5f, 0, 0.25f, 0.5f);
-				Assert::AreEqual(height * 0.5f, p.Y, 0.0001f);
-				Assert::AreEqual(0.25f, fabsf(p.X), 0.0001f);
-			}
-			const VEC3 p = TentacleCalcWigglePoint(origin, origin, 0.5f, 2, 0.25f, 1.5f);
-			Assert::AreEqual(0.0f, Vec3Length(Vec3Sub(p, origin)));
-		}
 		TEST_METHOD(PieceAxes_OrthonormalAndForwardIncludingDegenerateCases)
 		{
 			for (VEC3 end : { VEC3{ 2, 3, 4 }, VEC3{ 0, 4, 0 }, VEC3{ 0, -4, 0 }, VEC3{} }) {
@@ -106,55 +96,6 @@ namespace Proto1Tests
 			Assert::AreEqual(-1.0f, direction.X, 0.0001f);
 			Assert::AreEqual(0.0f, direction.Y, 0.0001f);
 			Assert::AreEqual(0.0f, direction.Z, 0.0001f);
-		}
-		TEST_METHOD(Aim_TargetDirectlyAboveBelowOrAtShoulderUsesFallback)
-		{
-			for (float height : { -20.0f, 1.35f, 20.0f }) {
-				const VEC3 direction = TentacleCalcAim(origin, { 0, height, 0 }, true, { -1, 0, 0 });
-				Assert::AreEqual(-1.0f, direction.X, 0.0001f);
-				Assert::AreEqual(0.0f, direction.Y, 0.0001f);
-				Assert::AreEqual(0.0f, direction.Z, 0.0001f);
-			}
-		}
-		TEST_METHOD(Aim_NearlyZeroHorizontalDistanceUsesFallback)
-		{
-			const VEC3 direction = TentacleCalcAim(origin, { 0.000001f, 10, -0.000001f }, true, aim);
-			Assert::AreEqual(0.0f, direction.X, 0.0001f);
-			Assert::AreEqual(0.0f, direction.Y, 0.0001f);
-			Assert::AreEqual(1.0f, direction.Z, 0.0001f);
-		}
-		TEST_METHOD(Aim_FallbackIsHorizontalAndNormalized)
-		{
-			for (bool hasTarget : { false, true }) {
-				const VEC3 direction = TentacleCalcAim(origin, origin, hasTarget, { -3, 12, 4 });
-				Assert::AreEqual(-0.6f, direction.X, 0.0001f);
-				Assert::AreEqual(0.0f, direction.Y, 0.0001f);
-				Assert::AreEqual(0.8f, direction.Z, 0.0001f);
-				Assert::AreEqual(1.0f, Vec3Length(direction), 0.0001f);
-			}
-		}
-		TEST_METHOD(Aim_DegenerateFallbackUsesPositiveZ)
-		{
-			for (const VEC3& fallback : { VEC3{}, VEC3{ 0, 5, 0 }, VEC3{ 0.000001f, 5, 0 } }) {
-				for (bool hasTarget : { false, true }) {
-					const VEC3 direction = TentacleCalcAim(origin, origin, hasTarget, fallback);
-					Assert::AreEqual(0.0f, direction.X, 0.0001f);
-					Assert::AreEqual(0.0f, direction.Y, 0.0001f);
-					Assert::AreEqual(1.0f, direction.Z, 0.0001f);
-				}
-			}
-		}
-		TEST_METHOD(Aim_EachShoulderPointsToSameTarget)
-		{
-			const VEC3 target{ 0, 9, 4 };
-			const VEC3 left = TentacleCalcAim({ -3, 1, 0 }, target, true, aim);
-			const VEC3 right = TentacleCalcAim({ 3, 1, 0 }, target, true, aim);
-			Assert::AreEqual(0.6f, left.X, 0.0001f);
-			Assert::AreEqual(-0.6f, right.X, 0.0001f);
-			Assert::AreEqual(0.0f, left.Y, 0.0001f);
-			Assert::AreEqual(0.0f, right.Y, 0.0001f);
-			Assert::AreEqual(0.8f, left.Z, 0.0001f);
-			Assert::AreEqual(0.8f, right.Z, 0.0001f);
 		}
 		TEST_METHOD(Aim_DistantTargetKeepsInitialDirectionAndMaximumLength)
 		{
@@ -244,16 +185,6 @@ namespace Proto1Tests
 			Assert::AreEqual(-1, arm.GetTarget());
 			Assert::AreEqual((int)TENTACLE_IDLE, (int)arm.GetState());
 		}
-		TEST_METHOD(TimeStopped_DoesNotExtendOrThrow)
-		{
-			TentacleCalc arm; arm.Reset();
-			Step(arm, true, 0);
-			Assert::AreEqual((int)TENTACLE_IDLE, (int)arm.GetState());
-			TENTACLE_TARGET target = Target(3);
-			Step(arm, true, 0.2f, &target, 1);
-			Assert::AreEqual(-1, Step(arm, true, 0, &target, 1).Released);
-			Assert::AreEqual(0.0f, arm.GetHoldTime());
-		}
 		TEST_METHOD(Direction_RemainsFixedWhileExtending)
 		{
 			TentacleCalc arm; arm.Reset();
@@ -293,30 +224,6 @@ namespace Proto1Tests
 			Assert::IsTrue(first > 0.0f);
 			Step(arm, false, 0.1f);
 			Assert::IsTrue(arm.GetExtendRatio(params) > first);
-		}
-		TEST_METHOD(ExtendRatio_ZeroWhenNotExtending)
-		{
-			TentacleCalc arm{};
-			arm.Reset();
-			arm = { TENTACLE_RETURNING, {}, {}, 4.0f, 0, -1 };
-			Assert::AreEqual(0.0f, arm.GetExtendRatio(params));
-			arm = { TENTACLE_HOLDING, {}, {}, arm.GetLength(), 0, -1 };
-			Assert::AreEqual(0.0f, arm.GetExtendRatio(params));
-			arm = { TENTACLE_EXTENDING, {}, {}, arm.GetLength(), 0, -1 };
-			Assert::AreEqual(0.5f, arm.GetExtendRatio(params), 0.0001f);
-			const TENTACLE_PARAMS zero{ 0, 24, 30, 3, 0.18f };
-			Assert::AreEqual(0.0f, arm.GetExtendRatio(zero));
-		}
-		TEST_METHOD(ExtendRatio_ClampsToOne)
-		{
-			TentacleCalc arm{};
-			arm.Reset();
-			arm = { TENTACLE_EXTENDING, {}, {}, 20.0f, 0, -1 };
-			Assert::AreEqual(1.0f, arm.GetExtendRatio(params));
-			arm = { TENTACLE_EXTENDING, {}, {}, 8.0f, 0, -1 };
-			Assert::AreEqual(1.0f, arm.GetExtendRatio(params), 0.0001f);
-			arm = { TENTACLE_EXTENDING, {}, {}, -1.0f, 0, -1 };
-			Assert::AreEqual(0.0f, arm.GetExtendRatio(params));
 		}
 		TEST_METHOD(DirectedThrow_UsesPitchAndNormalizesSpeed)
 		{

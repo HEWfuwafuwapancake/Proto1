@@ -83,14 +83,6 @@ namespace Proto1Tests
 			Assert::AreEqual(-1.0f, cam.Y, CAMERA_EPSILON);
 		}
 
-		// 見ている点が浮島の箱の中なら、近づけようがないのでそのまま
-		TEST_METHOD(Clip_TargetInsideKeepsCamera)
-		{
-			VEC3 cam = CameraCalcClipToStage({ 0.0f, -1.0f, 0.0f }, { 0.0f, 3.0f, -8.0f }, MakeCameraStage(), 0.3f);
-			Assert::AreEqual(3.0f, cam.Y, CAMERA_EPSILON);
-			Assert::AreEqual(-8.0f, cam.Z, CAMERA_EPSILON);
-		}
-
 		// 正負どちらの目標へも近づく。大きな持ち越し速度でも目標を通り過ぎない。
 		TEST_METHOD(SmoothDamp_ApproachesWithoutOvershoot)
 		{
@@ -107,16 +99,6 @@ namespace Proto1Tests
 				Assert::AreEqual(goal, CameraCalcSmoothDamp(0, goal, velocity, 0.3f, 1.0f / 30.0f), CAMERA_EPSILON);
 				Assert::AreEqual(0.0f, velocity, CAMERA_EPSILON);
 			}
-		}
-
-		// 時間が止まっている間は速度も角度も変えない（角度の正規化も行わない）。
-		TEST_METHOD(SmoothDamp_ZeroDtKeepsValueAndVelocity)
-		{
-			float velocity = 3.0f;
-			Assert::AreEqual(1.0f, CameraCalcSmoothDamp(1, 9, velocity, 0.3f, 0), CAMERA_EPSILON);
-			Assert::AreEqual(3.0f, velocity, CAMERA_EPSILON);
-			Assert::AreEqual(7.0f, CameraCalcSmoothDampAngle(7, -2, velocity, 0.12f, 0), CAMERA_EPSILON);
-			Assert::AreEqual(3.0f, velocity, CAMERA_EPSILON);
 		}
 
 		TEST_METHOD(SmoothDampAngle_CrossesPiInBothDirectionsByShortestPath)
@@ -171,18 +153,6 @@ namespace Proto1Tests
 			Assert::IsTrue(continued - restarted > 0.1f);
 		}
 
-		TEST_METHOD(SmoothDampAngle_ChangingGoalCarriesAngularVelocity)
-		{
-			float angle = 3, velocity = 0;
-			for (int i = 0; i < 6; ++i) {
-				angle = CameraCalcSmoothDampAngle(angle, -2.5f, velocity, 0.3f, 1.0f / 60.0f);
-			}
-			float resetVelocity = 0;
-			const float restarted = CameraCalcSmoothDampAngle(angle, 2.5f, resetVelocity, 0.3f, 1.0f / 60.0f);
-			const float continued = CameraCalcSmoothDampAngle(angle, 2.5f, velocity, 0.3f, 1.0f / 60.0f);
-			Assert::IsTrue(velocity > 0 && resetVelocity < 0);
-			Assert::IsTrue(atan2f(sinf(continued - restarted), cosf(continued - restarted)) > 0.01f);
-		}
 		TEST_METHOD(Focus_ChoosesClosestAngleAndKeepsSmallPriority)
 		{
 			CAMERA_FOCUS_TARGET targets[]{ {{2, 0, 10}, true}, {{1.5f, 0, 10}, true} };
@@ -198,11 +168,6 @@ namespace Proto1Tests
 			Assert::AreEqual(-1, CameraCalcPickFocus(0, {}, nullptr, 0, -1, 0.5f, 20, 0));
 			targets[1].Position = {0, 30, 1};
 			Assert::AreEqual(-1, CameraCalcPickFocus(0, {}, targets, 3, 1, 0.5f, 20, 2));
-		}
-		TEST_METHOD(Focus_WrapsAngleAndIgnoresCoincidentTarget)
-		{
-			CAMERA_FOCUS_TARGET targets[]{ {{0.01f, 0, -10}, true}, {{0, 1, 0}, true} };
-			Assert::AreEqual(0, CameraCalcPickFocus(-CAMERA_PI + 0.01f, {}, targets, 2, -1, 0.05f, 20, 0));
 		}
 		// 候補の並び・距離ではなく、現在の敵から指定側の最小角を選ぶ。
 		TEST_METHOD(NextTarget_ChoosesNearestAngleOnRightAndLeft)
@@ -233,25 +198,6 @@ namespace Proto1Tests
 			};
 			Assert::AreEqual(2, CameraCalcNextTarget({}, targets, 6, 0, 1));
 			Assert::AreEqual(0, CameraCalcNextTarget({}, targets, 6, 0, -1));
-		}
-
-		TEST_METHOD(NextTarget_CrossesPiInBothDirections)
-		{
-			CAMERA_FOCUS_TARGET targets[]{
-				{{sinf(CAMERA_PI - 0.1f), 0, cosf(CAMERA_PI - 0.1f)}, true},
-				{{sinf(-CAMERA_PI + 0.1f), 0, cosf(-CAMERA_PI + 0.1f)}, true},
-				{{0, 0, 1}, true}
-			};
-			Assert::AreEqual(1, CameraCalcNextTarget({}, targets, 3, 0, 1));
-			Assert::AreEqual(0, CameraCalcNextTarget({}, targets, 3, 1, -1));
-		}
-
-		TEST_METHOD(NextTarget_InvalidOrUnavailableCurrentReturnsNone)
-		{
-			CAMERA_FOCUS_TARGET targets[]{ {{0, 0, 10}, false} };
-			Assert::AreEqual(-1, CameraCalcNextTarget({}, nullptr, 0, -1, 1));
-			Assert::AreEqual(-1, CameraCalcNextTarget({}, targets, 1, 1, -1));
-			Assert::AreEqual(-1, CameraCalcNextTarget({}, targets, 1, 0, 1));
 		}
 
 		// No.33 の開幕・自動再選択は角度・距離で絞らない。

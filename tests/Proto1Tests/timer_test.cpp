@@ -57,15 +57,6 @@ namespace Proto1Tests
 			Assert::IsTrue(TimerIsFinished(timer));
 		}
 
-		// dt が 0（時間が止まっている）なら減らない
-		TEST_METHOD(Update_ZeroDtDoesNotChange)
-		{
-			TIMER timer{};
-			TimerStart(timer, 5.0f);
-			TimerUpdate(timer, 0.0f);
-			Assert::AreEqual(5.0f, TimerGetRemaining(timer), TIMER_EPSILON);
-		}
-
 		// 数えている途中で Start すると、最初からやり直す
 		TEST_METHOD(Start_RestartsWhileRunning)
 		{
@@ -77,20 +68,5 @@ namespace Proto1Tests
 			Assert::AreEqual(3.0f, timer.Duration, TIMER_EPSILON);
 		}
 
-		// 負の秒数は 0 にして、すぐに数え終わる
-		TEST_METHOD(Start_NegativeSecondsFinishesImmediately)
-		{
-			TIMER timer{};
-			TimerStart(timer, -1.0f);
-			Assert::AreEqual(0.0f, TimerGetRemaining(timer), TIMER_EPSILON);
-			Assert::IsTrue(TimerIsFinished(timer));
-		}
-
-		// { } で初期化しただけのタイマーは、数え終わった状態
-		TEST_METHOD(ZeroInitialized_IsFinished)
-		{
-			TIMER timer{};
-			Assert::IsTrue(TimerIsFinished(timer));
-		}
 	};
 }

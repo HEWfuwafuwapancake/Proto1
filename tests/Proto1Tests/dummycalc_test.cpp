@@ -86,16 +86,6 @@ namespace Proto1Tests
 
 		// ---- プレイヤーに押される ----
 
-		// 離れていれば、どちらも動かない
-		TEST_METHOD(Push_ApartDoesNothing)
-		{
-			VEC3 player = { 0.0f, 0.0f, 0.0f };
-			VEC3 dummy = { 0.0f, 0.0f, 2.0f };
-			Assert::IsFalse(DummyCalcPushByPlayer(player, dummy, BODY_RADIUS, BODY_HEIGHT));
-			Assert::AreEqual(2.0f, dummy.Z, DUMMY_EPSILON);
-			Assert::AreEqual(0.0f, player.Z, DUMMY_EPSILON);
-		}
-
 		// 横から重なると、ダミーだけが押されて、重ならなくなる（プレイヤーは動かない）
 		TEST_METHOD(Push_FromSideMovesDummyOnly)
 		{

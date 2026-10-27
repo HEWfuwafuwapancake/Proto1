@@ -4,12 +4,13 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）。
 決まったことは [decisions.md](decisions.md)、腕のモデルの原点と長さは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、終わったタスクの記録は [archive/](archive/)（普段は読まない）。
 
-- 最終更新：2026-10-27（Claude。Shota の共有 Proto1。No.45 は Codex がまだ push していない。No.44 段階 C のプランとプロンプトを詳しくした（管理者確認済み）。次は No.45 → No.44 段階 C）
+- 最終更新：2026-10-27（Codex。Shota の共有 Proto1。No.45 の指定73件を削除。Claude の確認待ち。次は No.45 の確認・マージ → No.44 段階 C）
 
 ---
 
 ## 1. 今の状態
 
+- **No.45 は Codex が実装。Claude の確認待ち**。`feature/test-trim` で指定73件を削除し、残り186件。削除したテスト専用の `SEG_D` も削除。`src/` と残したテストの本文は変更なし。テストプロジェクトの Debug / x64 ビルド成功（警告なし）。テスト実行・Release は未確認（Claude 担当）。プランからの変更・迷ったことはなし。Notion の No.45 は「進行中」。
 - **No.44 段階 A・B はマージ済み**。腕は基本クラス `Arm` と派生クラス `TentacleArm`・`GrappleArm`・`DrillArm`（片手1インスタンス）。`arm.cpp` は腕の種類 → 生成関数の表と、左右全種類のインスタンスを持つ。グラップリングの左右の所有権は `ConnectOtherArm`・`m_Pulling`。
 - 段階 B の確認：Debug / Release 警告 0、テスト 259 件（Debug / Release）。画面で触腕のつかむ・投げる（+12%）、グラップリングで飛ぶ（+5%）、ドリル（+20% で押し出し）、左右グラップリング、切り替え・やり直しのあと歩けることを確認。時間切れ（90 秒）は待っていない（やり直しと同じ `ArmReset`）。
 - 段階 D で直す古い説明：`docs/dev/01_DX11基盤の構成.md` の `ARM_FUNCTIONS`・`TentacleInitialize`・`TentacleUpdateHand`。
@@ -18,7 +19,7 @@
 
 ## 2. 次にやること：No.45（テストを減らす）→ No.44 段階 C
 
-- **直近は No.45**：管理者が下の「No.45 を Codex に頼むプロンプト」を Codex に貼る。Codex の保存のあと「No.45 を Claude が確かめるときのプロンプト」を Claude に貼る。マージしたら No.44 段階 C へ。
+- **直近は No.45 の Claude 確認**：管理者が下の「No.45 を Claude が確かめるときのプロンプト」を Claude に貼る。Debug / Release のビルド・テスト実行・PR・マージは Claude が行う。マージしたら No.44 段階 C へ。
 - **そのあと No.44 段階 C**：No.45 のマージのあと、管理者が「No.44 段階 C を Codex に頼むプロンプト」を Codex に貼る（段階 C のプランは管理者確認済み）。Codex の保存のあと「No.44 段階 C を Claude が確かめるときのプロンプト」を Claude に貼る。
 
 ### No.45 のプラン：いらないテストを消す（管理者確認済み、2026-10-27。「中くらい」に減らす）

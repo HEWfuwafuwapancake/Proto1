@@ -45,13 +45,6 @@ namespace Proto1Tests
 			Assert::IsFalse(StageCalcIsOnPlatform(stage, 2.0f, -16.1f));
 		}
 
-		// 角の外（X は中、Z は外）は「ない」
-		TEST_METHOD(OnPlatform_CornerOutside)
-		{
-			STAGE stage = MakeStage();
-			Assert::IsFalse(StageCalcIsOnPlatform(stage, 16.0f, 20.0f));
-		}
-
 		// 下の線より上は場外でない。ちょうどもまだ場外でない。下なら場外
 		TEST_METHOD(IsOut_BottomLine)
 		{

@@ -38,17 +38,6 @@ namespace Proto1Tests
 	TEST_CLASS(DrillCalcTest)
 	{
 	public:
-		TEST_METHOD(Reset_ClearsTargetTimeAndTicks)
-		{
-			DrillCalc arm{ DRILL_BORING, { 1, 2, 3 }, 0.4f, 2, 4 };
-			arm.Reset();
-			Assert::AreEqual((int)DRILL_IDLE, (int)arm.GetState());
-			Assert::AreEqual(-1, arm.GetTarget());
-			Assert::AreEqual(0, arm.GetTicks());
-			Assert::AreEqual(0.0f, arm.GetTime(), DRILL_EPSILON);
-			Assert::AreEqual(1.0f, arm.GetDirection().Z, DRILL_EPSILON);
-		}
-
 		TEST_METHOD(Idle_OnlyTriggerStartsStrikeAndFixesHorizontalDirection)
 		{
 			DrillCalc arm;
@@ -152,15 +141,6 @@ namespace Proto1Tests
 			}
 		}
 
-		TEST_METHOD(Strike_CapsuleRadiiAlsoCountAtTip)
-		{
-			DrillCalc arm;
-			arm.Reset();
-			const TENTACLE_TARGET target = DrillTarget(1.9f);
-			StepDrill(arm, 0.01f, &target, 1, true);
-			Assert::AreEqual((int)DRILL_BORING, (int)arm.GetState());
-		}
-
 		TEST_METHOD(Strike_UsesShoulderAndMirroredGripForCollision)
 		{
 			// 左の判定の横端にだけ重なる小さな敵。肩の移動と右手の X 反転を確認する。
@@ -182,16 +162,6 @@ namespace Proto1Tests
 			StepDrill(arm, 0.01f, targets, 3, true);
 			Assert::AreEqual(2, arm.GetTarget());
 			Assert::AreEqual((int)DRILL_BORING, (int)arm.GetState());
-		}
-
-		TEST_METHOD(Strike_UnavailableEnemyDoesNotHit)
-		{
-			DrillCalc arm;
-			arm.Reset();
-			const TENTACLE_TARGET target = DrillTarget(2.0f, false);
-			StepDrill(arm, 0.01f, &target, 1, true);
-			Assert::AreEqual((int)DRILL_STRIKING, (int)arm.GetState());
-			Assert::AreEqual(-1, arm.GetTarget());
 		}
 
 		TEST_METHOD(Miss_StrikesForPointFourThenRestsForPointThree)
@@ -277,39 +247,6 @@ namespace Proto1Tests
 				Assert::AreEqual((int)DRILL_COOLDOWN, (int)arm.GetState());
 				Assert::AreEqual(0, e.DamageTicks);
 				Assert::IsFalse(e.Push);
-			}
-		}
-
-		TEST_METHOD(RepeatedTriggersDoNotRestartActiveStatesOrChangeDirection)
-		{
-			const TENTACLE_TARGET target = DrillTarget(2.0f);
-			for (DRILL_STATE state : { DRILL_STRIKING, DRILL_BORING, DRILL_COOLDOWN }) {
-				DrillCalc control = BoringDrill();
-				control = { state, control.GetDirection(), 0.15f, control.GetTarget(), control.GetTicks() };
-				DrillCalc pressed = control;
-				const DRILL_EVENT expected = StepDrill(control, 0.01f, &target, 1);
-				const DRILL_EVENT actual = StepDrill(pressed, 0.01f, &target, 1, true, false, {}, { -1, 4, 0 });
-				Assert::AreEqual((int)control.GetState(), (int)pressed.GetState());
-				Assert::AreEqual(control.GetTime(), pressed.GetTime(), DRILL_EPSILON);
-				Assert::AreEqual(control.GetTicks(), pressed.GetTicks());
-				Assert::AreEqual(control.GetTarget(), pressed.GetTarget());
-				Assert::AreEqual(1.0f, pressed.GetDirection().Z, DRILL_EPSILON);
-				Assert::AreEqual(expected.DamageTicks, actual.DamageTicks);
-				Assert::AreEqual(expected.Push, actual.Push);
-			}
-		}
-
-		TEST_METHOD(ZeroOrNegativeTime_DoesNotStartOrAdvance)
-		{
-			for (float dt : { 0.0f, -1.0f }) {
-				DrillCalc arm;
-				arm.Reset();
-				StepDrill(arm, dt, nullptr, 0, true);
-				Assert::AreEqual((int)DRILL_IDLE, (int)arm.GetState());
-				arm = BoringDrill();
-				const TENTACLE_TARGET target = DrillTarget(2.0f);
-				Assert::AreEqual(0, StepDrill(arm, dt, &target, 1).DamageTicks);
-				Assert::AreEqual(0.0f, arm.GetTime(), DRILL_EPSILON);
 			}
 		}
 

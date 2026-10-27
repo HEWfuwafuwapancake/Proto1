@@ -59,23 +59,5 @@ namespace Proto1Tests
 			Assert::AreEqual(0.5f, GameTimeGetElapsed(), GAMETIME_EPSILON);
 		}
 
-		// 負の速さは 0 にする（時間は戻らない）
-		TEST_METHOD(NegativeScale_BecomesZero)
-		{
-			GameTimeSetScale(-1.0f);
-			Assert::AreEqual(0.0f, GameTimeGetScale(), GAMETIME_EPSILON);
-			GameTimeUpdate();
-			Assert::AreEqual(0.0f, GameTimeGetElapsed(), GAMETIME_EPSILON);
-		}
-
-		// Initialize で経過時間と速さが最初に戻る
-		TEST_METHOD(Initialize_ResetsElapsedAndScale)
-		{
-			GameTimeSetScale(2.0f);
-			GameTimeUpdate();
-			GameTimeInitialize();
-			Assert::AreEqual(0.0f, GameTimeGetElapsed(), GAMETIME_EPSILON);
-			Assert::AreEqual(1.0f, GameTimeGetScale(), GAMETIME_EPSILON);
-		}
 	};
 }

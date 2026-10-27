@@ -29,13 +29,6 @@ namespace Proto1Tests
 			AssertVec3(b, CollisionClosestPointOnSegment({ 14.0f, -1.0f, 2.0f }, a, b));
 		}
 
-		// 長さ 0 の線分（点）でも落ちない
-		TEST_METHOD(ClosestPointOnSegment_ZeroLength)
-		{
-			const VEC3 a = { 1.0f, 2.0f, 3.0f };
-			AssertVec3(a, CollisionClosestPointOnSegment({ 5.0f, 5.0f, 5.0f }, a, a));
-		}
-
 		// ---- 2つの線分のいちばん近い点どうし ----
 
 		// ねじれの位置（X 向きの線分と、上にある Z 向きの線分）：交わりそうな点どうし
@@ -46,16 +39,6 @@ namespace Proto1Tests
 				{ 2.0f, 3.0f, -5.0f }, { 2.0f, 3.0f, 5.0f }, onA, onB);
 			AssertVec3({ 2.0f, 0.0f, 0.0f }, onA);
 			AssertVec3({ 2.0f, 3.0f, 0.0f }, onB);
-		}
-
-		// 端どうしがいちばん近い（一直線に並んでいて、間があいている）
-		TEST_METHOD(ClosestPointsOfSegments_EndToEnd)
-		{
-			VEC3 onA, onB;
-			CollisionClosestPointsOfSegments({ 0.0f, 0.0f, 0.0f }, { 2.0f, 0.0f, 0.0f },
-				{ 5.0f, 0.0f, 0.0f }, { 9.0f, 0.0f, 0.0f }, onA, onB);
-			AssertVec3({ 2.0f, 0.0f, 0.0f }, onA);
-			AssertVec3({ 5.0f, 0.0f, 0.0f }, onB);
 		}
 
 		// 平行（縦の線分が2本並ぶ）：いちばん近い点どうしの距離が、2本の間の距離になる
@@ -80,15 +63,6 @@ namespace Proto1Tests
 			Assert::IsTrue(hit.Hit);
 			AssertVec3({ 1.0f, 0.0f, 0.0f }, hit.Normal);	// a を +X へ押し出す
 			Assert::AreEqual(0.5f, hit.Depth, COLLISION_EPSILON);
-		}
-
-		// 中心が同じ点なら、真上に押し出す
-		TEST_METHOD(SphereSphere_SameCenterPushesUp)
-		{
-			HIT_RESULT hit = CollisionSphereSphere({ { 1.0f, 1.0f, 1.0f }, 0.5f }, { { 1.0f, 1.0f, 1.0f }, 0.5f });
-			Assert::IsTrue(hit.Hit);
-			AssertVec3({ 0.0f, 1.0f, 0.0f }, hit.Normal);
-			Assert::AreEqual(1.0f, hit.Depth, COLLISION_EPSILON);
 		}
 
 		// ---- 球とカプセル ----
@@ -191,16 +165,5 @@ namespace Proto1Tests
 			Assert::IsTrue(record.TryAdd(2));
 		}
 
-		// いっぱいになったら、新しい相手にも当てない（覚えられない相手に何度も当たらないように）
-		TEST_METHOD(HitRecord_FullRejects)
-		{
-			HitRecord record;
-			record.Clear();
-			for (int i = 0; i < HIT_RECORD_MAX; i++) {
-				Assert::IsTrue(record.TryAdd(i));
-			}
-			Assert::IsFalse(record.TryAdd(100));
-			Assert::AreEqual(HIT_RECORD_MAX, record.GetCount());
-		}
 	};
 }
