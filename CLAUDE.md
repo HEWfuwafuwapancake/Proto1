@@ -50,14 +50,14 @@ DX11 の土台は `HEW2026GitTest` から持ってきた（水のレイトレー
 - 調整する値（速さ・強さ・時間など）は、各ファイルの上の「調整用の値」に `static constexpr` でまとめる。
 
 ## コードの約束
-- 授業（DX21）のひな形をもとにした DX11 基盤。構成は `docs/dev/01_DX11基盤の構成.md`。書き方はひな形に合わせる（`〇〇Initialize / Finalize / Update / Draw`）。
+- 授業（DX21）のひな形をもとにした DX11 基盤。構成は `docs/dev/01_DX11基盤の構成.md`。書き方はひな形の流れに合わせ、ゲームの部品はクラスのメンバー関数 `Initialize / Reset / Finalize / Update / Draw` で動かす（`src/game` に `g_〇〇` や外から呼ぶ自由関数は作らない。`main.cpp` は `Game` を1つ持つだけ。足し方は `docs/dev/01_DX11基盤の構成.md` の「新しいオブジェクトを足すとき」と「腕を足すとき」）。
 - クラスは `TentacleCalc`・`Player` のように命名する。メンバー変数は `private` に置いて `m_` を頭に付け、読むときは `GetXxx() const` を使う。`Initialize / Finalize / Update / Draw` はメンバー関数名で残す。クラスと `public` なメンバー関数・メンバー変数には、すべて Doxygen 形式の日本語コメントを付ける。
 - ヘッダーで公開する関数・構造体には **Doxygen 形式の日本語コメント**（`/// @brief` など）を付ける。bool を受け取る関数は「〜を設定する（true：〜、false：〜）」と書き、構造体はメンバーを1つも残さず説明する。
 - C++（`.cpp` / `.h`）は **BOM付きUTF-8・CRLF**。シェーダー（`.hlsl` / `.hlsli`）は **BOMなしUTF-8**（fxc は BOM があると `X3000` で失敗する）。
 - 文字セットは **マルチバイト**（ひな形が `char` 文字列のため）。`/utf-8` オプションは付けない。サブシステムは Windows。
 - 定数バッファは `src/core/shader.h` / `shader.cpp` の構造体と `shaders/shaderCommon.hlsli`（b0〜b4）の並び・番号をそろえる。
 - ステージは空に浮かぶ四角い浮島が1つ（`src/game/stage.cpp`。地形 `field.cpp` は今は使っていない）。浮島の大きさ・場外の下の線は `stage.cpp` の「調整用の値」、計算は `src/physics/stagecalc.h`。
-  浮島の上に物を置くときは `StageGet().TopY` の高さ、浮島の範囲かは `StageCalcIsOnPlatform`、場外かは `StageCalcIsOut` で調べる。
+  浮島の上に物を置くときは `Stage::GetStage().TopY` の高さ、浮島の範囲かは `StageCalcIsOnPlatform`、場外かは `StageCalcIsOut` で調べる。
 - ファイルを足したら `.vcxproj` と `.vcxproj.filters` にも追加する（`save-work.ps1` も登録漏れを止める）。
 - ビルド確認：
   `& "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe" Proto1.vcxproj /p:Configuration=Debug /p:Platform=x64 /v:minimal /nologo`
