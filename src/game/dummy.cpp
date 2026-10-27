@@ -119,8 +119,7 @@ void DummyUpdate(void)
 				VEC3 playerFeet = { p.x, p.y, p.z };
 				VEC3 dummyFeet = { dummy.Body.GetX(), dummy.Body.GetY(), dummy.Body.GetZ() };
 				if (DummyCalcPushByPlayer(playerFeet, dummyFeet, BODY_RADIUS, BODY_HEIGHT)) {
-					dummy.Body.SetPosition({ dummyFeet.X, dummy.Body.GetY(), dummy.Body.GetZ() });
-					dummy.Body.SetPosition({ dummy.Body.GetX(), dummy.Body.GetY(), dummyFeet.Z });
+					dummy.Body.SetPosition({ dummyFeet.X, dummy.Body.GetY(), dummyFeet.Z });
 					PlayerSetPosition({ playerFeet.X, playerFeet.Y, playerFeet.Z });
 				}
 			}
