@@ -1,11 +1,8 @@
 ﻿#include "game/match.h"
 #include "core/debug_ostream.h"
 #include "core/gametime.h"
-#include "game/camera.h"
 #include "game/dummy.h"
-#include "game/player.h"
 #include "game/arm.h"
-#include "input/action.h"
 #include "input/pad.h"
 
 #ifdef _DEBUG
@@ -21,68 +18,59 @@ static constexpr float PLAYING_LIGHT_COLOR[3] = { 0.95f, 0.45f, 0.35f }; // プ�
 static constexpr float FINISHED_LIGHT_COLOR[3] = { 1.0f, 0.0f, 0.0f };   // 時間切れは赤
 
 
-static MatchCalc g_Match = {};
-
-
-void MatchInitialize(void)
+void Match::Reset(void)
 {
-	g_Match.Start(MATCH_SECONDS, DummyGetTotalOutCount());
+	m_Match.Start(MATCH_SECONDS, m_Dummies->GetTotalOutCount());
 	PadRumble(0.0f, 0.0f, 0.0f);
 	PadSetLightColor(PLAYING_LIGHT_COLOR[0], PLAYING_LIGHT_COLOR[1], PLAYING_LIGHT_COLOR[2]);
 }
 
-void MatchFinalize(void)
+void Match::Finalize(void)
 {
 
 }
 
-void MatchUpdate(void)
+void Match::Update(void)
 {
-	// やり直し：離す → 戻す（ダミーを戻す前に触腕を離す。カメラはプレイヤーを見るので、プレイヤーのあと）
-	if (ActionIsTrigger(ACTION_RESTART)) {
-		ArmReset();
-		PlayerInitialize();
-		DummyInitialize();
-		CameraInitialize();
-		MatchInitialize();
-#ifdef _DEBUG
-		hal::dout << "試合：やり直し" << std::endl;
-#endif
-		return;
-	}
-
-	const MATCH_EVENT event = g_Match.Step(GameTimeGetDeltaTime(), DummyGetTotalOutCount());
+	const MATCH_EVENT event = m_Match.Step(GameTimeGetDeltaTime(), m_Dummies->GetTotalOutCount());
 #ifdef _DEBUG
 	if (event == MATCH_EVENT_SCORED) {
-		hal::dout << "試合：得点 " << g_Match.GetScore() << std::endl;
+		hal::dout << "試合：得点 " << m_Match.GetScore() << std::endl;
 	}
 #endif
 	if (event == MATCH_EVENT_TIME_UP) {
 		PadRumble(0.0f, 0.0f, 0.0f);
 		PadSetLightColor(FINISHED_LIGHT_COLOR[0], FINISHED_LIGHT_COLOR[1], FINISHED_LIGHT_COLOR[2]);
-		ArmReset();	// つかんでいる敵を離してから止める
+		m_Arms->Reset();	// つかんでいる敵を離してから止める
 #ifdef _DEBUG
-		hal::dout << "試合：時間切れ（得点 " << g_Match.GetScore() << "）" << std::endl;
+		hal::dout << "試合：時間切れ（得点 " << m_Match.GetScore() << "）" << std::endl;
 #endif
 	}
 }
 
-bool MatchIsPlaying(void)
+bool Match::IsPlaying(void) const
 {
-	return g_Match.GetState() == MATCH_STATE_PLAYING;
+	return m_Match.GetState() == MATCH_STATE_PLAYING;
 }
 
-int MatchGetRemainingSeconds(void)
+int Match::GetRemainingSeconds(void) const
 {
-	return g_Match.GetDisplaySeconds();
+	return m_Match.GetDisplaySeconds();
 }
 
-int MatchGetScore(void)
+int Match::GetScore(void) const
 {
-	return g_Match.GetScore();
+	return m_Match.GetScore();
 }
 
-MATCH_STATE MatchGetState(void)
+MATCH_STATE Match::GetState(void) const
 {
-	return g_Match.GetState();
+	return m_Match.GetState();
+}
+
+void Match::Initialize(const DummyManager& dummies, ArmManager& arms)
+{
+	m_Dummies = &dummies;
+	m_Arms = &arms;
+	Reset();
 }

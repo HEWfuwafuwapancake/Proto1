@@ -12,7 +12,8 @@ class DrillArm : public Arm
 public:
 	/// @brief 片手のモデルを読み、待機状態にする
 	/// @param hand 左 0・右 1
-	explicit DrillArm(int hand);
+	/// @param links 腕が使うゲームの部品への参照
+	DrillArm(int hand, const ARM_LINKS& links);
 	/// @brief 待機状態に戻して終了する
 	~DrillArm() override;
 	/// @brief 入力・くい込み・ダメージ・押し出しと描画の構えを更新する

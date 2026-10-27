@@ -4,25 +4,24 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）。
 決まったことは [decisions.md](decisions.md)、腕のモデルの原点と長さは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、終わったタスクの記録は [archive/](archive/)（普段は読まない）。
 
-- 最終更新：2026-10-27（Claude。Shota の共有 Proto1。No.45 を確認してマージ。次は No.44 段階 C）
+- 最終更新：2026-10-27（Codex。Shota の共有 Proto1。No.44 段階 C を実装・Debug ビルド確認。Claude の確認待ち）
 
 ---
 
 ## 1. 今の状態
 
-- **No.45 は完了**（いらないテスト 73 件を削除。テストは 186 件。Debug / Release 警告 0・全部通る）。
-- **No.44 段階 A・B はマージ済み**。腕は基本クラス `Arm` と派生クラス `TentacleArm`・`GrappleArm`・`DrillArm`（片手1インスタンス）。`arm.cpp` は腕の種類 → 生成関数の表と、左右全種類のインスタンスを持つ。グラップリングの左右の所有権は `ConnectOtherArm`・`m_Pulling`。
-- 段階 B の確認：Debug / Release 警告 0、テスト 259 件（Debug / Release）。画面で触腕のつかむ・投げる（+12%）、グラップリングで飛ぶ（+5%）、ドリル（+20% で押し出し）、左右グラップリング、切り替え・やり直しのあと歩けることを確認。時間切れ（90 秒）は待っていない（やり直しと同じ `ArmReset`）。
-- 段階 D で直す古い説明：`docs/dev/01_DX11基盤の構成.md` の `ARM_FUNCTIONS`・`TentacleInitialize`・`TentacleUpdateHand`。
-- **管理者が遊んで決めること**：全種類の構え（共通の `SHOULDER_FORWARD`・`ARM_REST_SPREAD`・`ARM_REST_PITCH`、触腕の `IDLE_LENGTH`）が普段の画面で分かるか／グラップリング・ドリルの取付位置と強さ（各 `arm_〇〇.cpp` の「調整用の値」。No.19 の一覧に入れる）／実物のパッドで十字キー ← →・□ ○ の腕の切り替え。
-- マウス操作は止めてある（[decisions.md](decisions.md) の最初の項目）。
+- **No.44 段階 C は Codex が実装。Claude の確認待ち**。ブランチは `feature/class-c`。Debug / x64 ビルド成功（警告なし）。テスト実行・Release ビルド・画面確認・PR・マージは未実施（Claude の担当）。
+- `Stage`・`Player`・`DummyManager`・`Camera`・`ArmManager`・`Match`・`Hud` をクラス化し、新しい `Game` が所有する。参照はプランの表どおり（追加なし）。腕は `ARM_LINKS` で受け取る。更新・描画・やり直しの順と調整用の値は維持。`src/game` の `g_` は `field.cpp` だけ。C++ は BOM付きUTF-8・CRLF。
+- **迷ったこと・プランとの差：なし**。起動時の `Camera::Reset` は初期化済みのステージ・プレイヤー・ダミーだけを使い、腕と試合は更新開始後に使う。腕のモデルは従来どおり腕を生成する `Game::Initialize` の中で読む。
+- 段階 A・B と No.45 はマージ済み。テストの基準は No.45 後の 186 件で、今回は `physics` と `tests` を変更していない。段階 D の古い説明の更新は Claude が行う。
+- 管理者が遊んで決めること：全種類の構えが普段の画面で分かるか／グラップリング・ドリルの取付位置と強さ（No.19）／実物のパッドでの腕切り替え。マウス操作は止めたまま（[decisions.md](decisions.md)）。
 
-## 2. 次にやること：No.44 段階 C（ゲームの部品と Game クラス）
+## 2. 次にやること：Claude が No.44 段階 C を確認する
 
-- 管理者が下の「No.44 段階 C を Codex に頼むプロンプト」を Codex に貼る（段階 C のプランは管理者確認済み。No.45 はマージ済み）。Codex の保存のあと「No.44 段階 C を Claude が確かめるときのプロンプト」を Claude に貼る。
+- 管理者が下の「No.44 段階 C を Claude が確かめるときのプロンプト」を Claude に貼る。`feature/class-c` で差分を読み、テスト・Release ビルド・画面を確認してから PR・マージ。そのあと段階 D を進める。下の承認済みプランは段階 C の確認が終わるまで残す。
 
 - 順番（管理者が決めた、2026-10-27）：**No.44 を No.38 より先にやる**。段階 A → B → C → D を1つずつ「実装 → Claude の確認 → PR → マージ」で進める（1段階＝1ブランチ＝1 PR）。
-- 段階 A・B はマージ済み。残りは段階 C（Codex が実装）と段階 D（Claude が書く）。
+- 段階 A・B はマージ済み。段階 C は Codex が実装し、Claude の確認待ち。段階 D は Claude が書く。
 - 全部マージしたら、Claude が下の「No.38 のプラン」とプロンプトを新しい作り（`MagnetArm` クラス）に書き直してから、Codex に頼む。
 
 ### No.44 のプラン：構造体のクラス化（管理者確認済み、2026-10-27）

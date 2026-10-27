@@ -40,81 +40,61 @@ static constexpr float NEAR_Z = 0.1f;								// これより近いものは描�
 static constexpr float FAR_Z = 1000.0f;								// これより遠いものは描かない
 
 
-static XMFLOAT3 g_Position;		// カメラの位置
-static VEC3 g_Target;			// 今の見ている点
-static VEC3 g_TargetGoal;		// 遊び・接地した高さを反映した、見ている点の目標
-static VEC3 g_TargetVelocity;	// 見ている点のバネの速度（軸ごとに持つ）
-static float g_Yaw;				// 左右の向き（ラジアン。0 で +Z 方向を見る）
-static float g_Pitch;			// 上下の向き（ラジアン。プラスで上を見る）
-static float g_YawGoal;			// 入力を足す左右の目標角度
-static float g_PitchGoal;		// 入力を足す上下の目標角度
-static float g_YawVelocity;		// 左右角のバネの速度
-static float g_PitchVelocity;	// 上下角のバネの速度
-static float g_Distance;			// 今のカメラまでの距離
-static float g_DistanceVelocity;	// 距離のバネの速度
-static float g_ManualPause;		// 横移動について回るのを止める残り秒数
-static VEC3 g_PlayerGoal;			// 自由カメラ用の遊び・最後に立っていた高さ（敵の注視点と分ける）
-static int g_LockTarget = -1;		// 現在ロックオンしているダミー番号
-static int g_SavedTarget = -1;	// つかむ前のターゲット番号
-static bool g_WasHolding = false;	// 1つ前のフレームで敵をつかんでいたか
-static float g_SwitchRemaining = 0.0f;	// 切り替え用の速い角度のバネを使う残り秒数
-
-
 // プレイヤーの頭のあたり（見ている点の目標）
-static VEC3 PlayerHead(void)
+VEC3 Camera::PlayerHead(void) const
 {
-	const XMFLOAT3 feet = PlayerGetPosition();
-	return { feet.x, feet.y + PlayerGetHeight() * TARGET_HEIGHT_RATE, feet.z };
+	const XMFLOAT3 feet = m_Player->GetPosition();
+	return { feet.x, feet.y + m_Player->GetHeight() * TARGET_HEIGHT_RATE, feet.z };
 }
 
 // 生存・浮島より下への落下・保持状態を候補へ反映する。配列の添字とダミー番号は同じ。
 // 浮島の上面より下へ落ちた敵は候補から外し、カメラが下まで追いかけないようにする。
-static void CollectTargets(CAMERA_FOCUS_TARGET* targets)
+void Camera::CollectTargets(CAMERA_FOCUS_TARGET* targets) const
 {
 	for (int i = 0; i < DUMMY_COUNT; ++i) {
-		const TENTACLE_TARGET dummy = DummyGetTarget(i);
+		const TENTACLE_TARGET dummy = m_Dummies->GetTarget(i);
 		targets[i].Position = Vec3Scale(Vec3Add(dummy.Body.Start, dummy.Body.End), 0.5f);
 		const float feetY = dummy.Body.Start.Y - dummy.Body.Radius;
-		targets[i].Available = dummy.Available && feetY >= StageGet().TopY - TARGET_FALL_MARGIN;
+		targets[i].Available = dummy.Available && feetY >= m_Stage->GetStage().TopY - TARGET_FALL_MARGIN;
 	}
 }
 
-static bool IsTargetAvailable(int target, const CAMERA_FOCUS_TARGET* targets)
+bool Camera::IsTargetAvailable(int target, const CAMERA_FOCUS_TARGET* targets) const
 {
 	return target >= 0 && target < DUMMY_COUNT && targets[target].Available;
 }
 
 // 角度は全周・距離は無制限。現在の敵への優先ボーナスも付けない。
-static int PickFrontTarget(const CAMERA_FOCUS_TARGET* targets)
+int Camera::PickFrontTarget(const CAMERA_FOCUS_TARGET* targets) const
 {
-	return CameraCalcPickFocus(g_Yaw, PlayerHead(), targets, DUMMY_COUNT, -1,
+	return CameraCalcPickFocus(m_Yaw, PlayerHead(), targets, DUMMY_COUNT, -1,
 		XM_PI, (std::numeric_limits<float>::infinity)(), 0.0f);
 }
 
-static VEC3 LockFocusPoint(const VEC3& player, const CAMERA_FOCUS_TARGET* targets)
+VEC3 Camera::LockFocusPoint(const VEC3& player, const CAMERA_FOCUS_TARGET* targets) const
 {
 	// 身長を半径にすれば、頭付近を中心に体全体を安全側で囲める。
-	return CameraCalcFocusPoint(player, targets[g_LockTarget].Position, g_Yaw, g_Pitch,
-		g_Distance, FOV, (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT,
-		TARGET_SCREEN_MARGIN, PlayerGetHeight(), TARGET_POINT_RATE);
+	return CameraCalcFocusPoint(player, targets[m_LockTarget].Position, m_Yaw, m_Pitch,
+		m_Distance, FOV, (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT,
+		TARGET_SCREEN_MARGIN, m_Player->GetHeight(), TARGET_POINT_RATE);
 }
 
-static void UpdateLockTarget(const CAMERA_FOCUS_TARGET* targets)
+void Camera::UpdateLockTarget(const CAMERA_FOCUS_TARGET* targets)
 {
-	const bool holding = ArmIsHolding();
+	const bool holding = m_Arms->IsHolding();
 	if (holding) {
-		if (!g_WasHolding) {
-			g_SavedTarget = g_LockTarget;
-			g_LockTarget = -1;
-			g_YawGoal = g_Yaw;
-			g_SwitchRemaining = 0.0f;
+		if (!m_WasHolding) {
+			m_SavedTarget = m_LockTarget;
+			m_LockTarget = -1;
+			m_YawGoal = m_Yaw;
+			m_SwitchRemaining = 0.0f;
 		}
 	}
 	else {
-		int next = g_LockTarget;
-		if (g_WasHolding) {
-			next = IsTargetAvailable(g_SavedTarget, targets) ? g_SavedTarget : PickFrontTarget(targets);
-			g_SavedTarget = -1;
+		int next = m_LockTarget;
+		if (m_WasHolding) {
+			next = IsTargetAvailable(m_SavedTarget, targets) ? m_SavedTarget : PickFrontTarget(targets);
+			m_SavedTarget = -1;
 		}
 		else if (!IsTargetAvailable(next, targets)) {
 			next = PickFrontTarget(targets);
@@ -124,74 +104,74 @@ static void UpdateLockTarget(const CAMERA_FOCUS_TARGET* targets)
 				- (ActionIsTrigger(ACTION_TARGET_LEFT) ? 1 : 0);
 			next = CameraCalcNextTarget(PlayerHead(), targets, DUMMY_COUNT, next, direction);
 		}
-		if (next != g_LockTarget) {
-			g_LockTarget = next;
-			g_SwitchRemaining = next >= 0 ? SWITCH_TIME : 0.0f;
+		if (next != m_LockTarget) {
+			m_LockTarget = next;
+			m_SwitchRemaining = next >= 0 ? SWITCH_TIME : 0.0f;
 			// 自由カメラへ移るときも、角度の速度は持ち越す。
-			if (next < 0) g_YawGoal = g_Yaw;
+			if (next < 0) m_YawGoal = m_Yaw;
 		}
 	}
-	g_WasHolding = holding;
+	m_WasHolding = holding;
 }
 
 // 見ている点のまわりの、向きと距離で決まる位置に置き、浮島にめり込むなら手前まで近づける
-static void PlaceCamera(float dt)
+void Camera::PlaceCamera(float dt)
 {
-	const VEC3 orbit = CameraCalcOrbitPosition(g_Target, g_Yaw, g_Pitch, FOLLOW_DISTANCE);
-	const VEC3 clipped = CameraCalcClipToStage(g_Target, orbit, StageGet(), STAGE_MARGIN);
-	const float distanceGoal = Vec3Length(Vec3Sub(clipped, g_Target));
-	if (distanceGoal < g_Distance) {
+	const VEC3 orbit = CameraCalcOrbitPosition(m_Target, m_Yaw, m_Pitch, FOLLOW_DISTANCE);
+	const VEC3 clipped = CameraCalcClipToStage(m_Target, orbit, m_Stage->GetStage(), STAGE_MARGIN);
+	const float distanceGoal = Vec3Length(Vec3Sub(clipped, m_Target));
+	if (distanceGoal < m_Distance) {
 		// 浮島にぶつかるときは即座に近づけ、離れる向きの速度も消す。
-		g_Distance = distanceGoal;
-		g_DistanceVelocity = 0.0f;
+		m_Distance = distanceGoal;
+		m_DistanceVelocity = 0.0f;
 	}
 	else {
-		g_Distance = CameraCalcSmoothDamp(g_Distance, distanceGoal, g_DistanceVelocity, DISTANCE_SMOOTH_TIME, dt);
+		m_Distance = CameraCalcSmoothDamp(m_Distance, distanceGoal, m_DistanceVelocity, DISTANCE_SMOOTH_TIME, dt);
 	}
-	const VEC3 pos = CameraCalcOrbitPosition(g_Target, g_Yaw, g_Pitch, g_Distance);
-	g_Position = { pos.X, pos.Y, pos.Z };
+	const VEC3 pos = CameraCalcOrbitPosition(m_Target, m_Yaw, m_Pitch, m_Distance);
+	m_Position = { pos.X, pos.Y, pos.Z };
 }
 
 // やり直し・復活では目標へ瞬時に合わせ、すべてのバネの速度を消す。
-static void SnapToPlayer(void)
+void Camera::SnapToPlayer(void)
 {
-	g_Yaw = g_YawGoal;
-	g_Pitch = g_PitchGoal;
+	m_Yaw = m_YawGoal;
+	m_Pitch = m_PitchGoal;
 	CAMERA_FOCUS_TARGET targets[DUMMY_COUNT];
 	CollectTargets(targets);
-	g_LockTarget = PickFrontTarget(targets);
-	g_SavedTarget = -1;
-	g_WasHolding = false;
-	g_SwitchRemaining = 0.0f;
-	if (g_LockTarget >= 0) {
-		g_Yaw = g_YawGoal = CameraCalcYawTo(PlayerHead(), targets[g_LockTarget].Position, g_Yaw);
+	m_LockTarget = PickFrontTarget(targets);
+	m_SavedTarget = -1;
+	m_WasHolding = false;
+	m_SwitchRemaining = 0.0f;
+	if (m_LockTarget >= 0) {
+		m_Yaw = m_YawGoal = CameraCalcYawTo(PlayerHead(), targets[m_LockTarget].Position, m_Yaw);
 	}
-	g_YawVelocity = 0.0f;
-	g_PitchVelocity = 0.0f;
-	g_PlayerGoal = PlayerHead();
-	g_TargetVelocity = {};
-	g_Distance = FOLLOW_DISTANCE;
-	g_Target = g_TargetGoal = g_LockTarget >= 0 ? LockFocusPoint(g_PlayerGoal, targets) : g_PlayerGoal;
-	g_DistanceVelocity = 0.0f;
-	g_ManualPause = 0.0f;
+	m_YawVelocity = 0.0f;
+	m_PitchVelocity = 0.0f;
+	m_PlayerGoal = PlayerHead();
+	m_TargetVelocity = {};
+	m_Distance = FOLLOW_DISTANCE;
+	m_Target = m_TargetGoal = m_LockTarget >= 0 ? LockFocusPoint(m_PlayerGoal, targets) : m_PlayerGoal;
+	m_DistanceVelocity = 0.0f;
+	m_ManualPause = 0.0f;
 	PlaceCamera(0.0f);
 }
 
-void CameraInitialize(void)
+void Camera::Reset(void)
 {
-	g_YawGoal = 0.0f;
-	g_PitchGoal = START_PITCH;
+	m_YawGoal = 0.0f;
+	m_PitchGoal = START_PITCH;
 	SnapToPlayer();
 }
 
-void CameraFinalize(void)
+void Camera::Finalize(void)
 {
 
 }
 
-void CameraUpdate(void)
+void Camera::Update(void)
 {
-	if (PlayerDidRespawn()) {
+	if (m_Player->DidRespawn()) {
 		SnapToPlayer();
 		return;
 	}
@@ -201,60 +181,60 @@ void CameraUpdate(void)
 	UpdateLockTarget(targets);
 	// 手動入力も横移動の sway も、現在角ではなく目標角へ足す。
 	const ACTION_AXIS look = ActionGetLook();
-	if (g_LockTarget >= 0) {
-		g_YawGoal = CameraCalcYawTo(PlayerHead(), targets[g_LockTarget].Position, g_YawGoal);
+	if (m_LockTarget >= 0) {
+		m_YawGoal = CameraCalcYawTo(PlayerHead(), targets[m_LockTarget].Position, m_YawGoal);
 	}
 	else {
-		g_YawGoal += look.X;
+		m_YawGoal += look.X;
 	}
-	g_PitchGoal += look.Y;
-	if (g_PitchGoal > PITCH_MAX) g_PitchGoal = PITCH_MAX;
-	if (g_PitchGoal < PITCH_MIN) g_PitchGoal = PITCH_MIN;
+	m_PitchGoal += look.Y;
+	if (m_PitchGoal > PITCH_MAX) m_PitchGoal = PITCH_MAX;
+	if (m_PitchGoal < PITCH_MIN) m_PitchGoal = PITCH_MIN;
 	if (look.X != 0.0f || look.Y != 0.0f) {
-		g_ManualPause = MANUAL_PAUSE;
+		m_ManualPause = MANUAL_PAUSE;
 	}
-	else if (g_ManualPause > 0.0f) {
-		g_ManualPause = fmaxf(0.0f, g_ManualPause - dt);
+	else if (m_ManualPause > 0.0f) {
+		m_ManualPause = fmaxf(0.0f, m_ManualPause - dt);
 	}
-	else if (g_LockTarget < 0 && MatchIsPlaying()) {
-		g_YawGoal += ActionGetMove().X * FOLLOW_TURN_SPEED * dt;
+	else if (m_LockTarget < 0 && m_Match->IsPlaying()) {
+		m_YawGoal += ActionGetMove().X * FOLLOW_TURN_SPEED * dt;
 	}
 	// 長く回し続けても、角度が大きくなり続けないようにする。
-	g_YawGoal = atan2f(sinf(g_YawGoal), cosf(g_YawGoal));
-	const bool switching = g_SwitchRemaining > 0.0f;
-	g_Yaw = CameraCalcSmoothDampAngle(g_Yaw, g_YawGoal, g_YawVelocity,
+	m_YawGoal = atan2f(sinf(m_YawGoal), cosf(m_YawGoal));
+	const bool switching = m_SwitchRemaining > 0.0f;
+	m_Yaw = CameraCalcSmoothDampAngle(m_Yaw, m_YawGoal, m_YawVelocity,
 		switching ? SWITCH_SMOOTH_TIME : YAW_SMOOTH_TIME, dt);
-	g_Pitch = CameraCalcSmoothDamp(g_Pitch, g_PitchGoal, g_PitchVelocity,
+	m_Pitch = CameraCalcSmoothDamp(m_Pitch, m_PitchGoal, m_PitchVelocity,
 		switching ? SWITCH_SMOOTH_TIME : PITCH_SMOOTH_TIME, dt);
-	g_SwitchRemaining = fmaxf(0.0f, g_SwitchRemaining - dt);
+	m_SwitchRemaining = fmaxf(0.0f, m_SwitchRemaining - dt);
 
 	// 左右は円形の遊びを超えた分だけ目標を動かす（高さとは分ける）。
 	const VEC3 head = PlayerHead();
-	const VEC3 horizontal = { head.X - g_PlayerGoal.X, 0.0f, head.Z - g_PlayerGoal.Z };
+	const VEC3 horizontal = { head.X - m_PlayerGoal.X, 0.0f, head.Z - m_PlayerGoal.Z };
 	const float length = Vec3Length(horizontal);
 	if (length > LOOK_DEADZONE) {
-		g_PlayerGoal = Vec3Add(g_PlayerGoal, Vec3Scale(horizontal, (length - LOOK_DEADZONE) / length));
+		m_PlayerGoal = Vec3Add(m_PlayerGoal, Vec3Scale(horizontal, (length - LOOK_DEADZONE) / length));
 	}
 	// ジャンプ中は最後に立っていた高さを保つ。浮島の上面より下へ落ちたら、その先まで追う。
-	if (PlayerIsOnGround() || PlayerGetPosition().y < StageGet().TopY) {
-		g_PlayerGoal.Y = head.Y;
+	if (m_Player->IsOnGround() || m_Player->GetPosition().y < m_Stage->GetStage().TopY) {
+		m_PlayerGoal.Y = head.Y;
 	}
-	const VEC3 lockHead{ head.X, g_PlayerGoal.Y, head.Z };
-	g_TargetGoal = g_LockTarget >= 0 ? LockFocusPoint(lockHead, targets) : g_PlayerGoal;
-	g_Target.X = CameraCalcSmoothDamp(g_Target.X, g_TargetGoal.X, g_TargetVelocity.X, LOOK_SMOOTH_TIME, dt);
-	g_Target.Z = CameraCalcSmoothDamp(g_Target.Z, g_TargetGoal.Z, g_TargetVelocity.Z, LOOK_SMOOTH_TIME, dt);
-	g_Target.Y = CameraCalcSmoothDamp(g_Target.Y, g_TargetGoal.Y, g_TargetVelocity.Y, LOOK_HEIGHT_SMOOTH_TIME, dt);
+	const VEC3 lockHead{ head.X, m_PlayerGoal.Y, head.Z };
+	m_TargetGoal = m_LockTarget >= 0 ? LockFocusPoint(lockHead, targets) : m_PlayerGoal;
+	m_Target.X = CameraCalcSmoothDamp(m_Target.X, m_TargetGoal.X, m_TargetVelocity.X, LOOK_SMOOTH_TIME, dt);
+	m_Target.Z = CameraCalcSmoothDamp(m_Target.Z, m_TargetGoal.Z, m_TargetVelocity.Z, LOOK_SMOOTH_TIME, dt);
+	m_Target.Y = CameraCalcSmoothDamp(m_Target.Y, m_TargetGoal.Y, m_TargetVelocity.Y, LOOK_HEIGHT_SMOOTH_TIME, dt);
 	PlaceCamera(dt);
 }
 
 // ビュー行列とプロジェクション行列を作る（描画と、画面の位置の計算で同じものを使う）
-static void MakeMatrices(XMMATRIX* view, XMMATRIX* projection)
+void Camera::MakeMatrices(XMMATRIX* view, XMMATRIX* projection) const
 {
 	// ビュー行列（カメラの位置と、見ている向き）
 	// カメラは見ている点から向きの反対に置いてあるので、この向きで見れば見ている点が画面の真ん中に来る
 	// （浮島に近づけてカメラが見ている点にほぼ重なっても、向きは決まる）
-	XMVECTOR eye = XMLoadFloat3(&g_Position);
-	const XMFLOAT3 direction = CameraGetDirection();
+	XMVECTOR eye = XMLoadFloat3(&m_Position);
+	const XMFLOAT3 direction = GetDirection();
 	XMVECTOR dir = XMLoadFloat3(&direction);
 	XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 	*view = XMMatrixLookToLH(eye, dir, up);
@@ -264,7 +244,7 @@ static void MakeMatrices(XMMATRIX* view, XMMATRIX* projection)
 	*projection = XMMatrixPerspectiveFovLH(FOV, aspect, NEAR_Z, FAR_Z);
 }
 
-void CameraDraw(void)
+void Camera::Draw(void) const
 {
 	XMMATRIX view, projection;
 	MakeMatrices(&view, &projection);
@@ -272,7 +252,7 @@ void CameraDraw(void)
 	Shader_SetProjectionMatrix(projection);
 }
 
-bool CameraWorldToScreen(const XMFLOAT3& world, XMFLOAT2* screen)
+bool Camera::WorldToScreen(const XMFLOAT3& world, XMFLOAT2* screen) const
 {
 	XMMATRIX view, projection;
 	MakeMatrices(&view, &projection);
@@ -289,23 +269,33 @@ bool CameraWorldToScreen(const XMFLOAT3& world, XMFLOAT2* screen)
 	return true;
 }
 
-XMFLOAT3 CameraGetPosition(void)
+XMFLOAT3 Camera::GetPosition(void) const
 {
-	return g_Position;
+	return m_Position;
 }
 
-float CameraGetYaw(void)
+float Camera::GetYaw(void) const
 {
-	return g_Yaw;
+	return m_Yaw;
 }
 
-int CameraGetTarget(void)
+int Camera::GetTarget(void) const
 {
 	// 触腕はカメラのあとに更新されるので、つかんだフレームから公開上も解除する。
-	return ArmIsHolding() ? -1 : g_LockTarget;
+	return m_Arms->IsHolding() ? -1 : m_LockTarget;
 }
 
-XMFLOAT3 CameraGetDirection(void)
+XMFLOAT3 Camera::GetDirection(void) const
 {
-	return { cosf(g_Pitch) * sinf(g_Yaw), sinf(g_Pitch), cosf(g_Pitch) * cosf(g_Yaw) };
+	return { cosf(m_Pitch) * sinf(m_Yaw), sinf(m_Pitch), cosf(m_Pitch) * cosf(m_Yaw) };
+}
+
+void Camera::Initialize(const Stage& stage, const Player& player, const DummyManager& dummies, const ArmManager& arms, const Match& match)
+{
+	m_Stage = &stage;
+	m_Player = &player;
+	m_Dummies = &dummies;
+	m_Arms = &arms;
+	m_Match = &match;
+	Reset();
 }
