@@ -21,12 +21,12 @@ static constexpr float PLAYING_LIGHT_COLOR[3] = { 0.95f, 0.45f, 0.35f }; // プ�
 static constexpr float FINISHED_LIGHT_COLOR[3] = { 1.0f, 0.0f, 0.0f };   // 時間切れは赤
 
 
-static MATCH g_Match = {};
+static MatchCalc g_Match = {};
 
 
 void MatchInitialize(void)
 {
-	MatchCalcStart(g_Match, MATCH_SECONDS, DummyGetTotalOutCount());
+	g_Match.Start(MATCH_SECONDS, DummyGetTotalOutCount());
 	PadRumble(0.0f, 0.0f, 0.0f);
 	PadSetLightColor(PLAYING_LIGHT_COLOR[0], PLAYING_LIGHT_COLOR[1], PLAYING_LIGHT_COLOR[2]);
 }
@@ -51,10 +51,10 @@ void MatchUpdate(void)
 		return;
 	}
 
-	const MATCH_EVENT event = MatchCalcStep(g_Match, GameTimeGetDeltaTime(), DummyGetTotalOutCount());
+	const MATCH_EVENT event = g_Match.Step(GameTimeGetDeltaTime(), DummyGetTotalOutCount());
 #ifdef _DEBUG
 	if (event == MATCH_EVENT_SCORED) {
-		hal::dout << "試合：得点 " << g_Match.Score << std::endl;
+		hal::dout << "試合：得点 " << g_Match.GetScore() << std::endl;
 	}
 #endif
 	if (event == MATCH_EVENT_TIME_UP) {
@@ -62,27 +62,27 @@ void MatchUpdate(void)
 		PadSetLightColor(FINISHED_LIGHT_COLOR[0], FINISHED_LIGHT_COLOR[1], FINISHED_LIGHT_COLOR[2]);
 		ArmReset();	// つかんでいる敵を離してから止める
 #ifdef _DEBUG
-		hal::dout << "試合：時間切れ（得点 " << g_Match.Score << "）" << std::endl;
+		hal::dout << "試合：時間切れ（得点 " << g_Match.GetScore() << "）" << std::endl;
 #endif
 	}
 }
 
 bool MatchIsPlaying(void)
 {
-	return g_Match.State == MATCH_STATE_PLAYING;
+	return g_Match.GetState() == MATCH_STATE_PLAYING;
 }
 
 int MatchGetRemainingSeconds(void)
 {
-	return MatchCalcDisplaySeconds(g_Match);
+	return g_Match.GetDisplaySeconds();
 }
 
 int MatchGetScore(void)
 {
-	return g_Match.Score;
+	return g_Match.GetScore();
 }
 
 MATCH_STATE MatchGetState(void)
 {
-	return g_Match.State;
+	return g_Match.GetState();
 }

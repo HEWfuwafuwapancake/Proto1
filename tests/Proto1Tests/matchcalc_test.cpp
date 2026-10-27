@@ -14,93 +14,93 @@ namespace Proto1Tests
 		// 始めは試合中・0 点・残り 90 秒
 		TEST_METHOD(Start_InitialState)
 		{
-			MATCH match{};
-			MatchCalcStart(match, 90.0f, 5);
-			Assert::IsTrue(match.State == MATCH_STATE_PLAYING);
-			Assert::AreEqual(0, match.Score);
-			Assert::AreEqual(90, MatchCalcDisplaySeconds(match));
+			MatchCalc match{};
+			match.Start(90.0f, 5);
+			Assert::IsTrue(match.GetState() == MATCH_STATE_PLAYING);
+			Assert::AreEqual(0, match.GetScore());
+			Assert::AreEqual(90, match.GetDisplaySeconds());
 		}
 
 		// 場外の回数が 1 増えたら +1（始めの回数が 0 でなくても、増えた分だけ）
 		TEST_METHOD(Step_OneOut_AddsOne)
 		{
-			MATCH match{};
-			MatchCalcStart(match, 90.0f, 5);
-			Assert::IsTrue(MatchCalcStep(match, DT, 5) == MATCH_EVENT_NONE);
-			Assert::IsTrue(MatchCalcStep(match, DT, 6) == MATCH_EVENT_SCORED);
-			Assert::AreEqual(1, match.Score);
+			MatchCalc match{};
+			match.Start(90.0f, 5);
+			Assert::IsTrue(match.Step(DT, 5) == MATCH_EVENT_NONE);
+			Assert::IsTrue(match.Step(DT, 6) == MATCH_EVENT_SCORED);
+			Assert::AreEqual(1, match.GetScore());
 			// 回数が増えなければ、それ以上は増えない
-			Assert::IsTrue(MatchCalcStep(match, DT, 6) == MATCH_EVENT_NONE);
-			Assert::AreEqual(1, match.Score);
+			Assert::IsTrue(match.Step(DT, 6) == MATCH_EVENT_NONE);
+			Assert::AreEqual(1, match.GetScore());
 		}
 
 		// 同じフレームに 2 体落ちたら +2
 		TEST_METHOD(Step_TwoOutsInOneFrame_AddsTwo)
 		{
-			MATCH match{};
-			MatchCalcStart(match, 90.0f, 0);
-			MatchCalcStep(match, DT, 2);
-			Assert::AreEqual(2, match.Score);
+			MatchCalc match{};
+			match.Start(90.0f, 0);
+			match.Step(DT, 2);
+			Assert::AreEqual(2, match.GetScore());
 		}
 
 		// 時間切れは 1 回だけ返り、状態が終わりになる
 		TEST_METHOD(Step_TimeUp_ReturnedOnce)
 		{
-			MATCH match{};
-			MatchCalcStart(match, 1.0f, 0);
-			Assert::IsTrue(MatchCalcStep(match, 0.5f, 0) == MATCH_EVENT_NONE);
-			Assert::IsTrue(MatchCalcStep(match, 0.5f, 0) == MATCH_EVENT_TIME_UP);
-			Assert::IsTrue(match.State == MATCH_STATE_FINISHED);
-			Assert::AreEqual(0, MatchCalcDisplaySeconds(match));
-			Assert::IsTrue(MatchCalcStep(match, 0.5f, 0) == MATCH_EVENT_NONE);
+			MatchCalc match{};
+			match.Start(1.0f, 0);
+			Assert::IsTrue(match.Step(0.5f, 0) == MATCH_EVENT_NONE);
+			Assert::IsTrue(match.Step(0.5f, 0) == MATCH_EVENT_TIME_UP);
+			Assert::IsTrue(match.GetState() == MATCH_STATE_FINISHED);
+			Assert::AreEqual(0, match.GetDisplaySeconds());
+			Assert::IsTrue(match.Step(0.5f, 0) == MATCH_EVENT_NONE);
 		}
 
 		// 時間切れと同じフレームの場外は得点に入る
 		TEST_METHOD(Step_OutOnTimeUpFrame_Counts)
 		{
-			MATCH match{};
-			MatchCalcStart(match, 0.5f, 0);
-			Assert::IsTrue(MatchCalcStep(match, 0.5f, 1) == MATCH_EVENT_TIME_UP);
-			Assert::AreEqual(1, match.Score);
+			MatchCalc match{};
+			match.Start(0.5f, 0);
+			Assert::IsTrue(match.Step(0.5f, 1) == MATCH_EVENT_TIME_UP);
+			Assert::AreEqual(1, match.GetScore());
 		}
 
 		// 時間切れのあとは、場外が増えても得点しない
 		TEST_METHOD(Step_AfterTimeUp_NoScore)
 		{
-			MATCH match{};
-			MatchCalcStart(match, 0.5f, 0);
-			MatchCalcStep(match, 0.5f, 0);
-			MatchCalcStep(match, DT, 3);
-			Assert::AreEqual(0, match.Score);
+			MatchCalc match{};
+			match.Start(0.5f, 0);
+			match.Step(0.5f, 0);
+			match.Step(DT, 3);
+			Assert::AreEqual(0, match.GetScore());
 		}
 
 		// もう一度始めると最初に戻る
 		TEST_METHOD(Start_AfterFinished_Resets)
 		{
-			MATCH match{};
-			MatchCalcStart(match, 0.5f, 0);
-			MatchCalcStep(match, 0.5f, 2);
-			MatchCalcStart(match, 90.0f, 0);
-			Assert::IsTrue(match.State == MATCH_STATE_PLAYING);
-			Assert::AreEqual(0, match.Score);
-			Assert::AreEqual(90, MatchCalcDisplaySeconds(match));
+			MatchCalc match{};
+			match.Start(0.5f, 0);
+			match.Step(0.5f, 2);
+			match.Start(90.0f, 0);
+			Assert::IsTrue(match.GetState() == MATCH_STATE_PLAYING);
+			Assert::AreEqual(0, match.GetScore());
+			Assert::AreEqual(90, match.GetDisplaySeconds());
 		}
 
 		// 表示する秒数は切り上げ（残り 0.01 秒でも 1）。90 秒を 1/60 秒ずつ進めて、ちょうど 5400 フレームで終わる
 		TEST_METHOD(DisplaySeconds_RoundsUp)
 		{
-			MATCH match{};
-			MatchCalcStart(match, 90.0f, 0);
-			MatchCalcStep(match, DT, 0);
-			Assert::AreEqual(90, MatchCalcDisplaySeconds(match));
+			MatchCalc match{};
+			match.Start(90.0f, 0);
+			match.Step(DT, 0);
+			Assert::AreEqual(90, match.GetDisplaySeconds());
 			for (int i = 0; i < 60; i++) {
-				MatchCalcStep(match, DT, 0);
+				match.Step(DT, 0);
 			}
-			Assert::AreEqual(89, MatchCalcDisplaySeconds(match));
+			Assert::AreEqual(89, match.GetDisplaySeconds());
 
-			MatchCalcStart(match, 1.0f, 0);
-			MatchCalcStep(match, 0.99f, 0);
-			Assert::AreEqual(1, MatchCalcDisplaySeconds(match));
+			match.Start(1.0f, 0);
+			match.Step(0.99f, 0);
+			Assert::AreEqual(1, match.GetDisplaySeconds());
 		}
 	};
 }

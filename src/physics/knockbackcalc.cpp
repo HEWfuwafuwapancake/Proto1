@@ -26,51 +26,64 @@ VEC3 KnockbackCalcVelocity(const VEC3& direction, float speed, const KNOCKBACK_P
 	return { direction.X / horizontal * side, up, direction.Z / horizontal * side };
 }
 
-bool KnockbackCalcStep(PLAYER_BODY& body, float dt, const KNOCKBACK_PARAMS& params, const STAGE& stage)
+bool KnockbackCalcStep(PlayerBodyCalc& body, float dt, const KNOCKBACK_PARAMS& params, const STAGE& stage)
 {
+	float X = body.GetX();
+	float Y = body.GetY();
+	float Z = body.GetZ();
+	float VelocityX = body.GetVelocityX();
+	float VelocityY = body.GetVelocityY();
+	float VelocityZ = body.GetVelocityZ();
+	bool OnGround = body.GetOnGround();
 	// すべっている途中で浮島の端から出たら、落ち始める
-	if (body.OnGround && !StageCalcIsOnPlatform(stage, body.X, body.Z)) {
-		body.OnGround = false;
+	if (OnGround && !StageCalcIsOnPlatform(stage, X, Z)) {
+		OnGround = false;
 	}
 
-	if (body.OnGround) {
+	if (OnGround) {
 		// 浮島の上をすべる：横の速さを摩擦の分だけ減らす
-		const float speed = sqrtf(body.VelocityX * body.VelocityX + body.VelocityZ * body.VelocityZ);
+		const float speed = sqrtf(VelocityX * VelocityX + VelocityZ * VelocityZ);
 		const float slowed = speed - params.GroundFriction * dt;
 		if (slowed <= params.StopSpeed) {
-			body.VelocityX = 0.0f;
-			body.VelocityZ = 0.0f;
-			body.VelocityY = 0.0f;
+			VelocityX = 0.0f;
+			VelocityZ = 0.0f;
+			VelocityY = 0.0f;
+			body.SetPosition({ X, Y, Z });
+			body.SetVelocity({ VelocityX, VelocityY, VelocityZ });
+			body.SetOnGround(OnGround);
 			return false;	// 止まった
 		}
-		body.VelocityX *= slowed / speed;
-		body.VelocityZ *= slowed / speed;
-		body.VelocityY = 0.0f;
+		VelocityX *= slowed / speed;
+		VelocityZ *= slowed / speed;
+		VelocityY = 0.0f;
 	}
 	else {
 		// 空中：重力と空気の抵抗
 		const float drag = expf(-params.AirDrag * dt);
-		body.VelocityX *= drag;
-		body.VelocityZ *= drag;
-		body.VelocityY -= params.Gravity * dt;
+		VelocityX *= drag;
+		VelocityZ *= drag;
+		VelocityY -= params.Gravity * dt;
 	}
 
-	const float previousY = body.Y;
-	body.X += body.VelocityX * dt;
-	body.Y += body.VelocityY * dt;
-	body.Z += body.VelocityZ * dt;
+	const float previousY = Y;
+	X += VelocityX * dt;
+	Y += VelocityY * dt;
+	Z += VelocityZ * dt;
 
 	// 着地（上から落ちてきて、上の面を通り過ぎたときだけ。横の速さは残してすべらせる）
-	if (!body.OnGround && body.VelocityY <= 0.0f
-		&& previousY >= stage.TopY && body.Y <= stage.TopY
-		&& StageCalcIsOnPlatform(stage, body.X, body.Z)) {
-		body.Y = stage.TopY;
-		body.VelocityY = 0.0f;
-		body.OnGround = true;
+	if (!OnGround && VelocityY <= 0.0f
+		&& previousY >= stage.TopY && Y <= stage.TopY
+		&& StageCalcIsOnPlatform(stage, X, Z)) {
+		Y = stage.TopY;
+		VelocityY = 0.0f;
+		OnGround = true;
 	}
-	if (body.OnGround) {
-		body.Y = stage.TopY;
+	if (OnGround) {
+		Y = stage.TopY;
 	}
+	body.SetPosition({ X, Y, Z });
+	body.SetVelocity({ VelocityX, VelocityY, VelocityZ });
+	body.SetOnGround(OnGround);
 	return true;
 }
 

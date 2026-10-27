@@ -2,38 +2,38 @@
 #include <math.h>
 
 
-void MatchCalcStart(MATCH& match, float seconds, int outCount)
+void MatchCalc::Start(float seconds, int outCount)
 {
-	match.State = MATCH_STATE_PLAYING;
-	TimerStart(match.Timer, seconds);
-	match.Score = 0;
-	match.LastOutCount = outCount;
+	m_State = MATCH_STATE_PLAYING;
+	TimerStart(m_Timer, seconds);
+	m_Score = 0;
+	m_LastOutCount = outCount;
 }
 
-MATCH_EVENT MatchCalcStep(MATCH& match, float dt, int outCount)
+MATCH_EVENT MatchCalc::Step(float dt, int outCount)
 {
-	if (match.State != MATCH_STATE_PLAYING) {
+	if (m_State != MATCH_STATE_PLAYING) {
 		return MATCH_EVENT_NONE;
 	}
 
 	// 前のフレームから増えた分だけ得点（時間切れと同じフレームの場外も入る）
 	MATCH_EVENT event = MATCH_EVENT_NONE;
-	if (outCount > match.LastOutCount) {
-		match.Score += outCount - match.LastOutCount;
+	if (outCount > m_LastOutCount) {
+		m_Score += outCount - m_LastOutCount;
 		event = MATCH_EVENT_SCORED;
 	}
-	match.LastOutCount = outCount;
+	m_LastOutCount = outCount;
 
-	TimerUpdate(match.Timer, dt);
-	if (TimerIsFinished(match.Timer)) {
-		match.State = MATCH_STATE_FINISHED;
+	TimerUpdate(m_Timer, dt);
+	if (TimerIsFinished(m_Timer)) {
+		m_State = MATCH_STATE_FINISHED;
 		event = MATCH_EVENT_TIME_UP;
 	}
 	return event;
 }
 
-int MatchCalcDisplaySeconds(const MATCH& match)
+int MatchCalc::GetDisplaySeconds() const
 {
 	// 浮動小数点の誤差で 90.0000001 → 91 にならないよう、少しだけ引いてから切り上げる
-	return (int)ceilf(TimerGetRemaining(match.Timer) - 1.0e-4f);
+	return (int)ceilf(TimerGetRemaining(m_Timer) - 1.0e-4f);
 }

@@ -51,4 +51,4 @@ VEC3 KnockbackCalcDirectedVelocity(const VEC3& direction, float speed);
 /// @param params 調整用の値
 /// @param stage 浮島
 /// @return まだ吹っ飛ばされているなら true、止まったら false
-bool KnockbackCalcStep(PLAYER_BODY& body, float dt, const KNOCKBACK_PARAMS& params, const STAGE& stage);
+bool KnockbackCalcStep(PlayerBodyCalc& body, float dt, const KNOCKBACK_PARAMS& params, const STAGE& stage);

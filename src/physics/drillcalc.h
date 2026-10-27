@@ -43,16 +43,6 @@ struct DRILL_PARAMS
 	float CooldownSeconds; ///< 休みの秒数
 };
 
-/// @brief 片手のドリルの計算状態
-struct DRILL
-{
-	DRILL_STATE State; ///< 現在の状態
-	VEC3 Direction; ///< 押した瞬間に決めた水平の単位方向
-	float Time; ///< 今の状態になってからの秒数
-	int Target; ///< くい込んだ敵の番号（なしは -1）
-	int Ticks; ///< 今回のくい込みでダメージを足した回数
-};
-
 /// @brief 1フレームの出来事。状態が休みになったあとも対象を取得できる
 struct DRILL_EVENT
 {
@@ -60,9 +50,6 @@ struct DRILL_EVENT
 	int DamageTicks; ///< このフレームにダメージを足す回数（長いフレームでは複数）
 	bool Push; ///< 最後のダメージを足したあとに押し出すか
 };
-
-/// @brief ドリルを待機に戻す（方向は +Z、敵の番号は -1）
-void DrillCalcReset(DRILL& drill);
 
 /// @brief 付け根を 180° ひねった描画と同じ座標変換でビットの軸を求める
 /// @param shoulder 肩のワールド座標
@@ -88,24 +75,63 @@ VEC3 DrillCalcThrustArmDirection(const VEC3& direction, const DRILL_GRIP& grip);
 CAPSULE DrillCalcBit(const VEC3& shoulder, const VEC3& armDirection, bool mirrored,
 	const DRILL_PARAMS& params);
 
-/// @brief ドリルの突き・命中・加算回数・押し出し・休みを1フレーム進める
-/// @details 命中フレームの終わりからくい込み時間を数える。くい込み中は毎フレーム同じ敵との重なりを確認する。
-/// @param drill 片手の状態
-/// @param shoulder 肩の位置（移動後の位置を使う）
-/// @param aim 待機中に押した瞬間だけ使う向き（上下を除いて正規化）
-/// @param mirrored 鏡写しを設定する（true：右手、false：左手）
-/// @param trigger 入力を設定する（true：押した瞬間、false：入力なし。待機中だけ有効）
-/// @param cancel 取りやめを設定する（true：復活などで押し出さず休む、false：通常更新）
-/// @param dt 進める秒数（0 以下なら停止。ただし cancel は処理する）
-/// @param params 調整値
-/// @param targets 敵の配列（Available が true の敵だけ有効。nullptr は候補なし）
-/// @param count 敵の数（敵の番号は配列の添字）
-/// @return ダメージを足す回数・対象・押し出すか
-DRILL_EVENT DrillCalcStep(DRILL& drill, const VEC3& shoulder, const VEC3& aim, bool mirrored,
-	bool trigger, bool cancel, float dt, const DRILL_PARAMS& params,
-	const TENTACLE_TARGET* targets, int count);
-
 /// @brief 水平の単位方向に上向き成分を足し、長さ 1 の押し出す向きを求める
 /// @param direction ドリルの向き（上下と長さは使わない。水平成分がゼロなら +Z）
 /// @param up 上向き成分（水平を 1 とした値）
 VEC3 DrillCalcPushDirection(const VEC3& direction, float up);
+
+/// @brief 片手のドリルの計算状態
+class DrillCalc
+{
+public:
+	/// @brief 指定した計算状態で初期化する（省略時は従来のゼロ初期化と同じ）
+	/// @param state 現在の状態
+	/// @param direction 押した瞬間に決めた水平の単位方向
+	/// @param time 今の状態になってからの秒数
+	/// @param target くい込んだ敵の番号（なしは -1）
+	/// @param ticks 今回のくい込みでダメージを足した回数
+	DrillCalc(DRILL_STATE state = {}, VEC3 direction = {}, float time = {}, int target = {}, int ticks = {})
+		: m_State(state), m_Direction(direction), m_Time(time), m_Target(target), m_Ticks(ticks) {}
+
+	/// @brief ドリルを待機に戻す（方向は +Z、敵の番号は -1）
+	void Reset();
+
+	/// @brief ドリルの突き・命中・加算回数・押し出し・休みを1フレーム進める
+	/// @details 命中フレームの終わりからくい込み時間を数える。くい込み中は毎フレーム同じ敵との重なりを確認する。
+	/// @param shoulder 肩の位置（移動後の位置を使う）
+	/// @param aim 待機中に押した瞬間だけ使う向き（上下を除いて正規化）
+	/// @param mirrored 鏡写しを設定する（true：右手、false：左手）
+	/// @param trigger 入力を設定する（true：押した瞬間、false：入力なし。待機中だけ有効）
+	/// @param cancel 取りやめを設定する（true：復活などで押し出さず休む、false：通常更新）
+	/// @param dt 進める秒数（0 以下なら停止。ただし cancel は処理する）
+	/// @param params 調整値
+	/// @param targets 敵の配列（Available が true の敵だけ有効。nullptr は候補なし）
+	/// @param count 敵の数（敵の番号は配列の添字）
+	/// @return ダメージを足す回数・対象・押し出すか
+	DRILL_EVENT Step(const VEC3& shoulder, const VEC3& aim, bool mirrored,
+		bool trigger, bool cancel, float dt, const DRILL_PARAMS& params,
+		const TENTACLE_TARGET* targets, int count);
+
+	/// @brief 現在の状態を取得する
+	DRILL_STATE GetState() const { return m_State; }
+
+	/// @brief 押した瞬間に決めた水平の単位方向を取得する
+	const VEC3& GetDirection() const { return m_Direction; }
+
+	/// @brief 今の状態になってからの秒数を取得する
+	float GetTime() const { return m_Time; }
+
+	/// @brief くい込んだ敵の番号（なしは -1）を取得する
+	int GetTarget() const { return m_Target; }
+
+	/// @brief 今回のくい込みでダメージを足した回数を取得する
+	int GetTicks() const { return m_Ticks; }
+
+private:
+	void Cooldown();
+	DRILL_STATE m_State{}; ///< 現在の状態
+	VEC3 m_Direction{}; ///< 押した瞬間に決めた水平の単位方向
+	float m_Time{}; ///< 今の状態になってからの秒数
+	int m_Target{}; ///< くい込んだ敵の番号（なしは -1）
+	int m_Ticks{}; ///< 今回のくい込みでダメージを足した回数
+};

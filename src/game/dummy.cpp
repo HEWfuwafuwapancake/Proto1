@@ -41,8 +41,8 @@ static constexpr float KNOCKBACK_STOP_SPEED = 0.5f;		// 浮島の上でこれよ
 // ダミー1体
 struct DUMMY
 {
-	PLAYER_BODY Body;	// 位置・速度・立っているか（立っている間はプレイヤーと同じ計算で動かす）
-	DUMMY_LIFE Life;	// 場外に落ちて復活する流れ
+	PlayerBodyCalc Body;	// 位置・速度・立っているか（立っている間はプレイヤーと同じ計算で動かす）
+	DummyLifeCalc Life;	// 場外に落ちて復活する流れ
 	float Percent;		// ダメージ%（復活したら 0 に戻る）
 	bool Launched;		// 吹っ飛ばされているか（自分では止まれない。浮島の上で止まったら false）
 	bool Held;          // 触腕が保持しているか
@@ -71,10 +71,8 @@ static void PlaceAtSpawn(int index)
 	const STAGE& stage = StageGet();
 	DUMMY& dummy = g_Dummies[index];
 	dummy.Body = {};
-	dummy.Body.X = stage.CenterX + SPAWN_X[index];
-	dummy.Body.Y = stage.TopY;
-	dummy.Body.Z = stage.CenterZ + SPAWN_Z[index];
-	dummy.Body.OnGround = true;
+	dummy.Body.SetPosition({ stage.CenterX + SPAWN_X[index], stage.TopY, stage.CenterZ + SPAWN_Z[index] });
+	dummy.Body.SetOnGround(true);
 	dummy.Percent = 0.0f;
 	dummy.Launched = false;
 	dummy.Held = false;
@@ -86,7 +84,7 @@ void DummyInitialize(void)
 {
 	for (int i = 0; i < DUMMY_COUNT; i++) {
 		PlaceAtSpawn(i);
-		DummyCalcResetLife(g_Dummies[i].Life);
+		g_Dummies[i].Life.Reset();
 	}
 }
 
@@ -107,29 +105,28 @@ void DummyUpdate(void)
 	for (int i = 0; i < DUMMY_COUNT; i++) {
 		DUMMY& dummy = g_Dummies[i];
 
-		if (dummy.Life.State == DUMMY_STATE_ACTIVE && !dummy.Held) {
+		if (dummy.Life.GetState() == DUMMY_STATE_ACTIVE && !dummy.Held) {
 			if (dummy.Launched) {
 				// 吹っ飛ばされている：自分では止まれない（プレイヤーにも押されない）
 				dummy.Launched = KnockbackCalcStep(dummy.Body, dt, KnockbackParams(), stage);
 			}
 			else {
 				// 立っている：重力・着地（浮島の外に押し出されたら落ちる）
-				PlayerCalcStep(dummy.Body, 0.0f, 0.0f, false, dt, params, stage);
+				dummy.Body.Step(0.0f, 0.0f, false, dt, params, stage);
 
 				// プレイヤーに押される（真上から乗られたときは、プレイヤーのほうが押し出される）
 				const XMFLOAT3 p = PlayerGetPosition();
 				VEC3 playerFeet = { p.x, p.y, p.z };
-				VEC3 dummyFeet = { dummy.Body.X, dummy.Body.Y, dummy.Body.Z };
+				VEC3 dummyFeet = { dummy.Body.GetX(), dummy.Body.GetY(), dummy.Body.GetZ() };
 				if (DummyCalcPushByPlayer(playerFeet, dummyFeet, BODY_RADIUS, BODY_HEIGHT)) {
-					dummy.Body.X = dummyFeet.X;
-					dummy.Body.Z = dummyFeet.Z;
+					dummy.Body.SetPosition({ dummyFeet.X, dummy.Body.GetY(), dummyFeet.Z });
 					PlayerSetPosition({ playerFeet.X, playerFeet.Y, playerFeet.Z });
 				}
 			}
 		}
 
 		// 場外に落ちたら待って、最初の場所に戻る（ダメージ%も 0 に戻る）
-		const DUMMY_EVENT event = DummyCalcUpdateLife(dummy.Life, StageCalcIsOut(stage, dummy.Body.Y), RESPAWN_SECONDS, dt);
+		const DUMMY_EVENT event = dummy.Life.Update(StageCalcIsOut(stage, dummy.Body.GetY()), RESPAWN_SECONDS, dt);
 		if (event == DUMMY_EVENT_RESPAWN) {
 			PlaceAtSpawn(i);
 		}
@@ -149,19 +146,19 @@ void DummyDraw(void)
 	const int target = CameraGetTarget();
 	for (int i = 0; i < DUMMY_COUNT; i++) {
 		const DUMMY& dummy = g_Dummies[i];
-		if (dummy.Life.State != DUMMY_STATE_ACTIVE) {
+		if (dummy.Life.GetState() != DUMMY_STATE_ACTIVE) {
 			continue;	// 復活を待っている間は見えない
 		}
 		const XMFLOAT4& color = dummy.Launched ? LAUNCHED_COLOR
 			: (i == target ? TARGET_COLOR : BODY_COLOR);
-		ShapeDrawCapsule({ dummy.Body.X, dummy.Body.Y, dummy.Body.Z }, BODY_RADIUS, BODY_HEIGHT,
+		ShapeDrawCapsule({ dummy.Body.GetX(), dummy.Body.GetY(), dummy.Body.GetZ() }, BODY_RADIUS, BODY_HEIGHT,
 			color);
 	}
 }
 
 void DummyHit(int index, const XMFLOAT3& direction, float damage, float power)
 {
-	if (index < 0 || index >= DUMMY_COUNT || g_Dummies[index].Life.State != DUMMY_STATE_ACTIVE) {
+	if (index < 0 || index >= DUMMY_COUNT || g_Dummies[index].Life.GetState() != DUMMY_STATE_ACTIVE) {
 		return;
 	}
 	DUMMY& dummy = g_Dummies[index];
@@ -171,10 +168,8 @@ void DummyHit(int index, const XMFLOAT3& direction, float damage, float power)
 	dummy.Percent = KnockbackCalcAddDamage(dummy.Percent, damage);
 	const float speed = KnockbackCalcSpeed(dummy.Percent, power, params);
 	const VEC3 velocity = KnockbackCalcVelocity({ direction.x, direction.y, direction.z }, speed, params);
-	dummy.Body.VelocityX = velocity.X;
-	dummy.Body.VelocityY = velocity.Y;
-	dummy.Body.VelocityZ = velocity.Z;
-	dummy.Body.OnGround = false;
+	dummy.Body.SetVelocity({ velocity.X, velocity.Y, velocity.Z });
+	dummy.Body.SetOnGround(false);
 	dummy.Launched = true;
 
 #ifdef _DEBUG
@@ -196,10 +191,8 @@ void DummyLaunch(int index, const VEC3& direction, float damage, float power)
 	DummyAddDamage(index, damage);
 	const float speed = KnockbackCalcSpeed(dummy.Percent, power, KnockbackParams());
 	const VEC3 velocity = KnockbackCalcDirectedVelocity(direction, speed);
-	dummy.Body.VelocityX = velocity.X;
-	dummy.Body.VelocityY = velocity.Y;
-	dummy.Body.VelocityZ = velocity.Z;
-	dummy.Body.OnGround = false;
+	dummy.Body.SetVelocity({ velocity.X, velocity.Y, velocity.Z });
+	dummy.Body.SetOnGround(false);
 	dummy.Held = false;
 	dummy.Launched = true;
 }
@@ -208,7 +201,7 @@ int DummyGetTotalOutCount(void)
 {
 	int total = 0;
 	for (int i = 0; i < DUMMY_COUNT; i++) {
-		total += g_Dummies[i].Life.OutCount;
+		total += g_Dummies[i].Life.GetOutCount();
 	}
 	return total;
 }
@@ -221,14 +214,14 @@ float DummyGetPercent(int index)
 
 bool DummyIsActive(int index)
 {
-	return index >= 0 && index < DUMMY_COUNT && g_Dummies[index].Life.State == DUMMY_STATE_ACTIVE;
+	return index >= 0 && index < DUMMY_COUNT && g_Dummies[index].Life.GetState() == DUMMY_STATE_ACTIVE;
 }
 
 TENTACLE_TARGET DummyGetTarget(int index)
 {
 	if (!DummyIsActive(index)) return {};
 	const DUMMY& dummy = g_Dummies[index];
-	const VEC3 feet{ dummy.Body.X, dummy.Body.Y, dummy.Body.Z };
+	const VEC3 feet{ dummy.Body.GetX(), dummy.Body.GetY(), dummy.Body.GetZ() };
 	return { DummyCalcBodyCapsule(feet, BODY_RADIUS, BODY_HEIGHT), !dummy.Held };
 }
 
@@ -238,8 +231,8 @@ bool DummyGrab(int index)
 	DUMMY& dummy = g_Dummies[index];
 	dummy.Held = true;
 	dummy.Launched = false;
-	dummy.Body.VelocityX = dummy.Body.VelocityY = dummy.Body.VelocityZ = 0.0f;
-	dummy.Body.OnGround = false;
+	dummy.Body.SetVelocity({ 0.0f, 0.0f, 0.0f });
+	dummy.Body.SetOnGround(false);
 	return true;
 }
 
@@ -247,9 +240,7 @@ void DummyMoveHeld(int index, const VEC3& center)
 {
 	if (!DummyIsActive(index) || !g_Dummies[index].Held) return;
 	DUMMY& dummy = g_Dummies[index];
-	dummy.Body.X = center.X;
-	dummy.Body.Y = center.Y - BODY_HEIGHT * 0.5f;
-	dummy.Body.Z = center.Z;
+	dummy.Body.SetPosition({ center.X, center.Y - BODY_HEIGHT * 0.5f, center.Z });
 }
 
 void DummyRelease(int index, bool throwTarget, const VEC3& direction, float damage, float power)
@@ -262,7 +253,5 @@ void DummyRelease(int index, bool throwTarget, const VEC3& direction, float dama
 	DummyHit(index, { direction.X, direction.Y, direction.Z }, damage, power);
 	const float speed = KnockbackCalcSpeed(dummy.Percent, power, KnockbackParams());
 	const VEC3 velocity = KnockbackCalcDirectedVelocity(direction, speed);
-	dummy.Body.VelocityX = velocity.X;
-	dummy.Body.VelocityY = velocity.Y;
-	dummy.Body.VelocityZ = velocity.Z;
+	dummy.Body.SetVelocity({ velocity.X, velocity.Y, velocity.Z });
 }

@@ -4,7 +4,7 @@
 
 /// @file collision.h
 /// @brief 当たり判定の共通部品（球・カプセル・箱どうしが重なっているか、押し出す向きと深さ）と、
-///        1回の攻撃で同じ相手に何度も当たらないようにする記録（HIT_RECORD）
+///        1回の攻撃で同じ相手に何度も当たらないようにする記録（HitRecord）
 /// @details DirectX と Windows を使わないので、単体テスト（tests/Proto1Tests）からそのまま使える。
 ///          「ちょうど触れている」（距離 = 半径の合計）は重なっていない扱いにする
 
@@ -80,31 +80,31 @@ HIT_RESULT CollisionCapsuleCapsule(const CAPSULE& a, const CAPSULE& b);
 /// @return 結果
 HIT_RESULT CollisionSphereBox(const SPHERE& a, const BOX& b);
 
-
-/// @brief HIT_RECORD に覚えておける相手の数
+/// @brief HitRecord に覚えておける相手の数
 static constexpr int HIT_RECORD_MAX = 8;
 
 /// @brief 1回の攻撃で、もう当たった相手の記録（同じ相手に何度も当たらないようにする）
-/// @details 攻撃を始めるときに HitRecordClear で空にし、当たったら HitRecordTryAdd で覚える
-struct HIT_RECORD
+class HitRecord
 {
-	int Count;					///< 覚えている相手の数（0〜HIT_RECORD_MAX）
-	int Ids[HIT_RECORD_MAX];	///< 覚えている相手の番号（Count 個だけ使う）
+public:
+	/// @brief 記録を空にする（攻撃を始めるときに呼ぶ）
+	void Clear();
+
+	/// @brief 相手にもう当たったか調べる
+	/// @param id 相手の番号
+	/// @return もう当たっていれば true
+	bool Contains(int id) const;
+
+	/// @brief 相手に当てる（初めてなら覚えて true を返す）
+	/// @details もう当たっている相手と、記録がいっぱいのときは false（当てない）
+	/// @param id 相手の番号
+	/// @return この攻撃で初めて当たったなら true（ダメージや吹っ飛びを与えてよい）
+	bool TryAdd(int id);
+
+	/// @brief 覚えている相手の数（0〜HIT_RECORD_MAX）を取得する
+	int GetCount() const { return m_Count; }
+
+private:
+	int m_Count{}; ///< 覚えている相手の数（0〜HIT_RECORD_MAX）
+	int m_Ids[HIT_RECORD_MAX]{}; ///< 覚えている相手の番号（Count 個だけ使う）
 };
-
-/// @brief 記録を空にする（攻撃を始めるときに呼ぶ）
-/// @param[out] record 記録
-void HitRecordClear(HIT_RECORD& record);
-
-/// @brief 相手にもう当たったか調べる
-/// @param record 記録
-/// @param id 相手の番号
-/// @return もう当たっていれば true
-bool HitRecordContains(const HIT_RECORD& record, int id);
-
-/// @brief 相手に当てる（初めてなら覚えて true を返す）
-/// @details もう当たっている相手と、記録がいっぱいのときは false（当てない）
-/// @param[in,out] record 記録
-/// @param id 相手の番号
-/// @return この攻撃で初めて当たったなら true（ダメージや吹っ飛びを与えてよい）
-bool HitRecordTryAdd(HIT_RECORD& record, int id);

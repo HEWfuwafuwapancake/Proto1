@@ -10,18 +10,18 @@ static VEC3 TargetCenter(const TENTACLE_TARGET& target)
 	return Vec3Scale(Vec3Add(target.Body.Start, target.Body.End), 0.5f);
 }
 
-static void ReturnHook(GRAPPLE& grapple)
+void GrappleCalc::ReturnHook()
 {
-	grapple.State = GRAPPLE_RETURNING;
-	grapple.Target = -1;
-	grapple.OnStage = false;
+	m_State = GRAPPLE_RETURNING;
+	m_Target = -1;
+	m_OnStage = false;
 }
 
-void GrappleCalcReset(GRAPPLE& grapple)
+void GrappleCalc::Reset()
 {
-	grapple = {};
-	grapple.State = GRAPPLE_IDLE;
-	grapple.Target = -1;
+	*this = {};
+	m_State = GRAPPLE_IDLE;
+	m_Target = -1;
 }
 
 VEC3 GrappleCalcAim(const VEC3& origin, const VEC3& target, bool hasTarget, const VEC3& fallback)
@@ -44,49 +44,49 @@ bool GrappleCalcPull(VEC3& center, const VEC3& anchor, float speed, float distan
 	return move >= remaining;
 }
 
-GRAPPLE_EVENT GrappleCalcStep(GRAPPLE& grapple, const VEC3& origin, const VEC3& aim, VEC3& center,
+GRAPPLE_EVENT GrappleCalc::Step(const VEC3& origin, const VEC3& aim, VEC3& center,
 	bool trigger, bool cancel, float dt, const GRAPPLE_PARAMS& params,
 	const TENTACLE_TARGET* targets, int count, const STAGE& stage)
 {
 	GRAPPLE_EVENT event{ false, false, false, -1, false, {} };
 	if (cancel) {
-		event.Released = grapple.State != GRAPPLE_IDLE;
-		event.Target = grapple.Target;
-		event.OnStage = grapple.OnStage;
-		GrappleCalcReset(grapple);
+		event.Released = m_State != GRAPPLE_IDLE;
+		event.Target = m_Target;
+		event.OnStage = m_OnStage;
+		Reset();
 		return event;
 	}
 	if (dt <= 0.0f) return event;
-	if (trigger && grapple.State != GRAPPLE_IDLE) {
+	if (trigger && m_State != GRAPPLE_IDLE) {
 		event.Released = true;
-		event.Target = grapple.Target;
-		event.OnStage = grapple.OnStage;
-		ReturnHook(grapple);
+		event.Target = m_Target;
+		event.OnStage = m_OnStage;
+		ReturnHook();
 		return event;
 	}
-	if (trigger && grapple.State == GRAPPLE_IDLE) {
-		GrappleCalcReset(grapple);
-		grapple.State = GRAPPLE_FLYING;
-		grapple.Hook = origin;
+	if (trigger && m_State == GRAPPLE_IDLE) {
+		Reset();
+		m_State = GRAPPLE_FLYING;
+		m_Hook = origin;
 		const float length = Vec3Length(aim);
-		grapple.Direction = length > MIN_LENGTH ? Vec3Scale(aim, 1.0f / length) : VEC3{ 0, 0, 1 };
+		m_Direction = length > MIN_LENGTH ? Vec3Scale(aim, 1.0f / length) : VEC3{ 0, 0, 1 };
 	}
-	if (grapple.State == GRAPPLE_FLYING) {
-		const VEC3 previous = grapple.Hook;
-		const float move = fminf(fmaxf(0.0f, params.MaxDistance - grapple.Distance), params.FlySpeed * dt);
-		grapple.Distance += move;
-		grapple.Hook = Vec3Add(previous, Vec3Scale(grapple.Direction, move));
+	if (m_State == GRAPPLE_FLYING) {
+		const VEC3 previous = m_Hook;
+		const float move = fminf(fmaxf(0.0f, params.MaxDistance - m_Distance), params.FlySpeed * dt);
+		m_Distance += move;
+		m_Hook = Vec3Add(previous, Vec3Scale(m_Direction, move));
 		const float step = fmaxf(MIN_LENGTH, fminf(MAX_HIT_STEP, params.Radius * 0.5f));
 		const int steps = (int)ceilf(move / step) + 1;
 		// 区間全体について敵を優先。同じ区間の敵は手前の刻み、同じ刻みなら番号順。
 		for (int sample = 0; sample <= steps; ++sample) {
-			const VEC3 point = Vec3Add(previous, Vec3Scale(Vec3Sub(grapple.Hook, previous), (float)sample / steps));
+			const VEC3 point = Vec3Add(previous, Vec3Scale(Vec3Sub(m_Hook, previous), (float)sample / steps));
 			for (int i = 0; targets != nullptr && i < count; ++i) {
 				if (!targets[i].Available || !CollisionSphereCapsule({ point, params.Radius }, targets[i].Body).Hit) continue;
-				grapple.Target = i;
-				grapple.Anchor = TargetCenter(targets[i]);
-				grapple.Hook = grapple.Anchor;
-				grapple.State = GRAPPLE_PULLING;
+				m_Target = i;
+				m_Anchor = TargetCenter(targets[i]);
+				m_Hook = m_Anchor;
+				m_State = GRAPPLE_PULLING;
 				event.Attached = true;
 				event.Target = i;
 				return event;
@@ -95,42 +95,42 @@ GRAPPLE_EVENT GrappleCalcStep(GRAPPLE& grapple, const VEC3& origin, const VEC3& 
 		const BOX box{ { stage.CenterX - stage.HalfWidth, stage.TopY - stage.Thickness, stage.CenterZ - stage.HalfDepth },
 			{ stage.CenterX + stage.HalfWidth, stage.TopY, stage.CenterZ + stage.HalfDepth } };
 		for (int sample = 0; sample <= steps; ++sample) {
-			const VEC3 point = Vec3Add(previous, Vec3Scale(Vec3Sub(grapple.Hook, previous), (float)sample / steps));
+			const VEC3 point = Vec3Add(previous, Vec3Scale(Vec3Sub(m_Hook, previous), (float)sample / steps));
 			if (!CollisionSphereBox({ point, params.Radius }, box).Hit) continue;
-			grapple.Anchor = grapple.Hook = point;
-			grapple.OnStage = true;
-			grapple.State = GRAPPLE_PULLING;
+			m_Anchor = m_Hook = point;
+			m_OnStage = true;
+			m_State = GRAPPLE_PULLING;
 			event.Attached = event.OnStage = true;
 			return event;
 		}
-		if (grapple.Distance >= params.MaxDistance) ReturnHook(grapple);
+		if (m_Distance >= params.MaxDistance) ReturnHook();
 	}
-	else if (grapple.State == GRAPPLE_PULLING) {
-		event.Target = grapple.Target;
-		event.OnStage = grapple.OnStage;
-		if (grapple.Target >= 0) {
-			if (targets == nullptr || grapple.Target >= count) {
+	else if (m_State == GRAPPLE_PULLING) {
+		event.Target = m_Target;
+		event.OnStage = m_OnStage;
+		if (m_Target >= 0) {
+			if (targets == nullptr || m_Target >= count) {
 				event.Released = true;
-				ReturnHook(grapple);
+				ReturnHook();
 				return event;
 			}
-			grapple.Anchor = grapple.Hook = TargetCenter(targets[grapple.Target]);
+			m_Anchor = m_Hook = TargetCenter(targets[m_Target]);
 		}
-		const VEC3 delta = Vec3Sub(grapple.Anchor, center);
+		const VEC3 delta = Vec3Sub(m_Anchor, center);
 		const float length = Vec3Length(delta);
-		event.Direction = length > MIN_LENGTH ? Vec3Scale(delta, 1.0f / length) : grapple.Direction;
+		event.Direction = length > MIN_LENGTH ? Vec3Scale(delta, 1.0f / length) : m_Direction;
 		// 残っている時間までだけ進め、長いフレームでも制限時間を越えて引っぱらない。
-		const float pullDt = fminf(dt, fmaxf(0.0f, params.MaxPullSeconds - grapple.PullTime));
-		grapple.PullTime += pullDt;
-		event.Arrived = GrappleCalcPull(center, grapple.Anchor, params.PullSpeed,
-			grapple.OnStage ? params.StageDistance : params.EnemyDistance, pullDt);
-		if (event.Arrived || grapple.PullTime >= params.MaxPullSeconds) {
+		const float pullDt = fminf(dt, fmaxf(0.0f, params.MaxPullSeconds - m_PullTime));
+		m_PullTime += pullDt;
+		event.Arrived = GrappleCalcPull(center, m_Anchor, params.PullSpeed,
+			m_OnStage ? params.StageDistance : params.EnemyDistance, pullDt);
+		if (event.Arrived || m_PullTime >= params.MaxPullSeconds) {
 			event.Released = true;
-			ReturnHook(grapple);
+			ReturnHook();
 		}
 	}
-	else if (grapple.State == GRAPPLE_RETURNING) {
-		if (GrappleCalcPull(grapple.Hook, origin, params.FlySpeed, 0.0f, dt)) GrappleCalcReset(grapple);
+	else if (m_State == GRAPPLE_RETURNING) {
+		if (GrappleCalcPull(m_Hook, origin, params.FlySpeed, 0.0f, dt)) Reset();
 	}
 	return event;
 }

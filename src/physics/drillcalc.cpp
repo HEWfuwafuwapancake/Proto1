@@ -6,19 +6,19 @@
 static constexpr float GRIP_ROLL = 3.14159265358979323846f; // 付け根の 180° ひねり。
 static constexpr float TICK_TIME_EPSILON = 0.000001f; // 0.1 秒の足し算の丸め誤差だけを吸収する。
 
-static void Cooldown(DRILL& drill)
+void DrillCalc::Cooldown()
 {
-	drill.State = DRILL_COOLDOWN;
-	drill.Time = 0.0f;
-	drill.Target = -1;
+	m_State = DRILL_COOLDOWN;
+	m_Time = 0.0f;
+	m_Target = -1;
 }
 
-void DrillCalcReset(DRILL& drill)
+void DrillCalc::Reset()
 {
-	drill = {};
-	drill.State = DRILL_IDLE;
-	drill.Direction = { 0, 0, 1 };
-	drill.Target = -1;
+	*this = {};
+	m_State = DRILL_IDLE;
+	m_Direction = { 0, 0, 1 };
+	m_Target = -1;
 }
 
 DRILL_AXIS DrillCalcAxis(const VEC3& shoulder, const VEC3& armDirection,
@@ -51,27 +51,27 @@ CAPSULE DrillCalcBit(const VEC3& shoulder, const VEC3& armDirection, bool mirror
 		Vec3Add(axis.Rear, Vec3Scale(axis.Direction, params.HitEnd * params.Grip.Scale)), params.Radius };
 }
 
-DRILL_EVENT DrillCalcStep(DRILL& drill, const VEC3& shoulder, const VEC3& aim, bool mirrored,
+DRILL_EVENT DrillCalc::Step(const VEC3& shoulder, const VEC3& aim, bool mirrored,
 	bool trigger, bool cancel, float dt, const DRILL_PARAMS& params,
 	const TENTACLE_TARGET* targets, int count)
 {
 	DRILL_EVENT event{ -1, 0, false };
 	if (cancel) {
-		if (drill.State != DRILL_IDLE) Cooldown(drill);
+		if (m_State != DRILL_IDLE) Cooldown();
 		return event;
 	}
 	if (dt <= 0.0f) return event;
-	if (drill.State == DRILL_IDLE) {
+	if (m_State == DRILL_IDLE) {
 		if (!trigger) return event;
-		drill.State = DRILL_STRIKING;
-		drill.Direction = TentacleCalcAim({}, {}, false, aim);
-		drill.Time = 0.0f;
-		drill.Target = -1;
-		drill.Ticks = 0;
+		m_State = DRILL_STRIKING;
+		m_Direction = TentacleCalcAim({}, {}, false, aim);
+		m_Time = 0.0f;
+		m_Target = -1;
+		m_Ticks = 0;
 	}
-	const VEC3 armDirection = DrillCalcThrustArmDirection(drill.Direction, params.Grip);
+	const VEC3 armDirection = DrillCalcThrustArmDirection(m_Direction, params.Grip);
 	const CAPSULE bit = DrillCalcBit(shoulder, armDirection, mirrored, params);
-	if (drill.State == DRILL_STRIKING) {
+	if (m_State == DRILL_STRIKING) {
 		int nearest = -1;
 		float nearestDistance = 0.0f;
 		for (int i = 0; targets != nullptr && i < count; ++i) {
@@ -84,41 +84,41 @@ DRILL_EVENT DrillCalcStep(DRILL& drill, const VEC3& shoulder, const VEC3& aim, b
 			}
 		}
 		if (nearest >= 0) {
-			drill.State = DRILL_BORING;
-			drill.Target = nearest;
-			drill.Time = 0.0f;
+			m_State = DRILL_BORING;
+			m_Target = nearest;
+			m_Time = 0.0f;
 		}
 		else {
-			drill.Time += dt;
-			if (drill.Time + TICK_TIME_EPSILON >= params.StrikeSeconds) Cooldown(drill);
+			m_Time += dt;
+			if (m_Time + TICK_TIME_EPSILON >= params.StrikeSeconds) Cooldown();
 		}
 	}
-	else if (drill.State == DRILL_BORING) {
+	else if (m_State == DRILL_BORING) {
 		// 先に有効性を確認する。離れたフレームに加算や押し出しを残さない。
-		const int target = drill.Target;
+		const int target = m_Target;
 		if (targets == nullptr || target < 0 || target >= count || !targets[target].Available
 			|| !CollisionCapsuleCapsule(bit, targets[target].Body).Hit) {
-			Cooldown(drill);
+			Cooldown();
 			return event;
 		}
-		drill.Time = fminf(drill.Time + dt, params.BoreSeconds);
+		m_Time = fminf(m_Time + dt, params.BoreSeconds);
 		event.Target = target;
-		while (drill.Ticks < params.TickCount
-			&& drill.Time + TICK_TIME_EPSILON >= params.TickSeconds * (drill.Ticks + 1)) {
-			++drill.Ticks;
+		while (m_Ticks < params.TickCount
+			&& m_Time + TICK_TIME_EPSILON >= params.TickSeconds * (m_Ticks + 1)) {
+			++m_Ticks;
 			++event.DamageTicks;
 		}
-		if (drill.Ticks >= params.TickCount) {
+		if (m_Ticks >= params.TickCount) {
 			event.Push = true;
-			Cooldown(drill);
+			Cooldown();
 		}
-		else if (drill.Time + TICK_TIME_EPSILON >= params.BoreSeconds) {
-			Cooldown(drill);
+		else if (m_Time + TICK_TIME_EPSILON >= params.BoreSeconds) {
+			Cooldown();
 		}
 	}
-	else if (drill.State == DRILL_COOLDOWN) {
-		drill.Time += dt;
-		if (drill.Time + TICK_TIME_EPSILON >= params.CooldownSeconds) DrillCalcReset(drill);
+	else if (m_State == DRILL_COOLDOWN) {
+		m_Time += dt;
+		if (m_Time + TICK_TIME_EPSILON >= params.CooldownSeconds) Reset();
 	}
 	return event;
 }

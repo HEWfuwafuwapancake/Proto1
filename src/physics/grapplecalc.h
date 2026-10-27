@@ -26,19 +26,6 @@ struct GRAPPLE_PARAMS
 	float MaxPullSeconds; ///< 引っぱりを続けられる秒数
 };
 
-/// @brief 片手のフックの計算状態
-struct GRAPPLE
-{
-	GRAPPLE_STATE State; ///< 現在の状態
-	VEC3 Hook; ///< フックの原点のワールド座標
-	VEC3 Direction; ///< 発射時に決めた単位方向
-	float Distance; ///< 発射して進んだ距離
-	int Target; ///< 刺さった敵の番号（なしは -1）
-	bool OnStage; ///< 浮島に刺さっているか
-	VEC3 Anchor; ///< 刺さった所（敵の場合は毎フレーム体の中心を使う）
-	float PullTime; ///< 引っぱり始めてからの秒数
-};
-
 /// @brief 1フレームの出来事（到着した敵・浮島は、戻り始めたあともこの値で分かる）
 struct GRAPPLE_EVENT
 {
@@ -49,9 +36,6 @@ struct GRAPPLE_EVENT
 	bool OnStage; ///< 刺さった、または離した先が浮島か
 	VEC3 Direction; ///< 到着したときの引っぱる向き（体当たり用）
 };
-
-/// @brief フックを待機に戻す
-void GrappleCalcReset(GRAPPLE& grapple);
 
 /// @brief 撃つ向きを求める（ターゲットがいれば上下も含めて体の中心へ。浮島の下から撃ってもふちに刺さる）
 /// @param origin 肩の位置
@@ -70,23 +54,6 @@ VEC3 GrappleCalcAim(const VEC3& origin, const VEC3& target, bool hasTarget, cons
 /// @return 到着距離以内なら true
 bool GrappleCalcPull(VEC3& center, const VEC3& anchor, float speed, float distance, float dt);
 
-/// @brief 発射・飛行・命中・引っぱり・回収を1フレーム進める。敵を先に、浮島を後に判定する
-/// @param grapple 片手の状態
-/// @param origin 肩の位置（発射点・回収先）
-/// @param aim 発射方向（開始時だけ使い、正規化する）
-/// @param center プレイヤーの体の中心（引っぱり後の位置を書き戻す）
-/// @param trigger 入力を設定する（true：押した瞬間、false：入力なし）
-/// @param cancel 取りやめを設定する（true：復活などで即座に待機へ、false：通常更新）
-/// @param dt 進める秒数（0 以下なら停止。ただし cancel は処理する）
-/// @param params 調整値
-/// @param targets 敵の体（新しく刺さるのは Available が true の敵だけ。刺さったあとは保持状態に関係なく中心を追う）
-/// @param count 敵の数
-/// @param stage 浮島
-/// @return 刺さった・着いた・離した出来事
-GRAPPLE_EVENT GrappleCalcStep(GRAPPLE& grapple, const VEC3& origin, const VEC3& aim, VEC3& center,
-	bool trigger, bool cancel, float dt, const GRAPPLE_PARAMS& params,
-	const TENTACLE_TARGET* targets, int count, const STAGE& stage);
-
 /// @brief 刺さった所の XZ を浮島のふちの内側へ寄せ、上面に置いた足元の位置を求める
 /// @param anchor 刺さった所
 /// @param stage 浮島
@@ -102,3 +69,74 @@ VEC3 GrappleCalcLanding(const VEC3& anchor, const STAGE& stage, float inset);
 /// @param roll 長さ方向のひねり（ラジアン。描画と同じ値）
 VEC3 GrappleCalcModelPoint(const VEC3& point, const VEC3& start, const VEC3& end,
 	float scale, bool mirrorX, float roll);
+
+/// @brief 片手のフックの計算状態
+class GrappleCalc
+{
+public:
+	/// @brief 指定した計算状態で初期化する（省略時は従来のゼロ初期化と同じ）
+	/// @param state 現在の状態
+	/// @param hook フックの原点のワールド座標
+	/// @param direction 発射時に決めた単位方向
+	/// @param distance 発射して進んだ距離
+	/// @param target 刺さった敵の番号（なしは -1）
+	/// @param onStage 浮島に刺さっているかを設定する（true：浮島、false：敵または未接続）
+	/// @param anchor 刺さった所（敵の場合は毎フレーム体の中心を使う）
+	/// @param pullTime 引っぱり始めてからの秒数
+	GrappleCalc(GRAPPLE_STATE state = {}, VEC3 hook = {}, VEC3 direction = {}, float distance = {}, int target = {}, bool onStage = {}, VEC3 anchor = {}, float pullTime = {})
+		: m_State(state), m_Hook(hook), m_Direction(direction), m_Distance(distance), m_Target(target), m_OnStage(onStage), m_Anchor(anchor), m_PullTime(pullTime) {}
+
+	/// @brief フックを待機に戻す
+	void Reset();
+
+	/// @brief 発射・飛行・命中・引っぱり・回収を1フレーム進める。敵を先に、浮島を後に判定する
+	/// @param origin 肩の位置（発射点・回収先）
+	/// @param aim 発射方向（開始時だけ使い、正規化する）
+	/// @param center プレイヤーの体の中心（引っぱり後の位置を書き戻す）
+	/// @param trigger 入力を設定する（true：押した瞬間、false：入力なし）
+	/// @param cancel 取りやめを設定する（true：復活などで即座に待機へ、false：通常更新）
+	/// @param dt 進める秒数（0 以下なら停止。ただし cancel は処理する）
+	/// @param params 調整値
+	/// @param targets 敵の体（新しく刺さるのは Available が true の敵だけ。刺さったあとは保持状態に関係なく中心を追う）
+	/// @param count 敵の数
+	/// @param stage 浮島
+	/// @return 刺さった・着いた・離した出来事
+	GRAPPLE_EVENT Step(const VEC3& origin, const VEC3& aim, VEC3& center,
+		bool trigger, bool cancel, float dt, const GRAPPLE_PARAMS& params,
+		const TENTACLE_TARGET* targets, int count, const STAGE& stage);
+
+	/// @brief 現在の状態を取得する
+	GRAPPLE_STATE GetState() const { return m_State; }
+
+	/// @brief フックの原点のワールド座標を取得する
+	const VEC3& GetHook() const { return m_Hook; }
+
+	/// @brief 発射時に決めた単位方向を取得する
+	const VEC3& GetDirection() const { return m_Direction; }
+
+	/// @brief 発射して進んだ距離を取得する
+	float GetDistance() const { return m_Distance; }
+
+	/// @brief 刺さった敵の番号（なしは -1）を取得する
+	int GetTarget() const { return m_Target; }
+
+	/// @brief 浮島に刺さっているかを取得する
+	bool GetOnStage() const { return m_OnStage; }
+
+	/// @brief 刺さった所（敵の場合は毎フレーム体の中心を使う）を取得する
+	const VEC3& GetAnchor() const { return m_Anchor; }
+
+	/// @brief 引っぱり始めてからの秒数を取得する
+	float GetPullTime() const { return m_PullTime; }
+
+private:
+	void ReturnHook();
+	GRAPPLE_STATE m_State{}; ///< 現在の状態
+	VEC3 m_Hook{}; ///< フックの原点のワールド座標
+	VEC3 m_Direction{}; ///< 発射時に決めた単位方向
+	float m_Distance{}; ///< 発射して進んだ距離
+	int m_Target{}; ///< 刺さった敵の番号（なしは -1）
+	bool m_OnStage{}; ///< 浮島に刺さっているか
+	VEC3 m_Anchor{}; ///< 刺さった所（敵の場合は毎フレーム体の中心を使う）
+	float m_PullTime{}; ///< 引っぱり始めてからの秒数
+};

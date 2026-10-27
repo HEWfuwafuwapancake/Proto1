@@ -1,4 +1,4 @@
-# Proto1 チーム制作 — Claude向けのプロジェクトメモ
+﻿# Proto1 チーム制作 — Claude向けのプロジェクトメモ
 
 DirectX 11（C++ / Visual Studio 2022）で作る 3D ゲームの**プロトタイプ**のチーム制作リポジトリ。
 GitHub の Organization（HEWfuwafuwapancake）上の public リポジトリで、git-flow（main / develop / feature / release / hotfix）で運用する。
@@ -51,6 +51,7 @@ DX11 の土台は `HEW2026GitTest` から持ってきた（水のレイトレー
 
 ## コードの約束
 - 授業（DX21）のひな形をもとにした DX11 基盤。構成は `docs/dev/01_DX11基盤の構成.md`。書き方はひな形に合わせる（`〇〇Initialize / Finalize / Update / Draw`）。
+- クラスは `TentacleCalc`・`Player` のように命名する。メンバー変数は `private` に置いて `m_` を頭に付け、読むときは `GetXxx() const` を使う。`Initialize / Finalize / Update / Draw` はメンバー関数名で残す。クラスと `public` なメンバー関数・メンバー変数には、すべて Doxygen 形式の日本語コメントを付ける。
 - ヘッダーで公開する関数・構造体には **Doxygen 形式の日本語コメント**（`/// @brief` など）を付ける。bool を受け取る関数は「〜を設定する（true：〜、false：〜）」と書き、構造体はメンバーを1つも残さず説明する。
 - C++（`.cpp` / `.h`）は **BOM付きUTF-8・CRLF**。シェーダー（`.hlsl` / `.hlsli`）は **BOMなしUTF-8**（fxc は BOM があると `X3000` で失敗する）。
 - 文字セットは **マルチバイト**（ひな形が `char` 文字列のため）。`/utf-8` オプションは付けない。サブシステムは Windows。

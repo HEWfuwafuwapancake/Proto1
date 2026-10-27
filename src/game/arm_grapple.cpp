@@ -36,7 +36,7 @@ static constexpr float HIT_RUMBLE_SMALL = 0.6f;
 static constexpr float HIT_RUMBLE_LARGE = 0.6f;
 static constexpr float HIT_RUMBLE_SECONDS = 0.15f;
 
-static GRAPPLE g_Arms[2];
+static GrappleCalc g_Arms[2];
 static float g_Straighten[2] = {}; // 描画だけのまっすぐ度（0：待機の構え、1：フックの向き）。
 static int g_UpperModel[2] = { -1, -1 };
 static int g_LowerModel[2] = { -1, -1 };
@@ -50,7 +50,7 @@ static bool MirrorHand(int hand)
 
 static void ResetHand(int hand)
 {
-	GrappleCalcReset(g_Arms[hand]);
+	g_Arms[hand].Reset();
 	g_Straighten[hand] = 0.0f;
 	if (g_PullingHand == hand) {
 		g_PullingHand = -1;
@@ -62,7 +62,7 @@ static void Initialize(void)
 {
 	g_PullingHand = -1;
 	for (int hand = 0; hand < 2; ++hand) {
-		GrappleCalcReset(g_Arms[hand]);
+		g_Arms[hand].Reset();
 		g_Straighten[hand] = 0.0f;
 		g_UpperModel[hand] = ModelLoad("assets/models/arm_grapple_upper.obj", MirrorHand(hand));
 		g_LowerModel[hand] = ModelLoad("assets/models/arm_grapple_lower.obj", MirrorHand(hand));
@@ -77,7 +77,7 @@ static void Finalize(void)
 
 static void UpdateHand(int hand, bool trigger)
 {
-	GRAPPLE& arm = g_Arms[hand];
+	GrappleCalc& arm = g_Arms[hand];
 	const VEC3 origin = ArmGetShoulder(hand);
 	const float yaw = CameraGetYaw();
 	const VEC3 forward{ sinf(yaw), 0.0f, cosf(yaw) };
@@ -91,14 +91,14 @@ static void UpdateHand(int hand, bool trigger)
 	const XMFLOAT3 position = PlayerGetPosition();
 	const float halfHeight = PlayerGetHeight() * 0.5f;
 	VEC3 center{ position.x, position.y + halfHeight, position.z };
-	const GRAPPLE_EVENT event = GrappleCalcStep(arm, origin, aim, center,
-		trigger || (arm.Target >= 0 && !DummyIsActive(arm.Target)), PlayerDidRespawn(),
+	const GRAPPLE_EVENT event = arm.Step(origin, aim, center,
+		trigger || (arm.GetTarget() >= 0 && !DummyIsActive(arm.GetTarget())), PlayerDidRespawn(),
 		GameTimeGetDeltaTime(), PARAMS, targets, DUMMY_COUNT, StageGet());
 	if (event.Attached) {
 		// 新しく刺さった手へ所有権を移す。先の手は空のフックを回収する。
 		if (g_PullingHand >= 0 && g_PullingHand != hand) {
 			VEC3 unused = center;
-			GrappleCalcStep(g_Arms[g_PullingHand], ArmGetShoulder(g_PullingHand), {}, unused,
+			g_Arms[g_PullingHand].Step(ArmGetShoulder(g_PullingHand), {}, unused,
 				true, false, GameTimeGetDeltaTime(), PARAMS, targets, DUMMY_COUNT, StageGet());
 		}
 		g_PullingHand = hand;
@@ -107,7 +107,7 @@ static void UpdateHand(int hand, bool trigger)
 	}
 	if (g_PullingHand == hand) {
 		if (event.Arrived && event.OnStage) {
-			const VEC3 landing = GrappleCalcLanding(arm.Anchor, StageGet(), LANDING_INSET);
+			const VEC3 landing = GrappleCalcLanding(arm.GetAnchor(), StageGet(), LANDING_INSET);
 			PlayerSetPosition({ landing.X, landing.Y, landing.Z });
 		}
 		else {
@@ -124,27 +124,27 @@ static void UpdateHand(int hand, bool trigger)
 	}
 	// 動きの状態には触れず、描画の構えだけを一定の速さで変える。
 	const float step = fmaxf(0.0f, GameTimeGetDeltaTime()) / GRAPPLE_STRAIGHTEN_SECONDS;
-	g_Straighten[hand] = arm.State == GRAPPLE_IDLE
+	g_Straighten[hand] = arm.GetState() == GRAPPLE_IDLE
 		? fmaxf(0.0f, g_Straighten[hand] - step)
 		: fminf(1.0f, g_Straighten[hand] + step);
 }
 
 static void DrawHand(int hand)
 {
-	const GRAPPLE& arm = g_Arms[hand];
+	const GrappleCalc& arm = g_Arms[hand];
 	const VEC3 origin = ArmGetShoulder(hand);
 	const float yaw = PlayerGetYaw();
 	const VEC3 forward{ sinf(yaw), 0.0f, cosf(yaw) };
 	// 距離によってまぜ方が変わらないよう、フックへの向きも先に長さ 1 にする。
-	const VEC3 hookDirection = arm.State == GRAPPLE_IDLE ? forward
-		: ArmCalcBlendDirection(forward, Vec3Sub(arm.Hook, origin), 1.0f);
+	const VEC3 hookDirection = arm.GetState() == GRAPPLE_IDLE ? forward
+		: ArmCalcBlendDirection(forward, Vec3Sub(arm.GetHook(), origin), 1.0f);
 	const VEC3 upperDirection = ArmCalcBlendDirection(
 		ArmGetRestDirection(hand), hookDirection, g_Straighten[hand]);
 	const VEC3 lowerDirection = ArmCalcBlendDirection(
 		ArmGetRestDirection(hand, GRAPPLE_IDLE_ELBOW), hookDirection, g_Straighten[hand]);
 	const bool mirror = MirrorHand(hand);
 	const float roll = mirror ? -GRAPPLE_ROLL : GRAPPLE_ROLL;
-	const XMFLOAT4 color = ArmGetColor(hand, arm.State == GRAPPLE_PULLING);
+	const XMFLOAT4 color = ArmGetColor(hand, arm.GetState() == GRAPPLE_PULLING);
 	// 各部品は伸縮させず、作者が置いたひじをつないで描く。
 	const VEC3 upperFacing = Vec3Add(origin, upperDirection);
 	const VEC3 upperEnd = GrappleCalcModelPoint({ 0, -UPPER_LENGTH, 0 }, origin, upperFacing, MODEL_SCALE, false, roll);
@@ -154,8 +154,8 @@ static void DrawHand(int hand)
 	const VEC3 lowerEnd = GrappleCalcModelPoint({ 0, -LOWER_LENGTH, 0 }, elbow, lowerFacing, MODEL_SCALE, false, roll);
 	ArmDrawPiece(g_LowerModel[hand], elbow, lowerEnd, LOWER_LENGTH, MODEL_SCALE, color, roll);
 	const VEC3 wire = GrappleCalcModelPoint(ELBOW_WIRE_OFFSET, elbow, lowerFacing, MODEL_SCALE, mirror, roll);
-	const VEC3 hook = arm.State == GRAPPLE_IDLE
-		? GrappleCalcModelPoint(ELBOW_HOOK_OFFSET, elbow, lowerFacing, MODEL_SCALE, mirror, roll) : arm.Hook;
+	const VEC3 hook = arm.GetState() == GRAPPLE_IDLE
+		? GrappleCalcModelPoint(ELBOW_HOOK_OFFSET, elbow, lowerFacing, MODEL_SCALE, mirror, roll) : arm.GetHook();
 	// フックは前腕と同じ向き・ひねりで置く。
 	const VEC3 hookEnd = Vec3Add(hook, Vec3Scale(lowerDirection, HOOK_LENGTH * MODEL_SCALE));
 	ArmDrawPiece(g_HookModel[hand], hook, hookEnd, HOOK_LENGTH, MODEL_SCALE, color, roll);
@@ -164,7 +164,7 @@ static void DrawHand(int hand)
 
 static bool IsActiveHand(int hand)
 {
-	return g_Arms[hand].State != GRAPPLE_IDLE;
+	return g_Arms[hand].GetState() != GRAPPLE_IDLE;
 }
 
 static bool IsHoldingHand(int)

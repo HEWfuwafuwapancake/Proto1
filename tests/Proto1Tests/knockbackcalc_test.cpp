@@ -42,18 +42,16 @@ namespace Proto1Tests
 	{
 		const KNOCKBACK_PARAMS params = MakeKnockbackParams();
 		const STAGE stage = MakeKnockbackStage();
-		PLAYER_BODY body{};
-		body.OnGround = true;
+		PlayerBodyCalc body{};
+		body.SetOnGround(true);
 		const VEC3 v = KnockbackCalcVelocity({ 1.0f, 0.0f, 0.0f }, KnockbackCalcSpeed(percent, 1.0f, params), params);
-		body.VelocityX = v.X;
-		body.VelocityY = v.Y;
-		body.VelocityZ = v.Z;
-		body.OnGround = false;
+		body.SetVelocity({ v.X, v.Y, v.Z });
+		body.SetOnGround(false);
 		for (int i = 0; i < 600; i++) {
 			if (!KnockbackCalcStep(body, KB_DT, params, stage)) {
-				return body.X;
+				return body.GetX();
 			}
-			if (StageCalcIsOut(stage, body.Y)) {
+			if (StageCalcIsOut(stage, body.GetY())) {
 				return -1.0f;
 			}
 		}
@@ -106,32 +104,32 @@ namespace Proto1Tests
 		// 空中では、重力で下向きになり、空気の抵抗で横が遅くなる
 		TEST_METHOD(Step_AirGravityAndDrag)
 		{
-			PLAYER_BODY body{};
-			body.Y = 5.0f;
-			body.VelocityX = 10.0f;
+			PlayerBodyCalc body{};
+			body.SetPosition({ body.GetX(), 5.0f, body.GetZ() });
+			body.SetVelocity({ 10.0f, body.GetVelocityY(), body.GetVelocityZ() });
 			Assert::IsTrue(KnockbackCalcStep(body, KB_DT, MakeKnockbackParams(), MakeKnockbackStage()));
-			Assert::IsTrue(body.VelocityY < 0.0f);
-			Assert::IsTrue(body.VelocityX < 10.0f && body.VelocityX > 9.9f);
+			Assert::IsTrue(body.GetVelocityY() < 0.0f);
+			Assert::IsTrue(body.GetVelocityX() < 10.0f && body.GetVelocityX() > 9.9f);
 		}
 
 		// 浮島の上に落ちてきたら着地して、すべって止まる
 		TEST_METHOD(Step_LandSlideAndStop)
 		{
-			PLAYER_BODY body{};
-			body.Y = 1.0f;
-			body.VelocityX = 6.0f;
+			PlayerBodyCalc body{};
+			body.SetPosition({ body.GetX(), 1.0f, body.GetZ() });
+			body.SetVelocity({ 6.0f, body.GetVelocityY(), body.GetVelocityZ() });
 			const KNOCKBACK_PARAMS params = MakeKnockbackParams();
 			bool flying = true;
 			bool landed = false;
 			for (int i = 0; i < 300 && flying; i++) {
 				flying = KnockbackCalcStep(body, KB_DT, params, MakeKnockbackStage());
-				if (body.OnGround) landed = true;
+				if (body.GetOnGround()) landed = true;
 			}
 			Assert::IsTrue(landed);
 			Assert::IsFalse(flying);
-			Assert::AreEqual(0.0f, body.Y, KB_EPSILON);
-			Assert::AreEqual(0.0f, body.VelocityX, KB_EPSILON);
-			Assert::IsTrue(body.X > 0.0f && body.X < 15.0f);
+			Assert::AreEqual(0.0f, body.GetY(), KB_EPSILON);
+			Assert::AreEqual(0.0f, body.GetVelocityX(), KB_EPSILON);
+			Assert::IsTrue(body.GetX() > 0.0f && body.GetX() < 15.0f);
 		}
 
 		// % が低いと浮島の上で止まり、高いと場外まで飛ぶ（真ん中から +X へ）
@@ -149,16 +147,16 @@ namespace Proto1Tests
 		// すべっている途中で浮島の端から出たら、止まらずに落ちる
 		TEST_METHOD(Step_SlideOffEdgeFalls)
 		{
-			PLAYER_BODY body{};
-			body.X = 14.0f;
-			body.OnGround = true;
-			body.VelocityX = 10.0f;
+			PlayerBodyCalc body{};
+			body.SetPosition({ 14.0f, body.GetY(), body.GetZ() });
+			body.SetOnGround(true);
+			body.SetVelocity({ 10.0f, body.GetVelocityY(), body.GetVelocityZ() });
 			const KNOCKBACK_PARAMS params = MakeKnockbackParams();
 			for (int i = 0; i < 30; i++) {
 				Assert::IsTrue(KnockbackCalcStep(body, KB_DT, params, MakeKnockbackStage()));
 			}
-			Assert::IsFalse(body.OnGround);
-			Assert::IsTrue(body.Y < 0.0f);
+			Assert::IsFalse(body.GetOnGround());
+			Assert::IsTrue(body.GetY() < 0.0f);
 		}
 	};
 }

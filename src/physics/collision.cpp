@@ -149,27 +149,27 @@ HIT_RESULT CollisionSphereBox(const SPHERE& a, const BOX& b)
 }
 
 
-void HitRecordClear(HIT_RECORD& record)
+void HitRecord::Clear()
 {
-	record.Count = 0;
+	m_Count = 0;
 }
 
-bool HitRecordContains(const HIT_RECORD& record, int id)
+bool HitRecord::Contains(int id) const
 {
-	for (int i = 0; i < record.Count; i++) {
-		if (record.Ids[i] == id) {
+	for (int i = 0; i < m_Count; i++) {
+		if (m_Ids[i] == id) {
 			return true;
 		}
 	}
 	return false;
 }
 
-bool HitRecordTryAdd(HIT_RECORD& record, int id)
+bool HitRecord::TryAdd(int id)
 {
-	if (HitRecordContains(record, id) || record.Count >= HIT_RECORD_MAX) {
+	if (Contains(id) || m_Count >= HIT_RECORD_MAX) {
 		return false;
 	}
-	record.Ids[record.Count] = id;
-	record.Count++;
+	m_Ids[m_Count] = id;
+	m_Count++;
 	return true;
 }

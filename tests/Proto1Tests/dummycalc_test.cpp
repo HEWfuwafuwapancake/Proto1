@@ -27,50 +27,50 @@ namespace Proto1Tests
 		// 場外でなければ、何も起きない
 		TEST_METHOD(Life_StaysActive)
 		{
-			DUMMY_LIFE life;
-			DummyCalcResetLife(life);
-			Assert::AreEqual((int)DUMMY_EVENT_NONE, (int)DummyCalcUpdateLife(life, false, 2.0f, DUMMY_DT));
-			Assert::AreEqual((int)DUMMY_STATE_ACTIVE, (int)life.State);
-			Assert::AreEqual(0, life.OutCount);
+			DummyLifeCalc life;
+			life.Reset();
+			Assert::AreEqual((int)DUMMY_EVENT_NONE, (int)life.Update(false, 2.0f, DUMMY_DT));
+			Assert::AreEqual((int)DUMMY_STATE_ACTIVE, (int)life.GetState());
+			Assert::AreEqual(0, life.GetOutCount());
 		}
 
 		// 場外に落ちる → 2 秒待つ → 復活する。落ちた回数が 1 増える
 		TEST_METHOD(Life_OutWaitRespawn)
 		{
-			DUMMY_LIFE life;
-			DummyCalcResetLife(life);
-			Assert::AreEqual((int)DUMMY_EVENT_OUT, (int)DummyCalcUpdateLife(life, true, 2.0f, DUMMY_DT));
-			Assert::AreEqual((int)DUMMY_STATE_WAITING, (int)life.State);
-			Assert::AreEqual(1, life.OutCount);
+			DummyLifeCalc life;
+			life.Reset();
+			Assert::AreEqual((int)DUMMY_EVENT_OUT, (int)life.Update(true, 2.0f, DUMMY_DT));
+			Assert::AreEqual((int)DUMMY_STATE_WAITING, (int)life.GetState());
+			Assert::AreEqual(1, life.GetOutCount());
 
 			// 1.9 秒（114 フレーム）たっても、まだ待っている
 			for (int i = 0; i < 114; i++) {
-				Assert::AreEqual((int)DUMMY_EVENT_NONE, (int)DummyCalcUpdateLife(life, true, 2.0f, DUMMY_DT));
+				Assert::AreEqual((int)DUMMY_EVENT_NONE, (int)life.Update(true, 2.0f, DUMMY_DT));
 			}
-			Assert::AreEqual((int)DUMMY_STATE_WAITING, (int)life.State);
+			Assert::AreEqual((int)DUMMY_STATE_WAITING, (int)life.GetState());
 
 			// 2 秒をすぎたところで復活する
 			DUMMY_EVENT event = DUMMY_EVENT_NONE;
 			for (int i = 0; i < 10 && event == DUMMY_EVENT_NONE; i++) {
-				event = DummyCalcUpdateLife(life, true, 2.0f, DUMMY_DT);
+				event = life.Update(true, 2.0f, DUMMY_DT);
 			}
 			Assert::AreEqual((int)DUMMY_EVENT_RESPAWN, (int)event);
-			Assert::AreEqual((int)DUMMY_STATE_ACTIVE, (int)life.State);
-			Assert::AreEqual(1, life.OutCount);	// 待っている間は数えない
+			Assert::AreEqual((int)DUMMY_STATE_ACTIVE, (int)life.GetState());
+			Assert::AreEqual(1, life.GetOutCount());	// 待っている間は数えない
 		}
 
 		// 2回落ちると、落ちた回数は 2
 		TEST_METHOD(Life_CountsEachFall)
 		{
-			DUMMY_LIFE life;
-			DummyCalcResetLife(life);
+			DummyLifeCalc life;
+			life.Reset();
 			for (int fall = 0; fall < 2; fall++) {
-				DummyCalcUpdateLife(life, true, 0.5f, DUMMY_DT);
-				for (int i = 0; i < 60 && life.State == DUMMY_STATE_WAITING; i++) {
-					DummyCalcUpdateLife(life, false, 0.5f, DUMMY_DT);
+				life.Update(true, 0.5f, DUMMY_DT);
+				for (int i = 0; i < 60 && life.GetState() == DUMMY_STATE_WAITING; i++) {
+					life.Update(false, 0.5f, DUMMY_DT);
 				}
 			}
-			Assert::AreEqual(2, life.OutCount);
+			Assert::AreEqual(2, life.GetOutCount());
 		}
 
 		// ---- 体の形 ----
