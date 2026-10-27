@@ -1,10 +1,13 @@
 ﻿#include "game/arm.h"
 #include "game/player.h"
+#include "game/arm_grapple.h"
+#include "game/arm_drill.h"
 #include "game/tentacle.h"
 #include "input/action.h"
 #include "physics/armcalc.h"
 #include "physics/tentaclecalc.h"
 #include "render/model.h"
+#include <memory>
 
 #ifdef _DEBUG
 #include "core/debug_ostream.h"
@@ -21,30 +24,34 @@ static constexpr XMFLOAT4 LEFT_COLOR{ 0.8f, 0.3f, 0.65f, 1.0f };
 static constexpr XMFLOAT4 RIGHT_COLOR{ 0.35f, 0.8f, 0.6f, 1.0f };
 static constexpr XMFLOAT4 HOLD_COLOR{ 1.0f, 0.7f, 0.2f, 1.0f };
 
-static const ARM_FUNCTIONS TENTACLE_FUNCTIONS{
-	TentacleInitialize, TentacleFinalize, TentacleResetHand, TentacleUpdateHand,
-	TentacleDrawHand, TentacleIsActiveHand, TentacleIsHoldingHand
-};
+template<class T>
+static std::unique_ptr<Arm> CreateArm(int hand)
+{
+	return std::make_unique<T>(hand);
+}
 
-// 新しい腕は専用 .cpp で ARM_FUNCTIONS を定義し、この1行を &ARM_〇〇_FUNCTIONS にする。
+// 新しい腕は Arm を派生し、この1行を CreateArm<腕のクラス> にする。
 // nullptr の種類は読み込まず、数字キー・巡回のどちらでも選べない。
-static const ARM_FUNCTIONS* const ARM_TABLE[ARM_TYPE_COUNT] = {
-	&TENTACLE_FUNCTIONS, // 触腕
-	&ARM_GRAPPLE_FUNCTIONS, // グラップリング（No.36）
-	&ARM_DRILL_FUNCTIONS, // ドリル（No.37）
-	nullptr, // 磁石：&ARM_MAGNET_FUNCTIONS（No.38）
-	nullptr, // デカ盾：&ARM_SHIELD_FUNCTIONS（No.39）
-	nullptr, // ハサミ：&ARM_HASAMI_FUNCTIONS（No.40）
+using ArmFactory = std::unique_ptr<Arm> (*)(int hand);
+static const ArmFactory ARM_FACTORIES[ARM_TYPE_COUNT] = {
+	CreateArm<TentacleArm>, // 触腕
+	CreateArm<GrappleArm>, // グラップリング（No.36）
+	CreateArm<DrillArm>, // ドリル（No.37）
+	nullptr, // 磁石（No.38）
+	nullptr, // デカ盾（No.39）
+	nullptr, // ハサミ（No.40）
 };
 static const char* const ARM_NAMES[ARM_TYPE_COUNT] = {
 	"触腕", "グラップリング", "ドリル", "磁石", "デカ盾", "ハサミ"
 };
 static ARM_TYPE g_Types[2] = { ARM_TYPE_TENTACLE, ARM_TYPE_TENTACLE };
+// 左右それぞれ全種類を起動時に作る。装備切り替えでは作り直さない。
+static std::unique_ptr<Arm> g_Arms[2][ARM_TYPE_COUNT];
 
 static void ChangeType(int hand, int next)
 {
-	if (next < 0 || next >= ARM_TYPE_COUNT || ARM_TABLE[next] == nullptr || next == g_Types[hand]) return;
-	ARM_TABLE[g_Types[hand]]->ResetHand(hand);
+	if (next < 0 || next >= ARM_TYPE_COUNT || ARM_FACTORIES[next] == nullptr || next == g_Types[hand]) return;
+	g_Arms[hand][g_Types[hand]]->Reset();
 	g_Types[hand] = (ARM_TYPE)next;
 #ifdef _DEBUG
 	hal::dout << "腕：" << (hand == 0 ? "左" : "右") << " → " << ArmGetName(g_Types[hand]) << std::endl;
@@ -54,27 +61,32 @@ static void ChangeType(int hand, int next)
 void ArmInitialize(void)
 {
 	g_Types[0] = g_Types[1] = ARM_TYPE_TENTACLE;
-	for (const ARM_FUNCTIONS* functions : ARM_TABLE) {
-		if (functions != nullptr) functions->Initialize();
+	for (int type = 0; type < ARM_TYPE_COUNT; ++type) {
+		if (ARM_FACTORIES[type] == nullptr) continue;
+		for (int hand = 0; hand < 2; ++hand) g_Arms[hand][type] = ARM_FACTORIES[type](hand);
 	}
+	// 引き寄せは両手で同時に行わず、後から刺さった手へ所有権を渡す。
+	GrappleArm& left = static_cast<GrappleArm&>(*g_Arms[0][ARM_TYPE_GRAPPLE]);
+	GrappleArm& right = static_cast<GrappleArm&>(*g_Arms[1][ARM_TYPE_GRAPPLE]);
+	left.ConnectOtherArm(right);
 }
 
 void ArmFinalize(void)
 {
-	for (const ARM_FUNCTIONS* functions : ARM_TABLE) {
-		if (functions != nullptr) functions->Finalize();
+	for (int type = 0; type < ARM_TYPE_COUNT; ++type) {
+		for (int hand = 0; hand < 2; ++hand) g_Arms[hand][type].reset();
 	}
 }
 
 void ArmReset(void)
 {
-	for (int hand = 0; hand < 2; ++hand) ARM_TABLE[g_Types[hand]]->ResetHand(hand);
+	for (int hand = 0; hand < 2; ++hand) g_Arms[hand][g_Types[hand]]->Reset();
 }
 
 void ArmUpdate(bool playing)
 {
 	bool available[ARM_TYPE_COUNT];
-	for (int type = 0; type < ARM_TYPE_COUNT; ++type) available[type] = ARM_TABLE[type] != nullptr;
+	for (int type = 0; type < ARM_TYPE_COUNT; ++type) available[type] = ARM_FACTORIES[type] != nullptr;
 	const ACTION_EQUIP_KEY key = ActionGetEquipKey();
 	for (int hand = 0; hand < 2; ++hand) {
 		const ACTION prev = hand == 0 ? ACTION_EQUIP_LEFT_PREV : ACTION_EQUIP_RIGHT_PREV;
@@ -86,19 +98,19 @@ void ArmUpdate(bool playing)
 	}
 	if (!playing) return;
 	for (int hand = 0; hand < 2; ++hand) {
-		ARM_TABLE[g_Types[hand]]->UpdateHand(hand, ActionIsTrigger(hand == 0 ? ACTION_ARM_LEFT : ACTION_ARM_RIGHT));
+		g_Arms[hand][g_Types[hand]]->Update(ActionIsTrigger(hand == 0 ? ACTION_ARM_LEFT : ACTION_ARM_RIGHT));
 	}
 }
 
 void ArmDraw(void)
 {
-	for (int hand = 0; hand < 2; ++hand) ARM_TABLE[g_Types[hand]]->DrawHand(hand);
+	for (int hand = 0; hand < 2; ++hand) g_Arms[hand][g_Types[hand]]->Draw();
 }
 
 bool ArmIsActive(void)
 {
 	for (int hand = 0; hand < 2; ++hand) {
-		if (ARM_TABLE[g_Types[hand]]->IsActiveHand(hand)) return true;
+		if (g_Arms[hand][g_Types[hand]]->IsActive()) return true;
 	}
 	return false;
 }
@@ -106,7 +118,7 @@ bool ArmIsActive(void)
 bool ArmIsHolding(void)
 {
 	for (int hand = 0; hand < 2; ++hand) {
-		if (ARM_TABLE[g_Types[hand]]->IsHoldingHand(hand)) return true;
+		if (g_Arms[hand][g_Types[hand]]->IsHolding()) return true;
 	}
 	return false;
 }

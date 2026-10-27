@@ -40,12 +40,6 @@ static constexpr float WIGGLE_ARM_PHASE = 1.6f;
 static constexpr float WIGGLE_FULL_LENGTH = 3.0f;
 static constexpr float WIGGLE_HOLD_SCALE = 0.3f;
 
-static TentacleCalc g_Arms[2];
-// モデル番号（[0]：左手、[1]：右手（左手用のモデルを鏡写しにしたもの））
-static int g_BaseModel[2] = { -1, -1 };
-static int g_SegmentModel[2] = { -1, -1 };
-static int g_TipModel[2] = { -1, -1 };
-
 static VEC3 HoldPosition(float side, float forward, float height)
 {
 	const XMFLOAT3 p = PlayerGetPosition();
@@ -54,34 +48,33 @@ static VEC3 HoldPosition(float side, float forward, float height)
 		p.z - sinf(yaw) * side + cosf(yaw) * forward };
 }
 
-void TentacleInitialize(void)
+TentacleArm::TentacleArm(int hand) : Arm(hand)
 {
 	// ゲームの中ではモデルのままが左手に合うので、右手は X を鏡写しにして読む
-	for (int hand = 0; hand < 2; ++hand) {
-		g_BaseModel[hand] = ArmLoadModel("assets/models/tentacle_base.obj", hand);
-		g_SegmentModel[hand] = ArmLoadModel("assets/models/tentacle_segment.obj", hand);
-		g_TipModel[hand] = ArmLoadModel("assets/models/tentacle_tip.obj", hand);
-	}
-	for (TentacleCalc& arm : g_Arms) arm.Reset();
+	m_BaseModel = ArmLoadModel("assets/models/tentacle_base.obj", hand);
+	m_SegmentModel = ArmLoadModel("assets/models/tentacle_segment.obj", hand);
+	m_TipModel = ArmLoadModel("assets/models/tentacle_tip.obj", hand);
+	m_Arm.Reset();
 }
 
-void TentacleResetHand(int hand)
+void TentacleArm::Reset()
 {
-	TentacleCalc& arm = g_Arms[hand];
+	TentacleCalc& arm = m_Arm;
 	DummyRelease(arm.GetTarget(), false, {}, 0.0f, 0.0f);
 	arm.Reset();
 }
 
-void TentacleFinalize(void)
+TentacleArm::~TentacleArm()
 {
-	for (int hand = 0; hand < 2; ++hand) TentacleResetHand(hand);
+	Reset();
 }
 
-void TentacleUpdateHand(int hand, bool trigger)
+void TentacleArm::Update(bool trigger)
 {
+	const int hand = GetHand();
 	const float yaw = CameraGetYaw();
 	const VEC3 cameraForward{ sinf(yaw), 0.0f, cosf(yaw) };
-	TentacleCalc& arm = g_Arms[hand];
+	TentacleCalc& arm = m_Arm;
 	// 左腕がつかんだ状態を右腕へ反映するため、候補は各腕の直前に取得する。
 	TENTACLE_TARGET targets[DUMMY_COUNT];
 	for (int i = 0; i < DUMMY_COUNT; ++i) targets[i] = DummyGetTarget(i);
@@ -118,9 +111,10 @@ void TentacleUpdateHand(int hand, bool trigger)
 	}
 }
 
-void TentacleDrawHand(int hand)
+void TentacleArm::Draw()
 {
-	const TentacleCalc& arm = g_Arms[hand];
+	const int hand = GetHand();
+	const TentacleCalc& arm = m_Arm;
 	const VEC3 origin = ArmGetShoulder(hand);
 	VEC3 tip = arm.GetState() == TENTACLE_IDLE ? origin : arm.GetTip();
 	if (arm.GetState() != TENTACLE_HOLDING) {
@@ -135,7 +129,7 @@ void TentacleDrawHand(int hand)
 	const VEC3 delta = Vec3Sub(tip, origin);
 	const int steps = (int)ceilf(Vec3Length(delta) / SPHERE_SPACING) + 1;
 	const XMFLOAT4 color = ArmGetColor(hand, arm.GetTarget() >= 0);
-	if (g_BaseModel[hand] >= 0 && g_SegmentModel[hand] >= 0 && g_TipModel[hand] >= 0) {
+	if (m_BaseModel >= 0 && m_SegmentModel >= 0 && m_TipModel >= 0) {
 		const float length = Vec3Length(delta);
 		const float remaining = length / MODEL_SCALE - BASE_LENGTH - TIP_LENGTH;
 		const int segments = remaining > 0.0f ? (int)floorf(remaining / SEGMENT_LENGTH + 0.5f) : 0;
@@ -158,7 +152,7 @@ void TentacleDrawHand(int hand)
 			distance += sourceLength;
 			const VEC3 end = TentacleCalcWigglePoint(origin, drawTip, last ? 1.0f : distance / total,
 				phase, amplitude, WIGGLE_WAVES);
-			ArmDrawPiece(base ? g_BaseModel[hand] : (last ? g_TipModel[hand] : g_SegmentModel[hand]),
+			ArmDrawPiece(base ? m_BaseModel : (last ? m_TipModel : m_SegmentModel),
 				start, end, sourceLength, MODEL_SCALE, color);
 			start = end;
 		}
@@ -170,12 +164,12 @@ void TentacleDrawHand(int hand)
 	}
 }
 
-bool TentacleIsHoldingHand(int hand)
+bool TentacleArm::IsHolding() const
 {
-	return g_Arms[hand].GetState() == TENTACLE_HOLDING;
+	return m_Arm.GetState() == TENTACLE_HOLDING;
 }
 
-bool TentacleIsActiveHand(int hand)
+bool TentacleArm::IsActive() const
 {
-	return g_Arms[hand].GetState() != TENTACLE_IDLE;
+	return m_Arm.GetState() != TENTACLE_IDLE;
 }

@@ -1,5 +1,6 @@
 ﻿#include "game/arm.h"
 #include "game/camera.h"
+#include "game/arm_drill.h"
 #include "game/dummy.h"
 #include "game/player.h"
 #include "core/gametime.h"
@@ -38,41 +39,34 @@ static constexpr float PUSH_RUMBLE_SMALL = 0.6f;
 static constexpr float PUSH_RUMBLE_LARGE = 0.6f;
 static constexpr float PUSH_RUMBLE_SECONDS = 0.15f;
 
-static DrillCalc g_Arms[2];
-static float g_Straighten[2] = {}; // 描画だけのまっすぐ度（0：待機、1：水平の突き）。
-static float g_Spin[2] = {};
-static int g_BaseModel[2] = { -1, -1 };
-static int g_BitModel[2] = { -1, -1 };
-
-static void ResetHand(int hand)
+void DrillArm::Reset()
 {
-	g_Arms[hand].Reset();
-	g_Straighten[hand] = 0.0f;
-	g_Spin[hand] = 0.0f;
+	m_Arm.Reset();
+	m_Straighten = 0.0f;
+	m_Spin = 0.0f;
 }
 
-static void Initialize(void)
+DrillArm::DrillArm(int hand) : Arm(hand)
 {
-	for (int hand = 0; hand < 2; ++hand) {
-		ResetHand(hand);
-		g_BaseModel[hand] = ArmLoadModel("assets/models/arm_drill_base.obj", hand);
-		g_BitModel[hand] = ArmLoadModel("assets/models/arm_drill_bit.obj", hand);
-	}
+	Reset();
+	m_BaseModel = ArmLoadModel("assets/models/arm_drill_base.obj", hand);
+	m_BitModel = ArmLoadModel("assets/models/arm_drill_bit.obj", hand);
 }
 
-static void Finalize(void)
+DrillArm::~DrillArm()
 {
-	for (int hand = 0; hand < 2; ++hand) ResetHand(hand);
+	Reset();
 }
 
-static bool IsThrusting(int hand)
+bool DrillArm::IsThrusting() const
 {
-	return g_Arms[hand].GetState() == DRILL_STRIKING || g_Arms[hand].GetState() == DRILL_BORING;
+	return m_Arm.GetState() == DRILL_STRIKING || m_Arm.GetState() == DRILL_BORING;
 }
 
-static void UpdateHand(int hand, bool trigger)
+void DrillArm::Update(bool trigger)
 {
-	DrillCalc& arm = g_Arms[hand];
+	const int hand = GetHand();
+	DrillCalc& arm = m_Arm;
 	const VEC3 origin = ArmGetShoulder(hand);
 	const float yaw = CameraGetYaw();
 	const VEC3 forward{ sinf(yaw), 0.0f, cosf(yaw) };
@@ -95,39 +89,36 @@ static void UpdateHand(int hand, bool trigger)
 		PadRumble(PUSH_RUMBLE_SMALL, PUSH_RUMBLE_LARGE, PUSH_RUMBLE_SECONDS);
 	}
 	const float step = dt / DRILL_AIM_SECONDS;
-	g_Straighten[hand] = IsThrusting(hand)
-		? fminf(1.0f, g_Straighten[hand] + step)
-		: fmaxf(0.0f, g_Straighten[hand] - step);
-	if (IsThrusting(hand)) g_Spin[hand] = fmodf(g_Spin[hand] + SPIN_SPEED * dt, XM_2PI);
+	m_Straighten = IsThrusting()
+		? fminf(1.0f, m_Straighten + step)
+		: fmaxf(0.0f, m_Straighten - step);
+	if (IsThrusting()) m_Spin = fmodf(m_Spin + SPIN_SPEED * dt, XM_2PI);
 }
 
-static void DrawHand(int hand)
+void DrillArm::Draw()
 {
-	const DrillCalc& arm = g_Arms[hand];
+	const int hand = GetHand();
+	const DrillCalc& arm = m_Arm;
 	const VEC3 origin = ArmGetShoulder(hand);
 	const VEC3 direction = ArmCalcBlendDirection(
 		ArmGetRestDirection(hand),
-		DrillCalcThrustArmDirection(arm.GetDirection(), PARAMS.Grip), g_Straighten[hand]);
+		DrillCalcThrustArmDirection(arm.GetDirection(), PARAMS.Grip), m_Straighten);
 	const XMFLOAT4 color = ArmGetColor(hand, arm.GetState() == DRILL_BORING);
 	// 付け根もビットも、常に同じ長さ・倍率で描く。間の円柱や伸縮はない。
 	const VEC3 end = Vec3Add(origin, Vec3Scale(direction, BASE_LENGTH * MODEL_SCALE));
-	ArmDrawPiece(g_BaseModel[hand], origin, end, BASE_LENGTH, MODEL_SCALE, color, XM_PI);
+	ArmDrawPiece(m_BaseModel, origin, end, BASE_LENGTH, MODEL_SCALE, color, XM_PI);
 	const DRILL_AXIS axis = DrillCalcAxis(origin, direction, PARAMS.Grip, hand == 1);
 	const VEC3 tip = Vec3Add(axis.Rear, Vec3Scale(axis.Direction, BIT_LENGTH * MODEL_SCALE));
-	ArmDrawPiece(g_BitModel[hand], axis.Rear, tip, BIT_LENGTH, MODEL_SCALE, color, g_Spin[hand]);
+	ArmDrawPiece(m_BitModel, axis.Rear, tip, BIT_LENGTH, MODEL_SCALE, color, m_Spin);
 }
 
-static bool IsActiveHand(int hand)
+bool DrillArm::IsActive() const
 {
-	return g_Arms[hand].GetState() != DRILL_IDLE;
+	return m_Arm.GetState() != DRILL_IDLE;
 }
 
-static bool IsHoldingHand(int)
+bool DrillArm::IsHolding() const
 {
 	// くい込み中も敵をつかまない。カメラはロックオンを続ける。
 	return false;
 }
-
-const ARM_FUNCTIONS ARM_DRILL_FUNCTIONS{
-	Initialize, Finalize, ResetHand, UpdateHand, DrawHand, IsActiveHand, IsHoldingHand
-};

@@ -263,6 +263,12 @@
     <ClInclude Include="src\game\arm.h">
       <Filter>src\game</Filter>
     </ClInclude>
+    <ClInclude Include="src\game\arm_grapple.h">
+      <Filter>src\game</Filter>
+    </ClInclude>
+    <ClInclude Include="src\game\arm_drill.h">
+      <Filter>src\game</Filter>
+    </ClInclude>
     <ClInclude Include="src\physics\armcalc.h">
       <Filter>src\physics</Filter>
     </ClInclude>

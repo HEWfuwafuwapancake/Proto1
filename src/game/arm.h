@@ -18,29 +18,32 @@ enum ARM_TYPE
 	ARM_TYPE_COUNT ///< 腕の種類の数（装備ではない）
 };
 
-/// @brief 腕1種類の処理。手は左 0・右 1。登録する腕は全メンバーを設定する
-struct ARM_FUNCTIONS
+/// @brief 片手の腕の基本クラス。左 0・右 1 を1インスタンスずつ受け持つ
+class Arm
 {
-	void (*Initialize)(void); ///< 起動時に1回呼ぶ（左右の状態・モデルの初期化）
-	void (*Finalize)(void); ///< 終了時に1回呼ぶ（保持している敵も離す）
-	void (*ResetHand)(int hand); ///< 片手を待機に戻す（敵はダメージなしで離す）
-	void (*UpdateHand)(int hand, bool trigger); ///< 片手を更新（trigger は true：押した瞬間、false：それ以外）
-	void (*DrawHand)(int hand); ///< 片手を描画する
-	bool (*IsActiveHand)(int hand); ///< 片手が効いているか（待機以外なら true）
-	bool (*IsHoldingHand)(int hand); ///< 片手が敵をつかんでいるか（保持中なら true）
-};
+public:
+	/// @brief 派生クラスの終了処理も呼んで腕を破棄する
+	virtual ~Arm() = default;
+	/// @brief カメラ更新後に片手の腕を更新する
+	/// @param trigger 入力を設定する（true：押した瞬間、false：それ以外）
+	virtual void Update(bool trigger) = 0;
+	/// @brief 片手の腕を描画する
+	virtual void Draw() = 0;
+	/// @brief 待機に戻す（保持している敵はダメージなしで離す）
+	virtual void Reset() = 0;
+	/// @brief 待機以外なら true を返す
+	virtual bool IsActive() const = 0;
+	/// @brief 敵をつかんでいる間だけ true を返す
+	virtual bool IsHolding() const = 0;
+	/// @brief 受け持つ手（左 0・右 1）を取得する
+	int GetHand() const { return m_Hand; }
 
-// 各腕の .cpp が定義する登録用の表。未実装の間は参照せず、arm.cpp の登録を nullptr にする。
-/// @brief グラップリングの処理の表（No.36 で定義する）
-extern const ARM_FUNCTIONS ARM_GRAPPLE_FUNCTIONS;
-/// @brief ドリルの処理の表（No.37 で定義する）
-extern const ARM_FUNCTIONS ARM_DRILL_FUNCTIONS;
-/// @brief 磁石の処理の表（No.38 で定義する）
-extern const ARM_FUNCTIONS ARM_MAGNET_FUNCTIONS;
-/// @brief デカ盾の処理の表（No.39 で定義する）
-extern const ARM_FUNCTIONS ARM_SHIELD_FUNCTIONS;
-/// @brief ハサミの処理の表（No.40 で定義する）
-extern const ARM_FUNCTIONS ARM_HASAMI_FUNCTIONS;
+protected:
+	explicit Arm(int hand) : m_Hand(hand) {}
+
+private:
+	int m_Hand;
+};
 
 /// @brief 腕の処理を初期化し、左右とも触腕を装備する（ダミー初期化後）
 void ArmInitialize(void);
