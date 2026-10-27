@@ -93,6 +93,8 @@
     <ClCompile Include="grapplecalc_test.cpp" />
     <ClCompile Include="drillcalc_test.cpp" />
     <ClCompile Include="magnetcalc_test.cpp" />
+    <ClCompile Include="shieldcalc_test.cpp" />
+    <ClCompile Include="..\..\src\physics\shieldcalc.cpp" />
     <ClCompile Include="..\..\src\physics\magnetcalc.cpp" />
     <ClCompile Include="..\..\src\physics\drillcalc.cpp" />
     <ClCompile Include="..\..\src\physics\grapplecalc.cpp" />

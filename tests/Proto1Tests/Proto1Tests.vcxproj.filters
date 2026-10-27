@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="src">
+      <UniqueIdentifier>{6AB8FF66-9564-5941-8032-89F93F5B1616}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\physics">
+      <UniqueIdentifier>{3F6C2B8E-7D41-5A9C-B2E5-8C1D4F7A6E30}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="shieldcalc_test.cpp" />
+    <ClCompile Include="..\..\src\physics\shieldcalc.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

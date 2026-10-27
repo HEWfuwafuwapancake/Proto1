@@ -47,6 +47,8 @@ public:
 	virtual bool IsActive() const = 0;
 	/// @brief 敵をつかんでいる間だけ true を返す
 	virtual bool IsHolding() const = 0;
+	/// @brief 歩く速さの倍率を取得する（基本は 1.0、派生クラスで変更できる）
+	virtual float GetMoveScale() const { return 1.0f; }
 	/// @brief 受け持つ手（左 0・右 1）を取得する
 	int GetHand() const { return m_Hand; }
 
@@ -99,6 +101,8 @@ public:
 	bool IsActive(void) const;
 	/// @brief どちらかの腕が敵をつかんでいるか（保持中なら true）
 	bool IsHolding(void) const;
+	/// @brief 左右の装備している腕の、歩く速さの倍率の小さいほうを取得する
+	float GetMoveScale() const;
 	/// @brief 片手の装備を取得する
 	/// @param hand 左 0・右 1
 	/// @return 装備している種類。手が範囲外なら ARM_TYPE_COUNT
