@@ -4,83 +4,22 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）。
 決まったことは [decisions.md](decisions.md)、腕のモデルの原点と長さは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、終わったタスクの記録は [archive/](archive/)（普段は読まない）。
 
-- 最終更新：2026-10-27（Claude。Shota の共有 Proto1。No.45 は Codex がまだ push していない。No.44 段階 C のプランとプロンプトを詳しくした（管理者確認済み）。次は No.45 → No.44 段階 C）
+- 最終更新：2026-10-27（Claude。Shota の共有 Proto1。No.45 を確認してマージ。次は No.44 段階 C）
 
 ---
 
 ## 1. 今の状態
 
+- **No.45 は完了**（いらないテスト 73 件を削除。テストは 186 件。Debug / Release 警告 0・全部通る）。
 - **No.44 段階 A・B はマージ済み**。腕は基本クラス `Arm` と派生クラス `TentacleArm`・`GrappleArm`・`DrillArm`（片手1インスタンス）。`arm.cpp` は腕の種類 → 生成関数の表と、左右全種類のインスタンスを持つ。グラップリングの左右の所有権は `ConnectOtherArm`・`m_Pulling`。
 - 段階 B の確認：Debug / Release 警告 0、テスト 259 件（Debug / Release）。画面で触腕のつかむ・投げる（+12%）、グラップリングで飛ぶ（+5%）、ドリル（+20% で押し出し）、左右グラップリング、切り替え・やり直しのあと歩けることを確認。時間切れ（90 秒）は待っていない（やり直しと同じ `ArmReset`）。
 - 段階 D で直す古い説明：`docs/dev/01_DX11基盤の構成.md` の `ARM_FUNCTIONS`・`TentacleInitialize`・`TentacleUpdateHand`。
 - **管理者が遊んで決めること**：全種類の構え（共通の `SHOULDER_FORWARD`・`ARM_REST_SPREAD`・`ARM_REST_PITCH`、触腕の `IDLE_LENGTH`）が普段の画面で分かるか／グラップリング・ドリルの取付位置と強さ（各 `arm_〇〇.cpp` の「調整用の値」。No.19 の一覧に入れる）／実物のパッドで十字キー ← →・□ ○ の腕の切り替え。
 - マウス操作は止めてある（[decisions.md](decisions.md) の最初の項目）。
 
-## 2. 次にやること：No.45（テストを減らす）→ No.44 段階 C
+## 2. 次にやること：No.44 段階 C（ゲームの部品と Game クラス）
 
-- **直近は No.45**：管理者が下の「No.45 を Codex に頼むプロンプト」を Codex に貼る。Codex の保存のあと「No.45 を Claude が確かめるときのプロンプト」を Claude に貼る。マージしたら No.44 段階 C へ。
-- **そのあと No.44 段階 C**：No.45 のマージのあと、管理者が「No.44 段階 C を Codex に頼むプロンプト」を Codex に貼る（段階 C のプランは管理者確認済み）。Codex の保存のあと「No.44 段階 C を Claude が確かめるときのプロンプト」を Claude に貼る。
-
-### No.45 のプラン：いらないテストを消す（管理者確認済み、2026-10-27。「中くらい」に減らす）
-
-- **ねらい**：259 件のテストのうち、端っこ・おかしな入力だけを見るテストと、同じことを何度も確かめているテストを消し、テストを読む・直す手間を減らす。**ゲームのコード（`src/`）は変えない**。
-- **消すテスト（73 件 → 残り 186 件）**。ここにないテストは消さない。消したテストだけが使っていた補助の関数・定数も消す。
-  - `actioncalc_test.cpp`（4）：`MoveFromKeys_NoKeysIsZero`・`ClampLength_KeepsShortAxis`・`CombineAxis_ZeroUsesOther`・`EquipKey_ModeKeyAndNumberSameFrame`
-  - `armcalc_test.cpp`（12）：`Rest_ZeroSpreadKeepsPreviousPitchDirection`・`Pitch_ZeroKeepsHorizontalForward`・`Pitch_NormalizesHorizontalForward`・`Pitch_IgnoresForwardHeight`・`Pitch_NoHorizontalForwardUsesPositiveZ`・`Blend_ClampsRatioAndNeverReturnsZeroForZeroInputs`・`Roll_PreservesUnitLengthsAndOrthogonality`・`Cycle_SkipsUnavailableAtBothEnds`・`Cycle_OnlyCurrentAvailableDoesNotChange`・`Cycle_NoAvailableReturnsMinusOne`・`Select_OutOfRangeReturnsMinusOne`・`InvalidArgumentsReturnMinusOne`
-  - `cameracalc_test.cpp`（6）：`Clip_TargetInsideKeepsCamera`・`SmoothDamp_ZeroDtKeepsValueAndVelocity`・`SmoothDampAngle_ChangingGoalCarriesAngularVelocity`・`Focus_WrapsAngleAndIgnoresCoincidentTarget`・`NextTarget_CrossesPiInBothDirections`・`NextTarget_InvalidOrUnavailableCurrentReturnsNone`
-  - `collision_test.cpp`（4）：`ClosestPointOnSegment_ZeroLength`・`ClosestPointsOfSegments_EndToEnd`・`SphereSphere_SameCenterPushesUp`・`HitRecord_FullRejects`
-  - `drillcalc_test.cpp`（5）：`Reset_ClearsTargetTimeAndTicks`・`Strike_CapsuleRadiiAlsoCountAtTip`・`Strike_UnavailableEnemyDoesNotHit`・`RepeatedTriggersDoNotRestartActiveStatesOrChangeDirection`・`ZeroOrNegativeTime_DoesNotStartOrAdvance`
-  - `dummycalc_test.cpp`（1）：`Push_ApartDoesNothing`
-  - `gametime_test.cpp`（2）：`NegativeScale_BecomesZero`・`Initialize_ResetsElapsedAndScale`
-  - `glyphcalc_test.cpp`（4）：`SplitDigits_NegativeAndOverflow`・`SegmentRect_Positions`・`NumberRects_MaxRects`・`TextRects_CountMatchesDots`
-  - `grapplecalc_test.cpp`（2）：`ModelPoint_ZeroRollUsesHorizontalXForwardMinusYAndDownMinusZ`・`ModelPoint_StraightElbowMatchesFormerBaseForBothHands`
-  - `mathutil_test.cpp`（3）：`Saturate_KeepsValueInRange`・`SmoothStep01_SlowNearEnds`・`Lerp_WorksWhenBIsSmaller`
-  - `padcalc_test.cpp`（12）：`StickValue_EndsAndCenter`・`DeadZone_InsideIsZero`・`Parse_SticksUpIsPlus`・`Parse_OtherButtons`・`Parse_DpadNeutralAndReservedValues`・`Output_EndpointsAndRounding`・`Output_UsesGivenLength`・`Output_RejectsInvalidBuffer`・`Rumble_StrengthAndTimeAreIndependent`・`Rumble_ZeroAndNegativeDeltaDoNotAdvance`・`Rumble_NonPositiveDurationStops`・`Rumble_DiscardsExpiredStrength`
-  - `playercalc_test.cpp`（5）：`Facing_CrossesPiByShortestPathInBothDirections`・`Facing_ZeroDtKeepsWalkingYawButAppliesArmYaw`・`Facing_TargetKeepsTurnLimitAndZeroDt`・`Facing_TargetCrossesPiByShortestPath`・`Step_StandingStill`
-  - `stagecalc_test.cpp`（1）：`OnPlatform_CornerOutside`
-  - `tentaclecalc_test.cpp`（9）：`Wiggle_VerticalAndZeroLength`・`Aim_TargetDirectlyAboveBelowOrAtShoulderUsesFallback`・`Aim_NearlyZeroHorizontalDistanceUsesFallback`・`Aim_FallbackIsHorizontalAndNormalized`・`Aim_DegenerateFallbackUsesPositiveZ`・`Aim_EachShoulderPointsToSameTarget`・`ExtendRatio_ZeroWhenNotExtending`・`ExtendRatio_ClampsToOne`・`TimeStopped_DoesNotExtendOrThrow`
-  - `timer_test.cpp`（3）：`Update_ZeroDtDoesNotChange`・`Start_NegativeSecondsFinishesImmediately`・`ZeroInitialized_IsFinished`
-  - `knockbackcalc`・`matchcalc`・`objcalc` は消さない（`objcalc` の `AssetModels_AllObjFilesParse`・`BrokenLines_FailAndClearOutput` など、前に不具合を見つけたテストは残す）。
-- **確認**：Debug / Release 警告 0、`run-tests.ps1`（Debug / Release）が全部通り、件数が 186。わざと壊す確認・画面は要らない（計算は変えない）。
-
-### No.45 を Codex に頼むプロンプト
-
-```text
-Proto1 の No.45「いらないテストを消す」を実装してください。プランは docs/handoff.md の「No.45 のプラン：いらないテストを消す（管理者確認済み）」です。プランにないことはしません。
-
-## 始める前に
-- CLAUDE.md・AGENTS.md・docs/handoff.md・docs/tasks.md と Notion の開発ログ（テスト・文字コード・C++ の行）を読み、Claude が作業中でないことを確かめる（git status）。
-- .\tools\start-work.ps1 test-trim
-- docs/tasks.md の No.45 を 🔄 にする（Notion を書き換えられなければ、最後に「No.45 を進行中に」と管理者に伝える）。
-
-## いちばん大事なこと
-- 消すのはプランの一覧にある 73 件の TEST_METHOD だけ。一覧にないテストは消さない・書き換えない。src/ は触らない。
-- 消したテストだけが使っていた補助の関数・定数・#include も消す（ほかのテストが使っているものは残す）。
-
-## やること
-1. tests/Proto1Tests/ の各ファイルから、一覧のテストを消す。テストのファイルは BOM付きUTF-8・CRLF のまま（BOM のある先頭行はパッチの一致条件にしない）。
-2. 消したあと、各ファイルの TEST_METHOD の数を数え、合計が 186 になることを確かめる。
-3. テストのプロジェクトの Debug ビルドが通ることだけ確かめ、.\tools\save-work.ps1 "No.45 いらないテストを消す" で保存する。docs/handoff.md の「今の状態」に「No.45 は Codex が実装。Claude の確認待ち」と、迷ったことを短く書く。
-
-## やらないこと
-- run-tests.ps1・Release のビルド・PR・マージ（Claude がやる）。
-- テストの書き換え・まとめ直し・新しいテスト。src/ の変更。
-
-## 報告すること（短く）
-- 変えたファイルと、ファイルごとの消した数
-- プランと違うことをしたところ、迷ったところ
-```
-
-### No.45 を Claude が確かめるときのプロンプト（モデル：Sonnet でよい。Codex の保存のあと、管理者が Claude Code の新しいセッションに貼る）
-
-```text
-Proto1 の No.45（いらないテストを消す）を Codex が feature/test-trim に push しました。Claude の担当分（確かめる → PR → マージ）をやってください。
-- CLAUDE.md の手順どおり handoff.md・tasks.md と Notion の開発ログを読み、Codex が作業中でないことを確かめてから .\tools\start-work.ps1 test-trim。
-- 差分を読み、消えたのがプランの 73 件の TEST_METHOD とその補助だけで、src/ と残りのテストが変わっていないことを確かめる。
-- Debug / Release 警告 0、.\tools\run-tests.ps1 と .\tools\run-tests.ps1 -Release が全部通り、件数が 186。画面・わざと壊す確認は要らない。
-- 直すところはこのブランチに直接コミットしてよい。tasks.md の No.45 を ✅、Notion の No.45 を「完了」にして PR のリンクを入れ、PR を出してマージする（テストが通っていれば聞かずにマージしてよい）。
-- 終わったら handoff.md の「次にやること」を No.44 段階 C にし、No.45 のプランとプロンプトを消す。
-```
+- 管理者が下の「No.44 段階 C を Codex に頼むプロンプト」を Codex に貼る（段階 C のプランは管理者確認済み。No.45 はマージ済み）。Codex の保存のあと「No.44 段階 C を Claude が確かめるときのプロンプト」を Claude に貼る。
 
 - 順番（管理者が決めた、2026-10-27）：**No.44 を No.38 より先にやる**。段階 A → B → C → D を1つずつ「実装 → Claude の確認 → PR → マージ」で進める（1段階＝1ブランチ＝1 PR）。
 - 段階 A・B はマージ済み。残りは段階 C（Codex が実装）と段階 D（Claude が書く）。

@@ -254,15 +254,6 @@ namespace Proto1Tests
 			Assert::IsTrue(e.OnStage);
 		}
 
-		TEST_METHOD(ModelPoint_ZeroRollUsesHorizontalXForwardMinusYAndDownMinusZ)
-		{
-			const VEC3 start{ 1, 2, 3 }, end{ 1, 2, 4 };
-			AssertPoint({ 3, 2, 3 }, GrappleCalcModelPoint({ 1, 0, 0 }, start, end, 2, false, 0));
-			AssertPoint({ 1, 2, 5 }, GrappleCalcModelPoint({ 0, -1, 0 }, start, end, 2, false, 0));
-			AssertPoint({ 1, 0, 3 }, GrappleCalcModelPoint({ 0, 0, -1 }, start, end, 2, false, 0));
-			AssertPoint({ -1, 2, 3 }, GrappleCalcModelPoint({ 1, 0, 0 }, start, end, 2, true, 0));
-		}
-
 		TEST_METHOD(ModelPoint_RollMovesBothShoulderBoxesDown)
 		{
 			AssertPoint({ 0, 1, 0 }, GrappleCalcModelPoint({ 1, 0, 0 }, {}, { 0, 0, 1 }, 1, false, HALF_PI));
@@ -270,29 +261,6 @@ namespace Proto1Tests
 			// 箱は元モデルの -X 側。左右の鏡写しと逆向きのひねりで、両方とも下。
 			AssertPoint({ 0, -1, 0 }, GrappleCalcModelPoint({ -1, 0, 0 }, {}, { 0, 0, 1 }, 1, false, HALF_PI));
 			AssertPoint({ 0, -1, 0 }, GrappleCalcModelPoint({ -1, 0, 0 }, {}, { 0, 0, 1 }, 1, true, -HALF_PI));
-		}
-
-		TEST_METHOD(ModelPoint_StraightElbowMatchesFormerBaseForBothHands)
-		{
-			const VEC3 shoulder{ 2, 3, -4 };
-			const VEC3 directions[] = { { 0, 0, 1 }, { 1, 0, 0 }, { 0, 0.6f, -0.8f } };
-			for (const VEC3& direction : directions) {
-				for (int hand = 0; hand < 2; ++hand) {
-					const bool mirror = hand == 0;
-					const float roll = mirror ? -HALF_PI : HALF_PI;
-					const VEC3 facing = Vec3Add(shoulder, direction);
-					const VEC3 elbow = GrappleCalcModelPoint({ -1.614f, -10.900f, 0.241f },
-						shoulder, facing, 0.08f, mirror, roll);
-					const VEC3 lowerFacing = Vec3Add(elbow, direction);
-					AssertPoint(GrappleCalcModelPoint({ -1.614f, -22.720f, 0.241f }, shoulder, facing, 0.08f, mirror, roll),
-						GrappleCalcModelPoint({ 0, -11.820f, 0 }, elbow, lowerFacing, 0.08f, mirror, roll));
-					AssertPoint(GrappleCalcModelPoint({ -1.614f, -25.122f, 0.241f }, shoulder, facing, 0.08f, mirror, roll),
-						GrappleCalcModelPoint({ 0, -14.222f, 0 }, elbow, lowerFacing, 0.08f, mirror, roll));
-					if (direction.Z == 1.0f) {
-						AssertPoint({ 2.0f + (mirror ? 0.01928f : -0.01928f), 2.87088f, -3.128f }, elbow);
-					}
-				}
-			}
 		}
 
 		TEST_METHOD(ModelPoint_BendingForearmRaisesHookForBothHands)

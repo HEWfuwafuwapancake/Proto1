@@ -78,23 +78,6 @@ namespace Proto1Tests
 			Assert::AreEqual(0.0f, PlayerCalcFacing(0.05f, 0, 1, 1, false, 0.2f, 0.5f), PLAYER_EPSILON);
 		}
 
-		TEST_METHOD(Facing_CrossesPiByShortestPathInBothDirections)
-		{
-			const float pi = 3.14159265358979323846f;
-			const float target = -pi + 0.2f;
-			Assert::AreEqual(-pi + 0.05f,
-				PlayerCalcFacing(pi - 0.05f, sinf(target), cosf(target), 0, false, 0.1f, 1), PLAYER_EPSILON);
-			Assert::AreEqual(pi - 0.05f,
-				PlayerCalcFacing(-pi + 0.05f, sinf(-target), cosf(-target), 0, false, 0.1f, 1), PLAYER_EPSILON);
-		}
-
-		// dt=0 では歩く方向へ回らない。腕の入力による即時の向きは反映する
-		TEST_METHOD(Facing_ZeroDtKeepsWalkingYawButAppliesArmYaw)
-		{
-			Assert::AreEqual(0.3f, PlayerCalcFacing(0.3f, 1, 0, 1, false, 10, 0), PLAYER_EPSILON);
-			Assert::AreEqual(1.0f, PlayerCalcFacing(0.3f, 1, 0, 1, true, 10, 0), PLAYER_EPSILON);
-		}
-
 		TEST_METHOD(Facing_ReturnsToWalkingAfterArmEnds)
 		{
 			const float yaw = PlayerCalcFacing(0, 1, 0, 0.5f, true, 1, 0.1f);
@@ -115,33 +98,6 @@ namespace Proto1Tests
 			const float yaw = PlayerCalcFacing(0, 1, 0, -0.7f, true, 0.1f, PLAYER_DT, true, 1);
 			Assert::AreEqual(-0.7f, yaw, PLAYER_EPSILON);
 			Assert::AreEqual(1.0f, PlayerCalcFacing(yaw, 1, 0, -0.7f, false, 10, 1, true, 1), PLAYER_EPSILON);
-		}
-
-		TEST_METHOD(Facing_TargetKeepsTurnLimitAndZeroDt)
-		{
-			Assert::AreEqual(0.1f, PlayerCalcFacing(0, 0, 0, -1, false, 0.2f, 0.5f, true, 1), PLAYER_EPSILON);
-			Assert::AreEqual(0.3f, PlayerCalcFacing(0.3f, 0, 0, -1, false, 10, 0, true, 1), PLAYER_EPSILON);
-			Assert::AreEqual(-1.0f, PlayerCalcFacing(0.3f, 0, 0, -1, true, 10, 0, true, 1), PLAYER_EPSILON);
-		}
-
-		TEST_METHOD(Facing_TargetCrossesPiByShortestPath)
-		{
-			const float pi = 3.14159265358979323846f;
-			Assert::AreEqual(-pi + 0.05f,
-				PlayerCalcFacing(pi - 0.05f, 0, 0, 0, false, 0.1f, 1, true, -pi + 0.2f), PLAYER_EPSILON);
-			Assert::AreEqual(pi - 0.05f,
-				PlayerCalcFacing(-pi + 0.05f, 0, 0, 0, false, 0.1f, 1, true, pi - 0.2f), PLAYER_EPSILON);
-		}
-
-		// 何もしなければ、立ったまま動かない
-		TEST_METHOD(Step_StandingStill)
-		{
-			PlayerBodyCalc body = MakeStandingBody(1.0f, 2.0f);
-			body.Step(0.0f, 0.0f, false, PLAYER_DT, MakeParams(), MakePlayerStage());
-			Assert::IsTrue(body.GetOnGround());
-			Assert::AreEqual(1.0f, body.GetX(), PLAYER_EPSILON);
-			Assert::AreEqual(0.0f, body.GetY(), PLAYER_EPSILON);
-			Assert::AreEqual(2.0f, body.GetZ(), PLAYER_EPSILON);
 		}
 
 		// 1秒歩くと、歩く速さの分だけ進む

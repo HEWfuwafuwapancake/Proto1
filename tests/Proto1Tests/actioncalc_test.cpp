@@ -17,14 +17,6 @@ namespace Proto1Tests
 	TEST_CLASS(ActionCalcTest)
 	{
 	public:
-		// 何も押していなければ 0
-		TEST_METHOD(MoveFromKeys_NoKeysIsZero)
-		{
-			ACTION_AXIS axis = ActionCalcMoveFromKeys(false, false, false, false);
-			Assert::AreEqual(0.0f, axis.X, ACTION_EPSILON);
-			Assert::AreEqual(0.0f, axis.Y, ACTION_EPSILON);
-		}
-
 		// 前・後ろ・左・右は、それぞれの向きに長さ 1
 		TEST_METHOD(MoveFromKeys_SingleKeys)
 		{
@@ -63,14 +55,6 @@ namespace Proto1Tests
 			Assert::AreEqual(0.0f, Length(all), ACTION_EPSILON);
 		}
 
-		// 長さ 1 より短ければ、そのまま（スティックを少しだけ倒したとき）
-		TEST_METHOD(ClampLength_KeepsShortAxis)
-		{
-			ACTION_AXIS axis = ActionCalcClampLength({ 0.3f, -0.4f });
-			Assert::AreEqual(0.3f, axis.X, ACTION_EPSILON);
-			Assert::AreEqual(-0.4f, axis.Y, ACTION_EPSILON);
-		}
-
 		// 長さ 1 より長ければ、向きを変えずに長さ 1 にする
 		TEST_METHOD(ClampLength_ShortensLongAxis)
 		{
@@ -91,15 +75,6 @@ namespace Proto1Tests
 			result = ActionCalcCombineAxis(pad, keyboard);
 			Assert::AreEqual(0.0f, result.X, ACTION_EPSILON);
 			Assert::AreEqual(1.0f, result.Y, ACTION_EPSILON);
-		}
-
-		// 片方が入力なし（0）なら、もう片方をそのまま使う
-		TEST_METHOD(CombineAxis_ZeroUsesOther)
-		{
-			ACTION_AXIS pad = { -0.2f, 0.1f };
-			ACTION_AXIS result = ActionCalcCombineAxis({ 0.0f, 0.0f }, pad);
-			Assert::AreEqual(-0.2f, result.X, ACTION_EPSILON);
-			Assert::AreEqual(0.1f, result.Y, ACTION_EPSILON);
 		}
 
 		// 切り替えモードのキーだけでは選ばず、モードに入る
@@ -145,16 +120,6 @@ namespace Proto1Tests
 				ActionCalcEquipKey(mode, true, true, -1, false);
 				Assert::AreEqual(1, mode);
 			}
-		}
-
-		// モードキーと数字キーを同じフレームで押しても、その手を選ぶ
-		TEST_METHOD(EquipKey_ModeKeyAndNumberSameFrame)
-		{
-			int mode = -1;
-			const ACTION_EQUIP_KEY key = ActionCalcEquipKey(mode, true, false, 3, true);
-			Assert::AreEqual(0, key.Hand);
-			Assert::AreEqual(3, key.Number);
-			Assert::AreEqual(-1, mode);
 		}
 
 		// モードでないときは今までどおり（Shift なしで左手・ありで右手）
