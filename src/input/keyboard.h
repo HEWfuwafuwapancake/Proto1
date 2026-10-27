@@ -8,6 +8,19 @@
 /// @details このゲームのウィンドウが選ばれていないときは、何も押されていない扱いにする
 void KeyboardUpdate(void);
 
+/// @brief ウィンドウで受け取ったキーの押下を次の更新まで記憶する
+/// @param key 仮想キーコード
+/// @param repeat 自動リピートか（true：リピート、false：新しい押下）
+void KeyboardOnKeyDown(int key, bool repeat);
+
+/// @brief キーの状態と記憶した押下を消す（ウィンドウの非選択時）
+void KeyboardReset(void);
+
+/// @brief 指定キーを押した時点で Shift を押していたかを返す
+/// @param key 仮想キーコード
+/// @return Shift を押しながら押していれば true
+bool KeyboardWasShiftDown(int key);
+
 /// @brief キーを押しているか
 /// @param key 仮想キーコード
 /// @return 押している間ずっと true

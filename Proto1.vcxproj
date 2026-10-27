@@ -182,6 +182,7 @@
     <ClInclude Include="src\input\action.h" />
     <ClInclude Include="src\input\actioncalc.h" />
     <ClInclude Include="src\input\keyboard.h" />
+    <ClInclude Include="src\input\keyboardcalc.h" />
     <ClInclude Include="src\core\main.h" />
     <ClInclude Include="src\core\mathutil.h" />
     <ClInclude Include="src\input\mouse.h" />

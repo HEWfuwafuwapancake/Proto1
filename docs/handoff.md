@@ -4,7 +4,7 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）。
 決まったことは [decisions.md](decisions.md)、腕のモデルの原点と長さは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、終わったタスクの記録は [archive/](archive/)（普段は読まない）。
 
-- 最終更新：2026-10-27（Codex。Shota の共有 Proto1、Visual Studio Enterprise の PC。No.39 の段階3のテスト・画面比較済み。盾の向きの管理者確認待ち）
+- 最終更新：2026-10-28（Claude。Shota の Proto1、Visual Studio Community の PC。Codex が途中で止まったキー入力の修正を仕上げた。盾の向きの管理者確認待ち）
 
 ---
 
@@ -12,6 +12,7 @@
 
 - **No.39（デカ盾）は段階3のテスト済み。盾の向きの管理者確認待ち**。[PR #80](https://github.com/HEWfuwafuwapancake/Proto1/pull/80) はドラフト、作業ブランチは `feature/arm-shield`。プラン照合、Debug / Release x64 ビルド（警告・エラー0）、単体テスト各199件成功。新しい盾の計算をまとめて壊すと7件失敗し、復元後は全件成功。Notion・`tasks.md` は向きが決まるまで進行中。
 - 60fpsで2秒を数えると下ろすのが1フレーム遅れたため、再現テストを先に失敗させ、時間の許容誤差を0.00001秒へ修正。Notionの開発ログへ記録済み。一時的なゲーム連携チェックでも、0% / 100%の敵の変位一致・%不変・複数命中・保持中は対象外・一度だけ押し出す・2秒で下ろす・休み・復活で解除・両盾でも倍率0.4・実際の歩幅0.4倍が成功。確認用のコード・カメラ・初期装備はすべて元へ戻した。
+- **キー入力の修正（同じブランチ）**：フレームの間に短く押して離したキー（Q/E → 5 など）が抜けて装備が切り替わらないことがあったので、`WM_KEYDOWN` の押下を次の更新まで覚える `KeyboardTriggerCalc`（`src/input/keyboardcalc.h`）を足した。Shift は押した時点の値を使い、テンキーの 1〜6 でも選べる。ウィンドウが選ばれなくなったら覚えた押下を消す。テスト2件（壊すと失敗を確認済み）、Debug / Release 警告0・各201件成功。実際に遊んでの確認はまだ。
 - 見た目：通常画面で両手の盾、肩を中心にした横の画面で2部品の接続と構えを確認。`MODEL_ROLL` は0のまま。0とπの待機・構えの比較画像は `C:/Users/School Shota/.codex/visualizations/2026/10/27/01a17c12-c351-7440-abf6-eab96541572c/shield-review/`（`roll0-idle.png` / `roll-pi-idle.png` / `roll0-guard.png` / `roll-pi-guard.png`）。同じフォルダに連携チェック結果 `integration.txt` と最終ビルド・テストのログがある。
 - 管理者が遊んで決めること：全種類の構えが普段の画面で分かるか／グラップリング・ドリル・磁石の取付位置と強さ（No.19）／実物のパッドでの腕切り替え。マウス操作は止めたまま（[decisions.md](decisions.md)）。
 

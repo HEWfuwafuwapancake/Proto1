@@ -185,6 +185,9 @@
     <ClInclude Include="src\input\keyboard.h">
       <Filter>src\input</Filter>
     </ClInclude>
+    <ClInclude Include="src\input\keyboardcalc.h">
+      <Filter>src\input</Filter>
+    </ClInclude>
     <ClInclude Include="src\input\mouse.h">
       <Filter>src\input</Filter>
     </ClInclude>
