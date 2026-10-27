@@ -22,6 +22,8 @@ static constexpr float REPEL_POWER = 2.5f;
 static constexpr float MAGNET_AIM_SECONDS = 0.1f;
 static constexpr float MODEL_SCALE = 0.08f;
 static constexpr float MODEL_LENGTH = 17.424655f; // OBJ の肩から -Y 側の端までの長さ（cm）。
+// OBJ は読み込みで Z が反転するので、半回転して磁石の先を腕の線より上に出す（ドリルの付け根と同じ）。
+static constexpr float MODEL_ROLL = XM_PI;
 // 触腕の「つかむ」「投げる」と同じ強さ・秒数。
 static constexpr float GRAB_RUMBLE_SMALL = 0.4f;
 static constexpr float GRAB_RUMBLE_LARGE = 0.0f;
@@ -92,7 +94,7 @@ void MagnetArm::Draw()
 	const VEC3 aim = TentacleCalcAim(origin, m_Arm.GetCenter(), true, { sinf(yaw), 0.0f, cosf(yaw) });
 	const VEC3 direction = ArmCalcBlendDirection(GetRestDirection(), aim, m_Straighten);
 	const VEC3 end = Vec3Add(origin, Vec3Scale(direction, MODEL_LENGTH * MODEL_SCALE));
-	DrawPiece(m_Model, origin, end, MODEL_LENGTH, MODEL_SCALE, GetColor(IsHolding()));
+	DrawPiece(m_Model, origin, end, MODEL_LENGTH, MODEL_SCALE, GetColor(IsHolding()), MODEL_ROLL);
 }
 
 bool MagnetArm::IsActive() const
