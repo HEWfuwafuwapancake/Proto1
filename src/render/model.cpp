@@ -4,6 +4,9 @@
 #include <fstream>
 #include <iterator>
 #include <limits>
+#ifdef _DEBUG
+#include "core/debug_ostream.h"
+#endif
 
 struct MODEL
 {
@@ -26,15 +29,26 @@ void ModelFinalize(void)
 
 int ModelLoad(const char* path, bool mirrorX)
 {
-	if (!path || !DirectXGetDevice()) return -1;
+	const auto fail = [path](const char* reason) {
+#ifdef _DEBUG
+		hal::dout << "ModelLoad：" << reason << "：" << (path ? path : "(null)") << std::endl;
+#else
+		(void)path;
+		(void)reason;
+#endif
+		return -1;
+	};
+	if (!path) return fail("ファイルが開けない（パスなし）");
+	if (!DirectXGetDevice()) return fail("バッファが作れない（デバイスなし）");
 	std::ifstream file(path, std::ios::binary);
-	if (!file) return -1;
+	if (!file) return fail("ファイルが開けない");
 	const std::string source((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 	std::vector<OBJ_VERTEX> parsed;
-	if (file.bad() || !ObjCalcParse(source, parsed)) return -1;
+	if (file.bad() || !ObjCalcParse(source, parsed)) return fail("OBJ が読めない");
 	if (mirrorX) ObjCalcMirrorX(parsed);
 	if (parsed.size() > (std::numeric_limits<UINT>::max)() / sizeof(VERTEX_3D)
-		|| g_Models.size() >= static_cast<size_t>((std::numeric_limits<int>::max)())) return -1;
+		|| g_Models.size() >= static_cast<size_t>((std::numeric_limits<int>::max)()))
+		return fail("バッファが作れない（サイズ・モデル数の上限）");
 	std::vector<VERTEX_3D> vertices;
 	vertices.reserve(parsed.size());
 	for (const OBJ_VERTEX& v : parsed) {
@@ -49,7 +63,8 @@ int ModelLoad(const char* path, bool mirrorX)
 	desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 	D3D11_SUBRESOURCE_DATA data{};
 	data.pSysMem = vertices.data();
-	if (FAILED(DirectXGetDevice()->CreateBuffer(&desc, &data, &model.VertexBuffer))) return -1;
+	if (FAILED(DirectXGetDevice()->CreateBuffer(&desc, &data, &model.VertexBuffer)))
+		return fail("バッファが作れない");
 	g_Models.push_back(model);
 	return static_cast<int>(g_Models.size() - 1);
 }

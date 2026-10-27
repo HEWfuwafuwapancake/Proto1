@@ -1,5 +1,8 @@
 ﻿#include "CppUnitTest.h"
 #include "render/objcalc.h"
+#include <Windows.h>
+#include <fstream>
+#include <iterator>
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
 namespace Proto1Tests
@@ -9,6 +12,33 @@ namespace Proto1Tests
 	TEST_CLASS(ObjCalcTest)
 	{
 	public:
+		TEST_METHOD(AssetModels_AllObjFilesParse)
+		{
+			// プロジェクトの UseFullPaths（/FC）で __FILE__ は絶対パスになる。
+			const std::string sourcePath = __FILE__;
+			const std::string directory = sourcePath.substr(0, sourcePath.find_last_of("/\\") + 1)
+				+ "..\\..\\assets\\models\\";
+			WIN32_FIND_DATAA entry{};
+			const HANDLE search = FindFirstFileA((directory + "*.obj").c_str(), &entry);
+			Assert::IsTrue(search != INVALID_HANDLE_VALUE, L"assets/models/ の OBJ が見つかりません");
+			std::vector<std::string> paths;
+			do {
+				if (!(entry.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) paths.push_back(directory + entry.cFileName);
+			} while (FindNextFileA(search, &entry));
+			const DWORD error = GetLastError();
+			FindClose(search);
+			Assert::IsTrue(error == ERROR_NO_MORE_FILES, L"assets/models/ の OBJ 一覧を読めません");
+			Assert::IsFalse(paths.empty(), L"assets/models/ に OBJ がありません");
+			for (const std::string& path : paths) {
+				const std::wstring message = ToString(path);
+				std::ifstream file(path, std::ios::binary);
+				Assert::IsTrue(file.is_open(), message.c_str());
+				const std::string source((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+				Assert::IsFalse(file.bad(), message.c_str());
+				std::vector<OBJ_VERTEX> vertices;
+				Assert::IsTrue(ObjCalcParse(source, vertices), message.c_str());
+			}
+		}
 		TEST_METHOD(Triangle_ReflectsZAndReversesWinding)
 		{
 			std::vector<OBJ_VERTEX> v;
