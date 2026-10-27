@@ -127,8 +127,7 @@ void TentacleDrawHand(int hand)
 		// 描画する先端だけを変える。計算上の arm.Tip・長さ・判定はそのまま。
 		const VEC3 extended = Vec3Sub(tip, origin);
 		const float length = Vec3Length(extended);
-		const float yaw = PlayerGetYaw();
-		const VEC3 rest = ArmCalcPitchDirection({ sinf(yaw), 0, cosf(yaw) }, ArmGetRestPitch());
+		const VEC3 rest = ArmGetRestDirection(hand);
 		const VEC3 aim = length < MODEL_MIN_LENGTH ? rest : Vec3Scale(extended, 1.0f / length);
 		const VEC3 direction = ArmCalcBlendDirection(rest, aim, length / IDLE_LENGTH);
 		tip = Vec3Add(origin, Vec3Scale(direction, fmaxf(length, IDLE_LENGTH)));

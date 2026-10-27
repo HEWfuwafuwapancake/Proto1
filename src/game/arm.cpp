@@ -11,9 +11,11 @@
 #include <iostream>
 #endif
 
-// 調整用の値（腕に共通の待機角度・肩の位置・色）
+// 調整用の値（今後追加する腕も、取付位置と待機方向はここを使う）
 static constexpr float ARM_REST_PITCH = -XM_PI / 4.0f; // 待機の腕を正面から 45° 下げる
+static constexpr float ARM_REST_SPREAD = XMConvertToRadians(15.0f); // 片側ずつ外へ開く角度
 static constexpr float SHOULDER_OFFSET = 0.65f;
+static constexpr float SHOULDER_FORWARD = -0.1f; // 肩を少し後ろへ引いて胸を張る
 static constexpr float HAND_HEIGHT = 1.35f;
 static constexpr XMFLOAT4 LEFT_COLOR{ 0.8f, 0.3f, 0.65f, 1.0f };
 static constexpr XMFLOAT4 RIGHT_COLOR{ 0.35f, 0.8f, 0.6f, 1.0f };
@@ -121,17 +123,13 @@ const char* ArmGetName(ARM_TYPE type)
 
 VEC3 ArmGetShoulder(int hand)
 {
-	const float side = (hand == 0 ? -1.0f : 1.0f) * SHOULDER_OFFSET;
-	const float forward = 0.0f;
 	const XMFLOAT3 p = PlayerGetPosition();
-	const float yaw = PlayerGetYaw();
-	return { p.x + cosf(yaw) * side + sinf(yaw) * forward, p.y + HAND_HEIGHT,
-		p.z - sinf(yaw) * side + cosf(yaw) * forward };
+	return ArmCalcShoulder({ p.x, p.y, p.z }, PlayerGetYaw(), hand, SHOULDER_OFFSET, HAND_HEIGHT, SHOULDER_FORWARD);
 }
 
-float ArmGetRestPitch(void)
+VEC3 ArmGetRestDirection(int hand, float pitchOffset)
 {
-	return ARM_REST_PITCH;
+	return ArmCalcRestDirection(PlayerGetYaw(), hand, ARM_REST_PITCH + pitchOffset, ARM_REST_SPREAD);
 }
 
 XMFLOAT4 ArmGetColor(int hand, bool active)

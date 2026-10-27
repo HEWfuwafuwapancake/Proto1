@@ -3,7 +3,7 @@
 #include "physics/tentaclecalc.h"
 
 /// @file armcalc.h
-/// @brief 使える腕の巡回・直接選択（DirectX と Windows を使わない）
+/// @brief 使える腕の選択・共通の取付位置と構え（DirectX と Windows を使わない）
 
 /// @brief 指定した向きへ次の使える腕を選ぶ（端は反対の端へ回る）
 /// @param current 今の腕の番号（0〜count-1）
@@ -19,6 +19,24 @@ int ArmCalcCycle(int current, int direction, const bool* available, int count);
 /// @param count 腕の数
 /// @return 使えるなら number。使えない腕・範囲外・不正な引数は -1
 int ArmCalcSelect(int number, const bool* available, int count);
+
+/// @brief キャラの足元と水平の向きから、全種類に共通の肩の位置を求める
+/// @param position キャラの足元のワールド座標
+/// @param yaw キャラの水平の向き（ラジアン。0 は +Z）
+/// @param hand 左 0・右 1
+/// @param sideOffset キャラの中心から片側の肩までの横の距離
+/// @param height 足元から肩までの高さ
+/// @param forwardOffset 正面へのずれ（負なら後ろ）
+/// @return 肩のワールド座標
+VEC3 ArmCalcShoulder(const VEC3& position, float yaw, int hand, float sideOffset, float height, float forwardOffset);
+
+/// @brief キャラの正面から左右へ開き、上下に傾けた待機の単位方向を求める
+/// @param yaw キャラの水平の向き（ラジアン。0 は +Z）
+/// @param hand 左 0・右 1
+/// @param pitch 上下の角度（ラジアン。負なら下）
+/// @param spread 片側の開き角（ラジアン。正なら左右それぞれ外側）
+/// @return 左右に開いた長さ 1 の方向
+VEC3 ArmCalcRestDirection(float yaw, int hand, float pitch, float spread);
 
 /// @brief キャラの水平の正面を上下へ傾けた単位方向を求める
 /// @param forward 正面の向き（Y は使わず XZ を正規化する。水平の長さがほぼ 0 なら +Z）

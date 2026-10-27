@@ -139,9 +139,9 @@ static void DrawHand(int hand)
 	const VEC3 hookDirection = arm.State == GRAPPLE_IDLE ? forward
 		: ArmCalcBlendDirection(forward, Vec3Sub(arm.Hook, origin), 1.0f);
 	const VEC3 upperDirection = ArmCalcBlendDirection(
-		ArmCalcPitchDirection(forward, ArmGetRestPitch()), hookDirection, g_Straighten[hand]);
+		ArmGetRestDirection(hand), hookDirection, g_Straighten[hand]);
 	const VEC3 lowerDirection = ArmCalcBlendDirection(
-		ArmCalcPitchDirection(forward, ArmGetRestPitch() + GRAPPLE_IDLE_ELBOW), hookDirection, g_Straighten[hand]);
+		ArmGetRestDirection(hand, GRAPPLE_IDLE_ELBOW), hookDirection, g_Straighten[hand]);
 	const bool mirror = MirrorHand(hand);
 	const float roll = mirror ? -GRAPPLE_ROLL : GRAPPLE_ROLL;
 	const XMFLOAT4 color = ArmGetColor(hand, arm.State == GRAPPLE_PULLING);

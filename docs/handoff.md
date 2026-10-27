@@ -4,18 +4,26 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）。
 決まったことは [decisions.md](decisions.md)、腕のモデルの原点と長さは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、終わったタスクの記録は [archive/](archive/)（普段は読まない）。
 
-- 最終更新：2026-10-27（Claude。Shota の共有 Proto1。モデル読み込みの失敗対策を確認してマージ）
+- 最終更新：2026-10-27（Codex。Shota の共有 Proto1。No.43 腕の共通の構えを実装）
 
 ---
 
 ## 1. 今の状態
 
-- No.1〜17・20・22・29〜37・41・42 は完了（No.37 のドリルは元の握り・案Aに直した）。次は **No.38 磁石**（プランは管理者確認済み・Codex の実装待ち）。残りは No.39 デカ盾・No.40 ハサミ・No.18 シーン・No.19 調整用の値の整理ほか。
+- **No.43 は Codex が実装。Claude の確認待ち**（`feature/arm-open-stance`）。3種類の肩を共通で0.1後ろへ引き、待機の腕を片側15°開いた。共通計算のテストコードを6件追加。Debug x64 ビルド成功（警告0・エラー0）。見た目・テスト実行・Release の確認は Claude が行う。
+- No.1〜17・20・22・29〜37・41・42 は完了（No.37 のドリルは元の握り・案Aに直した）。No.43 の確認後は **No.38 磁石**（プランは管理者確認済み・Codex の実装待ち）。残りは No.39 デカ盾・No.40 ハサミ・No.18 シーン・No.19 調整用の値の整理ほか。
 - モデル読み込みの失敗対策はマージ済み：盾・ハサミの OBJ を書き出し直し（長さ 0 の法線なし）、`ObjCalcTest::AssetModels_AllObjFilesParse` が `assets/models/` の全 OBJ を読む。Debug では `ModelLoad` の失敗理由とパスが出力に出る。
-- **管理者が遊んで決めること**：触腕の構え（`IDLE_LENGTH`・`ARM_REST_PITCH`）が普段の画面で分かるか／グラップリング・ドリルの取付位置と強さ（各 `arm_〇〇.cpp` の「調整用の値」。No.19 の一覧に入れる）／実物のパッドで十字キー ← →・□ ○ の腕の切り替え。
+- **管理者が遊んで決めること**：全種類の構え（共通の `SHOULDER_FORWARD`・`ARM_REST_SPREAD`・`ARM_REST_PITCH`、触腕の `IDLE_LENGTH`）が普段の画面で分かるか／グラップリング・ドリルの取付位置と強さ（各 `arm_〇〇.cpp` の「調整用の値」。No.19 の一覧に入れる）／実物のパッドで十字キー ← →・□ ○ の腕の切り替え。
 - マウス操作は止めてある（[decisions.md](decisions.md) の最初の項目）。
 
-## 2. 次にやること：No.38（磁石）
+## 2. 次にやること：Claude が No.43（腕の共通の構え）を確認
+
+- 同じ `feature/arm-open-stance` で確認する。Debug / Release 警告0、`run-tests.ps1`（Debug / Release）。追加済みの計算は既存の `armcalc` 内（新規ファイルなし）。
+- 普段のカメラで 1〜3 / Shift＋1〜3 を選び、左右の腕が軽く開いて見える／キャラが回っても肩と構えがついてくる／グラップリングのひじとドリルの握りが保たれる／攻撃時は狙いへ向かい、戻ると構えも戻ることを確認する。必要なら下記の肩を中心にした一時ビルドで、肩とのつながりも見る。見た目の数値は仮なので管理者に見せる。
+- 今後の腕にも `ArmGetShoulder(hand)`・`ArmGetRestDirection(hand)` を使う（前腕の上下角度だけ加算する場合は第2引数）。古い `ArmGetRestPitch()` は置き換え済み。No.38 の下のプラン・プロンプトも合わせた。
+- 修正はこのブランチに直接コミットしてよい。確認後に PR・マージし、tasks.md / Notion の No.43 を完了にする。そのあと No.38 の実装へ戻る。
+
+### No.43 の確認後：No.38（磁石）
 
 - 管理者が「No.38 を Codex に頼むプロンプト」を Codex に貼り、Codex の保存のあと「No.38 を Claude が確かめるときのプロンプト」を Claude に貼る。
 - 順番（管理者が決めた）：No.38 磁石 → No.39 デカ盾 → No.40 ハサミ（最後）。No.18・No.19 はプランがまだ（アームのあとで管理者が選ぶ）。
@@ -52,7 +60,7 @@
   - 引き寄せた瞬間は短く振動（触腕のつかむと同じ値）。色：引き寄せ中・止めている間は `ArmGetColor(手, true)`。
   - **カメラ**：引き寄せ中・止めている間は `IsHoldingHand` を true にする（触腕でつかんでいる間と同じく、ロックオンが外れて自由に回せ、離すとロックオンに戻る。反発の向きを自分で選べる）。
 - **見た目**（`ArmLoadModel`・`ArmDrawPiece` を使う。伸ばさない1部品）：
-  - `arm_magnet.obj`（長さ 17.42 cm、大きさ 0.08 → 約 1.4）を肩から描く。向きは待機中は正面を `ARM_REST_PITCH` で下げた向き、引き寄せ中・止めている間は肩から敵の中心への水平の向き。`MAGNET_AIM_SECONDS`（0.1 秒）でなめらかに変える（`ArmCalcBlendDirection`。ドリルと同じ作り）。ひねりなし。
+  - `arm_magnet.obj`（長さ 17.42 cm、大きさ 0.08 → 約 1.4）を共通の `ArmGetShoulder(hand)` から描く。向きは待機中は `ArmGetRestDirection(hand)`（上下 -45°、外へ片側15°）、引き寄せ中・止めている間は肩から敵の中心への水平の向き。`MAGNET_AIM_SECONDS`（0.1 秒）でなめらかに変える（`ArmCalcBlendDirection`。ドリルと同じ作り）。ひねりなし。
   - モデルは肩から少し進んですぐ +Z（ゲームの上）へ約 10 cm 曲がり、先の磁石は肩から約 (-2.9, -17.4, +9.7) cm（腕の線より上に出る）。左右は触腕と同じ `ArmLoadModel`（右手を鏡写し）。**実装のあと Claude が肩を中心にした一時ビルドで画面を撮り、取付位置と向きを管理者に見せる**（ずれていたら調整用の値で直す）。
 - **新しいファイル・変えるファイル**：
   - `src/physics/magnetcalc.h/.cpp`（DirectX なし・テストする）：`MAGNET_STATE`（待機／引き寄せ中／止めている／休み）、`MAGNET`（状態・その状態になってからの時間・引き寄せた敵（なしは -1）・敵の中心）、`MAGNET_PARAMS`（`RANGE`・`BEAM_RADIUS`・`PULL_SPEED`・着いたとみなす距離・`HOLD_SECONDS`・`COOLDOWN_SECONDS`）、
@@ -82,7 +90,7 @@ Proto1 の No.38「磁石」を実装してください。プランは docs/hand
 2. src/game/arm_magnet.cpp：ARM_MAGNET_FUNCTIONS（arm.h で宣言済みか確かめる）。調整用の値はプランの数字（RANGE 10・BEAM_RADIUS 0.8・PULL_SPEED 15・着いたとみなす距離 0.1・HOLD_FORWARD 2.0・HOLD_SECONDS 1.5・REPEL_DAMAGE 8・REPEL_POWER 2.5・COOLDOWN_SECONDS 0.3・MAGNET_AIM_SECONDS 0.1・MODEL_SCALE 0.08・長さはモデルの書き出し値 17.424655）。振動は触腕のつかむ・投げると同じ値。
    - 引き寄せ先は肩からキャラの正面へ HOLD_FORWARD（高さは肩）。反発の向きは触腕の投げと同じ画面の正面。DummyGrab が失敗したら待機に戻す。
    - IsHoldingHand は引き寄せ中・止めている間 true。ResetHand は触腕と同じくつかんでいる敵を吹っ飛ばさずに離す。
-   - 描画：ArmLoadModel（右手を鏡写し）・ArmDrawPiece。向きは ArmCalcBlendDirection(正面を ArmGetRestPitch() で下げた向き, 肩から敵の中心への水平の向き, まっすぐ度)。引き寄せ中・止めている間は ArmGetColor(手, true)。
+   - 描画：ArmLoadModel（右手を鏡写し）・ArmDrawPiece。始点は共通の ArmGetShoulder(手)、向きは ArmCalcBlendDirection(ArmGetRestDirection(手), 肩から敵の中心への水平の向き, まっすぐ度)。引き寄せ中・止めている間は ArmGetColor(手, true)。
    - arm.cpp の ARM_TABLE の磁石の行を &ARM_MAGNET_FUNCTIONS にする。
 3. テスト：tests/Proto1Tests/magnetcalc_test.cpp にプランの「テスト」を全部（magnetcalc.cpp をテストのプロジェクトに「既存の項目」で足す）。新しいファイルは .vcxproj と .vcxproj.filters に登録する（フィルター名は既存の登録を読んでそろえる）。
 4. C++ は BOM付きUTF-8・CRLF。docs/dev/01_DX11基盤の構成.md に磁石の節を短く書く。

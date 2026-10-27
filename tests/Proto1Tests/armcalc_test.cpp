@@ -9,6 +9,81 @@ namespace Proto1Tests
 	TEST_CLASS(ArmCalcTest)
 	{
 	public:
+		TEST_METHOD(Shoulder_BothHandsAreBehindAndSymmetricAtSameHeight)
+		{
+			const VEC3 position{ 3, 4, 5 };
+			const VEC3 left = ArmCalcShoulder(position, 0, 0, 0.65f, 1.35f, -0.1f);
+			const VEC3 right = ArmCalcShoulder(position, 0, 1, 0.65f, 1.35f, -0.1f);
+			Assert::AreEqual(2.35f, left.X, 0.0001f);
+			Assert::AreEqual(3.65f, right.X, 0.0001f);
+			Assert::AreEqual(5.35f, left.Y, 0.0001f);
+			Assert::AreEqual(left.Y, right.Y, 0.0001f);
+			Assert::AreEqual(4.9f, left.Z, 0.0001f);
+			Assert::AreEqual(left.Z, right.Z, 0.0001f);
+		}
+
+		TEST_METHOD(Shoulder_TurnsWithCharacterInsteadOfStayingInWorldAxes)
+		{
+			const VEC3 position{ 3, 4, 5 };
+			const VEC3 left = ArmCalcShoulder(position, 1.57079632679f, 0, 0.65f, 1.35f, -0.1f);
+			const VEC3 right = ArmCalcShoulder(position, 1.57079632679f, 1, 0.65f, 1.35f, -0.1f);
+			Assert::AreEqual(2.9f, left.X, 0.0001f);
+			Assert::AreEqual(left.X, right.X, 0.0001f);
+			Assert::AreEqual(5.35f, left.Y, 0.0001f);
+			Assert::AreEqual(left.Y, right.Y, 0.0001f);
+			Assert::AreEqual(5.65f, left.Z, 0.0001f);
+			Assert::AreEqual(4.35f, right.Z, 0.0001f);
+		}
+
+		TEST_METHOD(Rest_OpensBothHands15DegreesAndKeepsMinus45Pitch)
+		{
+			const VEC3 expected[] = {
+				{ -0.1830127f, -0.70710678f, 0.6830127f },
+				{ 0.1830127f, -0.70710678f, 0.6830127f }
+			};
+			for (int hand = 0; hand < 2; ++hand) {
+				const VEC3 actual = ArmCalcRestDirection(0, hand, -0.78539816339f, 0.2617993878f);
+				Assert::AreEqual(0.0f, Vec3Length(Vec3Sub(expected[hand], actual)), 0.0001f);
+				Assert::AreEqual(1.0f, Vec3Length(actual), 0.0001f);
+			}
+		}
+
+		TEST_METHOD(Rest_OpeningTurnsWithCharacter)
+		{
+			const VEC3 expected[] = {
+				{ 0.6830127f, -0.70710678f, 0.1830127f },
+				{ 0.6830127f, -0.70710678f, -0.1830127f }
+			};
+			for (int hand = 0; hand < 2; ++hand) {
+				const VEC3 actual = ArmCalcRestDirection(1.57079632679f, hand, -0.78539816339f, 0.2617993878f);
+				Assert::AreEqual(0.0f, Vec3Length(Vec3Sub(expected[hand], actual)), 0.0001f);
+			}
+		}
+
+		TEST_METHOD(Rest_ZeroSpreadKeepsPreviousPitchDirection)
+		{
+			const float yaws[] = { 0.0f, -1.0f, 2.8f };
+			for (float yaw : yaws) {
+				const VEC3 expected = ArmCalcPitchDirection({ sinf(yaw), 0, cosf(yaw) }, -0.78539816339f);
+				for (int hand = 0; hand < 2; ++hand) {
+					const VEC3 actual = ArmCalcRestDirection(yaw, hand, -0.78539816339f, 0);
+					Assert::AreEqual(0.0f, Vec3Length(Vec3Sub(expected, actual)), 0.0001f);
+				}
+			}
+		}
+
+		TEST_METHOD(Rest_ElbowCanFaceHorizontallyWhileKeepingOpening)
+		{
+			const VEC3 expected[] = {
+				{ -0.25881905f, 0.0f, 0.96592583f },
+				{ 0.25881905f, 0.0f, 0.96592583f }
+			};
+			for (int hand = 0; hand < 2; ++hand) {
+				const VEC3 actual = ArmCalcRestDirection(0, hand, 0, 0.2617993878f);
+				Assert::AreEqual(0.0f, Vec3Length(Vec3Sub(expected[hand], actual)), 0.0001f);
+			}
+		}
+
 		TEST_METHOD(Pitch_ZeroKeepsHorizontalForward)
 		{
 			const VEC3 forward{ 0.6f, 0, 0.8f };
