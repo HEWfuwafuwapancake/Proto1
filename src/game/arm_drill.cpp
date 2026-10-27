@@ -105,10 +105,8 @@ static void DrawHand(int hand)
 {
 	const DRILL& arm = g_Arms[hand];
 	const VEC3 origin = ArmGetShoulder(hand);
-	const float yaw = PlayerGetYaw();
-	const VEC3 forward{ sinf(yaw), 0.0f, cosf(yaw) };
 	const VEC3 direction = ArmCalcBlendDirection(
-		ArmCalcPitchDirection(forward, ArmGetRestPitch()),
+		ArmGetRestDirection(hand),
 		DrillCalcThrustArmDirection(arm.Direction, PARAMS.Grip), g_Straighten[hand]);
 	const XMFLOAT4 color = ArmGetColor(hand, arm.State == DRILL_BORING);
 	// 付け根もビットも、常に同じ長さ・倍率で描く。間の円柱や伸縮はない。

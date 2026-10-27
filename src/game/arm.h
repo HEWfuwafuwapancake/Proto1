@@ -65,13 +65,15 @@ ARM_TYPE ArmGetType(int hand);
 /// @param type 腕の種類
 /// @return 日本語名。種類が範囲外なら「不明」
 const char* ArmGetName(ARM_TYPE type);
-/// @brief キャラの向きに合わせた肩の位置を取得する
+/// @brief 全種類で共通の肩の位置を取得する（描画・攻撃の始点に使う）
 /// @param hand 左 0・右 1
 /// @return 肩のワールド座標
 VEC3 ArmGetShoulder(int hand);
-/// @brief 腕に共通の待機時の上下角度を取得する
-/// @return 待機の角度（ラジアン。負なら下）
-float ArmGetRestPitch(void);
+/// @brief 全種類で共通の、左右へ少し開いた待機方向を取得する
+/// @param hand 左 0・右 1
+/// @param pitchOffset 共通の上下角度への加算（ラジアン。省略は 0。ひじを曲げる前腕などに使う）
+/// @return キャラの向きについてくる長さ 1 の方向（攻撃の狙いには使わない）
+VEC3 ArmGetRestDirection(int hand, float pitchOffset = 0.0f);
 /// @brief 左右の基本色または効いている間の色を取得する
 /// @param hand 左 0・右 1
 /// @param active 色の切り替えを設定する（true：効いている色、false：左右の基本色。触腕は保持中だけ true）

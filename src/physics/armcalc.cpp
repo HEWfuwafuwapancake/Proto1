@@ -20,6 +20,20 @@ int ArmCalcSelect(int number, const bool* available, int count)
 	return available[number] ? number : -1;
 }
 
+VEC3 ArmCalcShoulder(const VEC3& position, float yaw, int hand, float sideOffset, float height, float forwardOffset)
+{
+	const float side = (hand == 0 ? -1.0f : 1.0f) * sideOffset;
+	const float c = cosf(yaw), s = sinf(yaw);
+	return { position.X + c * side + s * forwardOffset, position.Y + height,
+		position.Z - s * side + c * forwardOffset };
+}
+
+VEC3 ArmCalcRestDirection(float yaw, int hand, float pitch, float spread)
+{
+	const float angle = yaw + (hand == 0 ? -spread : spread);
+	return ArmCalcPitchDirection({ sinf(angle), 0.0f, cosf(angle) }, pitch);
+}
+
 VEC3 ArmCalcPitchDirection(const VEC3& forward, float pitch)
 {
 	const VEC3 horizontal{ forward.X, 0.0f, forward.Z };
