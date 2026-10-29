@@ -18,4 +18,13 @@
       <Filter>src\physics</Filter>
     </ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="versuscalc_test.cpp" />
+    <ClCompile Include="..\..\src\physics\versuscalc.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
+    <ClInclude Include="..\..\src\physics\versuscalc.h">
+      <Filter>src\physics</Filter>
+    </ClInclude>
+  </ItemGroup>
 </Project>

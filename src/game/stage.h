@@ -12,7 +12,7 @@ class Stage
 {
 public:
 
-	/// @brief 浮島と場外の線を「調整用の値」から決める（ShapeInitialize のあと、Player::Initialize の前に呼ぶ）
+	/// @brief 浮島と場外の線を「調整用の値」から決める（ShapeInitialize のあと、FighterManager::Initialize の前に呼ぶ）
 	void Initialize(void);
 
 	/// @brief 状態を最初に戻す（参照はそのまま）

@@ -151,7 +151,7 @@
     <ClCompile Include="src\physics\collision.cpp" />
     <ClCompile Include="src\physics\dummycalc.cpp" />
     <ClCompile Include="src\physics\knockbackcalc.cpp" />
-    <ClCompile Include="src\game\dummy.cpp" />
+    <ClCompile Include="src\game\fightermanager.cpp" />
     <ClCompile Include="src\game\tentacle.cpp" />
     <ClCompile Include="src\game\arm.cpp" />
     <ClCompile Include="src\game\arm_grapple.cpp" />
@@ -167,7 +167,7 @@
     <ClCompile Include="src\game\match.cpp" />
     <ClCompile Include="src\physics\matchcalc.cpp" />
     <ClCompile Include="src\physics\scenecalc.cpp" />
-    <ClCompile Include="src\game\player.cpp" />
+    <ClCompile Include="src\game\fighter.cpp" />
     <ClCompile Include="src\render\shape.cpp" />
     <ClCompile Include="src\render\model.cpp" />
     <ClCompile Include="src\render\objcalc.cpp" />
@@ -200,7 +200,7 @@
     <ClInclude Include="src\physics\collision.h" />
     <ClInclude Include="src\physics\dummycalc.h" />
     <ClInclude Include="src\physics\knockbackcalc.h" />
-    <ClInclude Include="src\game\dummy.h" />
+    <ClInclude Include="src\game\fightermanager.h" />
     <ClInclude Include="src\game\tentacle.h" />
     <ClInclude Include="src\game\arm.h" />
     <ClInclude Include="src\game\arm_grapple.h" />
@@ -217,7 +217,7 @@
     <ClInclude Include="src\physics\matchcalc.h" />
     <ClInclude Include="src\physics\scenecalc.h" />
     <ClInclude Include="src\physics\vec3.h" />
-    <ClInclude Include="src\game\player.h" />
+    <ClInclude Include="src\game\fighter.h" />
     <ClInclude Include="src\render\shape.h" />
     <ClInclude Include="src\render\model.h" />
     <ClInclude Include="src\render\objcalc.h" />
@@ -243,4 +243,8 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+  <ItemGroup>
+    <ClCompile Include="src\physics\versuscalc.cpp" />
+    <ClInclude Include="src\physics\versuscalc.h" />
+  </ItemGroup>
 </Project>

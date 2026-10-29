@@ -51,7 +51,7 @@
     <ClCompile Include="src\game\field.cpp">
       <Filter>src\game</Filter>
     </ClCompile>
-    <ClCompile Include="src\game\player.cpp">
+    <ClCompile Include="src\game\fighter.cpp">
       <Filter>src\game</Filter>
     </ClCompile>
     <ClCompile Include="src\game\stage.cpp">
@@ -69,7 +69,7 @@
     <ClCompile Include="src\physics\knockbackcalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
-    <ClCompile Include="src\game\dummy.cpp">
+    <ClCompile Include="src\game\fightermanager.cpp">
       <Filter>src\game</Filter>
     </ClCompile>
     <ClCompile Include="src\physics\playercalc.cpp">
@@ -146,7 +146,7 @@
     <ClInclude Include="src\game\field.h">
       <Filter>src\game</Filter>
     </ClInclude>
-    <ClInclude Include="src\game\player.h">
+    <ClInclude Include="src\game\fighter.h">
       <Filter>src\game</Filter>
     </ClInclude>
     <ClInclude Include="src\game\stage.h">
@@ -164,7 +164,7 @@
     <ClInclude Include="src\physics\knockbackcalc.h">
       <Filter>src\physics</Filter>
     </ClInclude>
-    <ClInclude Include="src\game\dummy.h">
+    <ClInclude Include="src\game\fightermanager.h">
       <Filter>src\game</Filter>
     </ClInclude>
     <ClInclude Include="src\physics\vec3.h">
@@ -318,6 +318,14 @@
       <Filter>src\physics</Filter>
     </ClInclude>
     <ClInclude Include="src\physics\scenecalc.h">
+      <Filter>src\physics</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\physics\versuscalc.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
+    <ClInclude Include="src\physics\versuscalc.h">
       <Filter>src\physics</Filter>
     </ClInclude>
   </ItemGroup>

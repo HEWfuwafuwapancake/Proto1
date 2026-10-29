@@ -1,5 +1,6 @@
 ﻿#include "game/arm.h"
-#include "game/player.h"
+#include "game/fighter.h"
+#include "game/fightermanager.h"
 #include "game/arm_grapple.h"
 #include "game/arm_drill.h"
 #include "game/arm_magnet.h"
@@ -57,9 +58,9 @@ void ArmManager::ChangeType(int hand, int next)
 #endif
 }
 
-void ArmManager::Initialize(const Stage& stage, Player& player, DummyManager& dummies, const Camera& camera)
+void ArmManager::Initialize(const Stage& stage, FighterManager& fighters, int slot, const Camera& camera)
 {
-	m_Links = { &player, &dummies, &camera, &stage };
+	m_Links = { &fighters, slot, &camera, &stage };
 	m_Types[0] = m_Types[1] = ARM_TYPE_TENTACLE;
 	for (int type = 0; type < ARM_TYPE_COUNT; ++type) {
 		if (ARM_FACTORIES[type] == nullptr) continue;
@@ -88,18 +89,24 @@ void ArmManager::Update(bool playing)
 {
 	bool available[ARM_TYPE_COUNT];
 	for (int type = 0; type < ARM_TYPE_COUNT; ++type) available[type] = ARM_FACTORIES[type] != nullptr;
-	const ACTION_EQUIP_KEY key = ActionGetEquipKey();
+	const ACTION_EQUIP_KEY key = ActionGetEquipKey(m_Links.Slot);
 	for (int hand = 0; hand < 2; ++hand) {
 		if (key.Hand == hand) ChangeType(hand, ArmCalcSelect(key.Number, available, ARM_TYPE_COUNT));
 	}
 	if (!playing) return;
+	const Fighter& player = m_Links.Fighters->GetFighter(m_Links.Slot);
+	if (!player.CanUseArms() || player.DidRespawn()) {
+		Reset();
+		return;
+	}
 	for (int hand = 0; hand < 2; ++hand) {
-		m_Arms[hand][m_Types[hand]]->Update(ActionIsTrigger(hand == 0 ? ACTION_ARM_LEFT : ACTION_ARM_RIGHT));
+		m_Arms[hand][m_Types[hand]]->Update(player.IsTrigger(hand == 0 ? ACTION_ARM_LEFT : ACTION_ARM_RIGHT));
 	}
 }
 
 void ArmManager::Draw(void) const
 {
+	if (!m_Links.Fighters->IsActive(m_Links.Slot)) return;
 	for (int hand = 0; hand < 2; ++hand) m_Arms[hand][m_Types[hand]]->Draw();
 }
 
@@ -132,6 +139,11 @@ float ArmManager::GetMoveScale() const
 const char* ArmGetName(ARM_TYPE type)
 {
 	return type >= 0 && type < ARM_TYPE_COUNT ? ARM_NAMES[type] : "不明";
+}
+
+Fighter& Arm::GetPlayer() const
+{
+	return GetFighters().GetFighter(GetSlot());
 }
 
 VEC3 Arm::GetShoulder() const

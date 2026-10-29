@@ -2,7 +2,7 @@
 
 
 class Camera;
-class DummyManager;
+class FighterManager;
 class Match;
 class SceneCalc;
 
@@ -17,7 +17,7 @@ class Hud
 public:
 
 	/// @brief カメラ・ダミー・試合・シーンへの参照を受け取る（Number2DInitialize のあとに呼ぶ）
-	void Initialize(const Camera& camera, const DummyManager& dummies, const Match& match, const SceneCalc& scene);
+	void Initialize(const Camera& camera, const FighterManager& fighters, int slot, const Match& match, const SceneCalc& scene);
 
 	/// @brief 状態を最初に戻す（参照はそのまま）
 	void Reset(void);
@@ -32,11 +32,12 @@ public:
 	void Draw(void) const;
 
 private:
-	void DrawDummyPercent(int index) const;
+	void DrawFighterPercent(int index) const;
 	void DrawMenuItem(const char* text, float y, bool selected) const;
 	void DrawMenuHelp(float selectY, float decideY) const;
 	const Camera* m_Camera = nullptr;
-	const DummyManager* m_Dummies = nullptr;
+	const FighterManager* m_Fighters = nullptr;
 	const Match* m_Match = nullptr;
 	const SceneCalc* m_Scene = nullptr;
+	int m_Slot = 0;
 };

@@ -1,8 +1,8 @@
 ﻿#include "game/arm.h"
 #include "game/camera.h"
 #include "game/arm_grapple.h"
-#include "game/dummy.h"
-#include "game/player.h"
+#include "game/fightermanager.h"
+#include "game/fighter.h"
 #include "game/stage.h"
 #include "core/gametime.h"
 #include "input/pad.h"
@@ -78,10 +78,10 @@ void GrappleArm::Update(bool trigger)
 	const VEC3 origin = GetShoulder();
 	const float yaw = GetCamera().GetYaw();
 	const VEC3 forward{ sinf(yaw), 0.0f, cosf(yaw) };
-	TENTACLE_TARGET targets[DUMMY_COUNT];
-	for (int i = 0; i < DUMMY_COUNT; ++i) targets[i] = GetDummies().GetTarget(i);
+	TENTACLE_TARGET targets[FIGHTER_COUNT];
+	for (int i = 0; i < FIGHTER_COUNT; ++i) targets[i] = GetFighters().GetTarget(i, GetSlot());
 	const int target = GetCamera().GetTarget();
-	const bool hasTarget = target >= 0 && target < DUMMY_COUNT;
+	const bool hasTarget = target >= 0 && target < FIGHTER_COUNT;
 	const VEC3 targetCenter = hasTarget
 		? Vec3Scale(Vec3Add(targets[target].Body.Start, targets[target].Body.End), 0.5f) : VEC3{};
 	const VEC3 aim = GrappleCalcAim(origin, targetCenter, hasTarget, forward);
@@ -89,14 +89,14 @@ void GrappleArm::Update(bool trigger)
 	const float halfHeight = GetPlayer().GetHeight() * 0.5f;
 	VEC3 center{ position.x, position.y + halfHeight, position.z };
 	const GRAPPLE_EVENT event = arm.Step(origin, aim, center,
-		trigger || (arm.GetTarget() >= 0 && !GetDummies().IsActive(arm.GetTarget())), GetPlayer().DidRespawn(),
-		GameTimeGetDeltaTime(), PARAMS, targets, DUMMY_COUNT, GetStage().GetStage());
+		trigger || (arm.GetTarget() >= 0 && !GetFighters().IsActive(arm.GetTarget())), GetPlayer().DidRespawn(),
+		GameTimeGetDeltaTime(), PARAMS, targets, FIGHTER_COUNT, GetStage().GetStage());
 	if (event.Attached) {
 		// 新しく刺さった手へ所有権を移す。先の手は空のフックを回収する。
 		if (m_OtherArm != nullptr && m_OtherArm->m_Pulling) {
 			VEC3 unused = center;
 			m_OtherArm->m_Arm.Step(m_OtherArm->GetShoulder(), {}, unused,
-				true, false, GameTimeGetDeltaTime(), PARAMS, targets, DUMMY_COUNT, GetStage().GetStage());
+				true, false, GameTimeGetDeltaTime(), PARAMS, targets, FIGHTER_COUNT, GetStage().GetStage());
 			m_OtherArm->m_Pulling = false;
 		}
 		m_Pulling = true;
@@ -112,7 +112,7 @@ void GrappleArm::Update(bool trigger)
 			GetPlayer().SetPosition({ center.X, center.Y - halfHeight, center.Z });
 		}
 		if (event.Arrived && event.Target >= 0) {
-			GetDummies().Hit(event.Target, { event.Direction.X, event.Direction.Y, event.Direction.Z }, HIT_DAMAGE, HIT_POWER);
+			GetFighters().Hit(event.Target, GetSlot(), { event.Direction.X, event.Direction.Y, event.Direction.Z }, HIT_DAMAGE, HIT_POWER);
 			PadRumble(0, HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
 		}
 		if (event.Released) {
