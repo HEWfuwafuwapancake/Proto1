@@ -96,18 +96,18 @@ void TentacleArm::Update(bool trigger)
 		trigger, cancel,
 		GameTimeGetDeltaTime(), PARAMS, targets, DUMMY_COUNT, GetStage().GetStage());
 	if (event.Grabbed >= 0) {
-		if (GetDummies().Grab(event.Grabbed)) PadRumble(GRAB_RUMBLE_SMALL, GRAB_RUMBLE_LARGE, GRAB_RUMBLE_SECONDS);
+		if (GetDummies().Grab(event.Grabbed)) PadRumble(0, GRAB_RUMBLE_SMALL, GRAB_RUMBLE_LARGE, GRAB_RUMBLE_SECONDS);
 		else arm.Reset();
 	}
 	if (event.Released >= 0) {
 		GetDummies().Release(event.Released, event.Throw, cameraForward, THROW_DAMAGE, THROW_POWER);
-		if (event.Throw) PadRumble(THROW_RUMBLE_SMALL, THROW_RUMBLE_LARGE, THROW_RUMBLE_SECONDS);
+		if (event.Throw) PadRumble(0, THROW_RUMBLE_SMALL, THROW_RUMBLE_LARGE, THROW_RUMBLE_SECONDS);
 	}
 	if (arm.GetTarget() >= 0) GetDummies().MoveHeld(arm.GetTarget(), arm.GetTip());
 	if (arm.GetState() == TENTACLE_EXTENDING) {
 		// 伸びるほど強くする（PadRumble は強いほうを残すので、毎フレーム足すと右肩上がりになる）
 		const float strength = Lerp(EXTEND_RUMBLE_START, EXTEND_RUMBLE_END, arm.GetExtendRatio(PARAMS));
-		PadRumble(strength, strength, EXTEND_RUMBLE_SECONDS);
+		PadRumble(0, strength, strength, EXTEND_RUMBLE_SECONDS);
 	}
 }
 

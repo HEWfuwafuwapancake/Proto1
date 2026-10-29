@@ -82,11 +82,11 @@ void DrillArm::Update(bool trigger)
 		dt, PARAMS, targets, DUMMY_COUNT);
 	for (int tick = 0; tick < event.DamageTicks; ++tick) {
 		GetDummies().AddDamage(event.Target, TICK_DAMAGE);
-		PadRumble(TICK_RUMBLE_SMALL, TICK_RUMBLE_LARGE, TICK_RUMBLE_SECONDS);
+		PadRumble(0, TICK_RUMBLE_SMALL, TICK_RUMBLE_LARGE, TICK_RUMBLE_SECONDS);
 	}
 	if (event.Push) {
 		GetDummies().Launch(event.Target, DrillCalcPushDirection(arm.GetDirection(), PUSH_UP), 0.0f, PUSH_POWER);
-		PadRumble(PUSH_RUMBLE_SMALL, PUSH_RUMBLE_LARGE, PUSH_RUMBLE_SECONDS);
+		PadRumble(0, PUSH_RUMBLE_SMALL, PUSH_RUMBLE_LARGE, PUSH_RUMBLE_SECONDS);
 	}
 	const float step = dt / DRILL_AIM_SECONDS;
 	m_Straighten = IsThrusting()

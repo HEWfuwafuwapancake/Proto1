@@ -101,7 +101,7 @@ void GrappleArm::Update(bool trigger)
 		}
 		m_Pulling = true;
 		GetPlayer().SetPulled(true);
-		PadRumble(ATTACH_RUMBLE_SMALL, ATTACH_RUMBLE_LARGE, ATTACH_RUMBLE_SECONDS);
+		PadRumble(0, ATTACH_RUMBLE_SMALL, ATTACH_RUMBLE_LARGE, ATTACH_RUMBLE_SECONDS);
 	}
 	if (m_Pulling) {
 		if (event.Arrived && event.OnStage) {
@@ -113,7 +113,7 @@ void GrappleArm::Update(bool trigger)
 		}
 		if (event.Arrived && event.Target >= 0) {
 			GetDummies().Hit(event.Target, { event.Direction.X, event.Direction.Y, event.Direction.Z }, HIT_DAMAGE, HIT_POWER);
-			PadRumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
+			PadRumble(0, HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
 		}
 		if (event.Released) {
 			m_Pulling = false;

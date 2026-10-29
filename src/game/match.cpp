@@ -21,8 +21,8 @@ static constexpr float FINISHED_LIGHT_COLOR[3] = { 1.0f, 0.0f, 0.0f };   // 時�
 void Match::Reset(void)
 {
 	m_Match.Start(MATCH_SECONDS, m_Dummies->GetTotalOutCount());
-	PadRumble(0.0f, 0.0f, 0.0f);
-	PadSetLightColor(PLAYING_LIGHT_COLOR[0], PLAYING_LIGHT_COLOR[1], PLAYING_LIGHT_COLOR[2]);
+	PadRumble(0, 0.0f, 0.0f, 0.0f);
+	PadSetLightColor(0, PLAYING_LIGHT_COLOR[0], PLAYING_LIGHT_COLOR[1], PLAYING_LIGHT_COLOR[2]);
 }
 
 void Match::Finalize(void)
@@ -39,8 +39,8 @@ void Match::Update(void)
 	}
 #endif
 	if (event == MATCH_EVENT_TIME_UP) {
-		PadRumble(0.0f, 0.0f, 0.0f);
-		PadSetLightColor(FINISHED_LIGHT_COLOR[0], FINISHED_LIGHT_COLOR[1], FINISHED_LIGHT_COLOR[2]);
+		PadRumble(0, 0.0f, 0.0f, 0.0f);
+		PadSetLightColor(0, FINISHED_LIGHT_COLOR[0], FINISHED_LIGHT_COLOR[1], FINISHED_LIGHT_COLOR[2]);
 		m_Arms->Reset();	// つかんでいる敵を離してから止める
 #ifdef _DEBUG
 		hal::dout << "試合：時間切れ（得点 " << m_Match.GetScore() << "）" << std::endl;

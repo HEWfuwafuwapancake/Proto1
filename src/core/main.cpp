@@ -45,9 +45,11 @@ static DWORD g_Fps = 0;	// 直近1秒の FPS
 static void RefreshTitle(HWND hWnd)
 {
 	char title[224];
-	const int mode = ActionGetEquipMode();
-	sprintf_s(title, "%s  FPS: %lu  左：%s 右：%s%s  振動: %s（SHARE / V）", TITLE, g_Fps,
+	const int equipPlayer = ActionGetEquipPlayer();
+	const int mode = ActionGetEquipMode(equipPlayer);
+	sprintf_s(title, "%s  FPS: %lu  1P 左：%s 右：%s  切替先：%dP（F1-F4）%s  振動: %s（SHARE / V）", TITLE, g_Fps,
 		ArmGetName(g_Game.GetArms().GetType(0)), ArmGetName(g_Game.GetArms().GetType(1)),
+		equipPlayer + 1,
 		mode == 0 ? "  [左腕を切り替え中：数字キー 1-6]" : (mode == 1 ? "  [右腕を切り替え中：数字キー 1-6]" : ""),
 		PadIsRumbleEnabled() ? "オン" : "オフ");
 	SetWindowText(hWnd, title);
@@ -170,9 +172,11 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
 
 			const ARM_TYPE oldLeft = g_Game.GetArms().GetType(0);
 			const ARM_TYPE oldRight = g_Game.GetArms().GetType(1);
-			const int oldMode = ActionGetEquipMode();
+			const int oldEquipPlayer = ActionGetEquipPlayer();
+			const int oldMode = ActionGetEquipMode(oldEquipPlayer);
 			Update();			// 更新処理
-			if (oldLeft != g_Game.GetArms().GetType(0) || oldRight != g_Game.GetArms().GetType(1) || oldMode != ActionGetEquipMode()) RefreshTitle(hWnd);
+			if (oldLeft != g_Game.GetArms().GetType(0) || oldRight != g_Game.GetArms().GetType(1)
+				|| oldEquipPlayer != ActionGetEquipPlayer() || oldMode != ActionGetEquipMode(ActionGetEquipPlayer())) RefreshTitle(hWnd);
 			Draw();				// 描画処理
 
 			dwFrameCount++;		// 処理回数のカウントを加算
@@ -334,7 +338,7 @@ void Update(void)
 	//SHARE / V で振動のオン・オフを切り替える（オンにしたら短く振動して知らせる。タイトルバーにも出す）
 	if (ActionIsTrigger(ACTION_RUMBLE_TOGGLE)) {
 		PadSetRumbleEnabled(!PadIsRumbleEnabled());
-		if (PadIsRumbleEnabled()) PadRumble(RUMBLE_ON_NOTICE_STRENGTH, RUMBLE_ON_NOTICE_STRENGTH, RUMBLE_ON_NOTICE_SECONDS);
+		if (PadIsRumbleEnabled()) PadRumble(0, RUMBLE_ON_NOTICE_STRENGTH, RUMBLE_ON_NOTICE_STRENGTH, RUMBLE_ON_NOTICE_SECONDS);
 	}
 
 	g_Game.Update();
