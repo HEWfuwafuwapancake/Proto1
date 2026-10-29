@@ -17,8 +17,10 @@ class FighterManager;
 class Fighter
 {
 public:
-	/// @brief ステージ・機器・最初の足元位置を設定して体を初期化する
-	void Initialize(const Stage& stage, int device, const VEC3& spawn);
+	/// @brief ステージ・スロット・機器・最初の足元位置を設定して体を初期化する
+	void Initialize(const Stage& stage, int slot, int device, const VEC3& spawn);
+	/// @brief 人ごとの共通色を取得する（1P赤・2P青・3P緑・4P黄。範囲外は白）
+	static XMFLOAT4 GetPlayerColor(int slot);
 	/// @brief 最初の位置・0%・生存状態に戻す（機器の割り当てはそのまま）
 	void Reset();
 	/// @brief 体を1フレーム進める（人だけカメラ・腕を渡す。ダミーはnullptr）
@@ -96,5 +98,6 @@ private:
 	bool m_Pulled = false;
 	bool m_Respawned = false;
 	int m_Device = VERSUS_DEVICE_DUMMY;
+	int m_Slot = 0;
 	const Stage* m_Stage = nullptr;
 };

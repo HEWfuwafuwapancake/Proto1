@@ -36,6 +36,13 @@ class VersusCalc
 public:
 	/// @brief 全スロットをダミーにし、攻撃者と得点を消す
 	void Reset();
+	/// @brief 参加者を保ったまま攻撃記録とKO数を消す（RETRY用）
+	void ResetMatch();
+	/// @brief タイトルの決定入力で参加する。参加済みの1Pの再入力だけtrueを返して開始する
+	/// @param device 決定を押した機器（パッド0〜3、キーボード4）
+	bool JoinOrStart(int device);
+	/// @brief 参加している人の数を取得する
+	int GetHumanCount() const;
 	/// @brief 機器を空いている先頭のスロットに割り当てる（同じ機器は既存スロット、満員・無効な機器は-1）
 	/// @param device パッド0〜3、キーボード4、または1人用合成入力
 	int AssignDevice(int device);
@@ -51,6 +58,11 @@ public:
 	void RecordOut(int target);
 	/// @brief スロットのKO数を取得する（範囲外は0）
 	int GetScore(int slot) const;
+	/// @brief 人のKO順位を取得する（1から。同点は同順位。ダミー・範囲外は0）
+	int GetRank(int slot) const;
+	/// @brief KO数の多い順で並べた人のスロットを取得する（同点はスロット順、範囲外は-1）
+	/// @param index 結果の表示順（0〜参加人数-1）
+	int GetRankedSlot(int index) const;
 	/// @brief 最後に攻撃したスロットを取得する（記録なし・範囲外は-1）
 	int GetLastAttacker(int slot) const;
 

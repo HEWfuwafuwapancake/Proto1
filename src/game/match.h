@@ -25,7 +25,7 @@ public:
 	/// @brief 試合の終了処理（今は何もしない）
 	void Finalize(void);
 
-	/// @brief 1PのKO数の増分を取り込み、時間を進める（段階Bは1人＋ダミー3体）
+	/// @brief 全員のKO数の増分を取り込み、時間を進める
 	/// @details 毎フレーム、FighterManager::Update のあと（ArmManager::Update のあと）に呼ぶ。やり直しは Game が受け持つ
 	void Update(void);
 
@@ -38,14 +38,15 @@ public:
 	int GetRemainingSeconds(void) const;
 
 	/// @brief 得点を取得する（No.15 の表示用）
-	/// @return 1Pが最後に攻撃して場外へ落とした回数
-	int GetScore(void) const;
+	/// @param slot 人のスロット番号（0〜3）
+	int GetScore(int slot) const;
 
 	/// @brief 試合の状態を取得する（No.15 の表示用）
 	/// @return 試合中か、時間切れか
 	MATCH_STATE GetState(void) const;
 
 private:
+	int GetTotalScore() const;
 	MatchCalc m_Match = {};
 	const FighterManager* m_Fighters = nullptr;
 	ArmManager* m_Arms = nullptr;

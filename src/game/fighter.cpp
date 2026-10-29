@@ -15,7 +15,12 @@ static constexpr float GRAVITY = 25.0f;
 static constexpr float BODY_RADIUS = 0.5f;
 static constexpr float BODY_HEIGHT = 1.8f;
 static constexpr float RESPAWN_SECONDS = 2.0f;
-static constexpr XMFLOAT4 PLAYER_COLOR{ 0.95f, 0.45f, 0.35f, 1.0f };
+static constexpr XMFLOAT4 PLAYER_COLORS[FIGHTER_COUNT] = {
+	{ 0.95f, 0.2f, 0.2f, 1.0f }, { 0.2f, 0.45f, 1.0f, 1.0f },
+	{ 0.2f, 0.85f, 0.3f, 1.0f }, { 1.0f, 0.85f, 0.15f, 1.0f }
+};
+static constexpr float TARGET_MARKER_RADIUS = 0.16f;
+static constexpr float TARGET_MARKER_HEIGHT = 0.2f;
 static constexpr XMFLOAT4 DUMMY_COLOR{ 0.35f, 0.55f, 0.95f, 1.0f };
 static constexpr XMFLOAT4 TARGET_COLOR{ 1.0f, 0.55f, 0.15f, 1.0f };
 static constexpr XMFLOAT4 LAUNCHED_COLOR{ 0.95f, 0.85f, 0.3f, 1.0f };
@@ -32,9 +37,15 @@ KNOCKBACK_PARAMS Fighter::KnockbackParams() const
 		KNOCKBACK_AIR_DRAG, KNOCKBACK_FRICTION, KNOCKBACK_STOP_SPEED, GRAVITY };
 }
 
-void Fighter::Initialize(const Stage& stage, int device, const VEC3& spawn)
+XMFLOAT4 Fighter::GetPlayerColor(int slot)
+{
+	return slot >= 0 && slot < FIGHTER_COUNT ? PLAYER_COLORS[slot] : XMFLOAT4{ 1.0f, 1.0f, 1.0f, 1.0f };
+}
+
+void Fighter::Initialize(const Stage& stage, int slot, int device, const VEC3& spawn)
 {
 	m_Stage = &stage;
+	m_Slot = slot;
 	m_Device = device;
 	m_Spawn = spawn;
 	Reset();
@@ -134,9 +145,14 @@ void Fighter::UpdateFacing(const Camera& camera, const ArmManager& arms, const F
 void Fighter::Draw(bool highlighted) const
 {
 	if (!IsActive()) return;
-	const XMFLOAT4 color = m_Launched ? LAUNCHED_COLOR
-		: (highlighted ? TARGET_COLOR : (IsHuman() ? PLAYER_COLOR : DUMMY_COLOR));
+	// 人の体は吹っ飛び中・ターゲット中も本人の色を保つ。
+	const XMFLOAT4 color = IsHuman() ? GetPlayerColor(m_Slot)
+		: (m_Launched ? LAUNCHED_COLOR : (highlighted ? TARGET_COLOR : DUMMY_COLOR));
 	ShapeDrawCapsule(GetPosition(), BODY_RADIUS, BODY_HEIGHT, color);
+	if (IsHuman() && highlighted) {
+		const XMFLOAT3 p = GetPosition();
+		ShapeDrawSphere({ p.x, p.y + BODY_HEIGHT + TARGET_MARKER_HEIGHT, p.z }, TARGET_MARKER_RADIUS, TARGET_COLOR);
+	}
 }
 
 XMFLOAT3 Fighter::GetPosition() const

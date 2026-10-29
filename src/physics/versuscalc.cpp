@@ -25,9 +25,33 @@ void VersusCalc::Reset()
 {
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		m_Devices[i] = VERSUS_DEVICE_DUMMY;
+	}
+	ResetMatch();
+}
+
+void VersusCalc::ResetMatch()
+{
+	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		m_LastAttackers[i] = -1;
 		m_Scores[i] = 0;
 	}
+}
+
+bool VersusCalc::JoinOrStart(int device)
+{
+	if (device < 0 || device > 4) return false;
+	if (m_Devices[0] == device) return true;
+	AssignDevice(device);
+	return false;
+}
+
+int VersusCalc::GetHumanCount() const
+{
+	int count = 0;
+	for (int i = 0; i < FIGHTER_COUNT; ++i) {
+		if (IsHuman(i)) ++count;
+	}
+	return count;
 }
 
 int VersusCalc::AssignDevice(int device)
@@ -80,6 +104,31 @@ int VersusCalc::GetScore(int slot) const
 int VersusCalc::GetLastAttacker(int slot) const
 {
 	return slot >= 0 && slot < FIGHTER_COUNT ? m_LastAttackers[slot] : -1;
+}
+
+int VersusCalc::GetRank(int slot) const
+{
+	if (!IsHuman(slot)) return 0;
+	int rank = 1;
+	for (int i = 0; i < FIGHTER_COUNT; ++i) {
+		if (IsHuman(i) && m_Scores[i] > m_Scores[slot]) ++rank;
+	}
+	return rank;
+}
+
+int VersusCalc::GetRankedSlot(int index) const
+{
+	for (int slot = 0; slot < FIGHTER_COUNT; ++slot) {
+		if (!IsHuman(slot)) continue;
+		int order = 0;
+		for (int other = 0; other < FIGHTER_COUNT; ++other) {
+			if (!IsHuman(other)) continue;
+			if (m_Scores[other] > m_Scores[slot]
+				|| (m_Scores[other] == m_Scores[slot] && other < slot)) ++order;
+		}
+		if (order == index) return slot;
+	}
+	return -1;
 }
 
 VERSUS_VIEWPORT VersusCalcViewport(int humanCount, int index, float screenWidth, float screenHeight)

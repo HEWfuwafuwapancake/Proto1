@@ -1,10 +1,13 @@
 ﻿#pragma once
 
 
+#include "core/dx11.h"
+
 class Camera;
 class FighterManager;
 class Match;
 class SceneCalc;
+class VersusCalc;
 
 /// @file hud.h
 /// @brief シーンごとの画面表示（タイトル・試合の HUD・結果のメニュー）
@@ -37,9 +40,11 @@ public:
 	void Draw(void) const;
 
 	/// @brief タイトル・結果のおおいとメニューを画面全体に描く（全画面のビューポートに戻してから呼ぶ）
-	void DrawScene(void) const;
+	void DrawScene(const VersusCalc& participants) const;
 
 private:
+	void DrawPlayerTag(int slot, float centerX, float y, float digitWidth) const;
+	void DrawPercent(float percent, float centerX, float y, float digitWidth, const XMFLOAT4& color) const;
 	void DrawFighterPercent(int index) const;
 	void DrawMenuItem(const char* text, float y, bool selected) const;
 	void DrawMenuHelp(float selectY, float decideY) const;

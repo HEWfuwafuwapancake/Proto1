@@ -7,6 +7,7 @@
 #include "game/arm_shield.h"
 #include "game/tentacle.h"
 #include "input/action.h"
+#include "input/pad.h"
 #include "physics/armcalc.h"
 #include "physics/tentaclecalc.h"
 #include "render/model.h"
@@ -175,4 +176,10 @@ void Arm::DrawPiece(int model, VEC3 start, VEC3 end, float sourceLength, float t
 int Arm::LoadModel(const char* path) const
 {
 	return ModelLoad(path, GetHand() == 1);
+}
+
+void Arm::Rumble(float smallMotor, float largeMotor, float seconds) const
+{
+	const int device = GetPlayer().GetDevice();
+	PadRumble(device == VERSUS_DEVICE_COMBINED ? 0 : device, smallMotor, largeMotor, seconds);
 }

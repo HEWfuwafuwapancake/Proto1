@@ -12,13 +12,15 @@
 static constexpr float SPAWN_X[FIGHTER_COUNT] = { 0.0f, 0.0f, -7.0f, 7.0f };
 static constexpr float SPAWN_Z[FIGHTER_COUNT] = { 0.0f, 8.0f, 5.0f, 5.0f };
 
-void FighterManager::Initialize(const Stage& stage)
+void FighterManager::Initialize(const Stage& stage, const VersusCalc& participants)
 {
-	m_Versus.Reset();
-	m_Versus.AssignDevice(VERSUS_DEVICE_COMBINED);
+	m_Versus = participants;
+	m_Versus.ResetMatch();
 	const STAGE& platform = stage.GetStage();
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
-		m_Fighters[i].Initialize(stage, m_Versus.GetDevice(i),
+		m_Cameras[i] = nullptr;
+		m_Arms[i] = nullptr;
+		m_Fighters[i].Initialize(stage, i, m_Versus.GetDevice(i),
 			{ platform.CenterX + SPAWN_X[i], platform.TopY, platform.CenterZ + SPAWN_Z[i] });
 	}
 }
@@ -33,10 +35,8 @@ void FighterManager::BindPlayer(int slot, const Camera& camera, const ArmManager
 void FighterManager::Reset()
 {
 	// 得点だけでなく最後の攻撃者も消す。機器とスロットの対応は保つ。
-	const VersusCalc previous = m_Versus;
-	m_Versus.Reset();
+	m_Versus.ResetMatch();
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
-		if (previous.IsHuman(i)) m_Versus.AssignDevice(previous.GetDevice(i));
 		m_Fighters[i].Reset();
 	}
 }

@@ -14,6 +14,81 @@ namespace Proto1Tests
 	TEST_CLASS(VersusCalcTest)
 	{
 	public:
+		// キーボードでも1人で参加して開始でき、空き3枠はダミーのまま。
+		TEST_METHOD(Entry_KeyboardJoinsThenStarts)
+		{
+			VersusCalc versus;
+			versus.Reset();
+			Assert::IsFalse(versus.JoinOrStart(4));
+			Assert::AreEqual(1, versus.GetHumanCount());
+			Assert::AreEqual(4, versus.GetDevice(0));
+			Assert::IsFalse(versus.IsHuman(1));
+			Assert::IsTrue(versus.JoinOrStart(4));
+		}
+
+		// パッドとキーボードが押した順に参加し、1P以外の再入力では開始しない。
+		TEST_METHOD(Entry_OnlyFirstPlayerStarts)
+		{
+			VersusCalc versus;
+			versus.Reset();
+			const int devices[FIGHTER_COUNT] = { 2, 4, 0, 1 };
+			for (int i = 0; i < FIGHTER_COUNT; ++i) {
+				Assert::IsFalse(versus.JoinOrStart(devices[i]));
+				Assert::AreEqual(devices[i], versus.GetDevice(i));
+			}
+			Assert::IsFalse(versus.JoinOrStart(4));
+			Assert::IsFalse(versus.JoinOrStart(3)); // 5台目は満員
+			Assert::AreEqual(4, versus.GetHumanCount());
+			Assert::IsTrue(versus.JoinOrStart(2));
+		}
+
+		// RETRYでは機器の割り当てを保ってKOと攻撃記録を消し、TITLEでは参加を消す。
+		TEST_METHOD(Retry_KeepsParticipantsTitleClearsThem)
+		{
+			VersusCalc versus;
+			versus.Reset();
+			versus.JoinOrStart(3);
+			versus.JoinOrStart(4);
+			versus.RecordAttack(1, 2);
+			versus.RecordOut(2);
+			versus.RecordAttack(0, 1);
+			versus.ResetMatch();
+			Assert::AreEqual(2, versus.GetHumanCount());
+			Assert::AreEqual(3, versus.GetDevice(0));
+			Assert::AreEqual(4, versus.GetDevice(1));
+			Assert::AreEqual(0, versus.GetScore(1));
+			Assert::AreEqual(-1, versus.GetLastAttacker(1));
+			versus.RecordOut(1);
+			Assert::AreEqual(0, versus.GetScore(0));
+			versus.Reset();
+			Assert::AreEqual(0, versus.GetHumanCount());
+			Assert::IsFalse(versus.JoinOrStart(0));
+			Assert::AreEqual(0, versus.GetDevice(0));
+		}
+
+		// 人だけをKO順で並べ、同点は同順位（1・1・3）。同点の表示順はスロット順。
+		TEST_METHOD(Result_RanksHumansByKoWithTies)
+		{
+			VersusCalc versus;
+			versus.Reset();
+			versus.JoinOrStart(0);
+			versus.JoinOrStart(1);
+			versus.JoinOrStart(4);
+			for (int attacker = 1; attacker <= 2; ++attacker) {
+				for (int ko = 0; ko < 2; ++ko) {
+					versus.RecordAttack(attacker, 3);
+					versus.RecordOut(3);
+				}
+			}
+			Assert::AreEqual(1, versus.GetRank(1));
+			Assert::AreEqual(1, versus.GetRank(2));
+			Assert::AreEqual(3, versus.GetRank(0));
+			Assert::AreEqual(0, versus.GetRank(3)); // ダミーは順位に入れない
+			Assert::AreEqual(1, versus.GetRankedSlot(0));
+			Assert::AreEqual(2, versus.GetRankedSlot(1));
+			Assert::AreEqual(0, versus.GetRankedSlot(2));
+		}
+
 		// 押した順に1P〜4P。同じ機器は二重参加せず、残りはダミー。
 		TEST_METHOD(Slots_AssignDevicesInOrder)
 		{

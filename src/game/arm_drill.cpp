@@ -82,11 +82,11 @@ void DrillArm::Update(bool trigger)
 		dt, PARAMS, targets, FIGHTER_COUNT);
 	for (int tick = 0; tick < event.DamageTicks; ++tick) {
 		GetFighters().AddDamage(event.Target, GetSlot(), TICK_DAMAGE);
-		PadRumble(0, TICK_RUMBLE_SMALL, TICK_RUMBLE_LARGE, TICK_RUMBLE_SECONDS);
+		Rumble(TICK_RUMBLE_SMALL, TICK_RUMBLE_LARGE, TICK_RUMBLE_SECONDS);
 	}
 	if (event.Push) {
 		GetFighters().Launch(event.Target, GetSlot(), DrillCalcPushDirection(arm.GetDirection(), PUSH_UP), 0.0f, PUSH_POWER);
-		PadRumble(0, PUSH_RUMBLE_SMALL, PUSH_RUMBLE_LARGE, PUSH_RUMBLE_SECONDS);
+		Rumble(PUSH_RUMBLE_SMALL, PUSH_RUMBLE_LARGE, PUSH_RUMBLE_SECONDS);
 	}
 	const float step = dt / DRILL_AIM_SECONDS;
 	m_Straighten = IsThrusting()
