@@ -71,14 +71,14 @@ void MagnetArm::Update(bool trigger)
 	const float dt = fmaxf(0.0f, GameTimeGetDeltaTime());
 	const MAGNET_EVENT event = m_Arm.Step(origin, aim, hold, trigger, cancel, dt, PARAMS, targets, DUMMY_COUNT);
 	if (event.Grabbed >= 0) {
-		if (GetDummies().Grab(event.Grabbed)) PadRumble(GRAB_RUMBLE_SMALL, GRAB_RUMBLE_LARGE, GRAB_RUMBLE_SECONDS);
+		if (GetDummies().Grab(event.Grabbed)) PadRumble(0, GRAB_RUMBLE_SMALL, GRAB_RUMBLE_LARGE, GRAB_RUMBLE_SECONDS);
 		else m_Arm.Reset();
 	}
 	if (event.Released >= 0) {
 		// 時間切れのフレームも、更新した保持位置を反映してから離す。
 		GetDummies().MoveHeld(event.Released, m_Arm.GetCenter());
 		GetDummies().Release(event.Released, event.Repel, cameraForward, REPEL_DAMAGE, REPEL_POWER);
-		if (event.Repel) PadRumble(REPEL_RUMBLE_SMALL, REPEL_RUMBLE_LARGE, REPEL_RUMBLE_SECONDS);
+		if (event.Repel) PadRumble(0, REPEL_RUMBLE_SMALL, REPEL_RUMBLE_LARGE, REPEL_RUMBLE_SECONDS);
 	}
 	if (m_Arm.GetTarget() >= 0) GetDummies().MoveHeld(m_Arm.GetTarget(), m_Arm.GetCenter());
 	const float step = dt / MAGNET_AIM_SECONDS;

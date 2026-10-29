@@ -59,7 +59,7 @@ void ShieldArm::Update(bool trigger)
 			GetDummies().Push(i, velocity);
 			hit = true;
 		}
-		if (hit) PadRumble(BASH_RUMBLE_SMALL, BASH_RUMBLE_LARGE, BASH_RUMBLE_SECONDS);
+		if (hit) PadRumble(0, BASH_RUMBLE_SMALL, BASH_RUMBLE_LARGE, BASH_RUMBLE_SECONDS);
 	}
 	const bool raised = m_Arm.GetState() == SHIELD_GUARDING || m_Arm.GetState() == SHIELD_BASHING;
 	const float step = dt / GUARD_RAISE_SECONDS;
