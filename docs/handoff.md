@@ -10,7 +10,7 @@
 
 ## 1. 今の状態
 
-- **No.47 キャラモデル：完了、マージ待ち**（[PR #91](https://github.com/HEWfuwafuwapancake/Proto1/pull/91)）。体は `mechani_body.obj`（固定ポーズ。オレンジ部分がプレイヤーの色）、腕は肩の取付口から出て半分の大きさ（`Arm::MODEL_SIZE`）。Debug / Release 警告0、テスト各230件成功。ドリルは届く距離も半分になったので、遊んで決める。
+- **No.47 キャラモデル：完了、マージ待ち**（[PR #91](https://github.com/HEWfuwafuwapancake/Proto1/pull/91)）。体は `mechani_body.obj`（固定ポーズ。オレンジ部分がプレイヤーの色）、腕は肩の取付口から出て半分の大きさ（`Arm::MODEL_SIZE`）。Debug / Release 警告0、テスト各230件成功。ドリルは届く距離も半分になったので、遊んで決める。管理者の依頼で、カメラを近づけた（`camera.cpp` の `FOLLOW_DISTANCE 8→4.5`、`START_PITCH −20°→−12°`）。
 - **No.26 段階A：段階3 完了**（[PR #90](https://github.com/HEWfuwafuwapancake/Proto1/pull/90)）。`PLAYER_INPUT` 経由の入力・F1〜F4 の装備配布・`LockstepCalc` を検証。コードの追加修正はなし。No.26 は段階Cまで進行中。
 - **Debug / Release のゲームビルド警告0、単体テスト各229件成功**。新しい計算をまとめて壊すと追加7件がすべて失敗し、バイト単位で復元してDebug 229件の再成功を確認。パッドとキーボードの参加・基本操作・RETRY／TITLEは管理者が実操作で確認し、パッド参加者へのキーボード装備配布はCodexが確認した。
 - `GameTimeGetElapsed()` の利用は `src/game/tentacle.cpp` の描画用うねうねだけ（ほかは宣言・定義）。試合の計算には使っていない。
