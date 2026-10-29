@@ -4,7 +4,7 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）。
 決まったことは [decisions.md](decisions.md)、腕のモデルの原点と長さは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、終わったタスクの記録は [archive/](archive/)（普段は読まない）。
 
-- 最終更新：2026-10-29（Codex。Shota の Proto1、Visual Studio 2022 Community の PC。No.26 段階A の段階3を完了。次は段階B の段階2）
+- 最終更新：2026-10-29（Claude。Shota の Proto1、Visual Studio 2022 Community の PC。No.47 キャラモデルのプランを書いた。管理者の確認待ち。No.26 段階B はそのあと）
 
 ---
 
@@ -16,7 +16,45 @@
 - 管理者が遊んで決めること：全種類の構えが普段の画面で分かるか／グラップリング・ドリル・磁石の取付位置と強さ。マウス操作は止めたまま（[decisions.md](decisions.md)）。
 - No.19 は止めてある（プラン（案）は `feature/tuning-values`）。
 
-## 2. 次にやること：No.26 段階B の段階2（Codex がコーディング）
+## 2. 次にやること：No.47 キャラモデル（動かない OBJ）。プランの確認待ち
+
+管理者の依頼（2026-10-29）。No.26 段階B より先に行い、**実装も Claude が行う**（管理者の指示）。ブランチは `feature/char-model`。
+決めたこと（管理者、2026-10-29）：見分けはオレンジの部分の色替え／腕の取付位置はモデルの取付口に合わせる／No.26 段階B より先。
+
+### ねらい
+
+カプセルの体を、管理者の Maya のキャラ（`mechani`）に入れ替える。**骨・アニメは使わない**（FBX は外部ライブラリが要るので、ポーズが固定の OBJ だけを使う）。当たり判定・動きは変えない。
+
+### 素材（調べた結果）
+
+- `mechani_body.obj`（三角形 12,108、`vn 0 0 0` なし）と `mechani_body.mtl`（材質 16 種類。`Kd` の色だけ。テクスチャなし）。
+- 原点は足元、高さ 157.9（cm）、左右対称。**顔（目・口）は Maya の +Z 側**（4方向から描いた図で確認）。読み込みで Z が反転するので、モデルの正面はモデル空間の **−Z**。
+- 肩の取付口（シアンの丸）は左右 X ±14.5、高さ 110.5、Z 0（cm）。腕はモデルに付いていない。
+- 管理者のフォルダ（`maya/projects/default/export/mechani/`）の直下のものを `assets/models/` にコピーする（`v1/` は古いもの、`mechani_rig.fbx` は使わないので入れない）。`.mtl` は小さいテキストなので LFS にしない。
+
+### 作り
+
+1. **`src/render/objcalc.h/.cpp`（DirectX 不使用）**
+   - `OBJ_MATERIAL { std::string Name; VEC3 Diffuse; }` と `ObjCalcParseMtl(source, materials)`（`newmtl` と `Kd` だけ読む）。
+   - `ObjCalcGetMtlLib(source)`：`mtllib` のファイル名を返す（なければ空）。
+   - `OBJ_VERTEX` に `int Material`（材質の番号。`usemtl` がない・見つからないときは −1）を足す。`ObjCalcParse(source, materials, vertices)` の形を足し、今の `ObjCalcParse(source, vertices)` は材質なしで呼ぶ（腕の読み込みは今と同じ結果）。`ObjCalcMirrorX` は材質を保つ。
+2. **`src/render/model.h/.cpp`**
+   - `ModelLoad(path, mirrorX, tintMaterial = nullptr)`：OBJ と同じフォルダの `.mtl` を読み、頂点色を `Kd` にする（`.mtl` がない腕は今と同じ白）。`tintMaterial`（ここでは `M_OrangeSG`）の三角形は後ろにまとめ、頂点色は白にして、始まりの番号を覚える。
+   - `ModelDrawTinted(model, origin, xAxis, yAxis, zAxis, tint)`：前半を白い材質、色替えの部分を `tint` で描く（2回の `Draw`）。今の `ModelDraw` は全体に色を掛けるまま。
+3. **`src/game/fighter.h/.cpp`**
+   - `Initialize` でモデルを読む。`Draw` はカプセルの代わりに `ModelDrawTinted` で描く。色替えに渡す色は今のカプセルの色（プレイヤーの色／ダミー／ターゲット／吹っ飛び中）。読み込みに失敗したら今のカプセルで描く。
+   - 調整用の値：`MODEL_HEIGHT = 157.9f`（cm）。倍率は `BODY_HEIGHT / MODEL_HEIGHT`（約 0.0114。今の当たり判定の高さ 1.8m にそろえる）。
+   - 向き：前 f = (sin yaw, 0, cos yaw)、右 r = (cos yaw, 0, −sin yaw)。モデルの正面が −Z なので、`zAxis = −f×倍率`、`xAxis = −r×倍率`、`yAxis = (0, 倍率, 0)`（π 回すのと同じ）。
+4. **`src/game/arm.cpp` の調整用の値**：取付口に合わせて `SHOULDER_OFFSET 0.65 → 0.165`、`HAND_HEIGHT 1.35 → 1.26`、`SHOULDER_FORWARD −0.1 → 0`（14.5・110.5・0 cm × 倍率）。腕の届く位置が少し変わるので、管理者が遊んで確かめる。
+5. **テスト**（`objcalc_test.cpp` に主な動きだけ）：`.mtl` の `Kd` を読める／`usemtl` で頂点の材質の番号が決まる。足した計算を壊して落ちることを確かめる。
+6. **ドキュメント**：`docs/dev/01_DX11基盤の構成.md` の model の説明に、材質の色と `ModelDrawTinted` を足す。
+
+### 確認
+
+- Debug / Release のビルド警告0、`run-tests.ps1`（Debug・Release）全部成功。
+- 画面確認：後ろのカメラから背中が見える（顔が進む向き）／肌・髪・黒などが Maya の色／4人の色がオレンジの部分で分かる／ダミーのターゲット・吹っ飛びで色が変わる／腕が肩の取付口から出ている。
+
+## 3. そのあと：No.26 段階B の段階2（Codex がコーディング）
 
 段階1（プラン）は管理者の指示で Claude が作り、**管理者確認済み**（2026-10-29。実装は【当面】のとおり Codex）。同じ日に管理者の希望で、1 を「Tailscale で遠くの人とも遊ぶ」、3 を「起動の引数 `--delay`（指定なしは 3）」に直した。
 No.26 は段階A → B → C の順に、それぞれ「段階2 コーディング → 段階3 テスト」で進める（1段階 = 1 PR）。段階A の検証まで完了。次のセッションでは PR #90 のマージを確認し、最新の develop から `feature/online-session` を作る。計算APIとパケットの配置は `docs/dev/01_DX11基盤の構成.md` の「ロックステップの計算」に記載。
