@@ -1,10 +1,10 @@
 ﻿#include "core/gametime.h"
 #include "core/shader.h"
 #include "game/camera.h"
-#include "game/player.h"
+#include "game/fighter.h"
 #include "game/match.h"
 #include "game/stage.h"
-#include "game/dummy.h"
+#include "game/fightermanager.h"
 #include "game/arm.h"
 #include <limits>
 #include "input/action.h"
@@ -47,12 +47,12 @@ VEC3 Camera::PlayerHead(void) const
 	return { feet.x, feet.y + m_Player->GetHeight() * TARGET_HEIGHT_RATE, feet.z };
 }
 
-// 生存・浮島より下への落下・保持状態を候補へ反映する。配列の添字とダミー番号は同じ。
+// 生存・浮島より下への落下・保持状態を候補へ反映する。配列の添字とスロット番号は同じ（自分は候補外）。
 // 浮島の上面より下へ落ちた敵は候補から外し、カメラが下まで追いかけないようにする。
 void Camera::CollectTargets(CAMERA_FOCUS_TARGET* targets) const
 {
-	for (int i = 0; i < DUMMY_COUNT; ++i) {
-		const TENTACLE_TARGET dummy = m_Dummies->GetTarget(i);
+	for (int i = 0; i < FIGHTER_COUNT; ++i) {
+		const TENTACLE_TARGET dummy = m_Fighters->GetTarget(i, m_Slot);
 		targets[i].Position = Vec3Scale(Vec3Add(dummy.Body.Start, dummy.Body.End), 0.5f);
 		const float feetY = dummy.Body.Start.Y - dummy.Body.Radius;
 		targets[i].Available = dummy.Available && feetY >= m_Stage->GetStage().TopY - TARGET_FALL_MARGIN;
@@ -61,13 +61,13 @@ void Camera::CollectTargets(CAMERA_FOCUS_TARGET* targets) const
 
 bool Camera::IsTargetAvailable(int target, const CAMERA_FOCUS_TARGET* targets) const
 {
-	return target >= 0 && target < DUMMY_COUNT && targets[target].Available;
+	return target >= 0 && target < FIGHTER_COUNT && targets[target].Available;
 }
 
 // 角度は全周・距離は無制限。現在の敵への優先ボーナスも付けない。
 int Camera::PickFrontTarget(const CAMERA_FOCUS_TARGET* targets) const
 {
-	return CameraCalcPickFocus(m_Yaw, PlayerHead(), targets, DUMMY_COUNT, -1,
+	return CameraCalcPickFocus(m_Yaw, PlayerHead(), targets, FIGHTER_COUNT, -1,
 		XM_PI, (std::numeric_limits<float>::infinity)(), 0.0f);
 }
 
@@ -100,9 +100,9 @@ void Camera::UpdateLockTarget(const CAMERA_FOCUS_TARGET* targets)
 			next = PickFrontTarget(targets);
 		}
 		else {
-			const int direction = (ActionIsTrigger(ACTION_TARGET_RIGHT) ? 1 : 0)
-				- (ActionIsTrigger(ACTION_TARGET_LEFT) ? 1 : 0);
-			next = CameraCalcNextTarget(PlayerHead(), targets, DUMMY_COUNT, next, direction);
+			const int direction = (m_Player->IsTrigger(ACTION_TARGET_RIGHT) ? 1 : 0)
+				- (m_Player->IsTrigger(ACTION_TARGET_LEFT) ? 1 : 0);
+			next = CameraCalcNextTarget(PlayerHead(), targets, FIGHTER_COUNT, next, direction);
 		}
 		if (next != m_LockTarget) {
 			m_LockTarget = next;
@@ -137,7 +137,7 @@ void Camera::SnapToPlayer(void)
 {
 	m_Yaw = m_YawGoal;
 	m_Pitch = m_PitchGoal;
-	CAMERA_FOCUS_TARGET targets[DUMMY_COUNT];
+	CAMERA_FOCUS_TARGET targets[FIGHTER_COUNT];
 	CollectTargets(targets);
 	m_LockTarget = PickFrontTarget(targets);
 	m_SavedTarget = -1;
@@ -175,12 +175,13 @@ void Camera::Update(void)
 		SnapToPlayer();
 		return;
 	}
+	if (!m_Player->IsActive()) return;
 	const float dt = GameTimeGetDeltaTime();
-	CAMERA_FOCUS_TARGET targets[DUMMY_COUNT];
+	CAMERA_FOCUS_TARGET targets[FIGHTER_COUNT];
 	CollectTargets(targets);
 	UpdateLockTarget(targets);
 	// 手動入力も横移動の sway も、現在角ではなく目標角へ足す。
-	const ACTION_AXIS look = ActionGetLook();
+	const ACTION_AXIS look = m_Player->GetLookInput();
 	if (m_LockTarget >= 0) {
 		m_YawGoal = CameraCalcYawTo(PlayerHead(), targets[m_LockTarget].Position, m_YawGoal);
 	}
@@ -197,7 +198,7 @@ void Camera::Update(void)
 		m_ManualPause = fmaxf(0.0f, m_ManualPause - dt);
 	}
 	else if (m_LockTarget < 0 && m_Match->IsPlaying()) {
-		m_YawGoal += ActionGetMove().X * FOLLOW_TURN_SPEED * dt;
+		m_YawGoal += m_Player->GetMoveInput().X * FOLLOW_TURN_SPEED * dt;
 	}
 	// 長く回し続けても、角度が大きくなり続けないようにする。
 	m_YawGoal = atan2f(sinf(m_YawGoal), cosf(m_YawGoal));
@@ -290,11 +291,12 @@ XMFLOAT3 Camera::GetDirection(void) const
 	return { cosf(m_Pitch) * sinf(m_Yaw), sinf(m_Pitch), cosf(m_Pitch) * cosf(m_Yaw) };
 }
 
-void Camera::Initialize(const Stage& stage, const Player& player, const DummyManager& dummies, const ArmManager& arms, const Match& match)
+void Camera::Initialize(const Stage& stage, const FighterManager& fighters, int slot, const ArmManager& arms, const Match& match)
 {
 	m_Stage = &stage;
-	m_Player = &player;
-	m_Dummies = &dummies;
+	m_Player = &fighters.GetFighter(slot);
+	m_Fighters = &fighters;
+	m_Slot = slot;
 	m_Arms = &arms;
 	m_Match = &match;
 	Reset();

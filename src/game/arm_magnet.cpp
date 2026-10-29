@@ -1,7 +1,7 @@
 ﻿#include "game/arm_magnet.h"
 #include "game/camera.h"
-#include "game/dummy.h"
-#include "game/player.h"
+#include "game/fightermanager.h"
+#include "game/fighter.h"
 #include "core/gametime.h"
 #include "input/pad.h"
 #include "physics/armcalc.h"
@@ -45,7 +45,7 @@ MagnetArm::~MagnetArm()
 
 void MagnetArm::Reset()
 {
-	GetDummies().Release(m_Arm.GetTarget(), false, {}, 0.0f, 0.0f);
+	GetFighters().Release(m_Arm.GetTarget(), GetSlot(), false, {}, 0.0f, 0.0f);
 	m_Arm.Reset();
 	m_Straighten = 0.0f;
 }
@@ -58,29 +58,29 @@ void MagnetArm::Update(bool trigger)
 	const float playerYaw = GetPlayer().GetYaw();
 	const VEC3 hold = Vec3Add(origin, { sinf(playerYaw) * HOLD_FORWARD, 0.0f, cosf(playerYaw) * HOLD_FORWARD });
 	// 各腕の更新直前に候補を読み、もう一方が保持している敵を選ばない。
-	TENTACLE_TARGET targets[DUMMY_COUNT];
-	for (int i = 0; i < DUMMY_COUNT; ++i) targets[i] = GetDummies().GetTarget(i);
+	TENTACLE_TARGET targets[FIGHTER_COUNT];
+	for (int i = 0; i < FIGHTER_COUNT; ++i) targets[i] = GetFighters().GetTarget(i, GetSlot());
 	const int target = GetCamera().GetTarget();
-	const bool hasTarget = target >= 0 && target < DUMMY_COUNT;
+	const bool hasTarget = target >= 0 && target < FIGHTER_COUNT;
 	const VEC3 center = hasTarget
 		? Vec3Scale(Vec3Add(targets[target].Body.Start, targets[target].Body.End), 0.5f) : VEC3{};
 	const VEC3 aim = TentacleCalcAim(origin, center, hasTarget, cameraForward);
-	// 自分が保持している敵も Available は false。消失は生存状態で調べる。
+	// 自分が保持している敵も Available は false。保持の所有者が自分かで解除を調べる。
 	const bool cancel = GetPlayer().DidRespawn()
-		|| (m_Arm.GetTarget() >= 0 && !GetDummies().IsActive(m_Arm.GetTarget()));
+		|| (m_Arm.GetTarget() >= 0 && !GetFighters().IsHeldBy(m_Arm.GetTarget(), GetSlot()));
 	const float dt = fmaxf(0.0f, GameTimeGetDeltaTime());
-	const MAGNET_EVENT event = m_Arm.Step(origin, aim, hold, trigger, cancel, dt, PARAMS, targets, DUMMY_COUNT);
+	const MAGNET_EVENT event = m_Arm.Step(origin, aim, hold, trigger, cancel, dt, PARAMS, targets, FIGHTER_COUNT);
 	if (event.Grabbed >= 0) {
-		if (GetDummies().Grab(event.Grabbed)) PadRumble(0, GRAB_RUMBLE_SMALL, GRAB_RUMBLE_LARGE, GRAB_RUMBLE_SECONDS);
+		if (GetFighters().Grab(event.Grabbed, GetSlot())) PadRumble(0, GRAB_RUMBLE_SMALL, GRAB_RUMBLE_LARGE, GRAB_RUMBLE_SECONDS);
 		else m_Arm.Reset();
 	}
 	if (event.Released >= 0) {
 		// 時間切れのフレームも、更新した保持位置を反映してから離す。
-		GetDummies().MoveHeld(event.Released, m_Arm.GetCenter());
-		GetDummies().Release(event.Released, event.Repel, cameraForward, REPEL_DAMAGE, REPEL_POWER);
+		GetFighters().MoveHeld(event.Released, GetSlot(), m_Arm.GetCenter());
+		GetFighters().Release(event.Released, GetSlot(), event.Repel, cameraForward, REPEL_DAMAGE, REPEL_POWER);
 		if (event.Repel) PadRumble(0, REPEL_RUMBLE_SMALL, REPEL_RUMBLE_LARGE, REPEL_RUMBLE_SECONDS);
 	}
-	if (m_Arm.GetTarget() >= 0) GetDummies().MoveHeld(m_Arm.GetTarget(), m_Arm.GetCenter());
+	if (m_Arm.GetTarget() >= 0) GetFighters().MoveHeld(m_Arm.GetTarget(), GetSlot(), m_Arm.GetCenter());
 	const float step = dt / MAGNET_AIM_SECONDS;
 	m_Straighten = IsHolding()
 		? fminf(1.0f, m_Straighten + step)

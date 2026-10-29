@@ -1,7 +1,7 @@
 ﻿#include "game/hud.h"
 #include "core/dx11.h"
 #include "game/camera.h"
-#include "game/dummy.h"
+#include "game/fightermanager.h"
 #include "game/match.h"
 #include "physics/scenecalc.h"
 #include "render/number2d.h"
@@ -55,19 +55,19 @@ static constexpr XMFLOAT4 MENU_TEXT_COLOR = { 0.7f, 0.7f, 0.7f, 1.0f };
 
 
 // ダミーの頭の上に「12%」を出す（復活待ち・カメラの後ろのときは出さない）
-void Hud::DrawDummyPercent(int index) const
+void Hud::DrawFighterPercent(int index) const
 {
-	if (!m_Dummies->IsActive(index)) return;
+	if (index == m_Slot || !m_Fighters->IsActive(index)) return;
 
 	// 頭のてっぺん（縦のカプセルの上の端 ＋ 半径）の少し上
-	const CAPSULE body = m_Dummies->GetTarget(index).Body;
+	const CAPSULE body = m_Fighters->GetTarget(index, m_Slot).Body;
 	const float top = (body.Start.Y > body.End.Y ? body.Start.Y : body.End.Y) + body.Radius;
 	const XMFLOAT3 head = { body.Start.X, top + PERCENT_HEAD_OFFSET, body.Start.Z };
 	XMFLOAT2 screen;
 	if (!m_Camera->WorldToScreen(head, &screen)) return;
 
 	// 数字と「%」を合わせた幅の真ん中を頭に合わせ、下の端を頭の上の点にそろえる
-	const int percent = GlyphCalcDisplayPercent(m_Dummies->GetPercent(index));
+	const int percent = GlyphCalcDisplayPercent(m_Fighters->GetPercent(index));
 	const float height = PERCENT_DIGIT_WIDTH * 2.0f;
 	const float dot = height / 7.0f;	// 「%」は数字と同じ高さ（7 ドット）
 	const float numberWidth = GlyphCalcNumberWidth(percent, 1, PERCENT_DIGIT_WIDTH);
@@ -136,8 +136,8 @@ void Hud::Draw(void) const
 		return;
 	}
 
-	for (int i = 0; i < DUMMY_COUNT; i++) {
-		DrawDummyPercent(i);
+	for (int i = 0; i < FIGHTER_COUNT; i++) {
+		DrawFighterPercent(i);
 	}
 
 	if (m_Match->GetState() == MATCH_STATE_FINISHED) {
@@ -155,10 +155,11 @@ void Hud::Draw(void) const
 	Number2DDrawNumber(m_Match->GetRemainingSeconds(), 1, centerX, SECONDS_Y, SECONDS_DIGIT_WIDTH, GLYPH_ALIGN_CENTER, TEXT_COLOR);
 }
 
-void Hud::Initialize(const Camera& camera, const DummyManager& dummies, const Match& match, const SceneCalc& scene)
+void Hud::Initialize(const Camera& camera, const FighterManager& fighters, int slot, const Match& match, const SceneCalc& scene)
 {
 	m_Camera = &camera;
-	m_Dummies = &dummies;
+	m_Fighters = &fighters;
+	m_Slot = slot;
 	m_Match = &match;
 	m_Scene = &scene;
 	Reset();

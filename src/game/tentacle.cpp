@@ -1,7 +1,7 @@
 ﻿#include "game/tentacle.h"
 #include "game/camera.h"
-#include "game/dummy.h"
-#include "game/player.h"
+#include "game/fightermanager.h"
+#include "game/fighter.h"
 #include "game/stage.h"
 #include "core/gametime.h"
 #include "core/mathutil.h"
@@ -60,7 +60,7 @@ TentacleArm::TentacleArm(int hand, const ARM_LINKS& links) : Arm(hand, links)
 void TentacleArm::Reset()
 {
 	TentacleCalc& arm = m_Arm;
-	GetDummies().Release(arm.GetTarget(), false, {}, 0.0f, 0.0f);
+	GetFighters().Release(arm.GetTarget(), GetSlot(), false, {}, 0.0f, 0.0f);
 	arm.Reset();
 }
 
@@ -76,8 +76,8 @@ void TentacleArm::Update(bool trigger)
 	const VEC3 cameraForward{ sinf(yaw), 0.0f, cosf(yaw) };
 	TentacleCalc& arm = m_Arm;
 	// 左腕がつかんだ状態を右腕へ反映するため、候補は各腕の直前に取得する。
-	TENTACLE_TARGET targets[DUMMY_COUNT];
-	for (int i = 0; i < DUMMY_COUNT; ++i) targets[i] = GetDummies().GetTarget(i);
+	TENTACLE_TARGET targets[FIGHTER_COUNT];
+	for (int i = 0; i < FIGHTER_COUNT; ++i) targets[i] = GetFighters().GetTarget(i, GetSlot());
 	const float side = hand == 0 ? -1.0f : 1.0f;
 	const VEC3 origin = GetShoulder();
 	// 肩と同じ高さ（従来の p.y + HAND_HEIGHT）。XZ の計算順は従来の Position と同じ。
@@ -85,25 +85,25 @@ void TentacleArm::Update(bool trigger)
 	VEC3 aim = cameraForward;
 	if (trigger && arm.GetState() == TENTACLE_IDLE) {
 		const int target = GetCamera().GetTarget();
-		const bool hasTarget = target >= 0 && target < DUMMY_COUNT;
+		const bool hasTarget = target >= 0 && target < FIGHTER_COUNT;
 		const VEC3 center = hasTarget
 			? Vec3Scale(Vec3Add(targets[target].Body.Start, targets[target].Body.End), 0.5f) : VEC3{};
 		// 各肩からの向きを開始時だけ決める。伸長中は追いかけず、投げる向きとも分ける。
 		aim = TentacleCalcAim(origin, center, hasTarget, cameraForward);
 	}
-	const bool cancel = GetPlayer().DidRespawn() || (arm.GetTarget() >= 0 && !GetDummies().IsActive(arm.GetTarget()));
+	const bool cancel = GetPlayer().DidRespawn() || (arm.GetTarget() >= 0 && !GetFighters().IsHeldBy(arm.GetTarget(), GetSlot()));
 	const TENTACLE_EVENT event = arm.Step(origin, aim, hold,
 		trigger, cancel,
-		GameTimeGetDeltaTime(), PARAMS, targets, DUMMY_COUNT, GetStage().GetStage());
+		GameTimeGetDeltaTime(), PARAMS, targets, FIGHTER_COUNT, GetStage().GetStage());
 	if (event.Grabbed >= 0) {
-		if (GetDummies().Grab(event.Grabbed)) PadRumble(0, GRAB_RUMBLE_SMALL, GRAB_RUMBLE_LARGE, GRAB_RUMBLE_SECONDS);
+		if (GetFighters().Grab(event.Grabbed, GetSlot())) PadRumble(0, GRAB_RUMBLE_SMALL, GRAB_RUMBLE_LARGE, GRAB_RUMBLE_SECONDS);
 		else arm.Reset();
 	}
 	if (event.Released >= 0) {
-		GetDummies().Release(event.Released, event.Throw, cameraForward, THROW_DAMAGE, THROW_POWER);
+		GetFighters().Release(event.Released, GetSlot(), event.Throw, cameraForward, THROW_DAMAGE, THROW_POWER);
 		if (event.Throw) PadRumble(0, THROW_RUMBLE_SMALL, THROW_RUMBLE_LARGE, THROW_RUMBLE_SECONDS);
 	}
-	if (arm.GetTarget() >= 0) GetDummies().MoveHeld(arm.GetTarget(), arm.GetTip());
+	if (arm.GetTarget() >= 0) GetFighters().MoveHeld(arm.GetTarget(), GetSlot(), arm.GetTip());
 	if (arm.GetState() == TENTACLE_EXTENDING) {
 		// 伸びるほど強くする（PadRumble は強いほうを残すので、毎フレーム足すと右肩上がりになる）
 		const float strength = Lerp(EXTEND_RUMBLE_START, EXTEND_RUMBLE_END, arm.GetExtendRatio(PARAMS));

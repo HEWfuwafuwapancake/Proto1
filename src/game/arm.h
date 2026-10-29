@@ -4,8 +4,8 @@
 #include "physics/vec3.h"
 #include <memory>
 
-class Player;
-class DummyManager;
+class Fighter;
+class FighterManager;
 class Camera;
 class Stage;
 
@@ -24,8 +24,8 @@ enum ARM_TYPE
 /// @brief 腕が使うゲームの部品への参照（所有しない）
 struct ARM_LINKS
 {
-	Player* PlayerObject; ///< プレイヤー（引き寄せによる位置・状態の更新にも使う）
-	DummyManager* Dummies; ///< 敵の候補・保持・命中を受け持つダミー管理
+	FighterManager* Fighters; ///< 自分と相手の体・候補・保持・命中を受け持つ管理
+	int Slot; ///< 自分のスロット番号（0〜3。相手の候補から除く）
 	const Camera* CameraObject; ///< 狙いと投げる向きを読むカメラ
 	const Stage* StageObject; ///< 浮島と場外の線を読むステージ
 };
@@ -57,9 +57,11 @@ protected:
 	Arm(int hand, const ARM_LINKS& links) : m_Hand(hand), m_Links(links) {}
 
 	/// @brief プレイヤーへの参照を取得する
-	Player& GetPlayer() const { return *m_Links.PlayerObject; }
-	/// @brief ダミー管理への参照を取得する
-	DummyManager& GetDummies() const { return *m_Links.Dummies; }
+	Fighter& GetPlayer() const;
+	/// @brief 全員の体の管理への参照を取得する
+	FighterManager& GetFighters() const { return *m_Links.Fighters; }
+	/// @brief 自分のスロット番号を取得する
+	int GetSlot() const { return m_Links.Slot; }
 	/// @brief カメラへの参照を取得する
 	const Camera& GetCamera() const { return *m_Links.CameraObject; }
 	/// @brief ステージへの参照を取得する
@@ -86,8 +88,8 @@ private:
 class ArmManager
 {
 public:
-	/// @brief 腕の処理を初期化し、左右とも触腕を装備する（ダミー初期化後）
-	void Initialize(const Stage& stage, Player& player, DummyManager& dummies, const Camera& camera);
+	/// @brief 自分のスロットと体の管理を受け取り、左右とも触腕を装備する（体の初期化後）
+	void Initialize(const Stage& stage, FighterManager& fighters, int slot, const Camera& camera);
 	/// @brief 腕の処理を終了し、保持している敵を離す
 	void Finalize(void);
 	/// @brief 左右の腕を待機に戻す（装備はそのまま。時間切れ・やり直し用）

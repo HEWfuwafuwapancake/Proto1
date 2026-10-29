@@ -1,7 +1,7 @@
 ﻿#include "game/match.h"
 #include "core/debug_ostream.h"
 #include "core/gametime.h"
-#include "game/dummy.h"
+#include "game/fightermanager.h"
 #include "game/arm.h"
 #include "input/pad.h"
 
@@ -20,7 +20,7 @@ static constexpr float FINISHED_LIGHT_COLOR[3] = { 1.0f, 0.0f, 0.0f };   // 時�
 
 void Match::Reset(void)
 {
-	m_Match.Start(MATCH_SECONDS, m_Dummies->GetTotalOutCount());
+	m_Match.Start(MATCH_SECONDS, m_Fighters->GetScore(0));
 	PadRumble(0, 0.0f, 0.0f, 0.0f);
 	PadSetLightColor(0, PLAYING_LIGHT_COLOR[0], PLAYING_LIGHT_COLOR[1], PLAYING_LIGHT_COLOR[2]);
 }
@@ -32,7 +32,8 @@ void Match::Finalize(void)
 
 void Match::Update(void)
 {
-	const MATCH_EVENT event = m_Match.Step(GameTimeGetDeltaTime(), m_Dummies->GetTotalOutCount());
+	// MatchCalcには場外総数の代わりに、VersusCalcで確定した1PのKO累計を渡す。
+	const MATCH_EVENT event = m_Match.Step(GameTimeGetDeltaTime(), m_Fighters->GetScore(0));
 #ifdef _DEBUG
 	if (event == MATCH_EVENT_SCORED) {
 		hal::dout << "試合：得点 " << m_Match.GetScore() << std::endl;
@@ -68,9 +69,9 @@ MATCH_STATE Match::GetState(void) const
 	return m_Match.GetState();
 }
 
-void Match::Initialize(const DummyManager& dummies, ArmManager& arms)
+void Match::Initialize(const FighterManager& fighters, ArmManager& arms)
 {
-	m_Dummies = &dummies;
+	m_Fighters = &fighters;
 	m_Arms = &arms;
 	Reset();
 }

@@ -4,20 +4,21 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）。
 決まったことは [decisions.md](decisions.md)、腕のモデルの原点と長さは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、終わったタスクの記録は [archive/](archive/)（普段は読まない）。
 
-- 最終更新：2026-10-29（Claude。Shota の Proto1、Visual Studio Enterprise の PC。No.25 段階3-A を確認して PR・マージ。次は段階2-B）
+- 最終更新：2026-10-29（Claude。Shota の Proto1、Visual Studio Enterprise の PC。No.25 段階3-B を確認してマージ。次は段階2-C）
 
 ---
 
 ## 1. 今の状態
 
-- **No.25 段階A（入力）済み・マージ済み**。パッド4台（`src/input/pad`）・機器0〜4ごとの行動と1人用の合成入力・F1〜F4の切替先（`src/input/action`）。Debug / Release 警告0、テスト202件通過、キーボード1人で今どおり遊べること（開始・移動・ジャンプ・F2で切替先が2P）を確認。パッド複数台の実機確認はまだ（C・D の画面確認でまとめて見る）。
-- 段階Aではまだ腕は1人分なので、F2〜F4 を選ぶと数字キーの腕の切り替えは1Pへ届かない（F1 へ戻せば再開）。
+- **No.25 段階B（体の共通化）まで済み**。`Player`・`DummyManager` を `Fighter`・`FighterManager` にまとめ、計算は `physics/versuscalc`（テスト9件）。段階3-B で Debug / Release 警告0・テスト 211 件（両構成）・versuscalc.cpp をまとめて壊すと6件落ちる・1人で歩く／つかむ／投げる（ダミー 12%）を確かめた。場外での KO の加点は画面ではまだ見ていない（テストでは確認済み。D の画面確認で見る）。
+- 腕・カメラ・HUD はまだ 1P の1組だけ。F2〜F4 では 1P の装備は変わらない（C で人ごとにする）。
+- No.25 段階A・B はマージ済み（PR #82・段階B の PR）。パッド複数台の実機確認はC・Dでまとめて行う。
 - 管理者が遊んで決めること：全種類の構えが普段の画面で分かるか／グラップリング・ドリル・磁石の取付位置と強さ。マウス操作は止めたまま（[decisions.md](decisions.md)）。
 - 順番が変わった（2026-10-29、管理者）：No.19 は止めて、**No.25 ローカル4人対戦 → No.26 オンライン対戦**を先に進める。No.19 のプラン（案）は `feature/tuning-values` に残してある。
 
-## 2. 次にやること：No.25 段階2-B（Codex が体を実装する）
+## 2. 次にやること：No.25 段階2-C（4分割画面）
 
-次のセッションでは下の「段階2」のプロンプトを `<段階> = B` として実行する。A はマージ済みなので、`.\tools\start-work.ps1 local-versus-b` で新しいブランチを作る。
+次のセッションでは下の「段階2」のプロンプトを `<段階> = C` として Codex で実行する（段階B はマージ済みなので `.\tools\start-work.ps1 local-versus-c` から）。その後は段階3-C。
 
 ### 管理者が決めたこと（2026-10-29）
 

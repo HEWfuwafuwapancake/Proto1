@@ -1,6 +1,6 @@
 ﻿#include "game/arm_shield.h"
-#include "game/dummy.h"
-#include "game/player.h"
+#include "game/fightermanager.h"
+#include "game/fighter.h"
 #include "core/gametime.h"
 #include "input/pad.h"
 #include "physics/armcalc.h"
@@ -53,10 +53,10 @@ void ShieldArm::Update(bool trigger)
 		const CAPSULE capsule = ShieldCalcBashCapsule(GetShoulder(), forward, PARAMS);
 		const VEC3 velocity = ShieldCalcPushVelocity(forward, BASH_SPEED, BASH_UP);
 		bool hit = false;
-		for (int i = 0; i < DUMMY_COUNT; ++i) {
-			const TENTACLE_TARGET target = GetDummies().GetTarget(i);
+		for (int i = 0; i < FIGHTER_COUNT; ++i) {
+			const TENTACLE_TARGET target = GetFighters().GetTarget(i, GetSlot());
 			if (!target.Available || !CollisionCapsuleCapsule(capsule, target.Body).Hit) continue;
-			GetDummies().Push(i, velocity);
+			GetFighters().Push(i, GetSlot(), velocity);
 			hit = true;
 		}
 		if (hit) PadRumble(0, BASH_RUMBLE_SMALL, BASH_RUMBLE_LARGE, BASH_RUMBLE_SECONDS);

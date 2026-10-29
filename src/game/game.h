@@ -1,8 +1,7 @@
 ﻿#pragma once
 
 #include "game/stage.h"
-#include "game/player.h"
-#include "game/dummy.h"
+#include "game/fightermanager.h"
 #include "game/camera.h"
 #include "game/arm.h"
 #include "game/match.h"
@@ -28,8 +27,7 @@ private:
 	void Restart();
 
 	Stage m_Stage;
-	Player m_Player;
-	DummyManager m_Dummies;
+	FighterManager m_Fighters;
 	Camera m_Camera;
 	ArmManager m_Arms;
 	Match m_Match;

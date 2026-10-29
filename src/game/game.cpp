@@ -11,12 +11,12 @@ void Game::Initialize()
 {
 	// 相手への参照は先に渡せるが、Reset の中では初期化済みの相手だけを使う。
 	m_Stage.Initialize();
-	m_Player.Initialize(m_Stage, m_Camera, m_Dummies, m_Arms);
-	m_Dummies.Initialize(m_Stage, m_Player, m_Camera);
-	m_Camera.Initialize(m_Stage, m_Player, m_Dummies, m_Arms, m_Match);
-	m_Arms.Initialize(m_Stage, m_Player, m_Dummies, m_Camera);
-	m_Match.Initialize(m_Dummies, m_Arms);
-	m_Hud.Initialize(m_Camera, m_Dummies, m_Match, m_Scene);
+	m_Fighters.Initialize(m_Stage);
+	m_Fighters.BindPlayer(0, m_Camera, m_Arms);
+	m_Camera.Initialize(m_Stage, m_Fighters, 0, m_Arms, m_Match);
+	m_Arms.Initialize(m_Stage, m_Fighters, 0, m_Camera);
+	m_Match.Initialize(m_Fighters, m_Arms);
+	m_Hud.Initialize(m_Camera, m_Fighters, 0, m_Match, m_Scene);
 	m_Scene.Start();
 #ifdef _DEBUG
 	hal::dout << "シーン：タイトル" << std::endl;
@@ -29,8 +29,6 @@ void Game::Finalize()
 	m_Match.Finalize();
 	m_Arms.Finalize();
 	m_Camera.Finalize();
-	m_Dummies.Finalize();
-	m_Player.Finalize();
 	m_Stage.Finalize();
 }
 
@@ -38,8 +36,7 @@ void Game::Restart()
 {
 	// 敵を戻す前に腕を離し、プレイヤー・敵のあとにカメラを戻す。
 	m_Arms.Reset();
-	m_Player.Reset();
-	m_Dummies.Reset();
+	m_Fighters.Reset();
 	m_Camera.Reset();
 	m_Match.Reset();
 #ifdef _DEBUG
@@ -52,14 +49,13 @@ void Game::Update()
 	const SCENE_INPUT input{ ActionIsTrigger(ACTION_DECIDE), ActionIsTrigger(ACTION_RESTART), ActionGetMove().Y };
 	const SCENE oldScene = m_Scene.GetScene();
 	if (oldScene == SCENE_MATCH) {
-		// プレイヤー → ダミー → カメラ → キャラの向き → 腕の順を保つ。
+		// 全員の体・体当たり → カメラ → キャラの向き → 腕の順を保つ。
 		m_Stage.Update();
 		if (m_Match.IsPlaying()) {
-			m_Player.Update();
-			m_Dummies.Update();
+			m_Fighters.Update();
 		}
 		m_Camera.Update();
-		if (m_Match.IsPlaying()) m_Player.UpdateFacing();
+		if (m_Match.IsPlaying()) m_Fighters.UpdateFacing();
 		// 装備切り替えは時間切れのあとも受け付ける。
 		m_Arms.Update(m_Match.IsPlaying());
 	}
@@ -91,8 +87,7 @@ void Game::Draw() const
 	Shader_SetLight(light);
 
 	m_Stage.Draw();
-	m_Player.Draw();
-	m_Dummies.Draw();
+	m_Fighters.Draw(m_Camera.GetTarget());
 	m_Arms.Draw();
 
 	// ---- 2D描画（UI）：3Dの上に重ねるので最後に描く ----
