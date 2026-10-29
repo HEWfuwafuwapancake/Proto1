@@ -18,35 +18,40 @@
 
 ### No.18 のプラン（管理者確認済み、2026-10-29）
 
-**流れ**：起動 → タイトル →（Enter / ×）→ 試合 → 時間切れ（今の TIME UP の画面）→（Enter / ×）→ 結果 →（Enter / × または R / OPTIONS）もう一回 ／（T / △）タイトルへ。
+**流れ**：起動 → タイトル（START を決定）→ 試合 → 時間切れ（今の TIME UP の画面）→（決定）→ 結果（RETRY か TITLE を選んで決定）→ もう一回 ／ タイトルへ。
 試合中の R / OPTIONS のやり直しは今までどおり「いつでも」。
 
 | 管理者が決めたこと | 内容 |
 |---|---|
-| 時間切れ → 結果 | **ボタンで移る**（TIME UP の画面で Enter / ×）。自動では移らない |
-| 結果画面 | **もう一回とタイトル**の2つ |
-| タイトル画面 | **文字と操作案内だけ**。後ろは止まった浮島（初期配置）を描き、半透明の黒でおおう |
+| 時間切れ → 結果 | **ボタンで移る**（TIME UP の画面で決定）。自動では移らない |
+| 結果画面 | **もう一回とタイトル**の2つを**選ぶメニュー** |
+| タイトル画面 | **文字と操作案内だけ**＋ START の1項目のメニュー。後ろは止まった浮島（初期配置）を描き、半透明の黒でおおう |
+| メニューの操作（2026-10-29 追加） | **パッドだけで操作できる**：左スティックの上下で選び、**○で決定**。今どれを選んでいるか分かるように、選んでいる項目を目立たせる（ホバー）。キーボードは W / S で選び Enter で決定 |
 
 **入力**（`src/input/action.h` / `action.cpp`）
-- `ACTION_DECIDE`（決定：Enter / ×）と `ACTION_TITLE`（タイトルへ：T / △）を足す。
-  `ACTION_PAD_BUTTONS` の大きさが `ACTION_TARGET_LEFT` なので、**2つとも `ACTION_TARGET_LEFT` より前**（`ACTION_EQUIP_RIGHT_NEXT` のあと）に入れ、`ACTION_KEYS`・`ACTION_PAD_BUTTONS` の並びもそろえる。
-- × は ACTION_JUMP と同じボタンだが、タイトル・結果ではプレイヤーを動かさず、TIME UP の画面でもプレイヤーは止まっているので、ぶつからない。
-  OPTIONS を決定にしないのは、TIME UP の画面で「やり直し（いつでも）」と「結果へ」が同じボタンになってしまうため。
+- `ACTION_DECIDE`（決定：Enter / ○）を足す。`ACTION_PAD_BUTTONS` の大きさが `ACTION_TARGET_LEFT` なので、**`ACTION_TARGET_LEFT` より前**（`ACTION_EQUIP_RIGHT_NEXT` のあと）に入れ、`ACTION_KEYS`・`ACTION_PAD_BUTTONS` の並びもそろえる。
+- ○ は試合中の `ACTION_EQUIP_RIGHT_NEXT`（右手の腕の切り替え）と同じボタン。タイトル・結果では腕を更新しないのでぶつからない。
+  **TIME UP の画面では腕の切り替えを止める**（今は「装備切り替えは時間切れのあとも受け付け」だが、○で結果へ進むときに右手の腕まで変わらないように。`m_Arms.Update` は試合中だけ呼ぶ）。
+- OPTIONS を決定にしないのは、TIME UP の画面で「やり直し（いつでも）」と「結果へ」が同じボタンになってしまうため。
+- メニューの上下は、今の `ActionGetMove().Y`（左スティック・W / S。前がプラス）を使う。新しい行動は足さない。
 
 **シーンの計算**（新しいファイル `src/physics/scenecalc.h` / `.cpp`。DirectX なし。`matchcalc` と同じ置き方）
 - `enum SCENE { SCENE_TITLE, SCENE_MATCH, SCENE_RESULT }`
 - `enum SCENE_EVENT { SCENE_EVENT_NONE, SCENE_EVENT_START_MATCH, SCENE_EVENT_SHOW_RESULT, SCENE_EVENT_BACK_TITLE }`
-- `struct SCENE_INPUT { bool Decide; bool Restart; bool Title; }`（その フレームに押した瞬間か。メンバーは全部 Doxygen で説明）
-- `class SceneCalc`：`void Start()`（タイトルにする）／`SCENE_EVENT Step(const SCENE_INPUT& input, bool matchFinished)`／`SCENE GetScene() const`
+- `enum RESULT_ITEM { RESULT_ITEM_RETRY, RESULT_ITEM_TITLE, RESULT_ITEM_COUNT }`（結果のメニューの項目。タイトルのメニューは START だけなので enum は作らない）
+- `struct SCENE_INPUT { bool Decide; bool Restart; float MoveY; }`（Decide・Restart は押した瞬間か、MoveY は `ActionGetMove().Y`。メンバーは全部 Doxygen で説明）
+- `class SceneCalc`：`void Start()`（タイトルにする）／`SCENE_EVENT Step(const SCENE_INPUT& input, bool matchFinished)`／`SCENE GetScene() const`／`int GetCursor() const`（結果で選んでいる項目）
+  - **スティックの弾き**：`MoveY` が `MENU_STICK_THRESHOLD`（0.6）を超えた瞬間に1つ動かし、`MENU_STICK_DEADZONE`（0.3）より内側に戻るまで次を受け付けない（倒しっぱなしで流れない。今の `TARGET_PAD_DEADZONE / THRESHOLD` と同じ考え方）。上（プラス）で前の項目、下で次の項目。端で止める（ループしない）。値は `scenecalc.cpp` の「調整用の値」。
   - タイトル：Decide → 試合（START_MATCH）
   - 試合：Restart → START_MATCH（いつでも。試合中のまま）／ matchFinished かつ Decide → 結果（SHOW_RESULT）。時間切れ前の Decide は何もしない
-  - 結果：Decide か Restart → 試合（START_MATCH）／ Title → タイトル（BACK_TITLE）。同じフレームに両方なら試合を優先
-- テスト `tests/Proto1Tests/scenecalc_test.cpp`（主な動きだけ、5件くらい）：タイトル→決定で試合／試合中の決定は無視・時間切れ後の決定で結果／試合中のやり直し／結果→もう一回／結果→タイトル。
+  - 結果に入るとき、カーソルは RETRY。結果：Decide → カーソルが RETRY なら START_MATCH、TITLE なら BACK_TITLE ／ Restart（R / OPTIONS）→ START_MATCH（近道として残す）
+  - スティックが倒れたまま結果に入っても、一度戻すまで動かない（入った瞬間に勝手に動かない）
+- テスト `tests/Proto1Tests/scenecalc_test.cpp`（主な動きだけ、5件くらい）：タイトル→決定で試合／試合中の決定は無視・時間切れ後の決定で結果／試合中のやり直し／結果で下に弾いて TITLE→決定でタイトル（RETRY のまま決定でもう一回）／倒しっぱなしでは1つしか動かない。
 
 **Game**（`src/game/game.h` / `game.cpp`）
 - `SceneCalc m_Scene` を持つ。`Initialize` の最後に `m_Scene.Start()`（起動はタイトル）。
-- `Update`：まず `SCENE_INPUT` を `ActionIsTrigger(ACTION_DECIDE / ACTION_RESTART / ACTION_TITLE)` で作り、
-  - **試合のシーン**のときだけ今の `Update` の中身（ステージ・プレイヤー・ダミー・カメラ・腕・試合）を動かす。今の `if (ActionIsTrigger(ACTION_RESTART)) Restart(); else m_Match.Update();` は、`m_Scene.Step` の結果で置きかえる（START_MATCH なら `Restart()`、それ以外は `m_Match.Update()`）。
+- `Update`：まず `SCENE_INPUT` を `ActionIsTrigger(ACTION_DECIDE / ACTION_RESTART)` と `ActionGetMove().Y` で作り、
+  - **試合のシーン**のときだけ今の `Update` の中身（ステージ・プレイヤー・ダミー・カメラ・腕・試合）を動かす。腕は `m_Match.IsPlaying()` のときだけ `m_Arms.Update(true)`。今の `if (ActionIsTrigger(ACTION_RESTART)) Restart(); else m_Match.Update();` は、`m_Scene.Step` の結果で置きかえる（START_MATCH なら `Restart()`、それ以外は `m_Match.Update()`）。
   - タイトル・結果では、プレイヤー・ダミー・カメラ・腕・試合を更新しない（止まった絵）。`m_Hud.Update()` は毎フレーム呼ぶ。
   - イベントの処理：START_MATCH と BACK_TITLE は `Restart()`（タイトルの後ろも初期配置にする）、SHOW_RESULT は何もしない（結果は Match の得点を読むだけ）。
   - Debug 出力：シーンが変わったら `hal::dout` に「シーン：タイトル／試合／結果」。`Restart()` の「試合：やり直し」はそのまま。
@@ -55,23 +60,25 @@
 
 **画面表示**（`src/game/hud.h` / `hud.cpp`）
 - `Hud::Initialize` に `const SceneCalc& scene` を足して受け取る（`Game::Initialize` から `m_Scene` を渡す）。
-- タイトル：おおい（今の `COVER_COLOR`）＋ 大きな「PROTO」と、下に「PRESS ENTER / X」。その下に小さく操作案内を3行：「MOVE  WASD / L STICK」「ARMS  L1 R1 / CLICK」「JUMP  SPACE / X」（左右クリックの触腕は使える）。残り秒数・スコア・頭の上の % は出さない。
-- 試合：今のまま。ただし TIME UP の画面の案内を「PRESS R / OPTIONS」から **「NEXT  ENTER / X」** に変える（R / OPTIONS のやり直しは今も効くが、案内は結果へ進むほうだけ）。
-- 結果：おおい ＋「RESULT」・大きなスコア（今の `FINAL_SCORE_*` を使う）・「RETRY  ENTER / X」・「TITLE  T / TRIANGLE」。残り秒数・頭の上の % は出さない。
-- 置き場所・大きさは `hud.cpp` の「調整用の値」に足す（タイトル・結果の各行の Y とドットの大きさ）。
+- **選んでいる項目（ホバー）**：項目の文字の後ろに、文字より少し大きい四角（`MENU_HOVER_COLOR`。半透明の白など）を `Number2DDrawBox` で描き、文字の色を `MENU_SELECTED_COLOR`（黄色など）にする。選んでいない項目は `MENU_TEXT_COLOR`（少し暗い白）。タイトルの START は1つだけだが、同じ見た目で選ばれている状態に描く。
+- タイトル：おおい（今の `COVER_COLOR`）＋ 大きな「PROTO」、その下にメニュー「START」（選ばれている見た目）、下に小さく操作案内：「SELECT  STICK / W S」「OK  O / ENTER」と、遊び方の3行「MOVE  WASD / L STICK」「ARMS  L1 R1 / CLICK」「JUMP  SPACE / X」。残り秒数・スコア・頭の上の % は出さない。
+- 試合：今のまま。ただし TIME UP の画面の案内を「PRESS R / OPTIONS」から **「NEXT  O / ENTER」** に変える（R / OPTIONS のやり直しは今も効くが、案内は結果へ進むほうだけ）。
+- 結果：おおい ＋「RESULT」・大きなスコア（今の `FINAL_SCORE_*` を使う）・縦に並べたメニュー「RETRY」「TITLE」（`GetCursor()` の項目をホバーの見た目に）・下に小さく「SELECT  STICK / W S」「OK  O / ENTER」。残り秒数・頭の上の % は出さない。
+- 置き場所・大きさ・色は `hud.cpp` の「調整用の値」に足す（タイトル・結果の各行の Y、ドットの大きさ、メニューの行の間隔、ホバーの四角の余白と色）。
+- ○ は文字の「O」で表す（○の形の文字は作らない）。
 
 **文字**（`src/render/glyphcalc.cpp`）
-- 足りない英字を 5×7 ドットで足す：**C・D・G・J・K・L・V・W・X・Y**（上の文字列に出てくるもの。足す前に、使う文字列の全文字が表にあるか確かめる。数字の 1 は英字の表にないので、英字の中の「L1 R1」の 1 は `I` で代用せず、**ドットの 1 も足す**）。
+- 足りない英字を 5×7 ドットで足す：**C・D・J・K・L・V・W・X・Y と数字の 1**（上の文字列に出てくるもの。英字の中の「L1 R1」の 1 は `I` で代用せず、ドットの 1 を足す）。足したあと、上の文字列の全文字が表にあるか確かめる。
   `glyphcalc.h` の `GlyphCalcLetterRow` のコメントの文字の一覧も直す。英字のテストは足さない（今のテストが通ればよい）。
 
 **ドキュメント**
-- `docs/decisions.md` に1行：「シーンの流れ（2026-10-29、No.18）：起動はタイトル／決定は Enter・×／TIME UP から結果へはボタン／結果はもう一回（Enter・×・R・OPTIONS）とタイトル（T・△）／試合中のやり直しはいつでも」。「試合の流れ」の行の「カウントダウンなし（シーンの流れは No.18）」はそのまま。
+- `docs/decisions.md` に1行：「シーンの流れ（2026-10-29、No.18）：起動はタイトル／タイトル・結果はメニュー（左スティックか W・S で選び、○か Enter で決定。選んでいる項目は目立たせる）／TIME UP から結果へは○・Enter（TIME UP の間は腕の切り替えを止める）／結果は RETRY と TITLE（R・OPTIONS でももう一回）／試合中のやり直しはいつでも」。「試合の流れ」の行の「カウントダウンなし（シーンの流れは No.18）」はそのまま。
 - `docs/dev/01_DX11基盤の構成.md` の `Game::Update` の順番の説明があれば、シーンで分けたことを足す。
-- `docs/plan/01_企画の要点.md` の操作の表に、決定（Enter / ×）とタイトルへ（T / △）を足す（表があれば）。
+- `docs/plan/01_企画の要点.md` の操作の表に、メニューの操作（左スティック・○ / W・S・Enter）を足す（表があれば）。
 
 **触るファイル**：`src/input/action.h`・`action.cpp`／`src/physics/scenecalc.h`・`.cpp`（新規）／`src/game/game.h`・`game.cpp`／`src/game/hud.h`・`hud.cpp`／`src/render/glyphcalc.h`・`.cpp`／`tests/Proto1Tests/scenecalc_test.cpp`（新規）／`Proto1.vcxproj`・`.filters`／`tests/Proto1Tests/Proto1Tests.vcxproj`・`.filters`（`scenecalc.cpp` を「既存の項目」で）／上のドキュメント。
 
-**確かめること（段階3）**：Debug / Release 警告0／`run-tests.ps1`（Debug・Release）／`scenecalc.cpp` の遷移をまとめて壊してテストが落ちる→戻す／画面（タイトル・試合・TIME UP・結果の4枚）で文字が欠けていないか、タイトル→試合→TIME UP→結果→もう一回→…→タイトルへ が回るか。
+**確かめること（段階3）**：Debug / Release 警告0／`run-tests.ps1`（Debug・Release）／`scenecalc.cpp` の遷移とスティックの弾きをまとめて壊してテストが落ちる→戻す／画面（タイトル・試合・TIME UP・結果で RETRY 選択・結果で TITLE 選択の5枚）で文字が欠けていないか、ホバーが分かるか、タイトル→試合→TIME UP→結果→もう一回→…→結果→タイトル が回るか。
 
 ---
 
