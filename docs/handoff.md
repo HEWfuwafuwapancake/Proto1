@@ -27,11 +27,14 @@
 | 結果画面 | **もう一回とタイトル**の2つを**選ぶメニュー** |
 | タイトル画面 | **文字と操作案内だけ**＋ START の1項目のメニュー。後ろは止まった浮島（初期配置）を描き、半透明の黒でおおう |
 | メニューの操作（2026-10-29 追加） | **パッドだけで操作できる**：左スティックの上下で選び、**○で決定**。今どれを選んでいるか分かるように、選んでいる項目を目立たせる（ホバー）。キーボードは W / S で選び Enter で決定 |
+| 腕の切り替え（2026-10-29 追加） | **パッドでの切り替えはなくす**。キーボードの Q / E → 数字キーだけ。今これが効かないので、同じ PR で直す |
 
 **入力**（`src/input/action.h` / `action.cpp`）
 - `ACTION_DECIDE`（決定：Enter / ○）を足す。`ACTION_PAD_BUTTONS` の大きさが `ACTION_TARGET_LEFT` なので、**`ACTION_TARGET_LEFT` より前**（`ACTION_EQUIP_RIGHT_NEXT` のあと）に入れ、`ACTION_KEYS`・`ACTION_PAD_BUTTONS` の並びもそろえる。
-- ○ は試合中の `ACTION_EQUIP_RIGHT_NEXT`（右手の腕の切り替え）と同じボタン。タイトル・結果では腕を更新しないのでぶつからない。
-  **TIME UP の画面では腕の切り替えを止める**（今は「装備切り替えは時間切れのあとも受け付け」だが、○で結果へ進むときに右手の腕まで変わらないように。`m_Arms.Update` は試合中だけ呼ぶ）。
+- **パッドでの腕の切り替えはなくす**（2026-10-29、管理者が決めた。プロトなので、腕の切り替えはキーボードの Q / E → 数字キーだけでよい）：
+  `ACTION_EQUIP_LEFT_PREV / LEFT_NEXT / RIGHT_PREV / RIGHT_NEXT` の4つと、`ArmManager::Update` の前後の切り替え（`direction` と `ArmCalcCycle`）を消す。
+  `ArmCalcCycle` をほかで使っていなければ、関数とそのテストも消す。十字キー ← →・□・○ には何も割り当てない（○ はメニューの決定だけになる）。
+  装備の切り替え（Q / E → 数字）は、今までどおり時間切れのあとも受け付ける。
 - OPTIONS を決定にしないのは、TIME UP の画面で「やり直し（いつでも）」と「結果へ」が同じボタンになってしまうため。
 - メニューの上下は、今の `ActionGetMove().Y`（左スティック・W / S。前がプラス）を使う。新しい行動は足さない。
 
@@ -51,7 +54,7 @@
 **Game**（`src/game/game.h` / `game.cpp`）
 - `SceneCalc m_Scene` を持つ。`Initialize` の最後に `m_Scene.Start()`（起動はタイトル）。
 - `Update`：まず `SCENE_INPUT` を `ActionIsTrigger(ACTION_DECIDE / ACTION_RESTART)` と `ActionGetMove().Y` で作り、
-  - **試合のシーン**のときだけ今の `Update` の中身（ステージ・プレイヤー・ダミー・カメラ・腕・試合）を動かす。腕は `m_Match.IsPlaying()` のときだけ `m_Arms.Update(true)`。今の `if (ActionIsTrigger(ACTION_RESTART)) Restart(); else m_Match.Update();` は、`m_Scene.Step` の結果で置きかえる（START_MATCH なら `Restart()`、それ以外は `m_Match.Update()`）。
+  - **試合のシーン**のときだけ今の `Update` の中身（ステージ・プレイヤー・ダミー・カメラ・腕・試合）を動かす（`m_Arms.Update(m_Match.IsPlaying())` も今のまま）。今の `if (ActionIsTrigger(ACTION_RESTART)) Restart(); else m_Match.Update();` は、`m_Scene.Step` の結果で置きかえる（START_MATCH なら `Restart()`、それ以外は `m_Match.Update()`）。
   - タイトル・結果では、プレイヤー・ダミー・カメラ・腕・試合を更新しない（止まった絵）。`m_Hud.Update()` は毎フレーム呼ぶ。
   - イベントの処理：START_MATCH と BACK_TITLE は `Restart()`（タイトルの後ろも初期配置にする）、SHOW_RESULT は何もしない（結果は Match の得点を読むだけ）。
   - Debug 出力：シーンが変わったら `hal::dout` に「シーン：タイトル／試合／結果」。`Restart()` の「試合：やり直し」はそのまま。
@@ -72,13 +75,23 @@
   `glyphcalc.h` の `GlyphCalcLetterRow` のコメントの文字の一覧も直す。英字のテストは足さない（今のテストが通ればよい）。
 
 **ドキュメント**
-- `docs/decisions.md` に1行：「シーンの流れ（2026-10-29、No.18）：起動はタイトル／タイトル・結果はメニュー（左スティックか W・S で選び、○か Enter で決定。選んでいる項目は目立たせる）／TIME UP から結果へは○・Enter（TIME UP の間は腕の切り替えを止める）／結果は RETRY と TITLE（R・OPTIONS でももう一回）／試合中のやり直しはいつでも」。「試合の流れ」の行の「カウントダウンなし（シーンの流れは No.18）」はそのまま。
+- `docs/decisions.md` に1行：「シーンの流れ（2026-10-29、No.18）：起動はタイトル／タイトル・結果はメニュー（左スティックか W・S で選び、○か Enter で決定。選んでいる項目は目立たせる）／TIME UP から結果へは○・Enter／結果は RETRY と TITLE（R・OPTIONS でももう一回）／試合中のやり直しはいつでも」と、「腕の切り替えはキーボードの Q / E → 数字キーだけ（2026-10-29。パッドの十字キー・□・○ の切り替えはなくした）」。「試合の流れ」の行の「カウントダウンなし（シーンの流れは No.18）」はそのまま。
 - `docs/dev/01_DX11基盤の構成.md` の `Game::Update` の順番の説明があれば、シーンで分けたことを足す。
 - `docs/plan/01_企画の要点.md` の操作の表に、メニューの操作（左スティック・○ / W・S・Enter）を足す（表があれば）。
 
-**触るファイル**：`src/input/action.h`・`action.cpp`／`src/physics/scenecalc.h`・`.cpp`（新規）／`src/game/game.h`・`game.cpp`／`src/game/hud.h`・`hud.cpp`／`src/render/glyphcalc.h`・`.cpp`／`tests/Proto1Tests/scenecalc_test.cpp`（新規）／`Proto1.vcxproj`・`.filters`／`tests/Proto1Tests/Proto1Tests.vcxproj`・`.filters`（`scenecalc.cpp` を「既存の項目」で）／上のドキュメント。
+**Q / E → 数字キーの腕の切り替えが効かない不具合の修正**（2026-10-29、管理者から。同じ PR で直す）
+- 仕組み：`action.cpp` の `ActionUpdate` が Q / E（`EQUIP_MODE_KEY_LEFT / RIGHT`）と数字キー 1〜6（テンキーも）を `KeyboardIsTrigger` で読み、`ActionCalcEquipKey` が切り替えモードと選ぶ手を決め、`ArmManager::Update` が `ChangeType` する。キーの押下は `main.cpp` の `WM_KEYDOWN` → `KeyboardOnKeyDown`（`keyboardcalc.h` の `KeyboardTriggerCalc`）と `GetKeyboardState` の両方で拾っている。タイトルバーにモードと左右の装備が出る。
+- **まず再現する**：Debug で起動し、Q → 2、E → 3、Q → Q（モードの取り消し）、Shift＋2 などを試し、タイトルバーと Debug 出力（「腕：左 → 〇〇」）で、どこで止まっているか（モードに入らない／数字が届かない／手が違う）を突き止める。**日本語入力（IME）がオンのときとオフのときの両方**で試す。
+- 原因の候補（Claude がコードを読んだ範囲。決めつけずに確かめる）：
+  1. **IME**：ウィンドウに IME が付いたままなので、日本語入力がオンだと文字・数字キーの `WM_KEYDOWN` が `VK_PROCESSKEY` になり、Q / E・数字が届かない。直すなら、ウィンドウを作ったあとに `ImmAssociateContext(hWnd, nullptr)` で IME を外す（`imm32.lib` のリンクが要る。`#pragma comment(lib, "imm32.lib")` か .vcxproj の追加の依存ファイル）。
+  2. **押下の二重取り**：`KeyboardIsTrigger` が「メッセージで覚えた押下」と「`GetKeyboardState` の前フレームとの差」の OR なので、2つが別のフレームに出ると Q が2回押されたことになり、モードが入ってすぐ切れる（`ActionCalcEquipKey` は同じキーでモードを取り消す）。
+  3. ほかに見つかれば、それを直す。
+- 直したら、原因が計算（`keyboardcalc.h`・`actioncalc.cpp`）にあれば、その不具合を再現するテストを1つ足す（CLAUDE.md の「実際に不具合が出たら、それを再現するテストは足す」）。IME のように Windows 側の原因なら、テストは足さず、段階3 の画面確認で確かめる。
+- 原因と直し方を、`docs/handoff.md` の「今の状態」に1〜2行で書く（段階3 の Claude が確かめるため）。
 
-**確かめること（段階3）**：Debug / Release 警告0／`run-tests.ps1`（Debug・Release）／`scenecalc.cpp` の遷移とスティックの弾きをまとめて壊してテストが落ちる→戻す／画面（タイトル・試合・TIME UP・結果で RETRY 選択・結果で TITLE 選択の5枚）で文字が欠けていないか、ホバーが分かるか、タイトル→試合→TIME UP→結果→もう一回→…→結果→タイトル が回るか。
+**触るファイル**：`src/core/main.cpp`（IME が原因のとき）／`src/game/arm.cpp`（前後の切り替えを消す）／`src/physics/armcalc.h`・`.cpp` とそのテスト（`ArmCalcCycle` を消すとき）／`src/input/action.h`・`action.cpp`／`src/physics/scenecalc.h`・`.cpp`（新規）／`src/game/game.h`・`game.cpp`／`src/game/hud.h`・`hud.cpp`／`src/render/glyphcalc.h`・`.cpp`／`tests/Proto1Tests/scenecalc_test.cpp`（新規）／`Proto1.vcxproj`・`.filters`／`tests/Proto1Tests/Proto1Tests.vcxproj`・`.filters`（`scenecalc.cpp` を「既存の項目」で）／上のドキュメント。
+
+**確かめること（段階3）**：Debug / Release 警告0／`run-tests.ps1`（Debug・Release）／`scenecalc.cpp` の遷移とスティックの弾きをまとめて壊してテストが落ちる→戻す／画面（タイトル・試合・TIME UP・結果で RETRY 選択・結果で TITLE 選択の5枚）で文字が欠けていないか、ホバーが分かるか、タイトル→試合→TIME UP→結果→もう一回→…→結果→タイトル が回るか。／Q → 数字・E → 数字で腕が変わるか（IME オン・オフの両方。タイトルバーと Debug 出力で確かめる）／パッドの十字キー・□・○ で腕が変わらないか。
 
 ---
 
@@ -89,7 +102,7 @@
 ### 新しいアームの仕様（管理者確認済み、2026-10-26。各腕の細かい値は、その腕のプランで決める）
 
 - **全部の腕で同じ**：操作は今と同じ L1 / R1（左右クリック）だけ。腕ごとに「押したとき」と「効いている間にもう一度押したとき」を決める（「操作はシンプルに」）。
-  装備は試すための切り替えだけ（十字キー ← → で左手、□ ○ で右手。キーボードは 1〜6 で左手、Shift＋1〜6 で右手）。腕カプセルは作らない。色は今の左右の色と、効いている間の色だけ。
+  装備は試すための切り替えだけ（キーボードの Q / E で左手・右手の切り替えモード → 数字キー 1〜6。2026-10-29 にパッドでの切り替えはなくした）。腕カプセルは作らない。色は今の左右の色と、効いている間の色だけ。
 - **作り方**（No.44 のあと）：腕ごとの処理は `src/game/arm_〇〇.h / .cpp` の `Arm` の派生クラス、計算は `src/physics/〇〇calc.h / .cpp` の DirectX なしのクラス（テストする）。`arm.cpp` の `ARM_FACTORIES` の1行を `CreateArm<〇〇Arm>` にする。
   描画は `Arm::LoadModel` と `Arm::DrawPiece`（中で `TentacleCalcPieceAxes`）を使う（そのため OBJ の向きは触腕と同じ -Y が伸びる向きにそろえる）。グラップリングのワイヤーは細い円柱で描く。
 
