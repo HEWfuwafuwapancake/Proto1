@@ -337,9 +337,17 @@ void Update(void)
 	ActionUpdate();
 
 	//SHARE / V で振動のオン・オフを切り替える（オンにしたら短く振動して知らせる。タイトルバーにも出す）
-	if (ActionIsTrigger(ACTION_RUMBLE_TOGGLE)) {
+	bool toggleRumble = false;
+	for (int device = 0; device < ACTION_DEVICE_COUNT; ++device) {
+		if (ActionIsTrigger(device, ACTION_RUMBLE_TOGGLE)) toggleRumble = true;
+	}
+	if (toggleRumble) {
 		PadSetRumbleEnabled(!PadIsRumbleEnabled());
-		if (PadIsRumbleEnabled()) PadRumble(0, RUMBLE_ON_NOTICE_STRENGTH, RUMBLE_ON_NOTICE_STRENGTH, RUMBLE_ON_NOTICE_SECONDS);
+		if (PadIsRumbleEnabled()) {
+			for (int pad = 0; pad < PAD_COUNT; ++pad) {
+				PadRumble(pad, RUMBLE_ON_NOTICE_STRENGTH, RUMBLE_ON_NOTICE_STRENGTH, RUMBLE_ON_NOTICE_SECONDS);
+			}
+		}
 	}
 
 	g_Game.Update();

@@ -26,9 +26,12 @@ public:
 
 private:
 	void Restart();
+	void ConfigurePlayers();
+	void UpdatePadLights() const;
 	VERSUS_VIEWPORT GetViewport(int index) const;
 
 	Stage m_Stage;
+	VersusCalc m_Participants; // タイトルで決まる参加者。試合の得点はFighterManagerが持つ。
 	FighterManager m_Fighters;
 	// カメラ・腕・HUD はスロット番号で持つ。使うのは人のスロットだけ。
 	Camera m_Cameras[FIGHTER_COUNT];

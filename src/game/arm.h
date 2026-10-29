@@ -78,6 +78,8 @@ protected:
 	void DrawPiece(int model, VEC3 start, VEC3 end, float sourceLength, float thickness, const XMFLOAT4& color, float roll = 0.0f) const;
 	/// @brief 片手用の OBJ を読む（右手だけ X を鏡写しにする。失敗は -1）
 	int LoadModel(const char* path) const;
+	/// @brief この腕を使う人のパッドを振動させる（キーボードの人には出力しない）
+	void Rumble(float smallMotor, float largeMotor, float seconds) const;
 
 private:
 	int m_Hand;

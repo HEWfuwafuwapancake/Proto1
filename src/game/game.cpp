@@ -1,6 +1,7 @@
 ﻿#include "game/game.h"
 #include "core/shader.h"
 #include "input/action.h"
+#include "input/pad.h"
 #include "render/number2d.h"
 
 #ifdef _DEBUG
@@ -20,7 +21,41 @@ void Game::Initialize()
 {
 	// 相手への参照は先に渡せるが、Reset の中では初期化済みの相手だけを使う。
 	m_Stage.Initialize();
-	m_Fighters.Initialize(m_Stage);
+	m_Participants.Reset();
+	m_Fighters.Initialize(m_Stage, m_Participants);
+	// モデルは起動時に4枠分だけ読む。参加やTITLE・RETRYでは作り直さない。
+	for (int i = 0; i < FIGHTER_COUNT; ++i) {
+		m_Cameras[i].Initialize(m_Stage, m_Fighters, i, m_Arms[i], m_Match);
+		m_Arms[i].Initialize(m_Stage, m_Fighters, i, m_Cameras[i]);
+	}
+	m_Match.Initialize(m_Fighters, m_Arms);
+	for (int i = 0; i < FIGHTER_COUNT; ++i) {
+		m_Huds[i].Initialize(m_Cameras[i], m_Fighters, i, m_Match, m_Scene);
+	}
+	ConfigurePlayers();
+	m_Scene.Start();
+	UpdatePadLights();
+#ifdef _DEBUG
+	hal::dout << "シーン：タイトル（人 " << m_HumanCount << " 人）" << std::endl;
+#endif
+}
+
+void Game::Finalize()
+{
+	for (int i = 0; i < FIGHTER_COUNT; ++i) m_Huds[i].Finalize();
+	m_Match.Finalize();
+	for (int i = 0; i < FIGHTER_COUNT; ++i) {
+		m_Arms[i].Finalize();
+		m_Cameras[i].Finalize();
+	}
+	m_Stage.Finalize();
+}
+
+void Game::ConfigurePlayers()
+{
+	// 前の顔ぶれの保持をすべて離してから、新しい体へ割り当てる。
+	for (int i = 0; i < FIGHTER_COUNT; ++i) m_Arms[i].Reset();
+	m_Fighters.Initialize(m_Stage, m_Participants);
 	m_HumanCount = 0;
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		if (m_Fighters.GetFighter(i).IsHuman()) m_Humans[m_HumanCount++] = i;
@@ -30,31 +65,25 @@ void Game::Initialize()
 		const VERSUS_VIEWPORT view = GetViewport(k);
 		m_Fighters.BindPlayer(slot, m_Cameras[slot], m_Arms[slot]);
 		m_Cameras[slot].SetViewSize(view.Width, view.Height);
-		m_Cameras[slot].Initialize(m_Stage, m_Fighters, slot, m_Arms[slot], m_Match);
-		m_Arms[slot].Initialize(m_Stage, m_Fighters, slot, m_Cameras[slot]);
-	}
-	m_Match.Initialize(m_Fighters, m_Arms);
-	for (int k = 0; k < m_HumanCount; ++k) {
-		const int slot = m_Humans[k];
-		const VERSUS_VIEWPORT view = GetViewport(k);
-		m_Huds[slot].Initialize(m_Cameras[slot], m_Fighters, slot, m_Match, m_Scene);
+		m_Cameras[slot].Reset();
 		m_Huds[slot].SetViewSize(view.Width, view.Height);
 	}
-	m_Scene.Start();
-#ifdef _DEBUG
-	hal::dout << "シーン：タイトル（人 " << m_HumanCount << " 人）" << std::endl;
-#endif
+	if (m_HumanCount == 0) {
+		// 未参加のタイトルは1つのカメラで初期配置を映す。
+		m_Cameras[0].SetViewSize((float)SCREEN_WIDTH, (float)SCREEN_HEIGHT);
+		m_Cameras[0].Reset();
+	}
 }
 
-void Game::Finalize()
+void Game::UpdatePadLights() const
 {
-	for (int k = 0; k < m_HumanCount; ++k) m_Huds[m_Humans[k]].Finalize();
-	m_Match.Finalize();
-	for (int k = 0; k < m_HumanCount; ++k) {
-		m_Arms[m_Humans[k]].Finalize();
-		m_Cameras[m_Humans[k]].Finalize();
+	for (int pad = 0; pad < PAD_COUNT; ++pad) {
+		XMFLOAT4 color{}; // 未参加は消灯
+		for (int slot = 0; slot < FIGHTER_COUNT; ++slot) {
+			if (m_Participants.GetDevice(slot) == pad) color = Fighter::GetPlayerColor(slot);
+		}
+		PadSetLightColor(pad, color.x, color.y, color.z);
 	}
-	m_Stage.Finalize();
 }
 
 void Game::Restart()
@@ -71,8 +100,16 @@ void Game::Restart()
 
 void Game::Update()
 {
-	const SCENE_INPUT input{ ActionIsTrigger(ACTION_DECIDE), ActionIsTrigger(ACTION_RESTART), ActionGetMove().Y };
 	const SCENE oldScene = m_Scene.GetScene();
+	const int host = m_Participants.GetDevice(0);
+	SCENE_INPUT input{ ActionIsTrigger(host, ACTION_DECIDE), ActionIsTrigger(host, ACTION_RESTART), ActionGetMove(host).Y };
+	if (oldScene == SCENE_TITLE) {
+		input = {};
+		// 同一フレームの参加は機器番号順。開始を押したフレームの新規参加も取り込む。
+		for (int device = 0; device < ACTION_DEVICE_COUNT; ++device) {
+			if (ActionIsTrigger(device, ACTION_DECIDE) && m_Participants.JoinOrStart(device)) input.Decide = true;
+		}
+	}
 	if (oldScene == SCENE_MATCH) {
 		// 全員の体・体当たり → カメラ → キャラの向き → 腕の順を保つ。
 		m_Stage.Update();
@@ -85,7 +122,15 @@ void Game::Update()
 		for (int k = 0; k < m_HumanCount; ++k) m_Arms[m_Humans[k]].Update(m_Match.IsPlaying());
 	}
 	const SCENE_EVENT event = m_Scene.Step(input, m_Match.GetState() == MATCH_STATE_FINISHED);
-	if (event == SCENE_EVENT_START_MATCH || event == SCENE_EVENT_BACK_TITLE) Restart();
+	if (event == SCENE_EVENT_START_MATCH) {
+		if (oldScene == SCENE_TITLE) ConfigurePlayers();
+		Restart();
+	}
+	else if (event == SCENE_EVENT_BACK_TITLE) {
+		m_Participants.Reset();
+		ConfigurePlayers();
+		m_Match.Reset();
+	}
 	else if (oldScene == SCENE_MATCH) m_Match.Update();
 #ifdef _DEBUG
 	if (oldScene != m_Scene.GetScene()) {
@@ -95,6 +140,7 @@ void Game::Update()
 	}
 #endif
 	for (int k = 0; k < m_HumanCount; ++k) m_Huds[m_Humans[k]].Update();
+	UpdatePadLights();
 }
 
 void Game::Draw() const
@@ -106,8 +152,9 @@ void Game::Draw() const
 	light.Direction = { 0.5f, -1.0f, 0.8f, 0.0f };
 
 	// 人ごとに「ビューポート → そのカメラ → 3D → その人の HUD」の順に描く。
-	for (int k = 0; k < m_HumanCount; ++k) {
-		const int slot = m_Humans[k];
+	const int viewCount = m_HumanCount > 0 ? m_HumanCount : 1;
+	for (int k = 0; k < viewCount; ++k) {
+		const int slot = m_HumanCount > 0 ? m_Humans[k] : 0;
 		const Camera& camera = m_Cameras[slot];
 		const VERSUS_VIEWPORT view = GetViewport(k);
 		SetViewport(view.X, view.Y, view.Width, view.Height);
@@ -136,5 +183,5 @@ void Game::Draw() const
 		const VERSUS_VIEWPORT empty = GetViewport(3);
 		Number2DDrawBox({ empty.X, empty.Y, empty.Width, empty.Height }, EMPTY_VIEW_COLOR);
 	}
-	if (m_HumanCount > 0) m_Huds[m_Humans[0]].DrawScene();
+	m_Huds[0].DrawScene(m_Participants);
 }

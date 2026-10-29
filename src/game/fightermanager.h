@@ -6,8 +6,10 @@
 class FighterManager
 {
 public:
-	/// @brief 1人用合成入力の1Pとダミー3体を初期化する（段階B）
-	void Initialize(const Stage& stage);
+	/// @brief 参加した機器を各スロットに割り当て、空きはダミーとして初期化する
+	void Initialize(const Stage& stage, const VersusCalc& participants);
+	/// @brief 参加者・KO数・順位の計算結果を読み取る
+	const VersusCalc& GetVersus() const { return m_Versus; }
 	/// @brief 人のスロットにカメラと腕をつなぐ（どちらのResetより前でもよい）
 	void BindPlayer(int slot, const Camera& camera, const ArmManager& arms);
 	/// @brief 全員の体・攻撃記録・得点を戻す（割り当てはそのまま）

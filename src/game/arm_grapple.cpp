@@ -101,7 +101,7 @@ void GrappleArm::Update(bool trigger)
 		}
 		m_Pulling = true;
 		GetPlayer().SetPulled(true);
-		PadRumble(0, ATTACH_RUMBLE_SMALL, ATTACH_RUMBLE_LARGE, ATTACH_RUMBLE_SECONDS);
+		Rumble(ATTACH_RUMBLE_SMALL, ATTACH_RUMBLE_LARGE, ATTACH_RUMBLE_SECONDS);
 	}
 	if (m_Pulling) {
 		if (event.Arrived && event.OnStage) {
@@ -113,7 +113,7 @@ void GrappleArm::Update(bool trigger)
 		}
 		if (event.Arrived && event.Target >= 0) {
 			GetFighters().Hit(event.Target, GetSlot(), { event.Direction.X, event.Direction.Y, event.Direction.Z }, HIT_DAMAGE, HIT_POWER);
-			PadRumble(0, HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
+			Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
 		}
 		if (event.Released) {
 			m_Pulling = false;
