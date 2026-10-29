@@ -20,19 +20,16 @@ extern "C" {
 static constexpr float STICK_DEAD_ZONE = 0.12f;	// スティックの遊び（手を離したときのずれを 0 にする大きさ。0〜1）
 static constexpr bool RUMBLE_ENABLED_AT_START = false;	// 起動したときの振動（true：振動する、false：振動しない）。ゲーム中は SHARE／V で切り替える
 
-// DUALSHOCK 4 の見分け方（USB の VID と PID）
-static constexpr DWORD DS4_VENDOR_ID = 0x054C;		// ソニー
-static constexpr DWORD DS4_PRODUCT_ID_V1 = 0x05C4;	// 初代（CUH-ZCT1）
-static constexpr DWORD DS4_PRODUCT_ID_V2 = 0x09CC;	// 2代目（CUH-ZCT2）
-
 static constexpr UINT RAW_INPUT_BUFFER_SIZE = 1024;	// WM_INPUT のデータを受け取る大きさ（DS4 の USB は 64 バイト＋ヘッダー）
 static constexpr int DS4_USB_OUTPUT_DEFAULT_SIZE = 32; // HID から出力の長さを取得できなかったとき
+static constexpr int DUALSENSE_USB_OUTPUT_DEFAULT_SIZE = 63; // DualSense の USB 出力レポート全体
 
 
 /// @brief 1台の入力・出力・振動の状態（切断した番号だけを空ける）
 struct PAD_DEVICE
 {
 	HANDLE Device = NULL;                         ///< Raw Input の機器
+	PAD_MODEL Model = PAD_MODEL_NONE;             ///< 入出力レポートの種類
 	PAD_STATE Received = {};                      ///< 最後に届いた入力
 	PAD_STATE State = {};                         ///< このフレームの入力
 	HANDLE OutputDevice = INVALID_HANDLE_VALUE;   ///< 出力専用のハンドル
@@ -68,7 +65,9 @@ static void SendOutput(PAD_DEVICE& pad)
 {
 	if (pad.OutputDevice == INVALID_HANDLE_VALUE) return;
 	const bool active = g_Window != NULL && GetForegroundWindow() == g_Window;
-	if (!PadCalcBuildDs4UsbOutput(pad.OutputReport.data(), (int)pad.OutputReport.size(),
+	const auto buildOutput = pad.Model == PAD_MODEL_DUALSENSE
+		? PadCalcBuildDualSenseUsbOutput : PadCalcBuildDs4UsbOutput;
+	if (!buildOutput(pad.OutputReport.data(), (int)pad.OutputReport.size(),
 		active ? pad.Rumble.SmallMotor : 0.0f, active ? pad.Rumble.LargeMotor : 0.0f,
 		pad.LightColor[0], pad.LightColor[1], pad.LightColor[2])) {
 		WarnOutputUnavailable(pad);
@@ -123,24 +122,26 @@ static void OpenOutputDevice(PAD_DEVICE& pad)
 		if (HidP_GetCaps(preparsed, &caps) != HIDP_STATUS_SUCCESS) caps.OutputReportByteLength = 0;
 		HidD_FreePreparsedData(preparsed);
 	}
+	const int defaultSize = pad.Model == PAD_MODEL_DUALSENSE
+		? DUALSENSE_USB_OUTPUT_DEFAULT_SIZE : DS4_USB_OUTPUT_DEFAULT_SIZE;
 	const int size = caps.OutputReportByteLength != 0
-		? (int)caps.OutputReportByteLength : DS4_USB_OUTPUT_DEFAULT_SIZE;
+		? (int)caps.OutputReportByteLength : defaultSize;
 	pad.OutputReport.resize(size);
 	SendOutput(pad); // つなぎ直したときも、現在のライトバーの色と停止状態を反映する
 }
 
 
-// 機器が DUALSHOCK 4 か調べる
-static bool IsDs4(HANDLE device)
+// ゲームパッドの VID/PID から、対応する入出力形式を調べる。
+static PAD_MODEL GetDeviceModel(HANDLE device)
 {
 	RID_DEVICE_INFO info{};
 	info.cbSize = sizeof(info);
 	UINT size = sizeof(info);
 	if (GetRawInputDeviceInfoA(device, RIDI_DEVICEINFO, &info, &size) == (UINT)-1 || info.dwType != RIM_TYPEHID) {
-		return false;
+		return PAD_MODEL_NONE;
 	}
-	return info.hid.dwVendorId == DS4_VENDOR_ID
-		&& (info.hid.dwProductId == DS4_PRODUCT_ID_V1 || info.hid.dwProductId == DS4_PRODUCT_ID_V2);
+	if (info.hid.usUsagePage != 0x01 || info.hid.usUsage != 0x05) return PAD_MODEL_NONE;
+	return PadCalcIdentifyModel(info.hid.dwVendorId, info.hid.dwProductId);
 }
 
 static int FindDevice(HANDLE device)
@@ -156,12 +157,16 @@ static int AddDevice(HANDLE device)
 {
 	const int found = FindDevice(device);
 	if (found >= 0) return found;
-	if (device == NULL || !IsDs4(device)) return -1;
+	if (device == NULL) return -1;
+	const PAD_MODEL model = GetDeviceModel(device);
+	if (model == PAD_MODEL_NONE) return -1;
 	for (int i = 0; i < PAD_COUNT; ++i) {
 		if (g_Pads[i].Device != NULL) continue;
 		g_Pads[i].Device = device;
+		g_Pads[i].Model = model;
 #ifdef _DEBUG
-		hal::dout << "パッド" << i << "：DUALSHOCK 4 をつなぎました" << std::endl;
+		hal::dout << "パッド" << i << "："
+			<< (model == PAD_MODEL_DUALSENSE ? "DualSense" : "DUALSHOCK 4") << " をつなぎました" << std::endl;
 #endif
 		return i;
 	}
@@ -239,7 +244,7 @@ void PadOnRawInput(LPARAM lParam)
 	}
 
 	const int index = AddDevice(raw->header.hDevice);
-	if (index < 0) return; // DS4 以外・5台目以降
+	if (index < 0) return; // 対応外・5台目以降
 	PAD_DEVICE& pad = g_Pads[index];
 
 	// 1回の WM_INPUT にレポートが何個か入っていることがあるので、最後の1個を使う
@@ -249,8 +254,10 @@ void PadOnRawInput(LPARAM lParam)
 		return;
 	}
 	const BYTE* last = raw->data.hid.bRawData + reportSize * (count - 1);
-	if (PadCalcParseDs4UsbReport(last, (int)reportSize, pad.Received) && !pad.OutputAttempted) {
-		OpenOutputDevice(pad); // Bluetooth の入力レポート（0x11）では出力を開かない
+	const auto parseReport = pad.Model == PAD_MODEL_DUALSENSE
+		? PadCalcParseDualSenseUsbReport : PadCalcParseDs4UsbReport;
+	if (parseReport(last, (int)reportSize, pad.Received) && !pad.OutputAttempted) {
+		OpenOutputDevice(pad); // USB 入力を読めたときだけ出力を開く
 	}
 }
 
@@ -265,12 +272,13 @@ void PadOnDeviceChange(WPARAM wParam, LPARAM lParam)
 		PAD_DEVICE& pad = g_Pads[index];
 		CloseOutputDevice(pad);
 		pad.Device = NULL;
+		pad.Model = PAD_MODEL_NONE;
 		pad.OutputAttempted = false;
 		pad.OutputWarningShown = false;
 		pad.Received = {};
 		pad.State = {};
 #ifdef _DEBUG
-		hal::dout << "パッド" << index << "：DUALSHOCK 4 が外れました" << std::endl;
+		hal::dout << "パッド" << index << "：コントローラーが外れました" << std::endl;
 #endif
 	}
 }
