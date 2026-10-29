@@ -18,11 +18,13 @@
 #endif
 
 // 調整用の値（今後追加する腕も、取付位置と待機方向はここを使う）
-static constexpr float ARM_REST_PITCH = -XM_PI / 4.0f; // 待機の腕を正面から 45° 下げる
-static constexpr float ARM_REST_SPREAD = XMConvertToRadians(25.0f); // 片側ずつ外へ開く角度
-static constexpr float SHOULDER_OFFSET = 0.65f;
-static constexpr float SHOULDER_FORWARD = -0.1f; // 肩を少し後ろへ引いて胸を張る
-static constexpr float HAND_HEIGHT = 1.35f;
+static constexpr float ARM_REST_PITCH = XMConvertToRadians(-75.0f); // 待機の腕を正面から 75° 下げる（体の横に垂らす）
+static constexpr float ARM_REST_SPREAD = XMConvertToRadians(8.0f); // 片側ずつ外へ開く角度
+// 肩の高さ・前後はキャラのリグの armMount（X ±14.6・高さ 110.5・Z 0 cm × 1.8 / 157.9）に合わせる。
+// 左右は腕の付け根の箱が胸にめり込まないよう、取付口（0.165）より外へ出す。
+static constexpr float SHOULDER_OFFSET = 0.24f;
+static constexpr float SHOULDER_FORWARD = 0.0f;
+static constexpr float HAND_HEIGHT = 1.26f;
 static constexpr XMFLOAT4 LEFT_COLOR{ 0.8f, 0.3f, 0.65f, 1.0f };
 static constexpr XMFLOAT4 RIGHT_COLOR{ 0.35f, 0.8f, 0.6f, 1.0f };
 static constexpr XMFLOAT4 HOLD_COLOR{ 1.0f, 0.7f, 0.2f, 1.0f };
@@ -150,7 +152,9 @@ VEC3 Arm::GetShoulder() const
 {
 	const int hand = GetHand();
 	const XMFLOAT3 p = GetPlayer().GetPosition();
-	return ArmCalcShoulder({ p.x, p.y, p.z }, GetPlayer().GetYaw(), hand, SHOULDER_OFFSET, HAND_HEIGHT, SHOULDER_FORWARD);
+	const VEC3 mount = GetMountOffset();
+	return ArmCalcShoulder({ p.x, p.y, p.z }, GetPlayer().GetYaw(), hand,
+		SHOULDER_OFFSET + mount.X, HAND_HEIGHT + mount.Y, SHOULDER_FORWARD + mount.Z);
 }
 
 VEC3 Arm::GetRestDirection(float pitchOffset) const

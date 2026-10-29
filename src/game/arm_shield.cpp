@@ -20,7 +20,7 @@ static constexpr float COOLDOWN_SECONDS = 0.3f;
 static constexpr SHIELD_PARAMS PARAMS{
 	GUARD_SECONDS, BASH_SECONDS, COOLDOWN_SECONDS, BASH_RANGE, BASH_RADIUS
 };
-static constexpr float MODEL_SCALE = 0.08f;
+static constexpr float MODEL_SCALE = 0.08f * Arm::MODEL_SIZE;
 static constexpr float BASE_LENGTH = 19.250364f; // OBJ の肩から -Y 側の端までの長さ（cm）。
 static constexpr float PLATE_LENGTH = 2.901904f; // 板の取付原点から -Y 側の端までの長さ（cm）。
 static constexpr VEC3 PLATE_OFFSET{ 0.229075f, -15.022320f, -0.102787f }; // Z 反転済みの取付位置（cm）。

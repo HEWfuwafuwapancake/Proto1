@@ -28,6 +28,10 @@ public:
 	/// @brief 保持中なら true を返す
 	bool IsHolding() const override;
 
+protected:
+	/// @brief 付け根の箱の中央が体の取付口に来るよう、取付位置を上げる
+	VEC3 GetMountOffset() const override;
+
 private:
 	VEC3 HoldPosition(float side, float forward, float height) const;
 	TentacleCalc m_Arm;

@@ -4,12 +4,14 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）。
 決まったことは [decisions.md](decisions.md)、腕のモデルの原点と長さは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、終わったタスクの記録は [archive/](archive/)（普段は読まない）。
 
-- 最終更新：2026-10-29（Codex。Shota の Proto1、Visual Studio 2022 Community の PC。No.26 段階A の段階3を完了。次は段階B の段階2）
+- 最終更新：2026-10-29（Claude。Shota の Proto1、Visual Studio 2022 Community の PC。No.47 キャラモデルを完了し PR #91 を出した。次は No.26 段階B の段階2。No.26 段階B はそのあと）
 
 ---
 
 ## 1. 今の状態
 
+- **No.47 キャラモデル：完了・マージ済み**（[PR #91](https://github.com/HEWfuwafuwapancake/Proto1/pull/91)）。体は `mechani_body.obj`（固定ポーズ。オレンジ部分がプレイヤーの色）、腕は肩の取付口から出て半分の大きさ（`Arm::MODEL_SIZE`）。Debug / Release 警告0、テスト各230件成功。ドリルは届く距離も半分になったので、遊んで決める。管理者の依頼で、カメラを近づけた（`camera.cpp` の `FOLLOW_DISTANCE 8→4.5`、`START_PITCH −20°→−12°`）。
+  腕の取付も直した（`arm.cpp`）：高さ・前後はリグの `armMount`（FBX の骨。±14.6・110.5・0 cm）、左右は付け根の箱がめり込まない 0.24m、待機は前へ 75° 下げて外へ 8°（体の横に垂らす）。腕ごとの微調整は各腕の `MOUNT_OFFSET`（`GetMountOffset`。触腕は上 0.24・後ろ 0.06、グラップリングは上 0.08、ドリルは内 0.07・下 0.1、磁石は下 0.05、盾はなし）。
 - **No.26 段階A：段階3 完了**（[PR #90](https://github.com/HEWfuwafuwapancake/Proto1/pull/90)）。`PLAYER_INPUT` 経由の入力・F1〜F4 の装備配布・`LockstepCalc` を検証。コードの追加修正はなし。No.26 は段階Cまで進行中。
 - **Debug / Release のゲームビルド警告0、単体テスト各229件成功**。新しい計算をまとめて壊すと追加7件がすべて失敗し、バイト単位で復元してDebug 229件の再成功を確認。パッドとキーボードの参加・基本操作・RETRY／TITLEは管理者が実操作で確認し、パッド参加者へのキーボード装備配布はCodexが確認した。
 - `GameTimeGetElapsed()` の利用は `src/game/tentacle.cpp` の描画用うねうねだけ（ほかは宣言・定義）。試合の計算には使っていない。
@@ -19,7 +21,7 @@
 ## 2. 次にやること：No.26 段階B の段階2（Codex がコーディング）
 
 段階1（プラン）は管理者の指示で Claude が作り、**管理者確認済み**（2026-10-29。実装は【当面】のとおり Codex）。同じ日に管理者の希望で、1 を「Tailscale で遠くの人とも遊ぶ」、3 を「起動の引数 `--delay`（指定なしは 3）」に直した。
-No.26 は段階A → B → C の順に、それぞれ「段階2 コーディング → 段階3 テスト」で進める（1段階 = 1 PR）。段階A の検証まで完了。次のセッションでは PR #90 のマージを確認し、最新の develop から `feature/online-session` を作る。計算APIとパケットの配置は `docs/dev/01_DX11基盤の構成.md` の「ロックステップの計算」に記載。
+No.26 は段階A → B → C の順に、それぞれ「段階2 コーディング → 段階3 テスト」で進める（1段階 = 1 PR）。段階A の検証まで完了。次のセッションでは PR #90・PR #91 のマージを確認し、最新の develop から `feature/online-session` を作る。計算APIとパケットの配置は `docs/dev/01_DX11基盤の構成.md` の「ロックステップの計算」に記載。
 
 ### 段階2 のプロンプト（次の Codex の新しいセッションに貼る）
 

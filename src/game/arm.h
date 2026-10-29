@@ -34,6 +34,8 @@ struct ARM_LINKS
 class Arm
 {
 public:
+	/// @brief すべての腕のモデルに掛ける大きさの倍率（調整用の値。キャラモデルの細い体に合わせて小さくする）
+	static constexpr float MODEL_SIZE = 0.5f;
 	/// @brief 派生クラスの終了処理も呼んで腕を破棄する
 	virtual ~Arm() = default;
 	/// @brief カメラ更新後に片手の腕を更新する
@@ -66,8 +68,11 @@ protected:
 	const Camera& GetCamera() const { return *m_Links.CameraObject; }
 	/// @brief ステージへの参照を取得する
 	const Stage& GetStage() const { return *m_Links.StageObject; }
-	/// @brief 肩のワールド座標を取得する
+	/// @brief 肩のワールド座標を取得する（共通の取付位置に GetMountOffset のずらしを足す）
 	VEC3 GetShoulder() const;
+	/// @brief この腕だけの取付位置のずらしを取得する（腕のモデルの肩の部分を体の取付口に合わせるため）
+	/// @return X：外向き・Y：上向き・Z：前向きのずらし（m）。基本はずらしなし
+	virtual VEC3 GetMountOffset() const { return {}; }
 	/// @brief キャラの向きについてくる、少し外へ開いた待機方向を取得する
 	/// @param pitchOffset 共通の上下角度への加算（ラジアン）
 	VEC3 GetRestDirection(float pitchOffset = 0.0f) const;

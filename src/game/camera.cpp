@@ -15,7 +15,7 @@
 //	調整用の値
 //------------------------------------------------------------------------------
 // マウス感度・矢印キー・右スティックで回る速さは action.cpp の「調整用の値」にある
-static constexpr float FOLLOW_DISTANCE = 8.0f;						// 見ている点からカメラまでの距離
+static constexpr float FOLLOW_DISTANCE = 4.5f;					// 見ている点からカメラまでの距離
 static constexpr float TARGET_HEIGHT_RATE = 0.8f;					// 見ている点の高さ（プレイヤーの高さに対する割合。0.8 で頭のあたり）
 static constexpr float YAW_SMOOTH_TIME = 0.12f;						// 左右の角度が目標へ追いつくまでのおよその秒数
 static constexpr float PITCH_SMOOTH_TIME = 0.12f;					// 上下の角度が目標へ追いつくまでのおよその秒数
@@ -28,7 +28,7 @@ static constexpr float MANUAL_PAUSE = 0.5f;							// 自分でカメラを回し
 static constexpr float STAGE_MARGIN = 0.3f;							// 浮島の面から、カメラをこれだけ離す（めり込んで見えないように）
 static constexpr float PITCH_MIN = XMConvertToRadians(-35.0f);		// いちばん下を向いたとき（上から見下ろす）
 static constexpr float PITCH_MAX = XMConvertToRadians(0.0f);		// いちばん上を向いたとき（水平まで）
-static constexpr float START_PITCH = XMConvertToRadians(-20.0f);	// 最初の上下の向き（少し見下ろす）
+static constexpr float START_PITCH = XMConvertToRadians(-12.0f);	// 最初の上下の向き（少し見下ろす）
 static constexpr float SWITCH_SMOOTH_TIME = 0.06f;					// 切り替え直後の角度のバネ
 static constexpr float SWITCH_TIME = 0.3f;							// 角度のバネを速める秒数
 static constexpr float TARGET_POINT_RATE = 0.25f;					// 見ている点を敵へずらす割合

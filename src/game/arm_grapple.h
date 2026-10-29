@@ -31,6 +31,10 @@ public:
 	/// @brief 敵はつかまないので常に false を返す
 	bool IsHolding() const override;
 
+protected:
+	/// @brief 肩の箱の中央が体の取付口に来るよう、取付位置を少し上げる
+	VEC3 GetMountOffset() const override;
+
 private:
 	bool MirrorHand(int hand) const;
 	GrappleCalc m_Arm;

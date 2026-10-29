@@ -103,6 +103,7 @@ private:
 	bool m_Respawned = false;
 	int m_Device = VERSUS_DEVICE_DUMMY;
 	int m_Slot = 0;
+	int m_Model = -1;
 	PLAYER_INPUT m_Input;
 	PLAYER_INPUT m_PreviousInput;
 	const Stage* m_Stage = nullptr;

@@ -26,7 +26,8 @@ static constexpr float EXTEND_RUMBLE_SECONDS = 0.05f;	// 伸長中に毎フレ�
 static constexpr float HOLD_OFFSET = 1.0f;
 static constexpr float HOLD_FORWARD = 2.0f;
 static constexpr float SPHERE_SPACING = 0.25f;
-static constexpr float MODEL_SCALE = 0.15f;
+static constexpr float MODEL_SCALE = 0.15f * Arm::MODEL_SIZE;
+static constexpr VEC3 MOUNT_OFFSET{ 0.0f, 0.24f, -0.06f }; // 取付位置のずらし（外・上・前 m）。付け根の箱の中央を取付口へ
 static constexpr float BASE_LENGTH = 10.218f; // OBJ のつなぎ目間の長さ（cm）
 static constexpr float SEGMENT_LENGTH = 3.207f;
 static constexpr float TIP_LENGTH = 4.434f;
@@ -39,6 +40,11 @@ static constexpr float WIGGLE_SPEED = 8.0f;
 static constexpr float WIGGLE_ARM_PHASE = 1.6f;
 static constexpr float WIGGLE_FULL_LENGTH = 3.0f;
 static constexpr float WIGGLE_HOLD_SCALE = 0.3f;
+
+VEC3 TentacleArm::GetMountOffset() const
+{
+	return MOUNT_OFFSET;
+}
 
 VEC3 TentacleArm::HoldPosition(float side, float forward, float height) const
 {

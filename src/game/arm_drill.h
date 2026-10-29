@@ -28,6 +28,10 @@ public:
 	/// @brief 敵はつかまないので常に false を返す
 	bool IsHolding() const override;
 
+protected:
+	/// @brief 腕が体から離れて見えないよう、取付位置を内側・下へずらす
+	VEC3 GetMountOffset() const override;
+
 private:
 	bool IsThrusting() const;
 

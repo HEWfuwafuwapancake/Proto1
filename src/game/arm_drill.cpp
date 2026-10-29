@@ -9,7 +9,8 @@
 #include "input/pad.h"
 
 // 調整用の値
-static constexpr float MODEL_SCALE = 0.08f;
+static constexpr float MODEL_SCALE = 0.08f * Arm::MODEL_SIZE;
+static constexpr VEC3 MOUNT_OFFSET{ -0.07f, -0.1f, 0.0f }; // 取付位置のずらし（外・上・前 m）。体へ寄せて下げる
 static constexpr DRILL_GRIP DRILL_MODEL_GRIP{
 	{ 0.311337f, -5.719436f, -5.081741f }, { 0.0f, -0.707106781f, 0.707106781f }, MODEL_SCALE
 };
@@ -56,6 +57,11 @@ DrillArm::DrillArm(int hand, const ARM_LINKS& links) : Arm(hand, links)
 DrillArm::~DrillArm()
 {
 	Reset();
+}
+
+VEC3 DrillArm::GetMountOffset() const
+{
+	return MOUNT_OFFSET;
 }
 
 bool DrillArm::IsThrusting() const
