@@ -4,14 +4,14 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）。
 決まったことは [decisions.md](decisions.md)、腕のモデルの原点と長さは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、終わったタスクの記録は [archive/](archive/)（普段は読まない）。
 
-- 最終更新：2026-10-29（Codex。Shota の Proto1、Visual Studio Enterprise の PC。No.46 DualSense USB 対応を実装・確認、PR #86）
+- 最終更新：2026-10-29（Codex。Shota の Proto1、Visual Studio Enterprise の PC。No.46 は PR #86 でマージ済み、管理者の試遊確認も完了）
 
 ---
 
 ## 1. 今の状態
 
 - **No.25 ローカル4人対戦は完了**（段階A〜Dをマージ済み）。○／Enter で機器ごとに参加し、1P の再入力で開始。4分割画面・90秒の KO 数・人ごとの色とライトバー・RETRY／TITLE まで動く。
-- **No.46 PS5 の DualSense USB 対応は完了**（[PR #86](https://github.com/HEWfuwafuwapancake/Proto1/pull/86)）。PS4 と混在して最大4台。同じ操作で、CREATE は振動切り替え。Debug / Release 警告0、テスト各222件、壊す確認5件→復元後成功。接続中の実機2台で Raw Input の受信・HID の色出力・切断通知と再登録・非選択中の入力と振動の解除を確認。ゲームも起動済み。物理ボタンでのゲーム操作・振動の体感は管理者に確認を依頼済みで、まだ返答なし。Bluetooth は対象外。
+- **No.46 PS5 の DualSense USB 対応は完了・マージ済み**（[PR #86](https://github.com/HEWfuwafuwapancake/Proto1/pull/86)）。PS4 と混在して最大4台。同じ操作で、CREATE は振動切り替え。Debug / Release 警告0、テスト各222件、壊す確認5件→復元後成功。実機2台の入力・出力と接続管理を確認。管理者も再起動したゲームで試遊し「完璧」と回答（2026-10-29）。Bluetooth は対象外。
 - 管理者が遊んで決めること：全種類の構えが普段の画面で分かるか／グラップリング・ドリル・磁石の取付位置と強さ。マウス操作は止めたまま（[decisions.md](decisions.md)）。
 - No.19 は止めてある（プラン（案）は `feature/tuning-values`）。
 
