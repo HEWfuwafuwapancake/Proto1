@@ -7,6 +7,7 @@
 #include "game/arm.h"
 #include "game/match.h"
 #include "game/hud.h"
+#include "physics/scenecalc.h"
 
 /// @brief ゲームの部品を所有し、初期化・更新・描画・やり直しの順番をまとめる
 class Game
@@ -32,5 +33,6 @@ private:
 	Camera m_Camera;
 	ArmManager m_Arms;
 	Match m_Match;
+	SceneCalc m_Scene;
 	Hud m_Hud;
 };

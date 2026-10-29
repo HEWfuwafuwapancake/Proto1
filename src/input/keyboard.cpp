@@ -39,8 +39,13 @@ bool KeyboardIsPress(int key)
 
 bool KeyboardIsTrigger(int key)
 {
-	return g_Triggers[key & 0xFF].IsTriggered()
-		|| ((g_KeyState[key & 0xFF] & ~g_OldKeyState[key & 0xFF]) & 0x80) != 0;
+	// キーボードは WM_KEYDOWN だけで押下を数える。状態取得との OR は、
+	// 同じ押下が別フレームに届くと Q / E のモードを2回反転させてしまう。
+	// WM_KEYDOWN が来ないマウスのボタンだけは、従来どおり状態の差で読む。
+	const bool mouseButton = key == VK_LBUTTON || key == VK_RBUTTON || key == VK_MBUTTON
+		|| key == VK_XBUTTON1 || key == VK_XBUTTON2;
+	if (mouseButton) return ((g_KeyState[key] & ~g_OldKeyState[key]) & 0x80) != 0;
+	return g_Triggers[key & 0xFF].IsTriggered();
 }
 
 bool KeyboardWasShiftDown(int key)

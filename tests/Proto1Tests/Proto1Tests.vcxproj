@@ -110,6 +110,8 @@
     <ClCompile Include="timer_test.cpp" />
     <ClCompile Include="tentaclecalc_test.cpp" />
     <ClCompile Include="matchcalc_test.cpp" />
+    <ClCompile Include="scenecalc_test.cpp" />
+    <ClCompile Include="..\..\src\physics\scenecalc.cpp" />
     <ClCompile Include="..\..\src\physics\matchcalc.cpp" />
     <ClCompile Include="..\..\src\physics\tentaclecalc.cpp" />
     <ClCompile Include="..\..\src\render\glyphcalc.cpp" />

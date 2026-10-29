@@ -278,6 +278,9 @@
     <ClCompile Include="src\physics\matchcalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
+    <ClCompile Include="src\physics\scenecalc.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
     <ClInclude Include="src\game\tentacle.h">
       <Filter>src\game</Filter>
     </ClInclude>
@@ -312,6 +315,9 @@
       <Filter>src\game</Filter>
     </ClInclude>
     <ClInclude Include="src\physics\matchcalc.h">
+      <Filter>src\physics</Filter>
+    </ClInclude>
+    <ClInclude Include="src\physics\scenecalc.h">
       <Filter>src\physics</Filter>
     </ClInclude>
   </ItemGroup>
