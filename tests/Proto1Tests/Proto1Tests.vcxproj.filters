@@ -7,9 +7,19 @@
     <Filter Include="src\physics">
       <UniqueIdentifier>{3F6C2B8E-7D41-5A9C-B2E5-8C1D4F7A6E30}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\net">
+      <UniqueIdentifier>{92FE875A-7C6C-42F1-A966-5F118976C7B2}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="shieldcalc_test.cpp" />
+    <ClCompile Include="lockstepcalc_test.cpp" />
+    <ClCompile Include="..\..\src\net\lockstepcalc.cpp">
+      <Filter>src\net</Filter>
+    </ClCompile>
+    <ClInclude Include="..\..\src\net\lockstepcalc.h">
+      <Filter>src\net</Filter>
+    </ClInclude>
     <ClCompile Include="scenecalc_test.cpp" />
     <ClCompile Include="..\..\src\physics\scenecalc.cpp">
       <Filter>src\physics</Filter>

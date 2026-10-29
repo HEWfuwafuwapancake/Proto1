@@ -7,6 +7,7 @@
 #include "game/match.h"
 #include "game/hud.h"
 #include "physics/scenecalc.h"
+#include "input/action.h"
 
 /// @brief ゲームの部品を所有し、初期化・更新・描画・やり直しの順番をまとめる
 class Game
@@ -39,6 +40,9 @@ private:
 	Hud m_Huds[FIGHTER_COUNT];
 	int m_Humans[FIGHTER_COUNT] = {};	// 画面の順に並べた人のスロット番号
 	int m_HumanCount = 0;
+	PLAYER_INPUT m_Inputs[FIGHTER_COUNT];
+	PLAYER_INPUT m_PreviousInputs[FIGHTER_COUNT];
+	PLAYER_INPUT m_DeviceInputs[ACTION_DEVICE_COUNT]; // 参加前の決定にも使う
 	Match m_Match;
 	SceneCalc m_Scene;
 };

@@ -135,6 +135,7 @@
     <ClCompile Include="src\core\gametime.cpp" />
     <ClCompile Include="src\input\action.cpp" />
     <ClCompile Include="src\input\actioncalc.cpp" />
+    <ClCompile Include="src\net\lockstepcalc.cpp" />
     <ClCompile Include="src\input\keyboard.cpp" />
     <ClCompile Include="src\core\main.cpp" />
     <ClCompile Include="src\input\mouse.cpp" />
@@ -182,6 +183,7 @@
     <ClInclude Include="src\core\gametime.h" />
     <ClInclude Include="src\input\action.h" />
     <ClInclude Include="src\input\actioncalc.h" />
+    <ClInclude Include="src\net\lockstepcalc.h" />
     <ClInclude Include="src\input\keyboard.h" />
     <ClInclude Include="src\input\keyboardcalc.h" />
     <ClInclude Include="src\core\main.h" />

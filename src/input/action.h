@@ -15,20 +15,9 @@ static constexpr int ACTION_DEVICE_COUNT = 5;
 /// @brief 腕の切り替え先として選べる人数
 static constexpr int ACTION_EQUIP_PLAYER_COUNT = 4;
 
-/// @brief 行動の種類（ボタン1つで起きるもの）
-enum ACTION
-{
-	ACTION_JUMP,		///< ジャンプ（×／Space）
-	ACTION_ARM_LEFT,	///< 左の触腕：伸ばしてつかむ／つかんでいる間にもう一度で投げる（L1／左クリック）
-	ACTION_ARM_RIGHT,	///< 右の触腕：同上（R1／右クリック）
-	ACTION_RESTART,		///< やり直し（OPTIONS／R）
-	ACTION_RUMBLE_TOGGLE,	///< 振動のオン・オフの切り替え（SHARE／V）
-	ACTION_DECIDE,		///< メニューの決定・時間切れから結果へ（○／Enter）
-	ACTION_TARGET_LEFT,	///< 左の次の敵へ切り替え（←／右スティック・マウスを左へ弾く。1フレームだけ）
-	ACTION_TARGET_RIGHT,	///< 右の次の敵へ切り替え（→／右スティック・マウスを右へ弾く。1フレームだけ）
-
-	ACTION_COUNT		///< 行動の数（配列の大きさに使う。行動ではない）
-};
+/// @brief 機器の今の入力を整数に丸めて取得する（VERSUS_DEVICE_COMBINED は合成入力。範囲外は無入力）
+/// @details 装備はキーボード・合成入力なら現在の選択先の値。ローカルでは Game が F1〜F4 のスロットへ配り直す
+PLAYER_INPUT ActionGetPlayerInput(int device);
 
 /// @brief 行動の状態を最初に戻す（何も押していない状態）
 void ActionInitialize(void);

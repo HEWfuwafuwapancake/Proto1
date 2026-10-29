@@ -18,6 +18,38 @@ namespace Proto1Tests
 	TEST_CLASS(ActionCalcTest)
 	{
 	public:
+		// ローカルでも通信でも同じ整数を使い、移動とカメラを同じ精度で復元する。
+		TEST_METHOD(PlayerInput_QuantizesMoveAndLook)
+		{
+			const auto input = ActionCalcPlayerInput({ 0.6f, -0.8f }, { 0.025f, -0.05f }, 1u << ACTION_JUMP);
+			Assert::AreEqual(19660, static_cast<int>(input.MoveX));
+			Assert::AreEqual(-26214, static_cast<int>(input.MoveY));
+			Assert::AreEqual(102, static_cast<int>(input.LookX));
+			Assert::AreEqual(-205, static_cast<int>(input.LookY));
+			const auto move = ActionCalcPlayerMove(input);
+			const auto look = ActionCalcPlayerLook(input);
+			Assert::AreEqual(0.6f, move.X, 0.00002f);
+			Assert::AreEqual(-0.8f, move.Y, 0.00002f);
+			Assert::AreEqual(102.0f / 4096.0f, look.X, ACTION_EPSILON);
+			Assert::AreEqual(-205.0f / 4096.0f, look.Y, ACTION_EPSILON);
+			Assert::AreEqual(-1, input.Equip.Hand);
+		}
+
+		// 押し始め・長押し・離す・押し直し。ターゲットのイベントは連続でも落とさない。
+		TEST_METHOD(PlayerInput_TriggersFromPreviousFrame)
+		{
+			PLAYER_INPUT released;
+			PLAYER_INPUT held;
+			held.Buttons = (1u << ACTION_JUMP) | (1u << ACTION_DECIDE) | (1u << ACTION_TARGET_RIGHT);
+			Assert::IsTrue(ActionCalcPlayerTrigger(held, released, ACTION_JUMP));
+			Assert::IsTrue(ActionCalcPlayerTrigger(held, released, ACTION_DECIDE));
+			Assert::IsFalse(ActionCalcPlayerTrigger(held, held, ACTION_JUMP));
+			Assert::IsFalse(ActionCalcPlayerTrigger(released, held, ACTION_JUMP));
+			Assert::IsTrue(ActionCalcPlayerTrigger(held, released, ACTION_JUMP));
+			Assert::IsTrue(ActionCalcPlayerTrigger(held, held, ACTION_TARGET_RIGHT));
+			Assert::IsFalse(ActionCalcPlayerTrigger(released, held, ACTION_TARGET_RIGHT));
+		}
+
 		// Q と 5 の短い押下を記憶し、両手の盾を選べる。Shift は押下時の値を使う。
 		TEST_METHOD(EquipKey_ShortPressIsRememberedUntilUpdate)
 		{

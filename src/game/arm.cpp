@@ -6,7 +6,6 @@
 #include "game/arm_magnet.h"
 #include "game/arm_shield.h"
 #include "game/tentacle.h"
-#include "input/action.h"
 #include "input/pad.h"
 #include "physics/armcalc.h"
 #include "physics/tentaclecalc.h"
@@ -90,7 +89,7 @@ void ArmManager::Update(bool playing)
 {
 	bool available[ARM_TYPE_COUNT];
 	for (int type = 0; type < ARM_TYPE_COUNT; ++type) available[type] = ARM_FACTORIES[type] != nullptr;
-	const ACTION_EQUIP_KEY key = ActionGetEquipKey(m_Links.Slot);
+	const ACTION_EQUIP_KEY key = m_Links.Fighters->GetFighter(m_Links.Slot).GetEquipInput();
 	for (int hand = 0; hand < 2; ++hand) {
 		if (key.Hand == hand) ChangeType(hand, ArmCalcSelect(key.Number, available, ARM_TYPE_COUNT));
 	}

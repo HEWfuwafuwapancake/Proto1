@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include "core/dx11.h"
-#include "input/action.h"
+#include "input/actioncalc.h"
 #include "physics/playercalc.h"
 #include "physics/dummycalc.h"
 #include "physics/knockbackcalc.h"
@@ -77,11 +77,15 @@ public:
 	void Launch(const VEC3& direction, float damage, float power);
 	/// @brief %を変えず、指定速度で吹っ飛ばす
 	void Push(const VEC3& velocity);
-	/// @brief この体の機器の移動入力を取得する（1人用合成入力にも対応）
+	/// @brief Game が決めた今と前のフレームの入力を渡す
+	void SetInput(const PLAYER_INPUT& current, const PLAYER_INPUT& previous);
+	/// @brief このフレームの装備の直接選択を取得する
+	ACTION_EQUIP_KEY GetEquipInput() const { return m_Input.Equip; }
+	/// @brief この体に渡された移動入力を取得する
 	ACTION_AXIS GetMoveInput() const;
-	/// @brief この体の機器のカメラ入力を取得する（1人用合成入力にも対応）
+	/// @brief この体に渡されたカメラ入力を取得する
 	ACTION_AXIS GetLookInput() const;
-	/// @brief この体の機器のボタンを押した瞬間か取得する
+	/// @brief この体に渡されたボタンを押した瞬間か取得する
 	bool IsTrigger(ACTION action) const;
 
 private:
@@ -99,5 +103,7 @@ private:
 	bool m_Respawned = false;
 	int m_Device = VERSUS_DEVICE_DUMMY;
 	int m_Slot = 0;
+	PLAYER_INPUT m_Input;
+	PLAYER_INPUT m_PreviousInput;
 	const Stage* m_Stage = nullptr;
 };

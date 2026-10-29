@@ -22,6 +22,9 @@ void Game::Initialize()
 	// 相手への参照は先に渡せるが、Reset の中では初期化済みの相手だけを使う。
 	m_Stage.Initialize();
 	m_Participants.Reset();
+	for (auto& input : m_Inputs) input = {};
+	for (auto& input : m_PreviousInputs) input = {};
+	for (auto& input : m_DeviceInputs) input = {};
 	m_Fighters.Initialize(m_Stage, m_Participants);
 	// モデルは起動時に4枠分だけ読む。参加やTITLE・RETRYでは作り直さない。
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
@@ -58,6 +61,7 @@ void Game::ConfigurePlayers()
 	m_Fighters.Initialize(m_Stage, m_Participants);
 	m_HumanCount = 0;
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
+		m_Fighters.GetFighter(i).SetInput(m_Inputs[i], m_PreviousInputs[i]);
 		if (m_Fighters.GetFighter(i).IsHuman()) m_Humans[m_HumanCount++] = i;
 	}
 	for (int k = 0; k < m_HumanCount; ++k) {
@@ -101,15 +105,25 @@ void Game::Restart()
 void Game::Update()
 {
 	const SCENE oldScene = m_Scene.GetScene();
-	const int host = m_Participants.GetDevice(0);
-	SCENE_INPUT input{ ActionIsTrigger(host, ACTION_DECIDE), ActionIsTrigger(host, ACTION_RESTART), ActionGetMove(host).Y };
-	if (oldScene == SCENE_TITLE) {
-		input = {};
-		// 同一フレームの参加は機器番号順。開始を押したフレームの新規参加も取り込む。
-		for (int device = 0; device < ACTION_DEVICE_COUNT; ++device) {
-			if (ActionIsTrigger(device, ACTION_DECIDE) && m_Participants.JoinOrStart(device)) input.Decide = true;
-		}
+	bool start = false;
+	// 同一フレームの参加は機器番号順。開始フレームの参加も取り込む。
+	for (int device = 0; device < ACTION_DEVICE_COUNT; ++device) {
+		const PLAYER_INPUT current = ActionGetPlayerInput(device);
+		if (oldScene == SCENE_TITLE && ActionCalcPlayerTrigger(current, m_DeviceInputs[device], ACTION_DECIDE)
+			&& m_Participants.JoinOrStart(device)) start = true;
+		m_DeviceInputs[device] = current;
 	}
+	for (int slot = 0; slot < FIGHTER_COUNT; ++slot) {
+		m_PreviousInputs[slot] = m_Inputs[slot];
+		const int device = m_Participants.GetDevice(slot);
+		m_Inputs[slot] = device >= 0 && device < ACTION_DEVICE_COUNT ? m_DeviceInputs[device] : ActionGetPlayerInput(device);
+		// F1〜F4は機器ではなく人のスロットを選ぶ。パッドの人にも従来どおり配る。
+		m_Inputs[slot].Equip = m_Participants.IsHuman(slot) ? ActionGetEquipKey(slot) : ACTION_EQUIP_KEY{ -1, -1 };
+		m_Fighters.GetFighter(slot).SetInput(m_Inputs[slot], m_PreviousInputs[slot]);
+	}
+	SCENE_INPUT input{ ActionCalcPlayerTrigger(m_Inputs[0], m_PreviousInputs[0], ACTION_DECIDE),
+		ActionCalcPlayerTrigger(m_Inputs[0], m_PreviousInputs[0], ACTION_RESTART), ActionCalcPlayerMove(m_Inputs[0]).Y };
+	if (oldScene == SCENE_TITLE) input = { start, false, 0.0f };
 	if (oldScene == SCENE_MATCH) {
 		// 全員の体・体当たり → カメラ → キャラの向き → 腕の順を保つ。
 		m_Stage.Update();

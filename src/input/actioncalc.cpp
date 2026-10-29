@@ -1,6 +1,46 @@
 ﻿#include <math.h>
 #include "input/actioncalc.h"
 
+// 調整用の値（送る側と受け取る側で共通）
+static constexpr float MOVE_INPUT_SCALE = 32767.0f;
+static constexpr float LOOK_INPUT_SCALE = 4096.0f;
+static constexpr float INPUT_INTEGER_LIMIT = 32767.0f;
+
+static int16_t Quantize(float value, float scale)
+{
+	return static_cast<int16_t>(roundf(fmaxf(-INPUT_INTEGER_LIMIT, fminf(INPUT_INTEGER_LIMIT, value * scale))));
+}
+
+PLAYER_INPUT ActionCalcPlayerInput(ACTION_AXIS move, ACTION_AXIS look, uint16_t buttons)
+{
+	move = ActionCalcClampLength(move);
+	PLAYER_INPUT input;
+	input.MoveX = Quantize(move.X, MOVE_INPUT_SCALE);
+	input.MoveY = Quantize(move.Y, MOVE_INPUT_SCALE);
+	input.LookX = Quantize(look.X, LOOK_INPUT_SCALE);
+	input.LookY = Quantize(look.Y, LOOK_INPUT_SCALE);
+	input.Buttons = buttons;
+	return input;
+}
+
+ACTION_AXIS ActionCalcPlayerMove(const PLAYER_INPUT& input)
+{
+	return { input.MoveX / MOVE_INPUT_SCALE, input.MoveY / MOVE_INPUT_SCALE };
+}
+
+ACTION_AXIS ActionCalcPlayerLook(const PLAYER_INPUT& input)
+{
+	return { input.LookX / LOOK_INPUT_SCALE, input.LookY / LOOK_INPUT_SCALE };
+}
+
+bool ActionCalcPlayerTrigger(const PLAYER_INPUT& current, const PLAYER_INPUT& previous, ACTION action)
+{
+	if (action < 0 || action >= ACTION_COUNT) return false;
+	const uint16_t bit = static_cast<uint16_t>(1u << action);
+	const bool event = action == ACTION_TARGET_LEFT || action == ACTION_TARGET_RIGHT;
+	return (current.Buttons & bit) != 0 && (event || (previous.Buttons & bit) == 0);
+}
+
 
 // 向きの長さの2乗（比べるだけなら平方根はいらない）
 static float LengthSq(ACTION_AXIS axis)

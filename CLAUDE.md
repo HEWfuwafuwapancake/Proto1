@@ -40,13 +40,14 @@ DX11 の土台は `HEW2026GitTest` から持ってきた（水のレイトレー
 | `src/render/` | 形（箱・球・カプセル）・2D・数字の表示など、描画の部品 |
 | `src/game/` | プレイヤー・カメラ・ステージ・敵・触腕・試合の流れ（ゲームの中身） |
 | `src/physics/` | 当たり判定・吹っ飛びの計算（**DirectX を使わない**。単体テストする） |
+| `src/net/` | 通信のための入力保管・パケット変換（計算は Windows・DirectX を使わず単体テストする） |
 | `shaders/` | `.hlsl` / `.hlsli` |
 | `tests/` | 単体テストのプロジェクト |
 
 - `#include` は **`src` からのパス**で書く（例：`#include "core/dx11.h"`、`#include "game/player.h"`）。同じフォルダのファイルでも省略しない。
 - 新しいフォルダを作るときは、この表と `docs/dev/01_DX11基盤の構成.md` に追記し、`.vcxproj.filters` にも同じ名前のフィルターを作る。
 - **ゲームの計算（当たり判定・吹っ飛び・スコアなど）は、DirectX を使わないファイルに分ける。** 描画するファイルは、計算した結果を使って描くだけにする。
-- 依存の向き：`game` は `core`・`input`・`render`・`physics` を使ってよい。`core`・`input`・`render`・`physics` は `game` を使わない（`main.cpp` だけは全体をまとめるので例外）。
+- 依存の向き：`game` は `core`・`input`・`render`・`physics`・`net` を使ってよい。`core`・`input`・`render`・`physics`・`net` は `game` を使わない（`main.cpp` だけは全体をまとめるので例外）。
 - 調整する値（速さ・強さ・時間など）は、各ファイルの上の「調整用の値」に `static constexpr` でまとめる。
 
 ## コードの約束

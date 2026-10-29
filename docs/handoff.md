@@ -4,36 +4,22 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）。
 決まったことは [decisions.md](decisions.md)、腕のモデルの原点と長さは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、終わったタスクの記録は [archive/](archive/)（普段は読まない）。
 
-- 最終更新：2026-10-29（Claude。Shota の Proto1、Visual Studio Enterprise の PC。No.26 のプランを Tailscale・`--delay` に直した（管理者確認済み）。次は段階A の段階2（Codex））
+- 最終更新：2026-10-29（Codex。Shota の Proto1、Visual Studio 2022 Community の PC。No.26 段階A の段階2を実装。次は段階3）
 
 ---
 
 ## 1. 今の状態
 
-- **No.25 ローカル4人対戦は完了**（段階A〜Dをマージ済み）。○／Enter で機器ごとに参加し、1P の再入力で開始。4分割画面・90秒の KO 数・人ごとの色とライトバー・RETRY／TITLE まで動く。
-- **No.46 PS5 の DualSense USB 対応は完了・マージ済み**（[PR #86](https://github.com/HEWfuwafuwapancake/Proto1/pull/86)）。PS4 と混在して最大4台。同じ操作で、CREATE は振動切り替え。Debug / Release 警告0、テスト各222件、壊す確認5件→復元後成功。実機2台の入力・出力と接続管理を確認。管理者も再起動したゲームで試遊し「完璧」と回答（2026-10-29）。Bluetooth は対象外。
+- **No.26 段階A：段階2 済み。段階3 待ち**。`feature/online-input` に Codex が実装。`PLAYER_INPUT` 経由の入力、F1〜F4 の装備配布、`LockstepCalc` と主な動きのテストコード7件を追加。通信・起動引数は段階B。
+- ゲーム本体・テストプロジェクトの **Debug ビルド成功（警告0・エラー0）**。`vswhere.exe` で MSBuild を取得。テスト実行・Release・壊す確認・実機操作は段階3で行う。HUDの間接include依存を修正し、Notion開発ログに記録済み。
+- `GameTimeGetElapsed()` の利用は `src/game/tentacle.cpp` の描画用うねうねだけ（ほかは宣言・定義）。試合の計算には使っていない。
 - 管理者が遊んで決めること：全種類の構えが普段の画面で分かるか／グラップリング・ドリル・磁石の取付位置と強さ。マウス操作は止めたまま（[decisions.md](decisions.md)）。
 - No.19 は止めてある（プラン（案）は `feature/tuning-values`）。
 
-## 2. 次にやること：No.26 段階A の段階2（Codex がコーディング）
+## 2. 次にやること：No.26 段階A の段階3（Codex がテスト）
 
 段階1（プラン）は管理者の指示で Claude が作り、**管理者確認済み**（2026-10-29。実装は【当面】のとおり Codex）。同じ日に管理者の希望で、1 を「Tailscale で遠くの人とも遊ぶ」、3 を「起動の引数 `--delay`（指定なしは 3）」に直した。
-No.26 は段階A → B → C の順に、それぞれ「段階2 コーディング → 段階3 テスト」で進める（1段階 = 1 PR）。下のプロンプトは段階A の分。段階A がマージされたら、段階3 の最後で段階B のプロンプトをここに書く。
-
-### 段階2 のプロンプト（Codex の新しいセッションに貼る）
-
-```text
-Proto1 の No.26 段階A の段階2（コーディング）をしてください。AGENTS.md の【当面】と「コードを書くだけ」に従います。
-プランは docs/handoff.md の「No.26」（管理者確認済み）。段階A の範囲だけを実装し、通信（src/net/netsocket・NetSession・起動の引数）は作らないでください。
-1. .\tools\start-work.ps1 online-input
-2. src/input/actioncalc.h/.cpp に PLAYER_INPUT（移動・カメラを int16 に丸めた値、ボタンの押下ビット、装備の直接選択）と、丸めの関数・前フレームとの比較で押した瞬間を出す関数を足す。src/input/action.h/.cpp に ActionGetPlayerInput(device)（VERSUS_DEVICE_COMBINED も扱う）。
-3. Fighter は Action〇〇(m_Device) を読まず、Game が毎フレーム渡す PLAYER_INPUT（今と前）から GetMoveInput・GetLookInput・IsTrigger を答える。ArmManager の装備選択も PLAYER_INPUT から読む（ローカルでは今の F1〜F4 の動きを変えない）。Game は毎フレーム人のスロットの入力を作って渡す。シーンの入力（決定・やり直し・メニューの上下）も 1P の PLAYER_INPUT から読む。ローカルの遊びは何も変えない。
-4. 新しいフォルダ src/net/ に lockstepcalc.h/.cpp（Windows・DirectX なしのクラス LockstepCalc）：フレームごと・スロットごとの入力の保管、入力の遅れ（Initialize で受け取る。決まった値はなく、指定なしのときの 3 フレームを「調整用の値」に）、まとめて送る分（届いたと返事のない分を最大 8 フレーム）の選び方、全員そろったかの判定、パケットの組み立てと読み取り（版の番号とビルドの種類を含む）、チェックサムの計算。値は「調整用の値」に static constexpr。
-5. tests/Proto1Tests に lockstepcalc_test.cpp と、PLAYER_INPUT の丸め・押した瞬間のテストを足す（主な動きだけ）。
-6. src/net/ を CLAUDE.md のフォルダ表・docs/dev/01_DX11基盤の構成.md・.vcxproj.filters に足す（net は game を使わない）。新しいファイルは .vcxproj / .filters / テストのプロジェクトに登録。C++ は BOM付きUTF-8・CRLF、Doxygen の日本語コメント。
-7. GameTimeGetElapsed が見た目（tentacle.cpp のうねうね）以外の計算に使われていないことを確かめ、結果を handoff.md に1行書く。
-8. Debug のビルドが通ることだけ確かめ、.\tools\save-work.ps1 で保存。handoff.md の「今の状態」に「No.26 段階A：段階2 済み。段階3 待ち」と書く。
-```
+No.26 は段階A → B → C の順に、それぞれ「段階2 コーディング → 段階3 テスト」で進める（1段階 = 1 PR）。段階A の実装は下のプランに沿って完了。段階A がマージされたら、段階3 の最後で段階B のプロンプトをここに書く。計算APIとパケットの配置は `docs/dev/01_DX11基盤の構成.md` の「ロックステップの計算」に記載。
 
 ### 段階3 のプロンプト（段階2 のあと、Codex の新しいセッションに貼る）
 

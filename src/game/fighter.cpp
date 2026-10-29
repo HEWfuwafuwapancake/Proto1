@@ -48,6 +48,8 @@ void Fighter::Initialize(const Stage& stage, int slot, int device, const VEC3& s
 	m_Slot = slot;
 	m_Device = device;
 	m_Spawn = spawn;
+	m_Input = {};
+	m_PreviousInput = {};
 	Reset();
 }
 
@@ -72,17 +74,23 @@ void Fighter::Reset()
 
 ACTION_AXIS Fighter::GetMoveInput() const
 {
-	return m_Device == VERSUS_DEVICE_COMBINED ? ActionGetMove() : ActionGetMove(m_Device);
+	return ActionCalcPlayerMove(m_Input);
 }
 
 ACTION_AXIS Fighter::GetLookInput() const
 {
-	return m_Device == VERSUS_DEVICE_COMBINED ? ActionGetLook() : ActionGetLook(m_Device);
+	return ActionCalcPlayerLook(m_Input);
 }
 
 bool Fighter::IsTrigger(ACTION action) const
 {
-	return m_Device == VERSUS_DEVICE_COMBINED ? ActionIsTrigger(action) : ActionIsTrigger(m_Device, action);
+	return ActionCalcPlayerTrigger(m_Input, m_PreviousInput, action);
+}
+
+void Fighter::SetInput(const PLAYER_INPUT& current, const PLAYER_INPUT& previous)
+{
+	m_Input = IsHuman() ? current : PLAYER_INPUT{};
+	m_PreviousInput = IsHuman() ? previous : PLAYER_INPUT{};
 }
 
 DUMMY_EVENT Fighter::Update(const Camera* camera, const ArmManager* arms)
