@@ -21,6 +21,7 @@ static constexpr float REPEL_DAMAGE = 8.0f;
 static constexpr float REPEL_POWER = 2.5f;
 static constexpr float MAGNET_AIM_SECONDS = 0.1f;
 static constexpr float MODEL_SCALE = 0.08f * Arm::MODEL_SIZE;
+static constexpr VEC3 MOUNT_OFFSET{ 0.0f, -0.05f, 0.0f }; // 取付位置のずらし（外・上・前 m）。少し下げる
 static constexpr float MODEL_LENGTH = 17.424655f; // OBJ の肩から -Y 側の端までの長さ（cm）。
 // OBJ は読み込みで Z が反転するので、半回転して磁石の先を腕の線より上に出す（ドリルの付け根と同じ）。
 static constexpr float MODEL_ROLL = XM_PI;
@@ -100,6 +101,11 @@ void MagnetArm::Draw()
 bool MagnetArm::IsActive() const
 {
 	return m_Arm.GetState() != MAGNET_IDLE;
+}
+
+VEC3 MagnetArm::GetMountOffset() const
+{
+	return MOUNT_OFFSET;
 }
 
 bool MagnetArm::IsHolding() const

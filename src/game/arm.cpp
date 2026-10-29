@@ -152,7 +152,9 @@ VEC3 Arm::GetShoulder() const
 {
 	const int hand = GetHand();
 	const XMFLOAT3 p = GetPlayer().GetPosition();
-	return ArmCalcShoulder({ p.x, p.y, p.z }, GetPlayer().GetYaw(), hand, SHOULDER_OFFSET, HAND_HEIGHT, SHOULDER_FORWARD);
+	const VEC3 mount = GetMountOffset();
+	return ArmCalcShoulder({ p.x, p.y, p.z }, GetPlayer().GetYaw(), hand,
+		SHOULDER_OFFSET + mount.X, HAND_HEIGHT + mount.Y, SHOULDER_FORWARD + mount.Z);
 }
 
 VEC3 Arm::GetRestDirection(float pitchOffset) const

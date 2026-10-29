@@ -28,6 +28,10 @@ public:
 	/// @brief 引き寄せ中・止めている間だけ true を返す（カメラを自由に回せる）
 	bool IsHolding() const override;
 
+protected:
+	/// @brief 肩の部分が体の取付口に合うよう、取付位置を少し下げる
+	VEC3 GetMountOffset() const override;
+
 private:
 	MagnetCalc m_Arm;
 	float m_Straighten = 0.0f; // 描画だけのまっすぐ度（0：待機、1：敵への水平の向き）。
