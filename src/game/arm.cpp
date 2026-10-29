@@ -20,9 +20,10 @@
 // 調整用の値（今後追加する腕も、取付位置と待機方向はここを使う）
 static constexpr float ARM_REST_PITCH = -XM_PI / 4.0f; // 待機の腕を正面から 45° 下げる
 static constexpr float ARM_REST_SPREAD = XMConvertToRadians(25.0f); // 片側ずつ外へ開く角度
-static constexpr float SHOULDER_OFFSET = 0.65f;
-static constexpr float SHOULDER_FORWARD = -0.1f; // 肩を少し後ろへ引いて胸を張る
-static constexpr float HAND_HEIGHT = 1.35f;
+// 肩はキャラモデル（mechani_body.obj）の取付口に合わせる：X ±14.5・高さ 110.5・Z 0（cm）× 1.8 / 157.9
+static constexpr float SHOULDER_OFFSET = 0.165f;
+static constexpr float SHOULDER_FORWARD = 0.0f;
+static constexpr float HAND_HEIGHT = 1.26f;
 static constexpr XMFLOAT4 LEFT_COLOR{ 0.8f, 0.3f, 0.65f, 1.0f };
 static constexpr XMFLOAT4 RIGHT_COLOR{ 0.35f, 0.8f, 0.6f, 1.0f };
 static constexpr XMFLOAT4 HOLD_COLOR{ 1.0f, 0.7f, 0.2f, 1.0f };

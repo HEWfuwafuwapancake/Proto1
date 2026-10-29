@@ -6,6 +6,7 @@
 #include "core/gametime.h"
 #include "physics/cameracalc.h"
 #include "render/shape.h"
+#include "render/model.h"
 
 // 調整用の値（従来のPlayer・DummyManagerと同じ）
 static constexpr float MOVE_SPEED = 6.0f;
@@ -15,6 +16,9 @@ static constexpr float GRAVITY = 25.0f;
 static constexpr float BODY_RADIUS = 0.5f;
 static constexpr float BODY_HEIGHT = 1.8f;
 static constexpr float RESPAWN_SECONDS = 2.0f;
+static constexpr const char* MODEL_PATH = "assets/models/mechani_body.obj";
+static constexpr const char* MODEL_TINT_MATERIAL = "M_OrangeSG"; // プレイヤーの色に替える部分
+static constexpr float MODEL_HEIGHT = 157.9f; // Maya のモデルの高さ（cm）。BODY_HEIGHT にそろえる
 static constexpr XMFLOAT4 PLAYER_COLORS[FIGHTER_COUNT] = {
 	{ 0.95f, 0.2f, 0.2f, 1.0f }, { 0.2f, 0.45f, 1.0f, 1.0f },
 	{ 0.2f, 0.85f, 0.3f, 1.0f }, { 1.0f, 0.85f, 0.15f, 1.0f }
@@ -48,6 +52,8 @@ void Fighter::Initialize(const Stage& stage, int slot, int device, const VEC3& s
 	m_Slot = slot;
 	m_Device = device;
 	m_Spawn = spawn;
+	// 試合を始めるたびに呼ばれるので、読み込みは最初の1回だけ。
+	if (m_Model < 0) m_Model = ModelLoad(MODEL_PATH, false, MODEL_TINT_MATERIAL);
 	m_Input = {};
 	m_PreviousInput = {};
 	Reset();
@@ -156,7 +162,14 @@ void Fighter::Draw(bool highlighted) const
 	// 人の体は吹っ飛び中・ターゲット中も本人の色を保つ。
 	const XMFLOAT4 color = IsHuman() ? GetPlayerColor(m_Slot)
 		: (m_Launched ? LAUNCHED_COLOR : (highlighted ? TARGET_COLOR : DUMMY_COLOR));
-	ShapeDrawCapsule(GetPosition(), BODY_RADIUS, BODY_HEIGHT, color);
+	if (m_Model >= 0) {
+		// モデルの正面は −Z（読み込みで Z が反転する）なので、進む向き（+Z が yaw 0）へ π 回して置く。
+		const float scale = BODY_HEIGHT / MODEL_HEIGHT;
+		const float c = cosf(m_Yaw) * scale, s = sinf(m_Yaw) * scale;
+		ModelDrawTinted(m_Model, GetPosition(), { -c, 0.0f, s }, { 0.0f, scale, 0.0f }, { -s, 0.0f, -c }, color);
+	} else {
+		ShapeDrawCapsule(GetPosition(), BODY_RADIUS, BODY_HEIGHT, color);
+	}
 	if (IsHuman() && highlighted) {
 		const XMFLOAT3 p = GetPosition();
 		ShapeDrawSphere({ p.x, p.y + BODY_HEIGHT + TARGET_MARKER_HEIGHT, p.z }, TARGET_MARKER_RADIUS, TARGET_COLOR);
