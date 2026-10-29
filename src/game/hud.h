@@ -28,8 +28,16 @@ public:
 	/// @brief 画面表示の更新（今は何もしない。値は描くときに読む）
 	void Update(void);
 
-	/// @brief 画面表示を描く（2D 描画の中で、深度テストを切りライトを消してから呼ぶ）
+	/// @brief 自分の画面の大きさを設定する（HUD は 1280×720 を縦横同じ倍率で縮めて当てはめる）
+	/// @param width 幅（ピクセル）
+	/// @param height 高さ（ピクセル）
+	void SetViewSize(float width, float height);
+
+	/// @brief 試合中の自分の画面の HUD を描く（自分のビューポートで、深度テストを切りライトを消してから呼ぶ）
 	void Draw(void) const;
+
+	/// @brief タイトル・結果のおおいとメニューを画面全体に描く（全画面のビューポートに戻してから呼ぶ）
+	void DrawScene(void) const;
 
 private:
 	void DrawFighterPercent(int index) const;
@@ -40,4 +48,7 @@ private:
 	const Match* m_Match = nullptr;
 	const SceneCalc* m_Scene = nullptr;
 	int m_Slot = 0;
+	float m_Width = 1280.0f;	// HUD の座標での画面の幅
+	float m_Height = 720.0f;	// HUD の座標での画面の高さ
+	float m_Scale = 1.0f;		// HUD の座標 → ビューポートのピクセルの倍率
 };

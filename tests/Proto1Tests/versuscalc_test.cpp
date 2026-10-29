@@ -141,5 +141,32 @@ namespace Proto1Tests
 			Assert::AreEqual(0.0f, lower.Y, VERSUS_EPSILON);
 			Assert::IsTrue(upper.Y >= BODY_HEIGHT);
 		}
+
+		// 1人は全画面、2人は右半分が2人目。
+		TEST_METHOD(Viewport_OneFullTwoSideBySide)
+		{
+			const VERSUS_VIEWPORT one = VersusCalcViewport(1, 0, 1280.0f, 720.0f);
+			Assert::AreEqual(0.0f, one.X);
+			Assert::AreEqual(1280.0f, one.Width);
+			Assert::AreEqual(720.0f, one.Height);
+			const VERSUS_VIEWPORT second = VersusCalcViewport(2, 1, 1280.0f, 720.0f);
+			Assert::AreEqual(640.0f, second.X);
+			Assert::AreEqual(0.0f, second.Y);
+			Assert::AreEqual(640.0f, second.Width);
+			Assert::AreEqual(720.0f, second.Height);
+		}
+
+		// 3〜4人は4分割で、左上・右上・左下・右下の順。
+		TEST_METHOD(Viewport_FourQuarters)
+		{
+			const VERSUS_VIEWPORT third = VersusCalcViewport(4, 2, 1280.0f, 720.0f);
+			Assert::AreEqual(0.0f, third.X);
+			Assert::AreEqual(360.0f, third.Y);
+			const VERSUS_VIEWPORT fourth = VersusCalcViewport(3, 3, 1280.0f, 720.0f);
+			Assert::AreEqual(640.0f, fourth.X);
+			Assert::AreEqual(360.0f, fourth.Y);
+			Assert::AreEqual(640.0f, fourth.Width);
+			Assert::AreEqual(360.0f, fourth.Height);
+		}
 	};
 }

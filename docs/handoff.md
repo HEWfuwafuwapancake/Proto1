@@ -4,21 +4,22 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）。
 決まったことは [decisions.md](decisions.md)、腕のモデルの原点と長さは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、終わったタスクの記録は [archive/](archive/)（普段は読まない）。
 
-- 最終更新：2026-10-29（Claude。Shota の Proto1、Visual Studio Enterprise の PC。No.25 段階3-B を確認してマージ。次は段階2-C）
+- 最終更新：2026-10-29（Claude。Shota の Proto1、Visual Studio Enterprise の PC。管理者の指示で No.25 段階C を Claude が実装・確認してマージ。次は段階2-D）
 
 ---
 
 ## 1. 今の状態
 
-- **No.25 段階B（体の共通化）まで済み**。`Player`・`DummyManager` を `Fighter`・`FighterManager` にまとめ、計算は `physics/versuscalc`（テスト9件）。段階3-B で Debug / Release 警告0・テスト 211 件（両構成）・versuscalc.cpp をまとめて壊すと6件落ちる・1人で歩く／つかむ／投げる（ダミー 12%）を確かめた。場外での KO の加点は画面ではまだ見ていない（テストでは確認済み。D の画面確認で見る）。
-- 腕・カメラ・HUD はまだ 1P の1組だけ。F2〜F4 では 1P の装備は変わらない（C で人ごとにする）。
-- No.25 段階A・B はマージ済み（PR #82・段階B の PR）。パッド複数台の実機確認はC・Dでまとめて行う。
+- **No.25 段階C（4分割）まで済み**（段階A・B・C はマージ済み）。`Game` がカメラ・腕・HUD を人のスロットごとに持ち、`VersusCalcViewport`（テスト2件）の範囲に人ごとに描く。HUD は自分の KO 数。タイトルバーは F1〜F4 で選んだ人の装備。
+  確認：Debug / Release 警告0・テスト 213 件（両構成）・ビューポートの計算を壊すと2件落ちる。画面は1人（今どおり）と、一時ビルドで人を2〜4人にした分割（2人は左右、3人は右下が黒、4人は4分割）を撮った。
+- まだ人は1人だけ（参加は D）。体の色・ライトバー・結果の順位・パッドの○での参加も D。パッド複数台の実機確認は D でまとめて行う。場外での KO の加点も D の画面確認で見る。
 - 管理者が遊んで決めること：全種類の構えが普段の画面で分かるか／グラップリング・ドリル・磁石の取付位置と強さ。マウス操作は止めたまま（[decisions.md](decisions.md)）。
 - 順番が変わった（2026-10-29、管理者）：No.19 は止めて、**No.25 ローカル4人対戦 → No.26 オンライン対戦**を先に進める。No.19 のプラン（案）は `feature/tuning-values` に残してある。
 
-## 2. 次にやること：No.25 段階2-C（4分割画面）
+## 2. 次にやること：No.25 段階2-D（参加・試合）
 
-次のセッションでは下の「段階2」のプロンプトを `<段階> = C` として Codex で実行する（段階B はマージ済みなので `.\tools\start-work.ps1 local-versus-c` から）。その後は段階3-C。
+次のセッションでは下の「段階2」のプロンプトを `<段階> = D` として Codex で実行する（段階C はマージ済みなので `.\tools\start-work.ps1 local-versus-d` から）。その後は段階3-D。
+D で人を増やすときは `FighterManager::Initialize` の `AssignDevice(VERSUS_DEVICE_COMBINED)` を参加の結果に置きかえる（`Game::Initialize` は人のスロットを数えて画面を分けるので、そのまま使える）。
 
 ### 管理者が決めたこと（2026-10-29）
 

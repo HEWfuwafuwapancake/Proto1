@@ -42,7 +42,10 @@ void Match::Update(void)
 	if (event == MATCH_EVENT_TIME_UP) {
 		PadRumble(0, 0.0f, 0.0f, 0.0f);
 		PadSetLightColor(0, FINISHED_LIGHT_COLOR[0], FINISHED_LIGHT_COLOR[1], FINISHED_LIGHT_COLOR[2]);
-		m_Arms->Reset();	// つかんでいる敵を離してから止める
+		// つかんでいる敵を離してから止める
+		for (int i = 0; i < FIGHTER_COUNT; ++i) {
+			if (m_Fighters->GetFighter(i).IsHuman()) m_Arms[i].Reset();
+		}
 #ifdef _DEBUG
 		hal::dout << "試合：時間切れ（得点 " << m_Match.GetScore() << "）" << std::endl;
 #endif
@@ -69,9 +72,9 @@ MATCH_STATE Match::GetState(void) const
 	return m_Match.GetState();
 }
 
-void Match::Initialize(const FighterManager& fighters, ArmManager& arms)
+void Match::Initialize(const FighterManager& fighters, ArmManager* arms)
 {
 	m_Fighters = &fighters;
-	m_Arms = &arms;
+	m_Arms = arms;
 	Reset();
 }

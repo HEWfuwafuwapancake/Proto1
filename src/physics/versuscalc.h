@@ -15,6 +15,21 @@ static constexpr int VERSUS_DEVICE_COMBINED = -2;
 /// @return 重なりを解いたらtrue（ダミーどうしは動かさない）
 bool VersusCalcPushBodies(VEC3& first, VEC3& second, bool firstHuman, bool secondHuman, float radius, float height);
 
+/// @brief 画面の中の1人分の描画範囲（ピクセル。左上が原点）
+struct VERSUS_VIEWPORT
+{
+	float X; ///< 左端
+	float Y; ///< 上端
+	float Width; ///< 幅
+	float Height; ///< 高さ
+};
+
+/// @brief 人数に合わせた、画面の順で index 番目の人の描画範囲を取得する
+/// @details 1人は全画面、2人は左右に2分割、3〜4人は4分割（左上・右上・左下・右下の順）。人数・番号が範囲外なら全画面
+/// @param humanCount 人の数（1〜4）
+/// @param index 画面の順の番号（0〜humanCount-1。3人のときの空きは index 3 で取れる）
+VERSUS_VIEWPORT VersusCalcViewport(int humanCount, int index, float screenWidth, float screenHeight);
+
 /// @brief スロットへの機器の割り当てと、最後の攻撃者・KO得点を計算する（DirectXなし）
 class VersusCalc
 {

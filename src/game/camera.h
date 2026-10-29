@@ -31,6 +31,11 @@ public:
 	/// @brief 正面の相手を選び、自分の体の後ろへ置く（FighterManager::Initializeのあと）
 	void Initialize(const Stage& stage, const FighterManager& fighters, int slot, const ArmManager& arms, const Match& match);
 
+	/// @brief 描く範囲の大きさを設定する（縦横比と WorldToScreen に使う。はじめは画面全体）
+	/// @param width 幅（ピクセル）
+	/// @param height 高さ（ピクセル）
+	void SetViewSize(float width, float height);
+
 	/// @brief 状態を最初に戻す（参照はそのまま）
 	void Reset(void);
 
@@ -47,7 +52,7 @@ public:
 
 	/// @brief ワールド座標の点が、画面のどこに映るかを取得する（頭の上の % の表示に使う）
 	/// @param world 点（ワールド座標）
-	/// @param[out] screen 画面の位置（左上が原点のピクセル。画面の外になることもある）
+	/// @param[out] screen 描く範囲の中の位置（範囲の左上が原点のピクセル。範囲の外になることもある）
 	/// @return 点がカメラの前にあれば true、後ろ（映らない）なら false（そのとき screen は変えない）
 	bool WorldToScreen(const XMFLOAT3& world, XMFLOAT2* screen) const;
 
@@ -97,4 +102,6 @@ private:
 	const ArmManager* m_Arms = nullptr;
 	const Match* m_Match = nullptr;
 	int m_Slot = 0;
+	float m_ViewWidth = (float)SCREEN_WIDTH;	// 描く範囲の幅
+	float m_ViewHeight = (float)SCREEN_HEIGHT;	// 描く範囲の高さ
 };

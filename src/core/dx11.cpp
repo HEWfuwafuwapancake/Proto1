@@ -209,6 +209,20 @@ void SetRenderTarget()
 }
 
 
+// 描く範囲（ビューポート）の設定
+void SetViewport(float x, float y, float width, float height)
+{
+	D3D11_VIEWPORT vp;
+	vp.Width = width;
+	vp.Height = height;
+	vp.MinDepth = 0.0f;
+	vp.MaxDepth = 1.0f;
+	vp.TopLeftX = x;
+	vp.TopLeftY = y;
+	g_DeviceContext->RSSetViewports(1, &vp);
+}
+
+
 // 深度テストの切り替え
 void SetDepthEnable(bool enable)
 {

@@ -18,19 +18,24 @@ public:
 	void Finalize();
 	/// @brief 入力の更新後にゲームを1フレーム進める
 	void Update();
-	/// @brief 3D のライト・物体と、その上に重なる画面表示を描く
+	/// @brief 人ごとの画面に 3D と HUD を描き、最後に画面全体のおおいを重ねる
 	void Draw() const;
-	/// @brief タイトルバーに表示する左右の装備を読む
-	const ArmManager& GetArms() const { return m_Arms; }
+	/// @brief タイトルバーに表示する左右の装備を読む（ダミーのスロットは装備を変えられない）
+	/// @param slot スロット番号（0〜3）
+	const ArmManager& GetArms(int slot) const { return m_Arms[slot]; }
 
 private:
 	void Restart();
+	VERSUS_VIEWPORT GetViewport(int index) const;
 
 	Stage m_Stage;
 	FighterManager m_Fighters;
-	Camera m_Camera;
-	ArmManager m_Arms;
+	// カメラ・腕・HUD はスロット番号で持つ。使うのは人のスロットだけ。
+	Camera m_Cameras[FIGHTER_COUNT];
+	ArmManager m_Arms[FIGHTER_COUNT];
+	Hud m_Huds[FIGHTER_COUNT];
+	int m_Humans[FIGHTER_COUNT] = {};	// 画面の順に並べた人のスロット番号
+	int m_HumanCount = 0;
 	Match m_Match;
 	SceneCalc m_Scene;
-	Hud m_Hud;
 };

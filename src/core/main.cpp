@@ -47,9 +47,9 @@ static void RefreshTitle(HWND hWnd)
 	char title[224];
 	const int equipPlayer = ActionGetEquipPlayer();
 	const int mode = ActionGetEquipMode(equipPlayer);
-	sprintf_s(title, "%s  FPS: %lu  1P 左：%s 右：%s  切替先：%dP（F1-F4）%s  振動: %s（SHARE / V）", TITLE, g_Fps,
-		ArmGetName(g_Game.GetArms().GetType(0)), ArmGetName(g_Game.GetArms().GetType(1)),
-		equipPlayer + 1,
+	const ArmManager& arms = g_Game.GetArms(equipPlayer);
+	sprintf_s(title, "%s  FPS: %lu  %dP（F1-F4） 左：%s 右：%s%s  振動: %s（SHARE / V）", TITLE, g_Fps,
+		equipPlayer + 1, ArmGetName(arms.GetType(0)), ArmGetName(arms.GetType(1)),
 		mode == 0 ? "  [左腕を切り替え中：数字キー 1-6]" : (mode == 1 ? "  [右腕を切り替え中：数字キー 1-6]" : ""),
 		PadIsRumbleEnabled() ? "オン" : "オフ");
 	SetWindowText(hWnd, title);
@@ -170,13 +170,14 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
 				dwExecLastTime = dwCurrentTime;	// 大きく遅れたとき（ウィンドウをつかんで動かしていた など）は追いつこうとせず仕切り直す
 			}
 
-			const ARM_TYPE oldLeft = g_Game.GetArms().GetType(0);
-			const ARM_TYPE oldRight = g_Game.GetArms().GetType(1);
 			const int oldEquipPlayer = ActionGetEquipPlayer();
+			const ARM_TYPE oldLeft = g_Game.GetArms(oldEquipPlayer).GetType(0);
+			const ARM_TYPE oldRight = g_Game.GetArms(oldEquipPlayer).GetType(1);
 			const int oldMode = ActionGetEquipMode(oldEquipPlayer);
 			Update();			// 更新処理
-			if (oldLeft != g_Game.GetArms().GetType(0) || oldRight != g_Game.GetArms().GetType(1)
-				|| oldEquipPlayer != ActionGetEquipPlayer() || oldMode != ActionGetEquipMode(ActionGetEquipPlayer())) RefreshTitle(hWnd);
+			const int equipPlayer = ActionGetEquipPlayer();
+			if (oldLeft != g_Game.GetArms(equipPlayer).GetType(0) || oldRight != g_Game.GetArms(equipPlayer).GetType(1)
+				|| oldEquipPlayer != equipPlayer || oldMode != ActionGetEquipMode(equipPlayer)) RefreshTitle(hWnd);
 			Draw();				// 描画処理
 
 			dwFrameCount++;		// 処理回数のカウントを加算

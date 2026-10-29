@@ -81,3 +81,17 @@ int VersusCalc::GetLastAttacker(int slot) const
 {
 	return slot >= 0 && slot < FIGHTER_COUNT ? m_LastAttackers[slot] : -1;
 }
+
+VERSUS_VIEWPORT VersusCalcViewport(int humanCount, int index, float screenWidth, float screenHeight)
+{
+	if (humanCount <= 1 || humanCount > FIGHTER_COUNT || index < 0 || index >= FIGHTER_COUNT) {
+		return { 0.0f, 0.0f, screenWidth, screenHeight };
+	}
+	const float halfWidth = screenWidth * 0.5f;
+	if (humanCount == 2) {
+		if (index >= 2) return { 0.0f, 0.0f, screenWidth, screenHeight };
+		return { halfWidth * (float)index, 0.0f, halfWidth, screenHeight };
+	}
+	const float halfHeight = screenHeight * 0.5f;
+	return { halfWidth * (float)(index % 2), halfHeight * (float)(index / 2), halfWidth, halfHeight };
+}
