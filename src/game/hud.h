@@ -4,19 +4,20 @@
 class Camera;
 class DummyManager;
 class Match;
+class SceneCalc;
 
 /// @file hud.h
-/// @brief 画面表示（残り秒数・スコア・ダミーの頭の上のダメージ%・時間切れの画面）
+/// @brief シーンごとの画面表示（タイトル・試合の HUD・結果のメニュー）
 /// @details 数字は 7 セグ、英字は 5×7 ドット（render/number2d.h）。置き場所・大きさ・色は hud.cpp の「調整用の値」。
-///          時間切れでは画面を半透明の黒でおおい、TIME UP・スコア・PRESS R / OPTIONS を出す
+///          タイトルと結果は半透明のおおいとメニュー、時間切れは TIME UP・スコア・結果への案内を出す
 
-/// @brief 試合とダミーの画面表示を管理する
+/// @brief シーン・試合・ダミーの状態から画面表示を管理する
 class Hud
 {
 public:
 
-	/// @brief 画面表示の初期化（今は何もしない。Number2DInitialize のあとに呼ぶ）
-	void Initialize(const Camera& camera, const DummyManager& dummies, const Match& match);
+	/// @brief カメラ・ダミー・試合・シーンへの参照を受け取る（Number2DInitialize のあとに呼ぶ）
+	void Initialize(const Camera& camera, const DummyManager& dummies, const Match& match, const SceneCalc& scene);
 
 	/// @brief 状態を最初に戻す（参照はそのまま）
 	void Reset(void);
@@ -32,7 +33,10 @@ public:
 
 private:
 	void DrawDummyPercent(int index) const;
+	void DrawMenuItem(const char* text, float y, bool selected) const;
+	void DrawMenuHelp(float selectY, float decideY) const;
 	const Camera* m_Camera = nullptr;
 	const DummyManager* m_Dummies = nullptr;
 	const Match* m_Match = nullptr;
+	const SceneCalc* m_Scene = nullptr;
 };

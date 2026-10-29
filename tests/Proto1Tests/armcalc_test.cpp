@@ -134,34 +134,6 @@ namespace Proto1Tests
 			}
 		}
 
-		TEST_METHOD(Cycle_Next)
-		{
-			const bool available[] = { true, true, true, true, true, true };
-			Assert::AreEqual(3, ArmCalcCycle(2, 1, available, 6));
-		}
-
-		TEST_METHOD(Cycle_Previous)
-		{
-			const bool available[] = { true, true, true, true, true, true };
-			Assert::AreEqual(1, ArmCalcCycle(2, -1, available, 6));
-		}
-
-		TEST_METHOD(Cycle_WrapsBothEnds)
-		{
-			const bool available[] = { true, true, true, true, true, true };
-			Assert::AreEqual(0, ArmCalcCycle(5, 1, available, 6));
-			Assert::AreEqual(5, ArmCalcCycle(0, -1, available, 6));
-		}
-
-		TEST_METHOD(Cycle_SkipsUnavailableInBothDirections)
-		{
-			const bool available[] = { true, false, false, true, false, false };
-			Assert::AreEqual(3, ArmCalcCycle(0, 1, available, 6));
-			Assert::AreEqual(0, ArmCalcCycle(3, -1, available, 6));
-			Assert::AreEqual(0, ArmCalcCycle(3, 1, available, 6));
-			Assert::AreEqual(3, ArmCalcCycle(0, -1, available, 6));
-		}
-
 		TEST_METHOD(Select_AvailableNumber)
 		{
 			const bool available[] = { true, false, true, false, false, true };

@@ -16,7 +16,11 @@ void Game::Initialize()
 	m_Camera.Initialize(m_Stage, m_Player, m_Dummies, m_Arms, m_Match);
 	m_Arms.Initialize(m_Stage, m_Player, m_Dummies, m_Camera);
 	m_Match.Initialize(m_Dummies, m_Arms);
-	m_Hud.Initialize(m_Camera, m_Dummies, m_Match);
+	m_Hud.Initialize(m_Camera, m_Dummies, m_Match, m_Scene);
+	m_Scene.Start();
+#ifdef _DEBUG
+	hal::dout << "シーン：タイトル" << std::endl;
+#endif
 }
 
 void Game::Finalize()
@@ -45,22 +49,30 @@ void Game::Restart()
 
 void Game::Update()
 {
-	//プレイヤーを動かし、ダミーがプレイヤーに押されてから、カメラがプレイヤーを追いかける
-	//（時間切れのあとは、プレイヤー・ダミー・触腕を止める。カメラは回せる）
-	m_Stage.Update();
-	if (m_Match.IsPlaying()) {
-		m_Player.Update();
-		m_Dummies.Update();
+	const SCENE_INPUT input{ ActionIsTrigger(ACTION_DECIDE), ActionIsTrigger(ACTION_RESTART), ActionGetMove().Y };
+	const SCENE oldScene = m_Scene.GetScene();
+	if (oldScene == SCENE_MATCH) {
+		// プレイヤー → ダミー → カメラ → キャラの向き → 腕の順を保つ。
+		m_Stage.Update();
+		if (m_Match.IsPlaying()) {
+			m_Player.Update();
+			m_Dummies.Update();
+		}
+		m_Camera.Update();
+		if (m_Match.IsPlaying()) m_Player.UpdateFacing();
+		// 装備切り替えは時間切れのあとも受け付ける。
+		m_Arms.Update(m_Match.IsPlaying());
 	}
-	m_Camera.Update();
-	if (m_Match.IsPlaying()) {
-		m_Player.UpdateFacing();	// 腕の入力と同じフレームのカメラへ向いてから、肩の位置を計算する
+	const SCENE_EVENT event = m_Scene.Step(input, m_Match.GetState() == MATCH_STATE_FINISHED);
+	if (event == SCENE_EVENT_START_MATCH || event == SCENE_EVENT_BACK_TITLE) Restart();
+	else if (oldScene == SCENE_MATCH) m_Match.Update();
+#ifdef _DEBUG
+	if (oldScene != m_Scene.GetScene()) {
+		const char* name = m_Scene.GetScene() == SCENE_TITLE ? "タイトル"
+			: (m_Scene.GetScene() == SCENE_MATCH ? "試合" : "結果");
+		hal::dout << "シーン：" << name << std::endl;
 	}
-	// 装備切り替えは時間切れのあとも受け付け、腕の動きは試合中だけ更新する。
-	m_Arms.Update(m_Match.IsPlaying());
-	//試合の流れ（場外の回数を数える・時間切れ・やり直し）はダミーが動いたあとに呼ぶ
-	if (ActionIsTrigger(ACTION_RESTART)) Restart();
-	else m_Match.Update();
+#endif
 	m_Hud.Update();
 }
 

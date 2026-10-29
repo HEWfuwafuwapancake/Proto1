@@ -15,10 +15,7 @@ enum ACTION
 	ACTION_ARM_RIGHT,	///< 右の触腕：同上（R1／右クリック）
 	ACTION_RESTART,		///< やり直し（OPTIONS／R）
 	ACTION_RUMBLE_TOGGLE,	///< 振動のオン・オフの切り替え（SHARE／V）
-	ACTION_EQUIP_LEFT_PREV,	///< 左手を前の使える腕へ切り替える（十字キー ←。キー割り当てなし）
-	ACTION_EQUIP_LEFT_NEXT,	///< 左手を次の使える腕へ切り替える（十字キー →。キー割り当てなし）
-	ACTION_EQUIP_RIGHT_PREV,	///< 右手を前の使える腕へ切り替える（□。キー割り当てなし）
-	ACTION_EQUIP_RIGHT_NEXT,	///< 右手を次の使える腕へ切り替える（○。キー割り当てなし）
+	ACTION_DECIDE,		///< メニューの決定・時間切れから結果へ（○／Enter）
 	ACTION_TARGET_LEFT,	///< 左の次の敵へ切り替え（←／右スティック・マウスを左へ弾く。1フレームだけ）
 	ACTION_TARGET_RIGHT,	///< 右の次の敵へ切り替え（→／右スティック・マウスを右へ弾く。1フレームだけ）
 

@@ -33,7 +33,7 @@ static std::unique_ptr<Arm> CreateArm(int hand, const ARM_LINKS& links)
 }
 
 // 新しい腕は Arm を派生し、この1行を CreateArm<腕のクラス> にする。
-// nullptr の種類は読み込まず、数字キー・巡回のどちらでも選べない。
+// nullptr の種類は読み込まず、数字キーでも選べない。
 using ArmFactory = std::unique_ptr<Arm> (*)(int hand, const ARM_LINKS& links);
 static const ArmFactory ARM_FACTORIES[ARM_TYPE_COUNT] = {
 	CreateArm<TentacleArm>, // 触腕
@@ -90,12 +90,7 @@ void ArmManager::Update(bool playing)
 	for (int type = 0; type < ARM_TYPE_COUNT; ++type) available[type] = ARM_FACTORIES[type] != nullptr;
 	const ACTION_EQUIP_KEY key = ActionGetEquipKey();
 	for (int hand = 0; hand < 2; ++hand) {
-		const ACTION prev = hand == 0 ? ACTION_EQUIP_LEFT_PREV : ACTION_EQUIP_RIGHT_PREV;
-		const ACTION next = hand == 0 ? ACTION_EQUIP_LEFT_NEXT : ACTION_EQUIP_RIGHT_NEXT;
-		// 前後を同時に押したときは巡回しない。数字キーがあれば直接選択を優先する。
-		const int direction = (ActionIsTrigger(next) ? 1 : 0) - (ActionIsTrigger(prev) ? 1 : 0);
 		if (key.Hand == hand) ChangeType(hand, ArmCalcSelect(key.Number, available, ARM_TYPE_COUNT));
-		else if (direction != 0) ChangeType(hand, ArmCalcCycle(m_Types[hand], direction, available, ARM_TYPE_COUNT));
 	}
 	if (!playing) return;
 	for (int hand = 0; hand < 2; ++hand) {

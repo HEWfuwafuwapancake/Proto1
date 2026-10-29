@@ -2,6 +2,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <mmsystem.h>
+#include <imm.h>
 #include <stdio.h>
 #include "core/dx11.h"
 #include "core/gametime.h"
@@ -17,6 +18,7 @@
 #include "render/model.h"
 
 #pragma comment (lib, "winmm.lib")
+#pragma comment (lib, "imm32.lib")
 
 
 /*------------------------------------------------------------------------------
@@ -98,6 +100,8 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
 	/* メインウィンドウの作成 */
 	HWND hWnd = CreateWindow(WINDOW_CLASS, TITLE, windowStyle,
 		CW_USEDEFAULT, CW_USEDEFAULT, windowWidth, windowHeight, nullptr, nullptr, hInstance, nullptr);
+	// 文字入力をしないゲームでは IME を外し、Q / E や数字を通常のキーとして受け取る。
+	ImmAssociateContext(hWnd, nullptr);
 
 	//kokonihenkou
 	//初期化処理（失敗したら後片付けをして終了する）

@@ -65,7 +65,7 @@ int GlyphCalcNumberRects(int value, int minDigits, float x, float y, float digit
 	GLYPH_ALIGN align, RECT2D out[], int maxRects);
 
 /// @brief 5×7 ドットの文字の1行を取得する
-/// @param c 文字（A E I M N O P R S T U % / と空白。それ以外は空白）
+/// @param c 文字（A C D E I J K L M N O P R S T U V W X Y 1 % / と空白。それ以外は空白）
 /// @param row 行（0 が上、6 が下。範囲外は 0）
 /// @return その行のドット（下位5ビット。bit4 が左端）
 unsigned char GlyphCalcLetterRow(char c, int row);
