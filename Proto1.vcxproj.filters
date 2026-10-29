@@ -19,6 +19,9 @@
     <Filter Include="src\physics">
       <UniqueIdentifier>{3F6C2B8E-7D41-5A9C-B2E5-8C1D4F7A6E30}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\net">
+      <UniqueIdentifier>{92FE875A-7C6C-42F1-A966-5F118976C7B2}</UniqueIdentifier>
+    </Filter>
     <Filter Include="shaders">
       <UniqueIdentifier>{99D17477-4D96-57CB-A6F0-36CA83AA5DE4}</UniqueIdentifier>
     </Filter>
@@ -27,6 +30,12 @@
     <ClCompile Include="src\core\debug_ostream.cpp">
       <Filter>src\core</Filter>
     </ClCompile>
+    <ClCompile Include="src\net\lockstepcalc.cpp">
+      <Filter>src\net</Filter>
+    </ClCompile>
+    <ClInclude Include="src\net\lockstepcalc.h">
+      <Filter>src\net</Filter>
+    </ClInclude>
     <ClCompile Include="src\core\dx11.cpp">
       <Filter>src\core</Filter>
     </ClCompile>

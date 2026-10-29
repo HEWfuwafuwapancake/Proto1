@@ -4,6 +4,7 @@
 #include "game/camera.h"
 #include "game/fightermanager.h"
 #include "game/match.h"
+#include "input/action.h"
 #include "physics/scenecalc.h"
 #include "render/number2d.h"
 #include <cmath>

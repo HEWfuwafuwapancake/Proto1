@@ -80,6 +80,9 @@
     <ClCompile Include="..\..\src\core\gametime.cpp" />
     <ClCompile Include="..\..\src\core\timer.cpp" />
     <ClCompile Include="..\..\src\input\actioncalc.cpp" />
+    <ClCompile Include="..\..\src\net\lockstepcalc.cpp" />
+    <ClInclude Include="..\..\src\net\lockstepcalc.h" />
+    <ClCompile Include="lockstepcalc_test.cpp" />
     <ClCompile Include="..\..\src\input\padcalc.cpp" />
     <ClCompile Include="..\..\src\physics\cameracalc.cpp" />
     <ClCompile Include="..\..\src\physics\armcalc.cpp" />

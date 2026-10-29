@@ -6,6 +6,7 @@
 #include "input/keyboard.h"
 #include "input/mouse.h"
 #include "input/pad.h"
+#include "physics/versuscalc.h"
 
 
 //------------------------------------------------------------------------------
@@ -282,4 +283,20 @@ int ActionGetEquipMode(int player)
 int ActionGetEquipPlayer(void)
 {
 	return g_EquipPlayer;
+}
+
+PLAYER_INPUT ActionGetPlayerInput(int device)
+{
+	const ACTION_STATE* state = device == VERSUS_DEVICE_COMBINED ? &g_SinglePlayer
+		: (IsValidDevice(device) ? &g_Devices[device] : nullptr);
+	if (state == nullptr) return {};
+	uint16_t buttons = 0;
+	for (int i = 0; i < ACTION_COUNT; ++i) {
+		if (state->Press[i]) buttons |= static_cast<uint16_t>(1u << i);
+	}
+	PLAYER_INPUT input = ActionCalcPlayerInput(state->Move, state->Look, buttons);
+	if (device == ACTION_DEVICE_KEYBOARD || device == VERSUS_DEVICE_COMBINED) {
+		input.Equip = ActionGetEquipKey(g_EquipPlayer);
+	}
+	return input;
 }

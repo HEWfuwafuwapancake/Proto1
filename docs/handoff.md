@@ -4,47 +4,49 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）。
 決まったことは [decisions.md](decisions.md)、腕のモデルの原点と長さは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、終わったタスクの記録は [archive/](archive/)（普段は読まない）。
 
-- 最終更新：2026-10-29（Claude。Shota の Proto1、Visual Studio Enterprise の PC。No.26 のプランを Tailscale・`--delay` に直した（管理者確認済み）。次は段階A の段階2（Codex））
+- 最終更新：2026-10-29（Codex。Shota の Proto1、Visual Studio 2022 Community の PC。No.26 段階A の段階3を完了。次は段階B の段階2）
 
 ---
 
 ## 1. 今の状態
 
-- **No.25 ローカル4人対戦は完了**（段階A〜Dをマージ済み）。○／Enter で機器ごとに参加し、1P の再入力で開始。4分割画面・90秒の KO 数・人ごとの色とライトバー・RETRY／TITLE まで動く。
-- **No.46 PS5 の DualSense USB 対応は完了・マージ済み**（[PR #86](https://github.com/HEWfuwafuwapancake/Proto1/pull/86)）。PS4 と混在して最大4台。同じ操作で、CREATE は振動切り替え。Debug / Release 警告0、テスト各222件、壊す確認5件→復元後成功。実機2台の入力・出力と接続管理を確認。管理者も再起動したゲームで試遊し「完璧」と回答（2026-10-29）。Bluetooth は対象外。
+- **No.26 段階A：段階3 完了**（[PR #90](https://github.com/HEWfuwafuwapancake/Proto1/pull/90)）。`PLAYER_INPUT` 経由の入力・F1〜F4 の装備配布・`LockstepCalc` を検証。コードの追加修正はなし。No.26 は段階Cまで進行中。
+- **Debug / Release のゲームビルド警告0、単体テスト各229件成功**。新しい計算をまとめて壊すと追加7件がすべて失敗し、バイト単位で復元してDebug 229件の再成功を確認。パッドとキーボードの参加・基本操作・RETRY／TITLEは管理者が実操作で確認し、パッド参加者へのキーボード装備配布はCodexが確認した。
+- `GameTimeGetElapsed()` の利用は `src/game/tentacle.cpp` の描画用うねうねだけ（ほかは宣言・定義）。試合の計算には使っていない。
 - 管理者が遊んで決めること：全種類の構えが普段の画面で分かるか／グラップリング・ドリル・磁石の取付位置と強さ。マウス操作は止めたまま（[decisions.md](decisions.md)）。
 - No.19 は止めてある（プラン（案）は `feature/tuning-values`）。
 
-## 2. 次にやること：No.26 段階A の段階2（Codex がコーディング）
+## 2. 次にやること：No.26 段階B の段階2（Codex がコーディング）
 
 段階1（プラン）は管理者の指示で Claude が作り、**管理者確認済み**（2026-10-29。実装は【当面】のとおり Codex）。同じ日に管理者の希望で、1 を「Tailscale で遠くの人とも遊ぶ」、3 を「起動の引数 `--delay`（指定なしは 3）」に直した。
-No.26 は段階A → B → C の順に、それぞれ「段階2 コーディング → 段階3 テスト」で進める（1段階 = 1 PR）。下のプロンプトは段階A の分。段階A がマージされたら、段階3 の最後で段階B のプロンプトをここに書く。
+No.26 は段階A → B → C の順に、それぞれ「段階2 コーディング → 段階3 テスト」で進める（1段階 = 1 PR）。段階A の検証まで完了。次のセッションでは PR #90 のマージを確認し、最新の develop から `feature/online-session` を作る。計算APIとパケットの配置は `docs/dev/01_DX11基盤の構成.md` の「ロックステップの計算」に記載。
 
-### 段階2 のプロンプト（Codex の新しいセッションに貼る）
+### 段階2 のプロンプト（次の Codex の新しいセッションに貼る）
 
 ```text
-Proto1 の No.26 段階A の段階2（コーディング）をしてください。AGENTS.md の【当面】と「コードを書くだけ」に従います。
-プランは docs/handoff.md の「No.26」（管理者確認済み）。段階A の範囲だけを実装し、通信（src/net/netsocket・NetSession・起動の引数）は作らないでください。
-1. .\tools\start-work.ps1 online-input
-2. src/input/actioncalc.h/.cpp に PLAYER_INPUT（移動・カメラを int16 に丸めた値、ボタンの押下ビット、装備の直接選択）と、丸めの関数・前フレームとの比較で押した瞬間を出す関数を足す。src/input/action.h/.cpp に ActionGetPlayerInput(device)（VERSUS_DEVICE_COMBINED も扱う）。
-3. Fighter は Action〇〇(m_Device) を読まず、Game が毎フレーム渡す PLAYER_INPUT（今と前）から GetMoveInput・GetLookInput・IsTrigger を答える。ArmManager の装備選択も PLAYER_INPUT から読む（ローカルでは今の F1〜F4 の動きを変えない）。Game は毎フレーム人のスロットの入力を作って渡す。シーンの入力（決定・やり直し・メニューの上下）も 1P の PLAYER_INPUT から読む。ローカルの遊びは何も変えない。
-4. 新しいフォルダ src/net/ に lockstepcalc.h/.cpp（Windows・DirectX なしのクラス LockstepCalc）：フレームごと・スロットごとの入力の保管、入力の遅れ（Initialize で受け取る。決まった値はなく、指定なしのときの 3 フレームを「調整用の値」に）、まとめて送る分（届いたと返事のない分を最大 8 フレーム）の選び方、全員そろったかの判定、パケットの組み立てと読み取り（版の番号とビルドの種類を含む）、チェックサムの計算。値は「調整用の値」に static constexpr。
-5. tests/Proto1Tests に lockstepcalc_test.cpp と、PLAYER_INPUT の丸め・押した瞬間のテストを足す（主な動きだけ）。
-6. src/net/ を CLAUDE.md のフォルダ表・docs/dev/01_DX11基盤の構成.md・.vcxproj.filters に足す（net は game を使わない）。新しいファイルは .vcxproj / .filters / テストのプロジェクトに登録。C++ は BOM付きUTF-8・CRLF、Doxygen の日本語コメント。
-7. GameTimeGetElapsed が見た目（tentacle.cpp のうねうね）以外の計算に使われていないことを確かめ、結果を handoff.md に1行書く。
-8. Debug のビルドが通ることだけ確かめ、.\tools\save-work.ps1 で保存。handoff.md の「今の状態」に「No.26 段階A：段階2 済み。段階3 待ち」と書く。
+Proto1 の No.26 段階B の段階2（コーディング）をしてください。AGENTS.md の【当面】の段階2に従います。下のNo.26のプランは管理者確認済みです。
+1. 開始手順とNotion開発ログを確認し、PR #90 のマージ後の develop から .\tools\start-work.ps1 online-session で始める。
+2. src/net/netsocket.h/.cpp にWindows標準WinsockのUDPを追加する。開く・送る・止まらずに受け取る・閉じるをまとめ、ws2_32.libを使う。外部ライブラリは入れない。
+3. src/game/netsession.h/.cpp のNetSessionをGameが持つ。ホスト／参加、2〜4人のスロット割り当て、ロビー、入力の収集・配布をまとめる。全員が機器を選んでからホストの決定で開始する。空きはダミー、途中参加はなし。TITLEに戻っても接続は保つ。
+4. main.cppで --host／--join <IP>／--delay N を読みGameへ渡す。引数なしは従来のローカル対戦。delayの指定なしは3、ホストの値を全員に配る。Aの上限・パケット配置を読み、接続に必要なメッセージは入力パケットと区別する。VERSUS_DEVICE_REMOTEを追加する。
+5. LockstepCalcを使い、1/60秒の各フレームで自分の入力を1回だけ採取して先のフレームへ保管する。待っている間は採取済みの入力を変えず再送する。参加側→ホスト→全員の順で配り、全員分がそろったときだけゲームを進める。累積ACKは方向ごとに扱い、全送信先の最小ACKを使って実行済みの履歴を解放する。送受信と描画は待機中も続ける。
+6. 移動・腕・装備だけでなく、ホストの結果メニューとRETRY／TITLEも共通の入力フレームで進める。カメラは全員分更新し、自分のスロットだけ全画面に描く。振動とライトバーは自分の機器だけ。オンラインの装備選択はF1〜F4に関係なく自分へ配る。
+7. 新しい計算・起動引数の解析・メッセージ変換などはWindows／DirectXなしでテストできる部分を分け、主な動きのテストコードを書く。.vcxproj・filtersと構成ドキュメントも更新する。チェックサムの比較・切断・ビルド一致の拒否・ping表示は段階C。
+8. vswhere.exeでMSBuildを探し、Debugのビルド成功だけ確認する。run-tests.ps1・Release・壊す確認・ゲーム起動は段階3に残す。
+9. tasks.mdはNo.26を🔄のまま、handoff.mdの「今の状態」に「段階B：段階2 済み。段階3 待ち」と書き、実装したAPIと確認上の注意を簡潔に残してsave-work.ps1でcommit・pushする。
 ```
 
 ### 段階3 のプロンプト（段階2 のあと、Codex の新しいセッションに貼る）
 
 ```text
-Proto1 の No.26 段階A の段階3（テスト）をしてください。AGENTS.md の【当面】の段階3 に従います。ブランチは feature/online-input。
-1. docs/handoff.md の No.26 のプランとコードを照らし合わせる（段階A の範囲だけか、ローカルの遊びを変えていないか、依存の向き）。
-2. Debug / Release のビルド警告0、.\tools\run-tests.ps1 と .\tools\run-tests.ps1 -Release が全部通る。
-3. 新しい計算（lockstepcalc と PLAYER_INPUT の丸め・押した瞬間）をまとめて1回わざと壊し、テストが落ちることを確かめて戻す。
-4. 見た目は変わらないので画面撮影は不要。ただしローカル対戦（キーボード＋パッド）で移動・ジャンプ・腕・ターゲット切り替え・装備切り替え・RETRY／TITLE が今までどおりか、ゲームを起動して軽く確かめる。
-5. 見つかった問題を直す → .\tools\submit-pr.ps1 → 通ればマージ。
-6. tasks.md の No.26 は 🔄 のまま（段階C まで続く）。handoff.md の「次にやること」を「No.26 段階B の段階2」にし、プランの段階B の範囲から段階2・3 のプロンプトを書く。
+Proto1 の No.26 段階B の段階3（テスト）をしてください。AGENTS.md の【当面】の段階3に従います。ブランチは feature/online-session。
+1. handoff.mdの確認済みプランとコードを照合し、引数なしのローカル対戦・依存の向き・待機中の時間と入力履歴・全員のカメラ更新を確認する。
+2. vswhere.exeでMSBuildを探し、Debug / Release のゲームビルド警告0、.\tools\run-tests.ps1 と .\tools\run-tests.ps1 -Release の全成功を確認する。
+3. 段階Bで新しく足した計算のファイルだけをまとめて1回壊し、追加テストが失敗することを確認して戻す。復元後に成功を確認する。
+4. リポジトリを作業フォルダにして --host と --join 127.0.0.1 で2つ起動する。機器選択・ロビー開始・自分だけの全画面・双方の移動／ジャンプ／腕／装備・ホストだけの結果操作・RETRY／TITLE後の再開を確かめる。両ウィンドウの同じ体の位置・%・KOが一致することを確認する。できれば2台でも確認し、未確認の条件は明記する。
+5. --delay の指定なしと6の両方を確認し、入力待ちでゲームの計算は止まっても描画・送受信は続くことを確かめる。引数なしのローカル参加・分割画面も維持されることを確認する。画面を撮ったら結果を書く前に見る。
+6. 問題を直し、tasks.mdのNo.26は🔄のまま、Notionも進行中とPRリンクを更新する。submit-pr.ps1でPRを作り、テストとビルドが通れば規定のコマンドでマージする。
+7. handoff.mdの「次にやること」を「No.26 段階C の段階2」にし、確認済みプランの範囲で段階Cの段階2・3プロンプトを残す。
 ```
 
 ### 以下、確認済みのプラン
