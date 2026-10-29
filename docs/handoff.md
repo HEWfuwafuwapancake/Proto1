@@ -4,22 +4,21 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）。
 決まったことは [decisions.md](decisions.md)、腕のモデルの原点と長さは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、終わったタスクの記録は [archive/](archive/)（普段は読まない）。
 
-- 最終更新：2026-10-29（Codex。Shota の Proto1、Visual Studio Enterprise の PC。No.25 段階2-Bを実装・Debugビルド成功。段階3-B待ち）
+- 最終更新：2026-10-29（Claude。Shota の Proto1、Visual Studio Enterprise の PC。No.25 段階3-B を確認してマージ。次は段階2-C）
 
 ---
 
 ## 1. 今の状態
 
-- **No.25 段階2-B 済み。段階3 待ち**。`feature/local-versus-b`。Codexが実装し、Debug（x64）ビルド成功・警告0。テスト実行・Releaseビルド・わざと壊す確認・ゲーム起動は未実施。
-- `Player`・`DummyManager`を`Fighter`・`FighterManager`へ統合し、腕5種類・カメラ・HUD・試合を接続。`physics/versuscalc`に機器割り当て・自分を除く候補・最後の攻撃者とKO・人どうしの押し合い、`versuscalc_test.cpp`に主な動きの9件を追加。各プロジェクトと構成書も更新。
-- 段階Bも1人（パッド0＋キーボードの合成入力）＋ダミー3体。人も場外では消えて2秒後に復活し、腕を解除する。得点は最後の攻撃者にだけ入るため、攻撃していないダミーの自然落下は加点しない。段階3-Bでは1人の従来操作・場外と復活・投げの加点を短く確認する。腕・画面はまだ1人分で、F2〜F4では1Pの装備が変わらない。
-- No.25 段階Aはマージ済み（PR #82）。パッド複数台の実機確認はC・Dでまとめて行う。
+- **No.25 段階B（体の共通化）まで済み**。`Player`・`DummyManager` を `Fighter`・`FighterManager` にまとめ、計算は `physics/versuscalc`（テスト9件）。段階3-B で Debug / Release 警告0・テスト 211 件（両構成）・versuscalc.cpp をまとめて壊すと6件落ちる・1人で歩く／つかむ／投げる（ダミー 12%）を確かめた。場外での KO の加点は画面ではまだ見ていない（テストでは確認済み。D の画面確認で見る）。
+- 腕・カメラ・HUD はまだ 1P の1組だけ。F2〜F4 では 1P の装備は変わらない（C で人ごとにする）。
+- No.25 段階A・B はマージ済み（PR #82・段階B の PR）。パッド複数台の実機確認はC・Dでまとめて行う。
 - 管理者が遊んで決めること：全種類の構えが普段の画面で分かるか／グラップリング・ドリル・磁石の取付位置と強さ。マウス操作は止めたまま（[decisions.md](decisions.md)）。
 - 順番が変わった（2026-10-29、管理者）：No.19 は止めて、**No.25 ローカル4人対戦 → No.26 オンライン対戦**を先に進める。No.19 のプラン（案）は `feature/tuning-values` に残してある。
 
-## 2. 次にやること：No.25 段階3-B（体の共通化を確認する）
+## 2. 次にやること：No.25 段階2-C（4分割画面）
 
-次のセッションでは下の「段階3」のプロンプトを `<段階> = B` として実行する。`feature/local-versus-b`を続ける。Debug / Release 警告0・run-tests.ps1（両構成）・versuscalc.cppをまとめて壊してテストが落ちる確認・1人の短い動作確認を行い、通ればPR・マージする。その後は段階2-C。
+次のセッションでは下の「段階2」のプロンプトを `<段階> = C` として Codex で実行する（段階B はマージ済みなので `.\tools\start-work.ps1 local-versus-c` から）。その後は段階3-C。
 
 ### 管理者が決めたこと（2026-10-29）
 
