@@ -75,7 +75,7 @@ VEC3 Camera::LockFocusPoint(const VEC3& player, const CAMERA_FOCUS_TARGET* targe
 {
 	// 身長を半径にすれば、頭付近を中心に体全体を安全側で囲める。
 	return CameraCalcFocusPoint(player, targets[m_LockTarget].Position, m_Yaw, m_Pitch,
-		m_Distance, FOV, (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT,
+		m_Distance, FOV, m_ViewWidth / m_ViewHeight,
 		TARGET_SCREEN_MARGIN, m_Player->GetHeight(), TARGET_POINT_RATE);
 }
 
@@ -241,7 +241,7 @@ void Camera::MakeMatrices(XMMATRIX* view, XMMATRIX* projection) const
 	*view = XMMatrixLookToLH(eye, dir, up);
 
 	// プロジェクション行列（遠くのものほど小さく見える透視投影）
-	float aspect = (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT;
+	float aspect = m_ViewWidth / m_ViewHeight;
 	*projection = XMMatrixPerspectiveFovLH(FOV, aspect, NEAR_Z, FAR_Z);
 }
 
@@ -265,9 +265,15 @@ bool Camera::WorldToScreen(const XMFLOAT3& world, XMFLOAT2* screen) const
 	// -1〜1（上が +1）を、左上が原点のピクセルに変える
 	const float ndcX = XMVectorGetX(clip) / w;
 	const float ndcY = XMVectorGetY(clip) / w;
-	screen->x = (ndcX + 1.0f) * 0.5f * (float)SCREEN_WIDTH;
-	screen->y = (1.0f - ndcY) * 0.5f * (float)SCREEN_HEIGHT;
+	screen->x = (ndcX + 1.0f) * 0.5f * m_ViewWidth;
+	screen->y = (1.0f - ndcY) * 0.5f * m_ViewHeight;
 	return true;
+}
+
+void Camera::SetViewSize(float width, float height)
+{
+	m_ViewWidth = width;
+	m_ViewHeight = height;
 }
 
 XMFLOAT3 Camera::GetPosition(void) const

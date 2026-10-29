@@ -1,10 +1,12 @@
 ﻿#include "game/hud.h"
 #include "core/dx11.h"
+#include "core/shader.h"
 #include "game/camera.h"
 #include "game/fightermanager.h"
 #include "game/match.h"
 #include "physics/scenecalc.h"
 #include "render/number2d.h"
+#include <cmath>
 
 
 //------------------------------------------------------------------------------
@@ -65,6 +67,8 @@ void Hud::DrawFighterPercent(int index) const
 	const XMFLOAT3 head = { body.Start.X, top + PERCENT_HEAD_OFFSET, body.Start.Z };
 	XMFLOAT2 screen;
 	if (!m_Camera->WorldToScreen(head, &screen)) return;
+	screen.x /= m_Scale;
+	screen.y /= m_Scale;
 
 	// 数字と「%」を合わせた幅の真ん中を頭に合わせ、下の端を頭の上の点にそろえる
 	const int percent = GlyphCalcDisplayPercent(m_Fighters->GetPercent(index));
@@ -112,7 +116,14 @@ void Hud::DrawMenuHelp(float selectY, float decideY) const
 	Number2DDrawText("OK  O / ENTER", centerX, decideY, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
 }
 
-void Hud::Draw(void) const
+void Hud::SetViewSize(float width, float height)
+{
+	m_Scale = fminf(width / (float)SCREEN_WIDTH, height / (float)SCREEN_HEIGHT);
+	m_Width = width / m_Scale;
+	m_Height = height / m_Scale;
+}
+
+void Hud::DrawScene(void) const
 {
 	const float centerX = (float)SCREEN_WIDTH * 0.5f;
 
@@ -133,26 +144,35 @@ void Hud::Draw(void) const
 		DrawMenuItem("RETRY", RESULT_MENU_Y, m_Scene->GetCursor() == RESULT_ITEM_RETRY);
 		DrawMenuItem("TITLE", RESULT_MENU_Y + MENU_LINE_GAP, m_Scene->GetCursor() == RESULT_ITEM_TITLE);
 		DrawMenuHelp(RESULT_SELECT_Y, RESULT_DECIDE_Y);
-		return;
 	}
+}
+
+void Hud::Draw(void) const
+{
+	if (m_Scene->GetScene() != SCENE_MATCH) return;
+	// 自分の画面に 1280×720 の座標を縦横同じ倍率で当てはめ、描き終わったら画面全体に戻す。
+	Shader_Set2DSize(m_Width, m_Height);
+	const float centerX = m_Width * 0.5f;
+	const int score = m_Fighters->GetScore(m_Slot);
 
 	for (int i = 0; i < FIGHTER_COUNT; i++) {
 		DrawFighterPercent(i);
 	}
 
 	if (m_Match->GetState() == MATCH_STATE_FINISHED) {
-		// 時間切れ：おおいの上に TIME UP・スコア・結果への案内（左上のスコアは出さない）
-		Number2DDrawBox({ 0.0f, 0.0f, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT }, COVER_COLOR);
+		// 時間切れ：おおいの上に TIME UP・自分の KO 数・結果への案内（左上の KO 数は出さない）
+		Number2DDrawBox({ 0.0f, 0.0f, m_Width, m_Height }, COVER_COLOR);
 		Number2DDrawText("TIME UP", centerX, TIME_UP_Y, TIME_UP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
-		Number2DDrawNumber(m_Match->GetScore(), 1, centerX, FINAL_SCORE_Y, FINAL_SCORE_DIGIT_WIDTH, GLYPH_ALIGN_CENTER, TEXT_COLOR);
+		Number2DDrawNumber(score, 1, centerX, FINAL_SCORE_Y, FINAL_SCORE_DIGIT_WIDTH, GLYPH_ALIGN_CENTER, TEXT_COLOR);
 		Number2DDrawText("NEXT  O / ENTER", centerX, NEXT_Y, NEXT_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
 	}
 	else {
-		Number2DDrawNumber(m_Match->GetScore(), 1, SCORE_X, SCORE_Y, SCORE_DIGIT_WIDTH, GLYPH_ALIGN_LEFT, TEXT_COLOR);
+		Number2DDrawNumber(score, 1, SCORE_X, SCORE_Y, SCORE_DIGIT_WIDTH, GLYPH_ALIGN_LEFT, TEXT_COLOR);
 	}
 
 	// 残り秒数（時間切れでも 0 のまま、おおいの上に出す）
 	Number2DDrawNumber(m_Match->GetRemainingSeconds(), 1, centerX, SECONDS_Y, SECONDS_DIGIT_WIDTH, GLYPH_ALIGN_CENTER, TEXT_COLOR);
+	Shader_Set2DSize((float)SCREEN_WIDTH, (float)SCREEN_HEIGHT);
 }
 
 void Hud::Initialize(const Camera& camera, const FighterManager& fighters, int slot, const Match& match, const SceneCalc& scene)

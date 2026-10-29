@@ -16,7 +16,8 @@ class Match
 public:
 
 	/// @brief 試合を始める（全員の体の初期化のあとに呼ぶ）
-	void Initialize(const FighterManager& fighters, ArmManager& arms);
+	/// @param arms スロットごとの腕（FIGHTER_COUNT 個の配列。時間切れで人のスロットの腕を離す）
+	void Initialize(const FighterManager& fighters, ArmManager* arms);
 
 	/// @brief 状態を最初に戻す（参照はそのまま）
 	void Reset(void);
