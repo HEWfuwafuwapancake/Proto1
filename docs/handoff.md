@@ -4,108 +4,23 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）。
 決まったことは [decisions.md](decisions.md)、腕のモデルの原点と長さは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、終わったタスクの記録は [archive/](archive/)（普段は読まない）。
 
-- 最終更新：2026-10-29（Codex。Shota の Proto1、Visual Studio Enterprise の PC。No.18 の段階2を実装・Debug x64 ビルドして保存。段階3は別セッションの Claude）
+- 最終更新：2026-10-29（Claude。Shota の Proto1、Visual Studio Enterprise の PC。No.18 の段階3を確かめて PR・マージ）
 
 ---
 
 ## 1. 今の状態
 
-- **No.18 は段階2 済み。段階3（Claude）待ち**。作業ブランチは `feature/scene-flow`。シーン・メニュー・文字・テスト5件とプロジェクト登録、パッドの腕切替の削除を実装した（実装コミット `d7fdaca`）。
-- 不具合の原因：修正前の Debug で、IME オンでは Q / E などが `VK_PROCESSKEY` になりモードに入れず、IME オフでも1回の Q が状態差と16ms後の `WM_KEYDOWN` で二重に数えられてモードが取り消されることを、タイトルバーと一時入力ログで再現した。
-- 直し方：`main.cpp` で `ImmAssociateContext(hWnd, nullptr)` と `imm32.lib` を追加。`keyboard.cpp` はキーボードのトリガーを `WM_KEYDOWN` に一本化した（マウスボタンの状態差による入力は残す）。入力の計算ファイル（`keyboardcalc.h`・`actioncalc.cpp`）は変更していないため、不具合用の計算テストは追加していない。
-- 確認済み：`Proto1.sln /t:Rebuild` の Debug・x64 はゲーム本体・テストコードとも警告0・エラー0。C++ の BOM付きUTF-8・CRLF、表示13文字列の全文字、ACTION とキー・パッド配列の並びと大きさを確認した。`run-tests.ps1`・Release・わざと壊す確認・修正後の実行と画面確認・PR・マージは未実施で、段階3の Claude が行う。
-- プランとの差分・追加確認：原因候補2の修正で `src/input/keyboard.cpp` も変更した。既存の「数字だけで左手／Shift＋数字で右手」の直接選択は残すと、管理者が 2026-10-29 に追加確認した。ほかの仕様変更はない。`tasks.md`・Notion の No.18 は 🔄／進行中のまま。
+- **No.18（シーン：タイトル → 試合 → 結果）は完了**。段階3で Debug / Release 警告0、テスト 202 件（Debug・Release）、`scenecalc.cpp` をわざと壊してテストが落ちること、5画面とシーンの往復、Q / E → 数字の腕切替（IME オン・オフ）を確かめ、修正なしでマージした。パッドの腕切替はなくなり、腕の切り替えはキーボードだけ（[decisions.md](decisions.md)）。
 - 管理者が遊んで決めること：全種類の構えが普段の画面で分かるか／グラップリング・ドリル・磁石の取付位置と強さ（No.19）。マウス操作は止めたまま（[decisions.md](decisions.md)）。
 
-## 2. 次にやること：No.18 の段階3（Claude が確かめる）
+## 2. 次にやること：No.19 の段階1（プランを書いて管理者に確認する）
 
-### 段階3を始めるプロンプト（Claude）
-
-Proto1 の No.18 の段階3をしてください。`AGENTS.md`・`CLAUDE.md` の開始手順に従い、`feature/scene-flow` を pull して、下の確認済みプランと実装を照らし合わせてください。今回は段階3を Claude が担当します。Debug / Release（x64、警告0）→ `run-tests.ps1`（Debug・Release）→ 新規 `scenecalc.cpp` の遷移とスティックの弾きをまとめて壊してテストが落ちることを確認して戻す → 下の5画面とシーンの往復、IME オン・オフの腕切替、パッドの腕切替削除を確認 → 必要な修正 → `tasks.md` と Notion の完了・PRリンク更新、`submit-pr.ps1`、通ればマージ、次の No.19 の段階1へ引き継いでください。数字／Shift＋数字の直接選択は管理者の追加確認どおり残します。
-
-### No.18 のプラン（管理者確認済み、2026-10-29）
-
-※ 2026-10-29 の追加確認：腕切替の「キーボードだけ」はパッドの切替をなくす意味。既存の「数字だけで左手／Shift＋数字で右手」の直接選択は残す。
-
-**流れ**：起動 → タイトル（START を決定）→ 試合 → 時間切れ（今の TIME UP の画面）→（決定）→ 結果（RETRY か TITLE を選んで決定）→ もう一回 ／ タイトルへ。
-試合中の R / OPTIONS のやり直しは今までどおり「いつでも」。
-
-| 管理者が決めたこと | 内容 |
-|---|---|
-| 時間切れ → 結果 | **ボタンで移る**（TIME UP の画面で決定）。自動では移らない |
-| 結果画面 | **もう一回とタイトル**の2つを**選ぶメニュー** |
-| タイトル画面 | **文字と操作案内だけ**＋ START の1項目のメニュー。後ろは止まった浮島（初期配置）を描き、半透明の黒でおおう |
-| メニューの操作（2026-10-29 追加） | **パッドだけで操作できる**：左スティックの上下で選び、**○で決定**。今どれを選んでいるか分かるように、選んでいる項目を目立たせる（ホバー）。キーボードは W / S で選び Enter で決定 |
-| 腕の切り替え（2026-10-29 追加） | **パッドでの切り替えはなくす**。キーボードの Q / E → 数字キーだけ。今これが効かないので、同じ PR で直す |
-
-**入力**（`src/input/action.h` / `action.cpp`）
-- `ACTION_DECIDE`（決定：Enter / ○）を足す。`ACTION_PAD_BUTTONS` の大きさが `ACTION_TARGET_LEFT` なので、**`ACTION_TARGET_LEFT` より前**（`ACTION_EQUIP_RIGHT_NEXT` のあと）に入れ、`ACTION_KEYS`・`ACTION_PAD_BUTTONS` の並びもそろえる。
-- **パッドでの腕の切り替えはなくす**（2026-10-29、管理者が決めた。プロトなので、腕の切り替えはキーボードの Q / E → 数字キーだけでよい）：
-  `ACTION_EQUIP_LEFT_PREV / LEFT_NEXT / RIGHT_PREV / RIGHT_NEXT` の4つと、`ArmManager::Update` の前後の切り替え（`direction` と `ArmCalcCycle`）を消す。
-  `ArmCalcCycle` をほかで使っていなければ、関数とそのテストも消す。十字キー ← →・□・○ には何も割り当てない（○ はメニューの決定だけになる）。
-  装備の切り替え（Q / E → 数字）は、今までどおり時間切れのあとも受け付ける。
-- OPTIONS を決定にしないのは、TIME UP の画面で「やり直し（いつでも）」と「結果へ」が同じボタンになってしまうため。
-- メニューの上下は、今の `ActionGetMove().Y`（左スティック・W / S。前がプラス）を使う。新しい行動は足さない。
-
-**シーンの計算**（新しいファイル `src/physics/scenecalc.h` / `.cpp`。DirectX なし。`matchcalc` と同じ置き方）
-- `enum SCENE { SCENE_TITLE, SCENE_MATCH, SCENE_RESULT }`
-- `enum SCENE_EVENT { SCENE_EVENT_NONE, SCENE_EVENT_START_MATCH, SCENE_EVENT_SHOW_RESULT, SCENE_EVENT_BACK_TITLE }`
-- `enum RESULT_ITEM { RESULT_ITEM_RETRY, RESULT_ITEM_TITLE, RESULT_ITEM_COUNT }`（結果のメニューの項目。タイトルのメニューは START だけなので enum は作らない）
-- `struct SCENE_INPUT { bool Decide; bool Restart; float MoveY; }`（Decide・Restart は押した瞬間か、MoveY は `ActionGetMove().Y`。メンバーは全部 Doxygen で説明）
-- `class SceneCalc`：`void Start()`（タイトルにする）／`SCENE_EVENT Step(const SCENE_INPUT& input, bool matchFinished)`／`SCENE GetScene() const`／`int GetCursor() const`（結果で選んでいる項目）
-  - **スティックの弾き**：`MoveY` が `MENU_STICK_THRESHOLD`（0.6）を超えた瞬間に1つ動かし、`MENU_STICK_DEADZONE`（0.3）より内側に戻るまで次を受け付けない（倒しっぱなしで流れない。今の `TARGET_PAD_DEADZONE / THRESHOLD` と同じ考え方）。上（プラス）で前の項目、下で次の項目。端で止める（ループしない）。値は `scenecalc.cpp` の「調整用の値」。
-  - タイトル：Decide → 試合（START_MATCH）
-  - 試合：Restart → START_MATCH（いつでも。試合中のまま）／ matchFinished かつ Decide → 結果（SHOW_RESULT）。時間切れ前の Decide は何もしない
-  - 結果に入るとき、カーソルは RETRY。結果：Decide → カーソルが RETRY なら START_MATCH、TITLE なら BACK_TITLE ／ Restart（R / OPTIONS）→ START_MATCH（近道として残す）
-  - スティックが倒れたまま結果に入っても、一度戻すまで動かない（入った瞬間に勝手に動かない）
-- テスト `tests/Proto1Tests/scenecalc_test.cpp`（主な動きだけ、5件くらい）：タイトル→決定で試合／試合中の決定は無視・時間切れ後の決定で結果／試合中のやり直し／結果で下に弾いて TITLE→決定でタイトル（RETRY のまま決定でもう一回）／倒しっぱなしでは1つしか動かない。
-
-**Game**（`src/game/game.h` / `game.cpp`）
-- `SceneCalc m_Scene` を持つ。`Initialize` の最後に `m_Scene.Start()`（起動はタイトル）。
-- `Update`：まず `SCENE_INPUT` を `ActionIsTrigger(ACTION_DECIDE / ACTION_RESTART)` と `ActionGetMove().Y` で作り、
-  - **試合のシーン**のときだけ今の `Update` の中身（ステージ・プレイヤー・ダミー・カメラ・腕・試合）を動かす（`m_Arms.Update(m_Match.IsPlaying())` も今のまま）。今の `if (ActionIsTrigger(ACTION_RESTART)) Restart(); else m_Match.Update();` は、`m_Scene.Step` の結果で置きかえる（START_MATCH なら `Restart()`、それ以外は `m_Match.Update()`）。
-  - タイトル・結果では、プレイヤー・ダミー・カメラ・腕・試合を更新しない（止まった絵）。`m_Hud.Update()` は毎フレーム呼ぶ。
-  - イベントの処理：START_MATCH と BACK_TITLE は `Restart()`（タイトルの後ろも初期配置にする）、SHOW_RESULT は何もしない（結果は Match の得点を読むだけ）。
-  - Debug 出力：シーンが変わったら `hal::dout` に「シーン：タイトル／試合／結果」。`Restart()` の「試合：やり直し」はそのまま。
-- `Draw` は今のまま（3D はどのシーンでも描く）。
-- 時間切れのパッドのライト（赤）は、結果からもう一回・タイトルへのときの `Restart()` → `Match::Reset` で戻るので、追加は要らない。
-
-**画面表示**（`src/game/hud.h` / `hud.cpp`）
-- `Hud::Initialize` に `const SceneCalc& scene` を足して受け取る（`Game::Initialize` から `m_Scene` を渡す）。
-- **選んでいる項目（ホバー）**：項目の文字の後ろに、文字より少し大きい四角（`MENU_HOVER_COLOR`。半透明の白など）を `Number2DDrawBox` で描き、文字の色を `MENU_SELECTED_COLOR`（黄色など）にする。選んでいない項目は `MENU_TEXT_COLOR`（少し暗い白）。タイトルの START は1つだけだが、同じ見た目で選ばれている状態に描く。
-- タイトル：おおい（今の `COVER_COLOR`）＋ 大きな「PROTO」、その下にメニュー「START」（選ばれている見た目）、下に小さく操作案内：「SELECT  STICK / W S」「OK  O / ENTER」と、遊び方の3行「MOVE  WASD / L STICK」「ARMS  L1 R1 / CLICK」「JUMP  SPACE / X」。残り秒数・スコア・頭の上の % は出さない。
-- 試合：今のまま。ただし TIME UP の画面の案内を「PRESS R / OPTIONS」から **「NEXT  O / ENTER」** に変える（R / OPTIONS のやり直しは今も効くが、案内は結果へ進むほうだけ）。
-- 結果：おおい ＋「RESULT」・大きなスコア（今の `FINAL_SCORE_*` を使う）・縦に並べたメニュー「RETRY」「TITLE」（`GetCursor()` の項目をホバーの見た目に）・下に小さく「SELECT  STICK / W S」「OK  O / ENTER」。残り秒数・頭の上の % は出さない。
-- 置き場所・大きさ・色は `hud.cpp` の「調整用の値」に足す（タイトル・結果の各行の Y、ドットの大きさ、メニューの行の間隔、ホバーの四角の余白と色）。
-- ○ は文字の「O」で表す（○の形の文字は作らない）。
-
-**文字**（`src/render/glyphcalc.cpp`）
-- 足りない英字を 5×7 ドットで足す：**C・D・J・K・L・V・W・X・Y と数字の 1**（上の文字列に出てくるもの。英字の中の「L1 R1」の 1 は `I` で代用せず、ドットの 1 を足す）。足したあと、上の文字列の全文字が表にあるか確かめる。
-  `glyphcalc.h` の `GlyphCalcLetterRow` のコメントの文字の一覧も直す。英字のテストは足さない（今のテストが通ればよい）。
-
-**ドキュメント**
-- `docs/decisions.md` に1行：「シーンの流れ（2026-10-29、No.18）：起動はタイトル／タイトル・結果はメニュー（左スティックか W・S で選び、○か Enter で決定。選んでいる項目は目立たせる）／TIME UP から結果へは○・Enter／結果は RETRY と TITLE（R・OPTIONS でももう一回）／試合中のやり直しはいつでも」と、「腕の切り替えはキーボードの Q / E → 数字キーだけ（2026-10-29。パッドの十字キー・□・○ の切り替えはなくした）」。「試合の流れ」の行の「カウントダウンなし（シーンの流れは No.18）」はそのまま。
-- `docs/dev/01_DX11基盤の構成.md` の `Game::Update` の順番の説明があれば、シーンで分けたことを足す。
-- `docs/plan/01_企画の要点.md` の操作の表に、メニューの操作（左スティック・○ / W・S・Enter）を足す（表があれば）。
-
-**Q / E → 数字キーの腕の切り替えが効かない不具合の修正**（2026-10-29、管理者から。同じ PR で直す）
-- 仕組み：`action.cpp` の `ActionUpdate` が Q / E（`EQUIP_MODE_KEY_LEFT / RIGHT`）と数字キー 1〜6（テンキーも）を `KeyboardIsTrigger` で読み、`ActionCalcEquipKey` が切り替えモードと選ぶ手を決め、`ArmManager::Update` が `ChangeType` する。キーの押下は `main.cpp` の `WM_KEYDOWN` → `KeyboardOnKeyDown`（`keyboardcalc.h` の `KeyboardTriggerCalc`）と `GetKeyboardState` の両方で拾っている。タイトルバーにモードと左右の装備が出る。
-- **まず再現する**：Debug で起動し、Q → 2、E → 3、Q → Q（モードの取り消し）、Shift＋2 などを試し、タイトルバーと Debug 出力（「腕：左 → 〇〇」）で、どこで止まっているか（モードに入らない／数字が届かない／手が違う）を突き止める。**日本語入力（IME）がオンのときとオフのときの両方**で試す。
-- 原因の候補（Claude がコードを読んだ範囲。決めつけずに確かめる）：
-  1. **IME**：ウィンドウに IME が付いたままなので、日本語入力がオンだと文字・数字キーの `WM_KEYDOWN` が `VK_PROCESSKEY` になり、Q / E・数字が届かない。直すなら、ウィンドウを作ったあとに `ImmAssociateContext(hWnd, nullptr)` で IME を外す（`imm32.lib` のリンクが要る。`#pragma comment(lib, "imm32.lib")` か .vcxproj の追加の依存ファイル）。
-  2. **押下の二重取り**：`KeyboardIsTrigger` が「メッセージで覚えた押下」と「`GetKeyboardState` の前フレームとの差」の OR なので、2つが別のフレームに出ると Q が2回押されたことになり、モードが入ってすぐ切れる（`ActionCalcEquipKey` は同じキーでモードを取り消す）。
-  3. ほかに見つかれば、それを直す。
-- 直したら、原因が計算（`keyboardcalc.h`・`actioncalc.cpp`）にあれば、その不具合を再現するテストを1つ足す（CLAUDE.md の「実際に不具合が出たら、それを再現するテストは足す」）。IME のように Windows 側の原因なら、テストは足さず、段階3 の画面確認で確かめる。
-- 原因と直し方を、`docs/handoff.md` の「今の状態」に1〜2行で書く（段階3 の Claude が確かめるため）。
-
-**触るファイル**：`src/core/main.cpp`（IME が原因のとき）／`src/game/arm.cpp`（前後の切り替えを消す）／`src/physics/armcalc.h`・`.cpp` とそのテスト（`ArmCalcCycle` を消すとき）／`src/input/action.h`・`action.cpp`／`src/physics/scenecalc.h`・`.cpp`（新規）／`src/game/game.h`・`game.cpp`／`src/game/hud.h`・`hud.cpp`／`src/render/glyphcalc.h`・`.cpp`／`tests/Proto1Tests/scenecalc_test.cpp`（新規）／`Proto1.vcxproj`・`.filters`／`tests/Proto1Tests/Proto1Tests.vcxproj`・`.filters`（`scenecalc.cpp` を「既存の項目」で）／上のドキュメント。
-
-**確かめること（段階3）**：Debug / Release 警告0／`run-tests.ps1`（Debug・Release）／`scenecalc.cpp` の遷移とスティックの弾きをまとめて壊してテストが落ちる→戻す／画面（タイトル・試合・TIME UP・結果で RETRY 選択・結果で TITLE 選択の5枚）で文字が欠けていないか、ホバーが分かるか、タイトル→試合→TIME UP→結果→もう一回→…→結果→タイトル が回るか。／Q → 数字・E → 数字で腕が変わるか（IME オン・オフの両方。タイトルバーと Debug 出力で確かめる）／パッドの十字キー・□・○ で腕が変わらないか。
+- No.19「調整用の値の整理（触腕の長さ・投げる強さ・吹っ飛び具合を1か所で変えられるように）」のプランを書く。各ファイルの「調整用の値」（`static constexpr`）の今の置き場所を調べ、何を1か所にまとめるか・どう変えられるようにするかを、ここに書いて管理者の確認を取る。確認が取れるまで実装しない。
 
 ---
 
 - 順番（管理者が決めた）：No.18 のあとは No.19。No.40 ハサミは最後。No.24・No.27 が未完了なので実装へ進まない。
-- 画面を撮る方法（段階3）：画面操作のツールがなくても、PowerShell で撮れる。ゲームを `Start-Process -WorkingDirectory <リポジトリ>` で起動し、user32 の `SetForegroundWindow`（前に `Alt` を一瞬押す）・`keybd_event`・`mouse_event`、`System.Drawing` の `CopyFromScreen` でウィンドウを撮る。キーや クリックを送る前に毎回 `GetForegroundWindow()` がゲームか確かめ、違えば止める。日本語を書いた .ps1 は BOM付きUTF-8。撮った画像は結果を書く前に必ず見る。
+- 画面を撮る方法（段階3）：画面操作のツールがなくても、PowerShell で撮れる。ゲームを `Start-Process -WorkingDirectory <リポジトリ>` で起動し、user32 の `SetForegroundWindow`（`Alt` を押したまま呼ぶ。下を参照）・`keybd_event`・`mouse_event`、`System.Drawing` の `CopyFromScreen` でウィンドウを撮る。キーや クリックを送る前に毎回 `GetForegroundWindow()` がゲームか確かめ、違えば止める。日本語を書いた .ps1 は BOM付きUTF-8。撮った画像は結果を書く前に必ず見る。Alt を押して離すとゲームのシステムメニューが開いて Enter を吸うので、Alt を押したまま前に出し、F13 を1回押してから Alt を離す。ほかのウィンドウが上に出ることがあるので、撮る直前にもう一度前に出す。Debug 出力は DBWIN_BUFFER を読む一時スクリプトで取れる。
 - 画面の確認のヒント：カメラは敵を見続けるので、腕を横から見たいときは `camera.cpp` の `Camera::MakeMatrices` でビューを置きかえた一時ビルドを、OutDir・IntDir を scratchpad に分けて作る（コミットしない。終わったら `git checkout` で戻す）。**ビューの見ている点を肩（`ArmCalcShoulder` に `Player` の位置・向きを渡した点）にすると、肩が画面の真ん中に来て、部品が肩についているか分かる**。真横（キャラの左へ 2.5、前へ 0.6、肩と同じ高さ）から見ると、部品が上下どちらに曲がっているか分かる。
 
 ### 新しいアームの仕様（管理者確認済み、2026-10-26。各腕の細かい値は、その腕のプランで決める）
