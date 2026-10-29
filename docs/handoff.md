@@ -4,7 +4,7 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）。
 決まったことは [decisions.md](decisions.md)、腕のモデルの原点と長さは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、終わったタスクの記録は [archive/](archive/)（普段は読まない）。
 
-- 最終更新：2026-10-29（Claude。Shota の Proto1、Visual Studio Enterprise の PC。No.26 のプラン（案）を書いた。管理者の確認待ち）
+- 最終更新：2026-10-29（Claude。Shota の Proto1、Visual Studio Enterprise の PC。No.26 のプランが管理者確認済み。次は段階A の段階2（Codex））
 
 ---
 
@@ -15,9 +15,39 @@
 - 管理者が遊んで決めること：全種類の構えが普段の画面で分かるか／グラップリング・ドリル・磁石の取付位置と強さ。マウス操作は止めたまま（[decisions.md](decisions.md)）。
 - No.19 は止めてある（プラン（案）は `feature/tuning-values`）。
 
-## 2. 次にやること：No.26 オンライン対戦のプラン（案）→ 管理者の確認待ち
+## 2. 次にやること：No.26 段階A の段階2（Codex がコーディング）
 
-管理者の指示で、段階1（プラン）は今回 Claude が作った（2026-10-29）。**確認が取れるまで実装しない。** 下の「決めること」に答えてもらう。
+段階1（プラン）は管理者の指示で Claude が作り、**管理者確認済み**（2026-10-29。「決めること」1〜4 はすべておすすめ、実装は【当面】のとおり Codex）。
+No.26 は段階A → B → C の順に、それぞれ「段階2 コーディング → 段階3 テスト」で進める（1段階 = 1 PR）。下のプロンプトは段階A の分。段階A がマージされたら、段階3 の最後で段階B のプロンプトをここに書く。
+
+### 段階2 のプロンプト（Codex の新しいセッションに貼る）
+
+```text
+Proto1 の No.26 段階A の段階2（コーディング）をしてください。AGENTS.md の【当面】と「コードを書くだけ」に従います。
+プランは docs/handoff.md の「No.26」（管理者確認済み）。段階A の範囲だけを実装し、通信（src/net/netsocket・NetSession・起動の引数）は作らないでください。
+1. .\tools\start-work.ps1 online-input
+2. src/input/actioncalc.h/.cpp に PLAYER_INPUT（移動・カメラを int16 に丸めた値、ボタンの押下ビット、装備の直接選択）と、丸めの関数・前フレームとの比較で押した瞬間を出す関数を足す。src/input/action.h/.cpp に ActionGetPlayerInput(device)（VERSUS_DEVICE_COMBINED も扱う）。
+3. Fighter は Action〇〇(m_Device) を読まず、Game が毎フレーム渡す PLAYER_INPUT（今と前）から GetMoveInput・GetLookInput・IsTrigger を答える。ArmManager の装備選択も PLAYER_INPUT から読む（ローカルでは今の F1〜F4 の動きを変えない）。Game は毎フレーム人のスロットの入力を作って渡す。シーンの入力（決定・やり直し・メニューの上下）も 1P の PLAYER_INPUT から読む。ローカルの遊びは何も変えない。
+4. 新しいフォルダ src/net/ に lockstepcalc.h/.cpp（Windows・DirectX なしのクラス LockstepCalc）：フレームごと・スロットごとの入力の保管、入力の遅れ（3 フレーム）、まとめて送る分（届いたと返事のない分を最大 8 フレーム）の選び方、全員そろったかの判定、パケットの組み立てと読み取り（版の番号とビルドの種類を含む）、チェックサムの計算。値は「調整用の値」に static constexpr。
+5. tests/Proto1Tests に lockstepcalc_test.cpp と、PLAYER_INPUT の丸め・押した瞬間のテストを足す（主な動きだけ）。
+6. src/net/ を CLAUDE.md のフォルダ表・docs/dev/01_DX11基盤の構成.md・.vcxproj.filters に足す（net は game を使わない）。新しいファイルは .vcxproj / .filters / テストのプロジェクトに登録。C++ は BOM付きUTF-8・CRLF、Doxygen の日本語コメント。
+7. GameTimeGetElapsed が見た目（tentacle.cpp のうねうね）以外の計算に使われていないことを確かめ、結果を handoff.md に1行書く。
+8. Debug のビルドが通ることだけ確かめ、.\tools\save-work.ps1 で保存。handoff.md の「今の状態」に「No.26 段階A：段階2 済み。段階3 待ち」と書く。
+```
+
+### 段階3 のプロンプト（段階2 のあと、Codex の新しいセッションに貼る）
+
+```text
+Proto1 の No.26 段階A の段階3（テスト）をしてください。AGENTS.md の【当面】の段階3 に従います。ブランチは feature/online-input。
+1. docs/handoff.md の No.26 のプランとコードを照らし合わせる（段階A の範囲だけか、ローカルの遊びを変えていないか、依存の向き）。
+2. Debug / Release のビルド警告0、.\tools\run-tests.ps1 と .\tools\run-tests.ps1 -Release が全部通る。
+3. 新しい計算（lockstepcalc と PLAYER_INPUT の丸め・押した瞬間）をまとめて1回わざと壊し、テストが落ちることを確かめて戻す。
+4. 見た目は変わらないので画面撮影は不要。ただしローカル対戦（キーボード＋パッド）で移動・ジャンプ・腕・ターゲット切り替え・装備切り替え・RETRY／TITLE が今までどおりか、ゲームを起動して軽く確かめる。
+5. 見つかった問題を直す → .\tools\submit-pr.ps1 → 通ればマージ。
+6. tasks.md の No.26 は 🔄 のまま（段階C まで続く）。handoff.md の「次にやること」を「No.26 段階B の段階2」にし、プランの段階B の範囲から段階2・3 のプロンプトを書く。
+```
+
+### 以下、確認済みのプラン
 
 ### ねらい
 
@@ -72,7 +102,7 @@ PC を2〜4台つなぎ、1台に1人ずつで No.25 と同じ試合（90 秒・
 - 1台の PC で2つ起動するとき、キーボードとパッドは**前に出ているウィンドウだけ**に入る（`keyboard.cpp`・`pad.cpp` の今の作り）。後ろのウィンドウは「何も押していない」入力を送るので、切り替えながら確かめられる。
 - Windows のファイアウォールの許可（初回の起動で聞かれる。プライベートネットワークを許可）が要る。学校のネットワークは UDP や PC どうしの通信を止めていることがある。
 
-### 決めること（管理者に聞く）
+### 決めたこと（2026-10-29、管理者がすべて【おすすめ】に決めた。5 は Codex）
 
 1. **つなぐ範囲**：(a) 同じ LAN（同じ Wi-Fi）で IP を打ってつなぐ【おすすめ】。インターネット越しは、ホスト側のルーターでポートを開けるか、Tailscale などの VPN を使えば同じ作りで動く ／ (b) NAT 越え（STUN・中継サーバー）まで作る（大きい。プロトでは重い）
 2. **1台の PC の人数**：(a) 1台に1人【おすすめ。画面は自分だけの全画面】 ／ (b) 1台に複数人（分割画面とオンラインを混ぜる）
