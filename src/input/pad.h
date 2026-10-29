@@ -4,7 +4,7 @@
 #include "input/padcalc.h"
 
 /// @file pad.h
-/// @brief PS4 コントローラー（DUALSHOCK 4）の USB 入力と、振動・ライトバーの出力（Raw Input と HID）
+/// @brief DUALSHOCK 4 / DualSense の USB 入力と、振動・ライトバーの出力（Raw Input と HID）
 /// @details 最大4台を接続順に0〜3へ割り当てる。外れた番号は空き、ほかの番号は詰めない。
 ///          つないでいないとき・外れたとき・
 ///          ウィンドウが選ばれていないときは「何も押していない」扱いにする
@@ -31,7 +31,7 @@ void PadOnRawInput(LPARAM lParam);
 /// @param lParam WM_INPUT_DEVICE_CHANGE の lParam（機器のハンドル）
 void PadOnDeviceChange(WPARAM wParam, LPARAM lParam);
 
-/// @brief DUALSHOCK 4 が接続されているか（入力がまだ届いていなければボタン・スティックは0）
+/// @brief 対応するパッドが接続されているか（入力がまだ届いていなければボタン・スティックは0）
 /// @param pad パッドの番号（0〜3。範囲外は未接続扱い）
 /// @return つないでいれば true
 bool PadIsConnected(int pad);

@@ -26,6 +26,94 @@ namespace Proto1Tests
 	TEST_CLASS(PadCalcTest)
 	{
 	public:
+		TEST_METHOD(Identify_SonyModels)
+		{
+			Assert::AreEqual((int)PAD_MODEL_DS4, (int)PadCalcIdentifyModel(0x054C, 0x05C4));
+			Assert::AreEqual((int)PAD_MODEL_DS4, (int)PadCalcIdentifyModel(0x054C, 0x09CC));
+			Assert::AreEqual((int)PAD_MODEL_DUALSENSE, (int)PadCalcIdentifyModel(0x054C, 0x0CE6));
+			Assert::AreEqual((int)PAD_MODEL_NONE, (int)PadCalcIdentifyModel(0x1234, 0x0CE6));
+			Assert::AreEqual((int)PAD_MODEL_NONE, (int)PadCalcIdentifyModel(0x054C, 0x1234));
+		}
+
+		// PS5 のトリガー・カウンターはボタン扱いにせず、両スティックの向きと中立を読む。
+		TEST_METHOD(DualSense_SticksAndNeutral)
+		{
+			unsigned char report[64] = { 0x01, 128, 128, 128, 128, 255, 255, 255, 0x08 };
+			PAD_STATE state{};
+			Assert::IsTrue(PadCalcParseDualSenseUsbReport(report, 64, state));
+			Assert::AreEqual(0u, state.Buttons);
+			Assert::IsTrue(fabsf(state.LeftStick.X) < 0.01f && fabsf(state.LeftStick.Y) < 0.01f);
+			Assert::IsTrue(fabsf(state.RightStick.X) < 0.01f && fabsf(state.RightStick.Y) < 0.01f);
+			report[1] = 0; report[2] = 255; report[3] = 255; report[4] = 0;
+			Assert::IsTrue(PadCalcParseDualSenseUsbReport(report, 64, state));
+			Assert::AreEqual(-1.0f, state.LeftStick.X, PAD_EPSILON);
+			Assert::AreEqual(-1.0f, state.LeftStick.Y, PAD_EPSILON);
+			Assert::AreEqual(1.0f, state.RightStick.X, PAD_EPSILON);
+			Assert::AreEqual(1.0f, state.RightStick.Y, PAD_EPSILON);
+		}
+
+		// ボタンを1個ずつ確かめる（複数ビットの取り違えを見逃さない）。
+		TEST_METHOD(DualSense_EachButtonAndDpad)
+		{
+			unsigned char report[64] = { 0x01, 128, 128, 128, 128, 0, 0, 0, 0x08 };
+			const unsigned int expected[] = {
+				PAD_BUTTON_SQUARE, PAD_BUTTON_CROSS, PAD_BUTTON_CIRCLE, PAD_BUTTON_TRIANGLE,
+				PAD_BUTTON_L1, PAD_BUTTON_R1, PAD_BUTTON_L2, PAD_BUTTON_R2,
+				PAD_BUTTON_SHARE, PAD_BUTTON_OPTIONS, PAD_BUTTON_L3, PAD_BUTTON_R3, PAD_BUTTON_PS
+			};
+			PAD_STATE state{};
+			for (int i = 0; i < 13; ++i) {
+				report[8] = i < 4 ? (unsigned char)(0x08 | (0x10 << i)) : 0x08;
+				report[9] = i >= 4 && i < 12 ? (unsigned char)(1 << (i - 4)) : 0;
+				report[10] = i == 12 ? 1 : 0;
+				Assert::IsTrue(PadCalcParseDualSenseUsbReport(report, 64, state));
+				Assert::AreEqual(expected[i], state.Buttons);
+			}
+			const unsigned int directions[] = {
+				PAD_BUTTON_DPAD_UP, PAD_BUTTON_DPAD_UP | PAD_BUTTON_DPAD_RIGHT,
+				PAD_BUTTON_DPAD_RIGHT, PAD_BUTTON_DPAD_RIGHT | PAD_BUTTON_DPAD_DOWN,
+				PAD_BUTTON_DPAD_DOWN, PAD_BUTTON_DPAD_DOWN | PAD_BUTTON_DPAD_LEFT,
+				PAD_BUTTON_DPAD_LEFT, PAD_BUTTON_DPAD_LEFT | PAD_BUTTON_DPAD_UP
+			};
+			report[9] = 0; report[10] = 0;
+			for (int i = 0; i < 8; ++i) {
+				report[8] = (unsigned char)(0x40 | i); // ○と十字キーを同時に押せる
+				Assert::IsTrue(PadCalcParseDualSenseUsbReport(report, 64, state));
+				Assert::AreEqual(directions[i] | PAD_BUTTON_CIRCLE, state.Buttons);
+			}
+		}
+
+		// Bluetooth の簡易0x01・通常0x31や、欠けたUSB入力を誤って読まない。
+		TEST_METHOD(DualSense_RejectsNonUsbReport)
+		{
+			unsigned char report[78] = { 0x01 };
+			PAD_STATE state{ { 0.25f, -0.5f }, { -0.75f, 1.0f }, PAD_BUTTON_CIRCLE };
+			Assert::IsFalse(PadCalcParseDualSenseUsbReport(report, 10, state));
+			Assert::IsFalse(PadCalcParseDualSenseUsbReport(report, 63, state));
+			report[0] = 0x31;
+			Assert::IsFalse(PadCalcParseDualSenseUsbReport(report, 78, state));
+			Assert::IsFalse(PadCalcParseDualSenseUsbReport(nullptr, 64, state));
+			Assert::AreEqual((unsigned int)PAD_BUTTON_CIRCLE, state.Buttons);
+			Assert::AreEqual(0.25f, state.LeftStick.X, PAD_EPSILON);
+			Assert::AreEqual(-0.5f, state.LeftStick.Y, PAD_EPSILON);
+			Assert::AreEqual(-0.75f, state.RightStick.X, PAD_EPSILON);
+			Assert::AreEqual(1.0f, state.RightStick.Y, PAD_EPSILON);
+		}
+
+		// USB出力は機種固有の位置へ書き、停止時はモーターを0にして色を保つ。
+		TEST_METHOD(DualSense_OutputAndStop)
+		{
+			unsigned char report[63];
+			for (unsigned char& byte : report) byte = 0xAA;
+			Assert::IsTrue(PadCalcBuildDualSenseUsbOutput(report, 63, 0.4f, 0.6f, 0.95f, 0.45f, 0.35f));
+			unsigned char expected[63] = { 0x02, 0x03, 0x04, 102, 153 };
+			expected[45] = 242; expected[46] = 115; expected[47] = 89;
+			for (int i = 0; i < 63; ++i) Assert::AreEqual((int)expected[i], (int)report[i]);
+			Assert::IsTrue(PadCalcBuildDualSenseUsbOutput(report, 63, 0, 0, 0.95f, 0.45f, 0.35f));
+			expected[3] = 0; expected[4] = 0;
+			for (int i = 0; i < 63; ++i) Assert::AreEqual((int)expected[i], (int)report[i]);
+		}
+
 		// 端まで倒せば長さ 1、遊びのすぐ外は 0 に近い（遊びの境目で急に飛ばない）
 		TEST_METHOD(DeadZone_RescalesOutside)
 		{

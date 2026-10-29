@@ -3,8 +3,22 @@
 #include "input/actioncalc.h"
 
 /// @file padcalc.h
-/// @brief PS4 コントローラー（DUALSHOCK 4）の USB 入出力レポート、スティックの遊び、振動の重ね合わせと時間の計算
+/// @brief DUALSHOCK 4 / DualSense の USB 入出力レポート、スティックの遊び、振動の重ね合わせと時間の計算
 /// @details DirectX と Windows を使わないので、単体テスト（tests/Proto1Tests）からそのまま使える
+
+/// @brief USB で対応するパッドの機種
+enum PAD_MODEL
+{
+	PAD_MODEL_NONE,       ///< 対応していない機器
+	PAD_MODEL_DS4,        ///< DUALSHOCK 4（初代・2代目）
+	PAD_MODEL_DUALSENSE,  ///< DualSense（PS5 純正）
+};
+
+/// @brief USB のメーカー番号と製品番号から、対応する機種を調べる
+/// @param vendorId メーカー番号（VID）
+/// @param productId 製品番号（PID）
+/// @return 対応する機種。対応外なら PAD_MODEL_NONE
+PAD_MODEL PadCalcIdentifyModel(unsigned int vendorId, unsigned int productId);
 
 /// @brief パッドのボタン（PAD_STATE::Buttons のビット）
 enum PAD_BUTTON : unsigned int
@@ -17,7 +31,7 @@ enum PAD_BUTTON : unsigned int
 	PAD_BUTTON_R1 = 1u << 5,		///< R1
 	PAD_BUTTON_L2 = 1u << 6,		///< L2（奥まで押し込まなくても、少し押せば押した扱い）
 	PAD_BUTTON_R2 = 1u << 7,		///< R2（同上）
-	PAD_BUTTON_SHARE = 1u << 8,		///< SHARE
+	PAD_BUTTON_SHARE = 1u << 8,		///< SHARE（DualSense では CREATE）
 	PAD_BUTTON_OPTIONS = 1u << 9,	///< OPTIONS
 	PAD_BUTTON_L3 = 1u << 10,		///< L3（左スティックの押し込み）
 	PAD_BUTTON_R3 = 1u << 11,		///< R3（右スティックの押し込み）
@@ -58,6 +72,20 @@ struct PAD_RUMBLE
 bool PadCalcBuildDs4UsbOutput(unsigned char* data, int size,
 	float smallMotor, float largeMotor, float red, float green, float blue);
 
+/// @brief DualSense の USB 出力を組み立てる（互換振動とライトバー。残りは0）
+/// @details [0] は0x02、[1] は互換振動の印0x03、[2] は色の印0x04。
+///          小さいモーターは [3]、大きいモーターは [4]、RGB は [45]〜[47]。
+/// @param[out] data 出力先（作れなかったときは書き換えない）
+/// @param size 出力先のバイト数（48以上。実機の長さはHIDから取得する）
+/// @param smallMotor 小さいモーターに相当する振動の強さ（0〜1。範囲外は切る）
+/// @param largeMotor 大きいモーターに相当する振動の強さ（0〜1。範囲外は切る）
+/// @param red ライトバーの赤（0〜1。範囲外は切る）
+/// @param green ライトバーの緑（0〜1。範囲外は切る）
+/// @param blue ライトバーの青（0〜1。範囲外は切る）
+/// @return 組み立てられたら true。data が null または size が48未満なら false
+bool PadCalcBuildDualSenseUsbOutput(unsigned char* data, int size,
+	float smallMotor, float largeMotor, float red, float green, float blue);
+
 /// @brief 振動を重ねる（各モーターは強いほう、残り時間は長いほうを残す）
 /// @param[in,out] rumble 今の振動（残り時間が 0 以下なら古い強さを捨てる）
 /// @param smallMotor 小さいモーターの強さ（0〜1。範囲外は切る）
@@ -92,3 +120,13 @@ ACTION_AXIS PadCalcApplyDeadZone(ACTION_AXIS stick, float deadZone);
 /// @param[out] state 読んだ状態（読めなかったときは書き換えない）
 /// @return 読めたら true。バイト数が足りないときや、レポート番号が 0x01 でないときは false
 bool PadCalcParseDs4UsbReport(const unsigned char* data, int size, PAD_STATE& state);
+
+/// @brief DualSense の64バイトの USB 入力レポートを読む
+/// @details [0] は0x01、[1]〜[4] は左右スティック、[8]〜[10] は DS4 と同じビットのボタン。
+///          [5]・[6] のトリガー量と [7] のカウンターはボタンとして読まない。CREATE は SHARE に対応。
+///          Bluetooth の簡易入力も番号0x01だが短いため拒否する。遊びは別途取り除く。
+/// @param data レポートのバイト列
+/// @param size data のバイト数
+/// @param[out] state 読んだ状態（読めなかったときは書き換えない）
+/// @return 64バイトで番号0x01なら true。それ以外は false
+bool PadCalcParseDualSenseUsbReport(const unsigned char* data, int size, PAD_STATE& state);
