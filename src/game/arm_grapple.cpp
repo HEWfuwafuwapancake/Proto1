@@ -16,7 +16,7 @@ static constexpr GRAPPLE_PARAMS PARAMS{ 40.0f, 16.0f, 0.3f, 20.0f, 1.2f, 0.8f, 1
 static constexpr float HIT_DAMAGE = 5.0f;
 static constexpr float HIT_POWER = 1.0f;
 static constexpr float LANDING_INSET = 0.8f;
-static constexpr float MODEL_SCALE = 0.08f;
+static constexpr float MODEL_SCALE = 0.08f * Arm::MODEL_SIZE;
 static constexpr float WIRE_RADIUS = 0.03f;
 static constexpr float GRAPPLE_ROLL = XMConvertToRadians(90.0f);
 static constexpr bool GRAPPLE_MIRROR_LEFT = true;

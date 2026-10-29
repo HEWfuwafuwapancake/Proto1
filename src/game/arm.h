@@ -34,6 +34,8 @@ struct ARM_LINKS
 class Arm
 {
 public:
+	/// @brief すべての腕のモデルに掛ける大きさの倍率（調整用の値。キャラモデルの細い体に合わせて小さくする）
+	static constexpr float MODEL_SIZE = 0.5f;
 	/// @brief 派生クラスの終了処理も呼んで腕を破棄する
 	virtual ~Arm() = default;
 	/// @brief カメラ更新後に片手の腕を更新する

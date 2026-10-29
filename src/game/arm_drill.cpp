@@ -9,7 +9,7 @@
 #include "input/pad.h"
 
 // 調整用の値
-static constexpr float MODEL_SCALE = 0.08f;
+static constexpr float MODEL_SCALE = 0.08f * Arm::MODEL_SIZE;
 static constexpr DRILL_GRIP DRILL_MODEL_GRIP{
 	{ 0.311337f, -5.719436f, -5.081741f }, { 0.0f, -0.707106781f, 0.707106781f }, MODEL_SCALE
 };
