@@ -4,19 +4,28 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）。
 決まったことは [decisions.md](decisions.md)、腕のモデルの原点と長さは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、終わったタスクの記録は [archive/](archive/)（普段は読まない）。
 
-- 最終更新：2026-10-29（Claude。Shota の Proto1、Visual Studio Community の PC。No.18 の段階1 プランを書いた。段階2 は Codex、段階3 は別セッションの Claude）
+- 最終更新：2026-10-29（Codex。Shota の Proto1、Visual Studio Enterprise の PC。No.18 の段階2を実装・Debug x64 ビルドして保存。段階3は別セッションの Claude）
 
 ---
 
 ## 1. 今の状態
 
-- **No.18（シーン：タイトル → 試合 → 結果）は段階1 済み**（プランは下。管理者が 2026-10-29 に 3 つの選択を決めた）。作業ブランチは `feature/scene-flow`。**段階2（Codex のコーディング）待ち**。
-- 今回は **段階2 を Codex、段階3（確かめる・PR・マージ・記録）を別セッションの Claude** が行う（管理者の指定）。
-- 管理者が遊んで決めること：全種類の構えが普段の画面で分かるか／グラップリング・ドリル・磁石の取付位置と強さ（No.19）／実物のパッドでの腕切り替え。マウス操作は止めたまま（[decisions.md](decisions.md)）。
+- **No.18 は段階2 済み。段階3（Claude）待ち**。作業ブランチは `feature/scene-flow`。シーン・メニュー・文字・テスト5件とプロジェクト登録、パッドの腕切替の削除を実装した（実装コミット `d7fdaca`）。
+- 不具合の原因：修正前の Debug で、IME オンでは Q / E などが `VK_PROCESSKEY` になりモードに入れず、IME オフでも1回の Q が状態差と16ms後の `WM_KEYDOWN` で二重に数えられてモードが取り消されることを、タイトルバーと一時入力ログで再現した。
+- 直し方：`main.cpp` で `ImmAssociateContext(hWnd, nullptr)` と `imm32.lib` を追加。`keyboard.cpp` はキーボードのトリガーを `WM_KEYDOWN` に一本化した（マウスボタンの状態差による入力は残す）。入力の計算ファイル（`keyboardcalc.h`・`actioncalc.cpp`）は変更していないため、不具合用の計算テストは追加していない。
+- 確認済み：`Proto1.sln /t:Rebuild` の Debug・x64 はゲーム本体・テストコードとも警告0・エラー0。C++ の BOM付きUTF-8・CRLF、表示13文字列の全文字、ACTION とキー・パッド配列の並びと大きさを確認した。`run-tests.ps1`・Release・わざと壊す確認・修正後の実行と画面確認・PR・マージは未実施で、段階3の Claude が行う。
+- プランとの差分・追加確認：原因候補2の修正で `src/input/keyboard.cpp` も変更した。既存の「数字だけで左手／Shift＋数字で右手」の直接選択は残すと、管理者が 2026-10-29 に追加確認した。ほかの仕様変更はない。`tasks.md`・Notion の No.18 は 🔄／進行中のまま。
+- 管理者が遊んで決めること：全種類の構えが普段の画面で分かるか／グラップリング・ドリル・磁石の取付位置と強さ（No.19）。マウス操作は止めたまま（[decisions.md](decisions.md)）。
 
-## 2. 次にやること：No.18 の段階2（Codex がプランどおりにコードを書く）→ 段階3（Claude が確かめる）
+## 2. 次にやること：No.18 の段階3（Claude が確かめる）
+
+### 段階3を始めるプロンプト（Claude）
+
+Proto1 の No.18 の段階3をしてください。`AGENTS.md`・`CLAUDE.md` の開始手順に従い、`feature/scene-flow` を pull して、下の確認済みプランと実装を照らし合わせてください。今回は段階3を Claude が担当します。Debug / Release（x64、警告0）→ `run-tests.ps1`（Debug・Release）→ 新規 `scenecalc.cpp` の遷移とスティックの弾きをまとめて壊してテストが落ちることを確認して戻す → 下の5画面とシーンの往復、IME オン・オフの腕切替、パッドの腕切替削除を確認 → 必要な修正 → `tasks.md` と Notion の完了・PRリンク更新、`submit-pr.ps1`、通ればマージ、次の No.19 の段階1へ引き継いでください。数字／Shift＋数字の直接選択は管理者の追加確認どおり残します。
 
 ### No.18 のプラン（管理者確認済み、2026-10-29）
+
+※ 2026-10-29 の追加確認：腕切替の「キーボードだけ」はパッドの切替をなくす意味。既存の「数字だけで左手／Shift＋数字で右手」の直接選択は残す。
 
 **流れ**：起動 → タイトル（START を決定）→ 試合 → 時間切れ（今の TIME UP の画面）→（決定）→ 結果（RETRY か TITLE を選んで決定）→ もう一回 ／ タイトルへ。
 試合中の R / OPTIONS のやり直しは今までどおり「いつでも」。
