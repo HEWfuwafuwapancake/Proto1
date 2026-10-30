@@ -69,6 +69,48 @@ namespace Proto1Tests
 	TEST_CLASS(SessionCalcTest)
 	{
 	public:
+		TEST_METHOD(Address_KeyboardEditsLanPrefixAndRejectsIncompleteOrOutOfRange)
+		{
+			SessionAddressCalc address;
+			address.Initialize("192.168.1.10");
+			Assert::AreEqual(std::string("192.168.1."), address.GetText());
+			Assert::IsFalse(address.IsValid());
+			address.AppendDigit(2);
+			address.AppendDigit(5);
+			address.AppendDigit(6);
+			Assert::IsFalse(address.IsValid());
+			Assert::IsTrue(address.Erase());
+			address.AppendDigit(4);
+			Assert::IsTrue(address.IsValid());
+			Assert::AreEqual(std::string("192.168.1.254"), address.GetText());
+			NET_OPTIONS options;
+			Assert::IsTrue(SessionCalcParseOptions("--join " + address.GetText(), options));
+			while (address.Erase()) {} // 空になった次の Backspace は戻る。
+			Assert::AreEqual(std::string("..."), address.GetText());
+			for (char c : std::string("127.0.0.1")) {
+				if (c == '.') address.Move(1);
+				else address.AppendDigit(c - '0');
+			}
+			Assert::AreEqual(std::string("127.0.0.1"), address.GetText());
+			Assert::IsTrue(address.IsValid());
+		}
+
+		TEST_METHOD(Address_DpadMovesAndChangesSelectedPart)
+		{
+			SessionAddressCalc address;
+			address.Initialize("192.168.1.10");
+			address.Adjust(1);
+			address.Adjust(1);
+			Assert::AreEqual(std::string("192.168.1.1"), address.GetText());
+			address.Move(-1);
+			Assert::AreEqual(2, address.GetCursor());
+			address.Adjust(1);
+			Assert::AreEqual(std::string("192.168.2.1"), address.GetText());
+			address.Adjust(-1);
+			Assert::AreEqual(std::string("192.168.1.1"), address.GetText());
+			Assert::IsTrue(address.IsValid());
+		}
+
 		TEST_METHOD(Options_LocalHostJoinAndDelay)
 		{
 			NET_OPTIONS options;

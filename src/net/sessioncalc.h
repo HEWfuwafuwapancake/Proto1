@@ -22,6 +22,34 @@ struct NET_OPTIONS
 /// @brief 起動引数を読み取る（不明な引数・重複・値の不足はfalse。失敗時は出力を変えない）
 bool SessionCalcParseOptions(const std::string& commandLine, NET_OPTIONS& result);
 
+/// @brief 4つの区切りで IPv4 を編集・検査する（DirectX・Windows 不使用）
+class SessionAddressCalc
+{
+public:
+	/// @brief 自分の IPv4 の前3区切りを入れ、最後の空欄を選ぶ（取得不可なら全欄を空にする）
+	void Initialize(const std::string& localAddress);
+	/// @brief 選択中の区切りへ数字を1つ足す（3桁入力済みなら次の区切りへ進む）
+	void AppendDigit(int digit);
+	/// @brief 選択中の文字を1つ消す（空欄なら前の区切りへ。全欄が空なら false）
+	bool Erase();
+	/// @brief 選ぶ区切りを左右へ動かす（負：左、正：右）
+	void Move(int direction);
+	/// @brief 選んだ値を 0〜255 の中で増減する（負：減らす、正：増やす）
+	void Adjust(int direction);
+	/// @brief 全区切りが入力済みで範囲内か取得する
+	bool IsValid() const;
+	/// @brief IPv4 の文字列を取得する（先頭の0は取り除き、未入力は空欄のまま）
+	std::string GetText() const;
+	/// @brief 選んでいる区切りの番号を取得する
+	int GetCursor() const { return m_Cursor; }
+	/// @brief 指定した区切りの文字を取得する（番号は 0〜3）
+	const std::string& GetPart(int index) const { return m_Parts[index]; }
+
+private:
+	std::string m_Parts[4];
+	int m_Cursor = 0;
+};
+
 /// @brief セッション用メッセージの種類（入力パケットとは別の識別子を使う）
 enum SESSION_MESSAGE_TYPE : uint8_t
 {

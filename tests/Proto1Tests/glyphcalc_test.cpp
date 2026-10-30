@@ -90,6 +90,20 @@ namespace Proto1Tests
 			Assert::AreEqual(0, (int)GlyphCalcLetterRow('T', 7));
 		}
 
+		TEST_METHOD(MenuAndAddressLetters_HaveTheirDotPatterns)
+		{
+			Assert::AreEqual(0x1E, (int)GlyphCalcLetterRow('B', 0));
+			Assert::AreEqual(0x17, (int)GlyphCalcLetterRow('G', 3));
+			Assert::AreEqual(0x1F, (int)GlyphCalcLetterRow('H', 3));
+			const unsigned char firstRows[10] = { 0x0E, 0x04, 0x0E, 0x1E, 0x02, 0x1F, 0x0E, 0x1F, 0x0E, 0x0E };
+			for (int digit = 0; digit < 10; ++digit) {
+				Assert::AreEqual((int)firstRows[digit], (int)GlyphCalcLetterRow(static_cast<char>('0' + digit), 0));
+			}
+			Assert::AreEqual(0x0C, (int)GlyphCalcLetterRow('.', 6));
+			RECT2D rects[512];
+			Assert::IsTrue(GlyphCalcTextRects("192.168.1.254", 0, 0, 1, GLYPH_ALIGN_LEFT, rects, 512) > 0);
+		}
+
 		// %：四捨五入して 0〜999
 		TEST_METHOD(DisplayPercent_RoundAndClamp)
 		{

@@ -8,9 +8,9 @@
 class NetSession
 {
 public:
-	/// @brief 起動設定で接続を準備する（ローカルは何もしない。失敗時false）
+	/// @brief 前の接続を閉じて設定から準備する（何度でも呼べる。失敗時はオフラインで false）
 	bool Initialize(const NET_OPTIONS& options);
-	/// @brief UDP接続を終了する
+	/// @brief UDP接続・機器選択を閉じてオフラインへ戻す（エラーの説明は残す）
 	void Finalize();
 	/// @brief 受信・ロビーの機器選択・未採取の入力の固定・再送を行う（待たない）
 	void Update();
@@ -20,8 +20,12 @@ public:
 	void RecordChecksum(int32_t frame, const LOCKSTEP_STATE (&states)[FIGHTER_COUNT]);
 	/// @brief 接続を保ってロビーへ戻る
 	void ReturnToLobby() { m_Calc.ReturnToLobby(); }
-	/// @brief オンラインで起動したか取得する
+	/// @brief オンライン接続を開いているか取得する
 	bool IsOnline() const { return m_Options.Mode != NET_MODE_LOCAL; }
+	/// @brief この PC がホストとして接続中か取得する
+	bool IsHost() const { return m_Options.Mode == NET_MODE_HOST; }
+	/// @brief ホストの IPv4 一覧を取得する（区切りは " / "）
+	const std::string& GetAddresses() const { return m_Addresses; }
 	/// @brief ロックステップ中か取得する
 	bool IsRunning() const { return m_Calc.IsRunning(); }
 	/// @brief 自分のスロットを取得する（未接続は-1）

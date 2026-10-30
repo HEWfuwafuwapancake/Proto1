@@ -1,6 +1,21 @@
 ﻿#pragma once
 
 #include "input/actioncalc.h"
+#include <string>
+
+/// @brief 通信しないメニュー用の1フレームの入力（試合の PLAYER_INPUT は変えない）
+struct ACTION_MENU_INPUT
+{
+	bool Decide = false; ///< 決定を押した瞬間
+	bool Back = false; ///< 戻るを押した瞬間
+	float MoveY = 0.0f; ///< メニューの上下（上が正）
+	int Horizontal = 0; ///< IP の区切りの移動（左 -1、右 +1）
+	int Vertical = 0; ///< IP の数値の変更（下 -1、上 +1）
+	std::string Text; ///< 数字・ピリオド・削除を押した順の文字列（キーボードだけ）
+};
+
+/// @brief 指定機器のメニュー入力を取得する（パッド0〜3、キーボード4）
+ACTION_MENU_INPUT ActionGetMenuInput(int device);
 
 /// @file action.h
 /// @brief 入力を「行動」に変える（ゲームはキーやボタンではなく、行動を見る）

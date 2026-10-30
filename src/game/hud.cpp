@@ -4,6 +4,7 @@
 #include "game/camera.h"
 #include "game/fightermanager.h"
 #include "game/match.h"
+#include "game/netsession.h"
 #include "input/action.h"
 #include "physics/scenecalc.h"
 #include "render/number2d.h"
@@ -74,6 +75,20 @@ static constexpr float MENU_HOVER_MARGIN_Y = 8.0f;
 static constexpr XMFLOAT4 MENU_HOVER_COLOR = { 1.0f, 1.0f, 1.0f, 0.2f };
 static constexpr XMFLOAT4 MENU_SELECTED_COLOR = { 1.0f, 0.9f, 0.2f, 1.0f };
 static constexpr XMFLOAT4 MENU_TEXT_COLOR = { 0.7f, 0.7f, 0.7f, 1.0f };
+static constexpr float MODE_TITLE_Y = 45.0f;
+static constexpr float MODE_FIRST_Y = 175.0f;
+static constexpr float MODE_LINE = 78.0f;
+static constexpr float MENU_BACK_Y = 670.0f;
+static constexpr float ADDRESS_Y = 280.0f;
+static constexpr float ADDRESS_LEFT = 300.0f;
+static constexpr float ADDRESS_PART_WIDTH = 170.0f;
+static constexpr float ADDRESS_DOT = 7.0f;
+static constexpr float ADDRESS_HELP_Y = 440.0f;
+static constexpr float HOST_ADDRESS_Y = 105.0f;
+static constexpr float HOST_ADDRESS_LINE = 42.0f;
+static constexpr float HOST_ADDRESS_DOT = 5.0f;
+static constexpr float HOST_PLAYER_Y = 275.0f;
+static constexpr float HOST_PLAYER_LINE = 32.0f;
 
 
 // 人の番号は7セグの数字とPを組み合わせる（文字の2〜4を新しく作らない）。
@@ -161,15 +176,74 @@ void Hud::SetViewSize(float width, float height)
 	m_Height = height / m_Scale;
 }
 
-void Hud::DrawScene(const VersusCalc& participants) const
+void Hud::DrawScene(const VersusCalc& participants, const NetSession& net, const SessionAddressCalc& address) const
 {
 	const float centerX = (float)SCREEN_WIDTH * 0.5f;
+	const SCENE scene = m_Scene->GetScene();
+	if (scene == SCENE_GAME_START || scene == SCENE_MODE_SELECT || scene == SCENE_JOIN_ADDRESS) {
+		Number2DDrawBox({ 0.0f, 0.0f, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT }, COVER_COLOR);
+		if (scene == SCENE_GAME_START) {
+			Number2DDrawText("PROTO", centerX, TITLE_Y, TITLE_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
+			DrawMenuItem("GAME START", ADDRESS_Y, true);
+			Number2DDrawText("O / ENTER", centerX, ADDRESS_HELP_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
+			return;
+		}
+		if (scene == SCENE_MODE_SELECT) {
+			Number2DDrawText("MODE SELECT", centerX, MODE_TITLE_Y, MENU_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
+			const char* items[MODE_ITEM_COUNT] = { "SOLO", "LOCAL VS", "ONLINE HOST", "ONLINE JOIN", "BACK" };
+			for (int item = 0; item < MODE_ITEM_COUNT; ++item) {
+				DrawMenuItem(items[item], MODE_FIRST_Y + item * MODE_LINE, m_Scene->GetCursor() == item);
+			}
+			Number2DDrawText("SELECT  UP DOWN / W S / DPAD", centerX, RESULT_SELECT_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
+			Number2DDrawText("OK  O / ENTER", centerX, RESULT_DECIDE_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
+		}
+		else {
+			Number2DDrawText("ONLINE JOIN", centerX, MODE_TITLE_Y, MENU_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
+			Number2DDrawText("HOST IP", centerX, MODE_FIRST_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
+			for (int part = 0; part < 4; ++part) {
+				const float x = ADDRESS_LEFT + part * ADDRESS_PART_WIDTH;
+				const XMFLOAT4 color = part == address.GetCursor() ? MENU_SELECTED_COLOR : TEXT_COLOR;
+				if (part == address.GetCursor()) {
+					Number2DDrawBox({ x - MENU_HOVER_MARGIN_X, ADDRESS_Y - MENU_HOVER_MARGIN_Y,
+						ADDRESS_PART_WIDTH - MENU_HOVER_MARGIN_X, ADDRESS_DOT * 7.0f + MENU_HOVER_MARGIN_Y * 2.0f }, MENU_HOVER_COLOR);
+				}
+				Number2DDrawText(address.GetPart(part).c_str(), x, ADDRESS_Y, ADDRESS_DOT, GLYPH_ALIGN_LEFT, color);
+				if (part < 3) Number2DDrawText(".", x + ADDRESS_PART_WIDTH - MENU_HOVER_MARGIN_X,
+					ADDRESS_Y, ADDRESS_DOT, GLYPH_ALIGN_LEFT, TEXT_COLOR);
+			}
+			Number2DDrawText("KEY  0 1 2 3 4 5 6 7 8 9 .", centerX, ADDRESS_HELP_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
+			Number2DDrawText("DPAD  LEFT RIGHT / UP DOWN", centerX, ADDRESS_HELP_Y + TITLE_PLAYER_LINE,
+				MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
+			Number2DDrawText("BACKSPACE  DELETE / EMPTY BACK", centerX, TITLE_MOVE_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
+			Number2DDrawText(address.IsValid() ? "JOIN  O / ENTER" : "ENTER IP  0 TO 255", centerX, RESULT_SELECT_Y,
+				MENU_HELP_DOT, GLYPH_ALIGN_CENTER, address.IsValid() ? MENU_SELECTED_COLOR : MENU_TEXT_COLOR);
+		}
+		Number2DDrawText(scene == SCENE_JOIN_ADDRESS ? "BACK  X" : "BACK  X / BACKSPACE",
+			centerX, MENU_BACK_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
+		return;
+	}
 
 	if (m_Scene->GetScene() == SCENE_TITLE) {
 		Number2DDrawBox({ 0.0f, 0.0f, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT }, COVER_COLOR);
-		Number2DDrawText("PROTO", centerX, TITLE_Y, TITLE_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
+		Number2DDrawText(net.IsOnline() ? (net.IsHost() ? "ONLINE HOST" : "ONLINE JOIN") : "LOCAL VS",
+			centerX, MODE_TITLE_Y, MENU_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
+		if (net.IsHost()) {
+			// 複数の IPv4 は2列で大きく出す。LAN・仮想アダプターのどれを使うか選べる。
+			const std::string& addresses = net.GetAddresses();
+			size_t begin = 0;
+			int index = 0;
+			while (begin < addresses.size()) {
+				const size_t end = addresses.find(" / ", begin);
+				const std::string ip = addresses.substr(begin, end == std::string::npos ? end : end - begin);
+				Number2DDrawText(ip.c_str(), (float)SCREEN_WIDTH * (index % 2 == 0 ? 0.25f : 0.75f),
+					HOST_ADDRESS_Y + (index / 2) * HOST_ADDRESS_LINE, HOST_ADDRESS_DOT, GLYPH_ALIGN_CENTER, MENU_SELECTED_COLOR);
+				++index;
+				if (end == std::string::npos) break;
+				begin = end + 3;
+			}
+		}
 		for (int slot = 0; slot < FIGHTER_COUNT; ++slot) {
-			const float y = TITLE_PLAYERS_Y + slot * TITLE_PLAYER_LINE;
+			const float y = net.IsHost() ? HOST_PLAYER_Y + slot * HOST_PLAYER_LINE : TITLE_PLAYERS_Y + slot * TITLE_PLAYER_LINE;
 			DrawPlayerTag(slot, TITLE_PLAYER_X, y, PLAYER_TAG_WIDTH);
 			const int device = participants.GetDevice(slot);
 			const XMFLOAT4 color = participants.IsHuman(slot) ? Fighter::GetPlayerColor(slot) : MENU_TEXT_COLOR;
@@ -187,6 +261,7 @@ void Hud::DrawScene(const VersusCalc& participants) const
 		Number2DDrawText("MOVE  WASD / L STICK", centerX, TITLE_MOVE_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
 		Number2DDrawText("ARMS  L1 R1 / CLICK", centerX, TITLE_ARMS_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
 		Number2DDrawText("JUMP  SPACE / X", centerX, TITLE_JUMP_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
+		Number2DDrawText("BACK  X / BACKSPACE", centerX, MENU_BACK_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
 		return;
 	}
 	if (m_Scene->GetScene() == SCENE_RESULT) {
