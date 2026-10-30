@@ -19,7 +19,10 @@ static constexpr float MATCH_SECONDS = 90.0f;	// 制限時間（秒）
 void Match::Reset(void)
 {
 	m_Match.Start(MATCH_SECONDS, GetTotalScore());
-	for (int pad = 0; pad < PAD_COUNT; ++pad) PadRumble(pad, 0.0f, 0.0f, 0.0f);
+	for (int slot = 0; slot < FIGHTER_COUNT; ++slot) {
+		const int device = m_Fighters->GetFighter(slot).GetDevice();
+		PadRumble(device == VERSUS_DEVICE_COMBINED ? 0 : device, 0.0f, 0.0f, 0.0f);
+	}
 }
 
 void Match::Finalize(void)
@@ -37,7 +40,10 @@ void Match::Update(void)
 	}
 #endif
 	if (event == MATCH_EVENT_TIME_UP) {
-		for (int pad = 0; pad < PAD_COUNT; ++pad) PadRumble(pad, 0.0f, 0.0f, 0.0f);
+		for (int slot = 0; slot < FIGHTER_COUNT; ++slot) {
+			const int device = m_Fighters->GetFighter(slot).GetDevice();
+			PadRumble(device == VERSUS_DEVICE_COMBINED ? 0 : device, 0.0f, 0.0f, 0.0f);
+		}
 		// つかんでいる敵を離してから止める
 		for (int i = 0; i < FIGHTER_COUNT; ++i) {
 			if (m_Fighters->GetFighter(i).IsHuman()) m_Arms[i].Reset();

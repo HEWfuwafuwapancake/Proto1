@@ -22,6 +22,9 @@ PLAYER_INPUT ActionGetPlayerInput(int device);
 /// @brief 行動の状態を最初に戻す（何も押していない状態）
 void ActionInitialize(void);
 
+/// @brief 装備選択をオンライン用に設定する（true：F1〜F4を無視して自分だけ、false：ローカルの選択先を使う）
+void ActionSetOnlineEquip(bool online);
+
 /// @brief キーボード・マウス・パッドの状態から、このフレームの行動を決める
 /// @details 毎フレーム、KeyboardUpdate・MouseUpdate・PadUpdate のあとに1回だけ呼ぶ
 void ActionUpdate(void);

@@ -338,4 +338,24 @@
       <Filter>src\physics</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\net\sessioncalc.cpp">
+      <Filter>src\net</Filter>
+    </ClCompile>
+    <ClInclude Include="src\net\sessioncalc.h">
+      <Filter>src\net</Filter>
+    </ClInclude>
+    <ClCompile Include="src\net\netsocket.cpp">
+      <Filter>src\net</Filter>
+    </ClCompile>
+    <ClInclude Include="src\net\netsocket.h">
+      <Filter>src\net</Filter>
+    </ClInclude>
+    <ClCompile Include="src\game\netsession.cpp">
+      <Filter>src\game</Filter>
+    </ClCompile>
+    <ClInclude Include="src\game\netsession.h">
+      <Filter>src\game</Filter>
+    </ClInclude>
+  </ItemGroup>
 </Project>

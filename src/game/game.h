@@ -8,13 +8,16 @@
 #include "game/hud.h"
 #include "physics/scenecalc.h"
 #include "input/action.h"
+#include "game/netsession.h"
 
 /// @brief ゲームの部品を所有し、初期化・更新・描画・やり直しの順番をまとめる
 class Game
 {
 public:
-	/// @brief 基盤の初期化後に、ステージから画面表示までを順に初期化する
-	void Initialize();
+	/// @brief 基盤の初期化後に、ステージから画面表示・接続までを初期化する（接続準備の失敗時false）
+	bool Initialize(const NET_OPTIONS& options = {});
+	/// @brief 接続状態と、このPCが操作するスロット・機器を取得する
+	const NetSession& GetNetSession() const { return m_Net; }
 	/// @brief 初期化と逆の順にゲームの部品を終了する
 	void Finalize();
 	/// @brief 入力の更新後にゲームを1フレーム進める
@@ -45,4 +48,5 @@ private:
 	PLAYER_INPUT m_DeviceInputs[ACTION_DEVICE_COUNT]; // 参加前の決定にも使う
 	Match m_Match;
 	SceneCalc m_Scene;
+	NetSession m_Net;
 };

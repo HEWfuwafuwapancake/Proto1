@@ -37,4 +37,13 @@
       <Filter>src\physics</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="sessioncalc_test.cpp" />
+    <ClCompile Include="..\..\src\net\sessioncalc.cpp">
+      <Filter>src\net</Filter>
+    </ClCompile>
+    <ClInclude Include="..\..\src\net\sessioncalc.h">
+      <Filter>src\net</Filter>
+    </ClInclude>
+  </ItemGroup>
 </Project>

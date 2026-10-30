@@ -8,6 +8,8 @@ static constexpr int FIGHTER_COUNT = 4;
 static constexpr int VERSUS_DEVICE_DUMMY = -1;
 /// @brief 段階Bの1人用入力（パッド0とキーボードを合成する）
 static constexpr int VERSUS_DEVICE_COMBINED = -2;
+/// @brief 別のPCで操作する人の機器番号（このPCのパッドへ出力しない）
+static constexpr int VERSUS_DEVICE_REMOTE = -3;
 
 /// @brief 体当たりの重なりを解く（人対ダミーは従来どおり、人対人は横の押し出しを半分ずつ受ける）
 /// @param firstHuman 1体目の種類を設定する（true：人、false：ダミー）
@@ -46,6 +48,8 @@ public:
 	/// @brief 機器を空いている先頭のスロットに割り当てる（同じ機器は既存スロット、満員・無効な機器は-1）
 	/// @param device パッド0〜3、キーボード4、または1人用合成入力
 	int AssignDevice(int device);
+	/// @brief 指定スロットへオンラインの機器を設定する（remoteは複数枠で使える。無効な指定は無視）
+	void SetSlotDevice(int slot, int device);
 	/// @brief スロットの機器番号を取得する（ダミー・範囲外は-1）
 	int GetDevice(int slot) const;
 	/// @brief 人が入っているスロットか取得する
