@@ -2,6 +2,7 @@
 
 #include "net/netsocket.h"
 #include "net/sessioncalc.h"
+#include <chrono>
 
 /// @brief Gameが所有するUDP接続・機器選択・入力採取（計算はSessionCalcに任せる）
 class NetSession
@@ -15,6 +16,8 @@ public:
 	void Update();
 	/// @brief 全員の入力が届いたら1フレームを取り出す
 	bool TakeFrame(LOCKSTEP_FRAME& frame) { return m_Calc.TakeFrame(frame); }
+	/// @brief 実行直後の全4体の状態を渡し、60フレームごとにずれを見張る
+	void RecordChecksum(int32_t frame, const LOCKSTEP_STATE (&states)[FIGHTER_COUNT]);
 	/// @brief 接続を保ってロビーへ戻る
 	void ReturnToLobby() { m_Calc.ReturnToLobby(); }
 	/// @brief オンラインで起動したか取得する
@@ -37,6 +40,8 @@ public:
 private:
 	void Receive();
 	void Send(const NET_ADDRESS& address, const SESSION_MESSAGE& message);
+	void ReportDesync();
+	static const char* FailureText(SESSION_FAILURE failure);
 	NET_OPTIONS m_Options;
 	NetSocket m_Socket;
 	SessionCalc m_Calc;
@@ -44,4 +49,6 @@ private:
 	int m_Device = -1;
 	std::string m_Addresses;
 	std::string m_Error;
+	std::chrono::steady_clock::time_point m_Started;
+	int32_t m_ReportedDesync = -1;
 };

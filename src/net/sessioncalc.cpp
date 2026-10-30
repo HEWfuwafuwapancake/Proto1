@@ -4,8 +4,9 @@
 
 // 調整用の値（入力のP1N1と区別するP1S1）
 static constexpr uint32_t SESSION_MAGIC = 0x31533150;
-static constexpr size_t SESSION_HEADER_BYTES = 26;
+static constexpr size_t SESSION_HEADER_BYTES = 46;
 static constexpr uint8_t ALL_PLAYERS = (1u << FIGHTER_COUNT) - 1u;
+static constexpr uint64_t DISCONNECT_MILLISECONDS = 3000;
 
 bool SessionCalcParseOptions(const std::string& commandLine, NET_OPTIONS& result)
 {
@@ -62,14 +63,24 @@ void SessionCalc::Initialize(const NET_OPTIONS& options, uint32_t nonce)
 	}
 }
 
-int SessionCalc::Join(uint32_t nonce)
+SESSION_FAILURE SessionCalc::CheckCompatibility(const SESSION_MESSAGE& message)
 {
-	if (!m_Host || nonce == 0) return -1;
-	for (int slot = 1; slot < FIGHTER_COUNT; ++slot) if (m_PeerNonces[slot] == nonce) return slot;
+	if (message.Version != LOCKSTEP_VERSION) return SESSION_FAILURE_VERSION;
+	if (message.Build != LOCKSTEP_CURRENT_BUILD) return SESSION_FAILURE_BUILD;
+	return SESSION_FAILURE_NONE;
+}
+
+int SessionCalc::Join(uint32_t nonce, uint16_t version, LOCKSTEP_BUILD build)
+{
+	if (!m_Host || nonce == 0 || version != LOCKSTEP_VERSION || build != LOCKSTEP_CURRENT_BUILD) return -1;
+	for (int slot = 1; slot < FIGHTER_COUNT; ++slot) {
+		if (m_PeerNonces[slot] == nonce) return (m_Disconnected & (1u << slot)) ? -1 : slot;
+	}
 	if (m_Locked) return -1;
 	for (int slot = 1; slot < FIGHTER_COUNT; ++slot) {
 		if (m_PeerNonces[slot] != 0) continue;
 		m_PeerNonces[slot] = nonce;
+		m_LastReceived[slot] = m_Now;
 		m_Mask |= static_cast<uint8_t>(1u << slot);
 		return slot;
 	}
@@ -81,7 +92,7 @@ bool SessionCalc::CanStart() const
 	if (m_Mask == 1 || m_Ready != m_Mask || m_Round == UINT32_MAX) return false;
 	// 最後のTITLE入力も全員に届くまで前の履歴を捨てない。
 	for (int slot = 1; slot < FIGHTER_COUNT; ++slot) {
-		if ((m_Mask & (1u << slot)) && m_HasRound && m_Acknowledged[slot] < m_Shared.GetNextFrame() - 1) return false;
+		if (IsActivePeer(slot) && m_HasRound && m_Acknowledged[slot] < m_Shared.GetNextFrame() - 1) return false;
 	}
 	return true;
 }
@@ -106,13 +117,25 @@ void SessionCalc::BeginRound(uint32_t round)
 	for (auto& ack : m_Acknowledged) ack = -1;
 	m_CapturedFrame = -1;
 	m_CapturedStored = false;
+	m_WaitFrames = 0;
+	m_DesyncFrame = -1;
+	m_DesyncPeer = -1;
+	m_Checksums.clear();
+	for (int peer = 0; peer < FIGHTER_COUNT; ++peer) {
+		m_RemoteChecksums[peer].clear();
+		m_CheckAcknowledged[peer] = m_CheckedThrough[peer] = -1;
+	}
 }
 
 void SessionCalc::Receive(int peer, const SESSION_MESSAGE& message)
 {
+	if (m_Failure != SESSION_FAILURE_NONE) return;
 	if (m_Host) {
 		if (peer <= 0 || peer >= FIGHTER_COUNT || message.Session != m_Session
-			|| message.Nonce != m_PeerNonces[peer] || message.Round != m_Round) return;
+			|| !IsActivePeer(peer) || message.Nonce != m_PeerNonces[peer] || message.Round != m_Round
+			|| CheckCompatibility(message) != SESSION_FAILURE_NONE
+			|| (message.Type != SESSION_JOIN && message.Type != SESSION_READY && message.Type != SESSION_INPUTS)) return;
+		ReceiveMonitor(peer, message);
 		if (message.Type == SESSION_READY && !m_Running) m_Ready |= static_cast<uint8_t>(1u << peer);
 		if (message.Type != SESSION_INPUTS || !m_HasRound || message.Packet.Mask != (1u << peer)
 			|| message.Packet.Delay != m_Delay) return;
@@ -126,6 +149,17 @@ void SessionCalc::Receive(int peer, const SESSION_MESSAGE& message)
 	else {
 		if (peer != 0 || message.Nonce != m_Nonce || message.Session == 0
 			|| (m_Session != 0 && m_Session != message.Session)) return;
+		if (message.Type != SESSION_STATE && message.Type != SESSION_INPUTS && message.Type != SESSION_REJECT) return;
+		const SESSION_FAILURE compatibility = CheckCompatibility(message);
+		if (compatibility != SESSION_FAILURE_NONE) {
+			m_Failure = compatibility;
+			m_Running = false;
+			return;
+		}
+		if (message.Type == SESSION_REJECT) return;
+		// 同じ接続からの状態通知は、ロックステップ中やロビーへ戻った直後も生存確認に使う。
+		m_LastReceived[0] = m_Now;
+		if (message.Round == m_Round) ReceiveMonitor(0, message);
 		if (message.Type == SESSION_STATE) {
 			if (m_Running || message.Round < m_Round || message.Slot <= 0 || message.Slot >= FIGHTER_COUNT
 				|| (message.Mask & (1u << message.Slot)) == 0 || (message.Mask & 1) == 0) return;
@@ -168,6 +202,16 @@ SESSION_MESSAGE SessionCalc::MakeControl(int peer) const
 	message.Ready = m_Ready;
 	message.Delay = m_Delay;
 	message.Running = m_Running;
+	if (peer >= 0 && peer < FIGHTER_COUNT) {
+		message.Stamp = static_cast<uint32_t>(m_Now);
+		message.Echo = m_Echo[peer];
+		message.CheckAck = m_CheckedThrough[peer];
+		const auto check = m_Checksums.upper_bound(m_CheckAcknowledged[peer]);
+		if (check != m_Checksums.end()) {
+			message.CheckFrame = check->first;
+			message.Checksum = check->second;
+		}
+	}
 	return message;
 }
 
@@ -211,8 +255,24 @@ void SessionCalc::StoreCaptured()
 
 bool SessionCalc::TakeFrame(LOCKSTEP_FRAME& frame)
 {
+	if (m_Host && m_Running) {
+		// すでに全員へ配った入力は変えない。切断した人の未受領分だけをホストが埋める。
+		for (int slot = 1; slot < FIGHTER_COUNT; ++slot) {
+			if ((m_Disconnected & (1u << slot)) == 0) continue;
+			const int64_t end = static_cast<int64_t>(m_Shared.GetNextFrame()) + m_Delay;
+			for (int64_t number = m_Shared.GetNextFrame(); number <= end && number < INT32_MAX; ++number) {
+				LOCKSTEP_FRAME stored;
+				const int32_t frameNumber = static_cast<int32_t>(number);
+				if (!m_Shared.GetFrame(frameNumber, stored) || (stored.Mask & (1u << slot)) == 0) m_Shared.StoreInput(frameNumber, slot, {});
+			}
+		}
+	}
 	StoreCaptured();
-	if (!m_Running || !m_CapturedStored || m_CapturedFrame != m_Shared.GetNextFrame() || !m_Shared.IsReady()) return false;
+	if (!m_Running) return false;
+	if (!m_CapturedStored || m_CapturedFrame != m_Shared.GetNextFrame() || !m_Shared.IsReady()) {
+		++m_WaitFrames;
+		return false;
+	}
 	m_Shared.GetFrame(m_Shared.GetNextFrame(), frame);
 	m_Shared.Advance();
 	m_Local.Advance();
@@ -227,7 +287,7 @@ void SessionCalc::DiscardHistory()
 	if (m_Host) {
 		ack = INT32_MAX;
 		for (int slot = 1; slot < FIGHTER_COUNT; ++slot) {
-			if (m_Mask & (1u << slot)) ack = (std::min)(ack, m_Acknowledged[slot]);
+			if (IsActivePeer(slot)) ack = (std::min)(ack, m_Acknowledged[slot]);
 		}
 	}
 	m_Local.DiscardAcknowledged(m_Host ? m_Local.GetNextFrame() - 1 : ack);
@@ -237,6 +297,84 @@ void SessionCalc::DiscardHistory()
 void SessionCalc::ReturnToLobby()
 {
 	m_Running = false;
+}
+
+bool SessionCalc::IsActivePeer(int peer) const
+{
+	return peer >= 0 && peer < FIGHTER_COUNT && peer != m_Slot
+		&& (m_Mask & (1u << peer)) != 0 && (m_Disconnected & (1u << peer)) == 0 && (m_Host || peer == 0);
+}
+
+void SessionCalc::CheckTimeouts()
+{
+	if (!m_Host) {
+		// ホストが先に起動していなくても、最初の返事が来るまでは待ち続ける。
+		if (m_Session != 0 && m_Failure == SESSION_FAILURE_NONE && m_Now - m_LastReceived[0] >= DISCONNECT_MILLISECONDS) {
+			m_Failure = SESSION_FAILURE_TIMEOUT;
+			m_Running = false;
+		}
+		return;
+	}
+	for (int peer = 1; peer < FIGHTER_COUNT; ++peer) {
+		if (!IsActivePeer(peer) || m_Now - m_LastReceived[peer] < DISCONNECT_MILLISECONDS) continue;
+		if (m_Locked) m_Disconnected |= static_cast<uint8_t>(1u << peer);
+		else {
+			m_Mask &= static_cast<uint8_t>(~(1u << peer));
+			m_Ready &= m_Mask;
+			m_PeerNonces[peer] = 0;
+		}
+		m_RemoteChecksums[peer].clear();
+	}
+	DiscardHistory(); // 切断した人のACK待ちで保管が満杯になっても再開できる。
+	CompareChecksums();
+	StoreCaptured();
+}
+
+void SessionCalc::ReceiveMonitor(int peer, const SESSION_MESSAGE& message)
+{
+	m_LastReceived[peer] = m_Now;
+	m_Echo[peer] = message.Stamp;
+	if (message.Echo != 0) {
+		const uint32_t elapsed = static_cast<uint32_t>(m_Now) - message.Echo;
+		if (elapsed < DISCONNECT_MILLISECONDS) m_Ping[peer] = static_cast<int>(elapsed);
+	}
+	if (!m_HasRound) return;
+	// 比較済みのACKだけで再送を終える。入力より先に相手のチェックサムが来ても保管する。
+	if (!m_Checksums.empty() && message.CheckAck <= m_Checksums.rbegin()->first) {
+		m_CheckAcknowledged[peer] = (std::max)(m_CheckAcknowledged[peer], message.CheckAck);
+	}
+	if (message.CheckFrame > m_CheckedThrough[peer]) {
+		m_RemoteChecksums[peer].emplace(message.CheckFrame, message.Checksum);
+	}
+	CompareChecksums();
+}
+
+void SessionCalc::RecordChecksum(int32_t frame, const LOCKSTEP_STATE (&states)[FIGHTER_COUNT])
+{
+	if (!m_HasRound || frame < 0 || frame == INT32_MAX || (frame + 1) % LOCKSTEP_CHECKSUM_INTERVAL != 0) return;
+	m_Checksums.emplace(frame, LockstepCalc::CalculateChecksum(states));
+	CompareChecksums();
+}
+
+void SessionCalc::CompareChecksums()
+{
+	int32_t discard = INT32_MAX;
+	for (int peer = 0; peer < FIGHTER_COUNT; ++peer) {
+		if (!IsActivePeer(peer)) continue;
+		auto& remote = m_RemoteChecksums[peer];
+		for (auto it = remote.begin(); it != remote.end();) {
+			const auto local = m_Checksums.find(it->first);
+			if (local == m_Checksums.end()) break;
+			if (local->second != it->second && m_DesyncFrame < 0) {
+				m_DesyncFrame = it->first;
+				m_DesyncPeer = peer;
+			}
+			m_CheckedThrough[peer] = it->first;
+			it = remote.erase(it);
+		}
+		discard = (std::min)(discard, (std::min)(m_CheckAcknowledged[peer], m_CheckedThrough[peer]));
+	}
+	for (auto it = m_Checksums.begin(); it != m_Checksums.end() && it->first <= discard;) it = m_Checksums.erase(it);
 }
 
 static void WriteWord(std::vector<uint8_t>& bytes, uint32_t word, int count)
@@ -253,7 +391,11 @@ static uint32_t ReadWord(const uint8_t*& bytes, int count)
 
 static bool ValidMessage(const SESSION_MESSAGE& message)
 {
-	return message.Type <= SESSION_INPUTS && message.Nonce != 0 && message.Slot >= 0 && message.Slot < FIGHTER_COUNT
+	return message.Type <= SESSION_REJECT && message.Build <= LOCKSTEP_BUILD_RELEASE
+		&& message.CheckFrame >= -1 && message.CheckAck >= -1
+		&& (message.CheckFrame == -1 || (message.CheckFrame < INT32_MAX && (message.CheckFrame + 1) % LOCKSTEP_CHECKSUM_INTERVAL == 0))
+		&& (message.CheckAck == -1 || (message.CheckAck < INT32_MAX && (message.CheckAck + 1) % LOCKSTEP_CHECKSUM_INTERVAL == 0))
+		&& message.Nonce != 0 && message.Slot >= 0 && message.Slot < FIGHTER_COUNT
 		&& (message.Mask & ~ALL_PLAYERS) == 0 && (message.Ready & ~message.Mask) == 0
 		&& message.Delay >= 0 && message.Delay <= LOCKSTEP_MAX_DELAY;
 }
@@ -265,17 +407,22 @@ bool SessionCalc::Encode(const SESSION_MESSAGE& message, std::vector<uint8_t>& b
 	if (message.Type == SESSION_INPUTS && !LockstepCalc::EncodePacket(message.Packet, payload)) return false;
 	bytes.clear();
 	WriteWord(bytes, SESSION_MAGIC, 4);
-	WriteWord(bytes, LOCKSTEP_VERSION, 2);
+	WriteWord(bytes, message.Version, 2);
 	WriteWord(bytes, message.Type, 1);
 	WriteWord(bytes, static_cast<uint32_t>(message.Slot), 1);
 	WriteWord(bytes, message.Mask, 1);
 	WriteWord(bytes, message.Ready, 1);
 	WriteWord(bytes, static_cast<uint32_t>(message.Delay), 2);
 	WriteWord(bytes, message.Running ? 1 : 0, 1);
-	WriteWord(bytes, 0, 1); // 予約
+	WriteWord(bytes, message.Build, 1);
 	WriteWord(bytes, message.Session, 4);
 	WriteWord(bytes, message.Nonce, 4);
 	WriteWord(bytes, message.Round, 4);
+	WriteWord(bytes, message.Stamp, 4);
+	WriteWord(bytes, message.Echo, 4);
+	WriteWord(bytes, static_cast<uint32_t>(message.CheckFrame), 4);
+	WriteWord(bytes, message.Checksum, 4);
+	WriteWord(bytes, static_cast<uint32_t>(message.CheckAck), 4);
 	bytes.insert(bytes.end(), payload.begin(), payload.end());
 	return true;
 }
@@ -283,19 +430,29 @@ bool SessionCalc::Encode(const SESSION_MESSAGE& message, std::vector<uint8_t>& b
 bool SessionCalc::Decode(const uint8_t* bytes, size_t size, SESSION_MESSAGE& result)
 {
 	if (bytes == nullptr || size < SESSION_HEADER_BYTES) return false;
-	if (ReadWord(bytes, 4) != SESSION_MAGIC || ReadWord(bytes, 2) != LOCKSTEP_VERSION) return false;
+	if (ReadWord(bytes, 4) != SESSION_MAGIC) return false;
 	SESSION_MESSAGE message;
+	message.Version = static_cast<uint16_t>(ReadWord(bytes, 2)); // 不一致でも制御通知は読んで理由を返す。
 	message.Type = static_cast<SESSION_MESSAGE_TYPE>(ReadWord(bytes, 1));
 	message.Slot = static_cast<int>(ReadWord(bytes, 1));
 	message.Mask = static_cast<uint8_t>(ReadWord(bytes, 1));
 	message.Ready = static_cast<uint8_t>(ReadWord(bytes, 1));
 	message.Delay = static_cast<int>(ReadWord(bytes, 2));
 	const uint32_t running = ReadWord(bytes, 1);
-	if (running > 1 || ReadWord(bytes, 1) != 0) return false;
+	message.Build = static_cast<LOCKSTEP_BUILD>(ReadWord(bytes, 1));
+	if (running > 1) return false;
 	message.Running = running != 0;
 	message.Session = ReadWord(bytes, 4);
 	message.Nonce = ReadWord(bytes, 4);
 	message.Round = ReadWord(bytes, 4);
+	message.Stamp = ReadWord(bytes, 4);
+	message.Echo = ReadWord(bytes, 4);
+	const uint32_t checkFrame = ReadWord(bytes, 4);
+	message.Checksum = ReadWord(bytes, 4);
+	const uint32_t checkAck = ReadWord(bytes, 4);
+	if ((checkFrame > INT32_MAX && checkFrame != UINT32_MAX) || (checkAck > INT32_MAX && checkAck != UINT32_MAX)) return false;
+	message.CheckFrame = checkFrame == UINT32_MAX ? -1 : static_cast<int32_t>(checkFrame);
+	message.CheckAck = checkAck == UINT32_MAX ? -1 : static_cast<int32_t>(checkAck);
 	if (!ValidMessage(message)) return false;
 	if (message.Type == SESSION_INPUTS) {
 		if (!LockstepCalc::DecodePacket(bytes, size - SESSION_HEADER_BYTES, message.Packet)) return false;

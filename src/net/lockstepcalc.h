@@ -9,7 +9,7 @@
 
 // 調整用の値（通信の版を変えるときは送受信側をそろえる）
 /// @brief 通信の版の番号
-static constexpr uint16_t LOCKSTEP_VERSION = 1;
+static constexpr uint16_t LOCKSTEP_VERSION = 2;
 /// @brief 指定がないときの入力の遅れ（フレーム）
 static constexpr int LOCKSTEP_DEFAULT_DELAY = 3;
 /// @brief 設定できる入力の遅れの上限（フレーム）

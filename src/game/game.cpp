@@ -111,8 +111,22 @@ void Game::Update()
 {
 	const SCENE oldScene = m_Scene.GetScene();
 	bool start = false;
+	int32_t onlineFrame = -1;
 	if (m_Net.IsOnline()) {
 		m_Net.Update(); // 入力待ちでも受信・再送・機器選択を続ける。
+		if (!m_Net.IsOnline()) {
+			// ホスト切断・参加拒否では、リモート枠と前入力を捨ててローカルのタイトルへ戻す。
+			ActionSetOnlineEquip(false);
+			m_Scene.Start();
+			m_Participants.Reset();
+			for (auto& value : m_Inputs) value = {};
+			for (auto& value : m_PreviousInputs) value = {};
+			for (int device = 0; device < ACTION_DEVICE_COUNT; ++device) m_DeviceInputs[device] = ActionGetPlayerInput(device);
+			ConfigurePlayers();
+			m_Match.Reset();
+			UpdatePadLights();
+			return;
+		}
 		if (oldScene == SCENE_TITLE) {
 			for (int slot = 0; slot < FIGHTER_COUNT; ++slot) {
 				int device = VERSUS_DEVICE_DUMMY;
@@ -125,6 +139,7 @@ void Game::Update()
 		UpdatePadLights();
 		LOCKSTEP_FRAME frame;
 		if (!m_Net.TakeFrame(frame)) return; // ゲームの計算・前入力・カメラは進めない。
+		onlineFrame = frame.Number;
 		start = oldScene == SCENE_TITLE;
 		if (start) {
 			for (auto& value : m_Inputs) value = {};
@@ -186,6 +201,15 @@ void Game::Update()
 	}
 #endif
 	for (int k = 0; k < m_HumanCount; ++k) m_Huds[m_Humans[k]].Update();
+	if (onlineFrame >= 0 && (onlineFrame + 1) % LOCKSTEP_CHECKSUM_INTERVAL == 0) {
+		LOCKSTEP_STATE states[FIGHTER_COUNT];
+		for (int slot = 0; slot < FIGHTER_COUNT; ++slot) {
+			const Fighter& fighter = m_Fighters.GetFighter(slot);
+			const XMFLOAT3 position = fighter.GetPosition();
+			states[slot] = { { position.x, position.y, position.z }, fighter.GetPercent(), m_Fighters.GetScore(slot) };
+		}
+		m_Net.RecordChecksum(onlineFrame, states);
+	}
 	UpdatePadLights();
 }
 
