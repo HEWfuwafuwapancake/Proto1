@@ -166,7 +166,7 @@ void Game::UpdateMenu()
 		NET_OPTIONS options;
 		options.Mode = event == SCENE_EVENT_HOST ? NET_MODE_HOST : NET_MODE_JOIN;
 		options.Host = m_JoinAddress.GetText();
-		options.Delay = LOCKSTEP_DEFAULT_DELAY;
+		options.Delay = LOCKSTEP_AUTO_DELAY;
 		if (m_Net.Initialize(options)) m_Scene.OpenLobby();
 		else m_Scene.ShowModes(); // 理由は NetSession がタイトルバーへ残す。
 		ActionSetOnlineEquip(m_Net.IsOnline());

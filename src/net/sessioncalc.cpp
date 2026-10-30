@@ -112,12 +112,21 @@ bool SessionCalcParseOptions(const std::string& commandLine, NET_OPTIONS& result
 	return true;
 }
 
+int SessionCalcAutoDelay(int pingMilliseconds)
+{
+	if (pingMilliseconds < 0) return AUTO_DELAY_MIN;
+	// 往復時間には1フレームごとの送受信の待ちも入っているので、フレーム数へ切り上げて余裕を足すだけでよい。
+	const int frames = (pingMilliseconds * 60 + 999) / 1000 + AUTO_DELAY_MARGIN;
+	return (std::max)(AUTO_DELAY_MIN, (std::min)(AUTO_DELAY_MAX, frames));
+}
+
 void SessionCalc::Initialize(const NET_OPTIONS& options, uint32_t nonce)
 {
 	*this = SessionCalc{};
 	m_Host = options.Mode == NET_MODE_HOST;
 	m_Nonce = nonce == 0 ? 1 : nonce;
-	m_Delay = options.Delay;
+	m_AutoDelay = options.Delay < 0;
+	m_Delay = m_AutoDelay ? LOCKSTEP_DEFAULT_DELAY : options.Delay;
 	if (m_Host) {
 		m_Session = m_Nonce;
 		m_Slot = 0;
@@ -166,7 +175,11 @@ void SessionCalc::Decide()
 	m_LocalReady = true;
 	if (m_Host) {
 		m_Ready |= 1;
-		if (alreadyReady && CanStart()) BeginRound(m_Round + 1);
+		if (alreadyReady && CanStart()) {
+			// 試合の途中では変えない。参加側へは開始の状態通知で配る。
+			if (m_AutoDelay) m_Delay = SessionCalcAutoDelay(GetPeakPing());
+			BeginRound(m_Round + 1);
+		}
 	}
 }
 
@@ -398,7 +411,13 @@ void SessionCalc::ReceiveMonitor(int peer, const SESSION_MESSAGE& message)
 	m_Echo[peer] = message.Stamp;
 	if (message.Echo != 0) {
 		const uint32_t elapsed = static_cast<uint32_t>(m_Now) - message.Echo;
-		if (elapsed < DISCONNECT_MILLISECONDS) m_Ping[peer] = static_cast<int>(elapsed);
+		if (elapsed < DISCONNECT_MILLISECONDS) {
+			m_Ping[peer] = static_cast<int>(elapsed);
+			m_PingHistory[peer].emplace_back(m_Now, m_Ping[peer]);
+		}
+	}
+	while (!m_PingHistory[peer].empty() && m_Now - m_PingHistory[peer].front().first > AUTO_DELAY_PING_WINDOW) {
+		m_PingHistory[peer].pop_front();
 	}
 	if (!m_HasRound) return;
 	// 比較済みのACKだけで再送を終える。入力より先に相手のチェックサムが来ても保管する。
@@ -409,6 +428,18 @@ void SessionCalc::ReceiveMonitor(int peer, const SESSION_MESSAGE& message)
 		m_RemoteChecksums[peer].emplace(message.CheckFrame, message.Checksum);
 	}
 	CompareChecksums();
+}
+
+int SessionCalc::GetPeakPing() const
+{
+	int peak = -1;
+	for (int peer = 0; peer < FIGHTER_COUNT; ++peer) {
+		if (!IsActivePeer(peer)) continue;
+		for (const auto& sample : m_PingHistory[peer]) {
+			if (m_Now - sample.first <= AUTO_DELAY_PING_WINDOW) peak = (std::max)(peak, sample.second);
+		}
+	}
+	return peak;
 }
 
 void SessionCalc::RecordChecksum(int32_t frame, const LOCKSTEP_STATE (&states)[FIGHTER_COUNT])

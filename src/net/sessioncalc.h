@@ -1,7 +1,20 @@
 ﻿#pragma once
 
 #include "net/lockstepcalc.h"
+#include <deque>
 #include <string>
+
+// 調整用の値（自動の入力の遅れ）
+/// @brief 入力の遅れを ping から自動で決めることを表す値（起動の引数に --delay がないとき）
+static constexpr int LOCKSTEP_AUTO_DELAY = -1;
+/// @brief 自動の入力の遅れで、ping の分に足す余裕（フレーム。通信のゆれの分）
+static constexpr int AUTO_DELAY_MARGIN = 2;
+/// @brief 自動の入力の遅れの下限（フレーム）
+static constexpr int AUTO_DELAY_MIN = 3;
+/// @brief 自動の入力の遅れの上限（フレーム）
+static constexpr int AUTO_DELAY_MAX = 20;
+/// @brief 自動の入力の遅れに使う ping の期間（ミリ秒。この間のいちばん大きい値を使う）
+static constexpr uint64_t AUTO_DELAY_PING_WINDOW = 2000;
 
 /// @brief 起動時の対戦方法
 enum NET_MODE
@@ -16,11 +29,14 @@ struct NET_OPTIONS
 {
 	NET_MODE Mode = NET_MODE_LOCAL; ///< 対戦方法
 	std::string Host; ///< 参加先のIPv4アドレス
-	int Delay = LOCKSTEP_DEFAULT_DELAY; ///< ホストが配る入力遅延
+	int Delay = LOCKSTEP_AUTO_DELAY; ///< ホストが配る入力遅延（LOCKSTEP_AUTO_DELAY なら試合の開始時に ping から決める）
 };
 
 /// @brief 起動引数を読み取る（不明な引数・重複・値の不足はfalse。失敗時は出力を変えない）
 bool SessionCalcParseOptions(const std::string& commandLine, NET_OPTIONS& result);
+
+/// @brief いちばん遅い相手との往復時間（ミリ秒）から入力の遅れ（フレーム）を決める（未計測の負の値は下限）
+int SessionCalcAutoDelay(int pingMilliseconds);
 
 /// @brief 4つの区切りで IPv4 を編集・検査する（DirectX・Windows 不使用）
 class SessionAddressCalc
@@ -149,6 +165,10 @@ public:
 	uint8_t GetReadyMask() const { return m_Ready; }
 	/// @brief ホストが配った入力遅延を取得する
 	int GetDelay() const { return m_Delay; }
+	/// @brief ホストが入力の遅れを ping から自動で決めるか取得する（参加側は常にfalse）
+	bool IsAutoDelay() const { return m_Host && m_AutoDelay; }
+	/// @brief 接続中の相手との、直近2秒の往復時間の最大をミリ秒で取得する（未計測は-1）
+	int GetPeakPing() const;
 	/// @brief 次に実行するフレームを取得する
 	int32_t GetNextFrame() const { return m_Shared.GetNextFrame(); }
 	/// @brief メッセージを明示的なリトルエンディアンへ変換する
@@ -185,6 +205,8 @@ private:
 	uint64_t m_LastReceived[FIGHTER_COUNT] = {};
 	uint32_t m_Echo[FIGHTER_COUNT] = {};
 	int m_Ping[FIGHTER_COUNT] = { -1, -1, -1, -1 };
+	std::deque<std::pair<uint64_t, int>> m_PingHistory[FIGHTER_COUNT]; // 受け取った時刻と往復時間。
+	bool m_AutoDelay = false;
 	uint8_t m_Disconnected = 0;
 	SESSION_FAILURE m_Failure = SESSION_FAILURE_NONE;
 	uint64_t m_WaitFrames = 0;
