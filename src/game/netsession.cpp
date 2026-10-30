@@ -152,7 +152,7 @@ std::string NetSession::GetStatusText() const
 	text << (m_Calc.IsHost() ? "HOST " : "JOIN ") << m_Addresses;
 	if (m_Calc.GetLocalSlot() < 0) text << " 接続待ち";
 	else text << " 自分 " << m_Calc.GetLocalSlot() + 1 << "P  " << count << "人（機器選択 " << ready << "人）";
-	text << " delay " << m_Calc.GetDelay() << (m_Calc.IsRunning() ? " 対戦中" : " 待機中");
+	text << " delay " << m_Calc.GetDelay() << (m_Calc.IsAutoDelay() ? "（自動）" : "") << (m_Calc.IsRunning() ? " 対戦中" : " 待機中");
 	for (int peer = 0; peer < FIGHTER_COUNT; ++peer) {
 		if (m_Peers[peer].Port == 0) continue;
 		text << " ping " << peer + 1 << "P:";

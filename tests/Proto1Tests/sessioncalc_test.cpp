@@ -117,7 +117,7 @@ namespace Proto1Tests
 			Assert::IsTrue(SessionCalcParseOptions("", options));
 			Assert::AreEqual(static_cast<int>(NET_MODE_LOCAL), static_cast<int>(options.Mode));
 			Assert::IsTrue(SessionCalcParseOptions("--host", options));
-			Assert::AreEqual(3, options.Delay);
+			Assert::AreEqual(LOCKSTEP_AUTO_DELAY, options.Delay);
 			Assert::IsTrue(SessionCalcParseOptions("--delay 6 --host", options));
 			Assert::AreEqual(6, options.Delay);
 			Assert::IsTrue(SessionCalcParseOptions("--join 100.64.1.2 --delay 7", options));
@@ -437,6 +437,47 @@ namespace Proto1Tests
 			host.ReturnToLobby();
 			Assert::IsFalse(host.TakeFrame(frame));
 			Assert::AreEqual(uint64_t(2), host.GetWaitFrames());
+		}
+
+		TEST_METHOD(AutoDelay_HostUsesPeakPingOfLastTwoSecondsAtRoundStart)
+		{
+			Assert::AreEqual(3, SessionCalcAutoDelay(-1));
+			Assert::AreEqual(3, SessionCalcAutoDelay(5));
+			Assert::AreEqual(6, SessionCalcAutoDelay(60));
+			Assert::AreEqual(8, SessionCalcAutoDelay(100));
+			Assert::AreEqual(AUTO_DELAY_MAX, SessionCalcAutoDelay(1000));
+			for (const int fixedDelay : { LOCKSTEP_AUTO_DELAY, 4 }) {
+				NET_OPTIONS options;
+				options.Mode = NET_MODE_HOST;
+				options.Delay = fixedDelay;
+				SessionCalc host, client;
+				host.Initialize(options, 100);
+				options.Mode = NET_MODE_JOIN;
+				client.Initialize(options, 101);
+				Assert::AreEqual(1, host.Join(101));
+				// ホストの送った時刻が、ping ミリ秒後に参加側から返ってくる。
+				const auto measure = [&](uint32_t sent, int ping) {
+					host.SetTime(sent);
+					Deliver(client, 0, host.MakeControl(1));
+					host.SetTime(sent + ping);
+					Deliver(host, 1, client.MakeControl());
+				};
+				measure(100, 200);
+				Assert::AreEqual(200, host.GetPeakPing());
+				measure(3000, 60); // 2秒より前の 200ms は使わない。
+				Assert::AreEqual(60, host.GetPeakPing());
+				client.Decide();
+				Deliver(host, 1, client.MakeControl());
+				host.Decide();
+				host.Decide();
+				Assert::IsTrue(host.IsRunning());
+				const int expected = fixedDelay == LOCKSTEP_AUTO_DELAY ? 6 : 4;
+				Assert::AreEqual(fixedDelay == LOCKSTEP_AUTO_DELAY, host.IsAutoDelay());
+				Assert::AreEqual(expected, host.GetDelay());
+				Deliver(client, 0, host.MakeControl(1));
+				Assert::IsTrue(client.IsRunning());
+				Assert::AreEqual(expected, client.GetDelay());
+			}
 		}
 
 		TEST_METHOD(Disconnect_LobbyReleasesSlotBeforeRosterIsLocked)
