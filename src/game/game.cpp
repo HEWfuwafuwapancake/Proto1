@@ -267,8 +267,9 @@ void Game::Update()
 	else if (oldScene == SCENE_MATCH) m_Match.Update();
 #ifdef _DEBUG
 	if (oldScene != m_Scene.GetScene()) {
-		const char* name = m_Scene.GetScene() == SCENE_TITLE ? "タイトル"
-			: (m_Scene.GetScene() == SCENE_MATCH ? "試合" : "結果");
+		const SCENE scene = m_Scene.GetScene();
+		const char* name = scene == SCENE_TITLE ? "ロビー" : scene == SCENE_MATCH ? "試合"
+			: scene == SCENE_RESULT ? "結果" : "メニュー";
 		hal::dout << "シーン：" << name << std::endl;
 	}
 #endif

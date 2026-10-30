@@ -194,8 +194,9 @@ void Hud::DrawScene(const VersusCalc& participants, const NetSession& net, const
 			for (int item = 0; item < MODE_ITEM_COUNT; ++item) {
 				DrawMenuItem(items[item], MODE_FIRST_Y + item * MODE_LINE, m_Scene->GetCursor() == item);
 			}
-			Number2DDrawText("SELECT  UP DOWN / W S / DPAD", centerX, RESULT_SELECT_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
-			Number2DDrawText("OK  O / ENTER", centerX, RESULT_DECIDE_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
+			// 下の「BACK」と重ならないよう、タイトルの説明と同じ高さに置く。
+			Number2DDrawText("SELECT  UP DOWN / W S / DPAD", centerX, TITLE_ARMS_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
+			Number2DDrawText("OK  O / ENTER", centerX, TITLE_JUMP_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
 		}
 		else {
 			Number2DDrawText("ONLINE JOIN", centerX, MODE_TITLE_Y, MENU_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
