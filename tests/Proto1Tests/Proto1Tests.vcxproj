@@ -122,6 +122,11 @@
     <ClCompile Include="objcalc_test.cpp" />
     <ClCompile Include="..\..\src\render\objcalc.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\src\net\sessioncalc.cpp" />
+    <ClInclude Include="..\..\src\net\sessioncalc.h" />
+    <ClCompile Include="sessioncalc_test.cpp" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

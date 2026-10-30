@@ -68,6 +68,12 @@ int VersusCalc::AssignDevice(int device)
 	return -1;
 }
 
+void VersusCalc::SetSlotDevice(int slot, int device)
+{
+	if (slot < 0 || slot >= FIGHTER_COUNT || device < VERSUS_DEVICE_REMOTE || device > 4) return;
+	m_Devices[slot] = device;
+}
+
 int VersusCalc::GetDevice(int slot) const
 {
 	return slot >= 0 && slot < FIGHTER_COUNT ? m_Devices[slot] : VERSUS_DEVICE_DUMMY;

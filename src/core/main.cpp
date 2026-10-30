@@ -41,21 +41,28 @@ static Game g_Game;
 
 static DWORD g_Fps = 0;	// 直近1秒の FPS
 
+static int GetEquipSlot()
+{
+	const NetSession& net = g_Game.GetNetSession();
+	return net.IsOnline() ? (net.GetLocalSlot() < 0 ? 0 : net.GetLocalSlot()) : ActionGetEquipPlayer();
+}
+
 /// タイトルバーに FPS・装備・振動のオン・オフを出す（残り時間・得点は画面に出す。hud.cpp）
 static void RefreshTitle(HWND hWnd)
 {
-	char title[224];
-	const int equipPlayer = ActionGetEquipPlayer();
-	const int mode = ActionGetEquipMode(equipPlayer);
+	char title[1024];
+	const int equipPlayer = GetEquipSlot();
+	const NetSession& net = g_Game.GetNetSession();
+	const int mode = ActionGetEquipMode(net.IsOnline() ? ActionGetEquipPlayer() : equipPlayer);
 	const ArmManager& arms = g_Game.GetArms(equipPlayer);
-	sprintf_s(title, "%s  FPS: %lu  %dP（F1-F4） 左：%s 右：%s%s  振動: %s（SHARE / V）", TITLE, g_Fps,
-		equipPlayer + 1, ArmGetName(arms.GetType(0)), ArmGetName(arms.GetType(1)),
+	sprintf_s(title, "%s  FPS: %lu  %dP%s 左：%s 右：%s%s  振動: %s（SHARE / V） %s", TITLE, g_Fps,
+		equipPlayer + 1, net.IsOnline() ? "" : "（F1-F4）", ArmGetName(arms.GetType(0)), ArmGetName(arms.GetType(1)),
 		mode == 0 ? "  [左腕を切り替え中：数字キー 1-6]" : (mode == 1 ? "  [右腕を切り替え中：数字キー 1-6]" : ""),
-		PadIsRumbleEnabled() ? "オン" : "オフ");
+		PadIsRumbleEnabled() ? "オン" : "オフ", net.GetStatusText().c_str());
 	SetWindowText(hWnd, title);
 }
 
-bool Initialize(HWND hWnd);
+bool Initialize(HWND hWnd, const NET_OPTIONS& options);
 void Finalize(void);
 void Update(void);
 void Draw(void);
@@ -66,7 +73,11 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
 	_In_ LPSTR lpCmdLine, _In_ int nCmdShow)
 {
 	UNREFERENCED_PARAMETER(hPrevInstance);
-	UNREFERENCED_PARAMETER(lpCmdLine);
+	NET_OPTIONS options;
+	if (!SessionCalcParseOptions(lpCmdLine, options)) {
+		MessageBox(nullptr, "起動引数を確認してください。\n--host [--delay 0-120]\n--join <IPv4>\n指定なし：ローカル対戦", TITLE, MB_OK | MB_ICONERROR);
+		return -1;
+	}
 
 	int a = 1;
 	int b = 2;
@@ -107,7 +118,7 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
 
 	//kokonihenkou
 	//初期化処理（失敗したら後片付けをして終了する）
-	if (!Initialize(hWnd)) {
+	if (!Initialize(hWnd, options)) {
 		Finalize();
 		return -1;
 	}
@@ -170,14 +181,15 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
 				dwExecLastTime = dwCurrentTime;	// 大きく遅れたとき（ウィンドウをつかんで動かしていた など）は追いつこうとせず仕切り直す
 			}
 
-			const int oldEquipPlayer = ActionGetEquipPlayer();
+			const int oldEquipPlayer = GetEquipSlot();
 			const ARM_TYPE oldLeft = g_Game.GetArms(oldEquipPlayer).GetType(0);
 			const ARM_TYPE oldRight = g_Game.GetArms(oldEquipPlayer).GetType(1);
-			const int oldMode = ActionGetEquipMode(oldEquipPlayer);
+			const int oldMode = ActionGetEquipMode(g_Game.GetNetSession().IsOnline() ? ActionGetEquipPlayer() : oldEquipPlayer);
 			Update();			// 更新処理
-			const int equipPlayer = ActionGetEquipPlayer();
+			const int equipPlayer = GetEquipSlot();
 			if (oldLeft != g_Game.GetArms(equipPlayer).GetType(0) || oldRight != g_Game.GetArms(equipPlayer).GetType(1)
-				|| oldEquipPlayer != equipPlayer || oldMode != ActionGetEquipMode(equipPlayer)) RefreshTitle(hWnd);
+				|| oldEquipPlayer != equipPlayer
+				|| oldMode != ActionGetEquipMode(g_Game.GetNetSession().IsOnline() ? ActionGetEquipPlayer() : equipPlayer)) RefreshTitle(hWnd);
 			Draw();				// 描画処理
 
 			dwFrameCount++;		// 処理回数のカウントを加算
@@ -252,7 +264,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 }
 
 
-bool Initialize(HWND hWnd)
+bool Initialize(HWND hWnd, const NET_OPTIONS& options)
 {
 	//COM初期化
 	CoInitializeEx(nullptr, COINITBASE_MULTITHREADED);
@@ -285,7 +297,10 @@ bool Initialize(HWND hWnd)
 
 	//画面表示の描画部品まで初期化してから、ゲームを初期化する
 	Number2DInitialize();
-	g_Game.Initialize();
+	if (!g_Game.Initialize(options)) {
+		MessageBox(hWnd, g_Game.GetNetSession().GetError().c_str(), TITLE, MB_OK | MB_ICONERROR);
+		return false;
+	}
 
 	return true;
 }
@@ -339,12 +354,15 @@ void Update(void)
 	//SHARE / V で振動のオン・オフを切り替える（オンにしたら短く振動して知らせる。タイトルバーにも出す）
 	bool toggleRumble = false;
 	for (int device = 0; device < ACTION_DEVICE_COUNT; ++device) {
+		if (g_Game.GetNetSession().IsOnline() && device != g_Game.GetNetSession().GetLocalDevice()
+			&& device != ACTION_DEVICE_KEYBOARD) continue;
 		if (ActionIsTrigger(device, ACTION_RUMBLE_TOGGLE)) toggleRumble = true;
 	}
 	if (toggleRumble) {
 		PadSetRumbleEnabled(!PadIsRumbleEnabled());
 		if (PadIsRumbleEnabled()) {
 			for (int pad = 0; pad < PAD_COUNT; ++pad) {
+				if (g_Game.GetNetSession().IsOnline() && pad != g_Game.GetNetSession().GetLocalDevice()) continue;
 				PadRumble(pad, RUMBLE_ON_NOTICE_STRENGTH, RUMBLE_ON_NOTICE_STRENGTH, RUMBLE_ON_NOTICE_SECONDS);
 			}
 		}

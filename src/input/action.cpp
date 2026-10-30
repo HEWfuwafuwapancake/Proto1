@@ -73,6 +73,7 @@ static ACTION_STATE g_SinglePlayer; // 段階Aでは既存のゲームにパッ�
 static ACTION_EQUIP_KEY g_EquipKeys[ACTION_EQUIP_PLAYER_COUNT];
 static int g_EquipModes[ACTION_EQUIP_PLAYER_COUNT];
 static int g_EquipPlayer = 0;
+static bool g_OnlineEquip = false;
 static float g_TargetMouseCooldown = 0.0f;	// マウスで次の切り替えを受け付けるまでの残り秒数
 struct TARGET_MOUSE_SAMPLE
 {
@@ -91,8 +92,15 @@ void ActionInitialize(void)
 		g_EquipModes[player] = -1;
 	}
 	g_EquipPlayer = 0;
+	g_OnlineEquip = false;
 	g_TargetMouseCooldown = 0.0f;
 	g_TargetMouseSamples.clear();
+}
+
+void ActionSetOnlineEquip(bool online)
+{
+	g_OnlineEquip = online;
+	if (online) g_EquipPlayer = 0;
 }
 
 // 機器ごとの切り替え入力は押した瞬間だけ出す。自由カメラ用の横入力はそのまま残す。
@@ -151,7 +159,7 @@ static void UpdateEquipInput(void)
 {
 	for (int player = 0; player < ACTION_EQUIP_PLAYER_COUNT; ++player) {
 		g_EquipKeys[player] = { -1, -1 };
-		if (KeyboardIsTrigger(VK_F1 + player)) g_EquipPlayer = player;
+		if (!g_OnlineEquip && KeyboardIsTrigger(VK_F1 + player)) g_EquipPlayer = player;
 	}
 	int pressed = -1;
 	bool equipShift = false;

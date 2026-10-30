@@ -173,7 +173,8 @@ void Hud::DrawScene(const VersusCalc& participants) const
 			DrawPlayerTag(slot, TITLE_PLAYER_X, y, PLAYER_TAG_WIDTH);
 			const int device = participants.GetDevice(slot);
 			const XMFLOAT4 color = participants.IsHuman(slot) ? Fighter::GetPlayerColor(slot) : MENU_TEXT_COLOR;
-			const char* label = !participants.IsHuman(slot) ? "WAIT" : (device == ACTION_DEVICE_KEYBOARD ? "KEY" : "PAD");
+			const char* label = !participants.IsHuman(slot) ? "WAIT"
+				: (device == VERSUS_DEVICE_REMOTE ? "NET" : (device == ACTION_DEVICE_KEYBOARD ? "KEY" : "PAD"));
 			Number2DDrawText(label, TITLE_DEVICE_X, y, MENU_HELP_DOT, GLYPH_ALIGN_LEFT, color);
 			if (device >= 0 && device < ACTION_DEVICE_KEYBOARD) {
 				Number2DDrawNumber(device + 1, 1, TITLE_DEVICE_NUMBER_X, y, PLAYER_TAG_WIDTH, GLYPH_ALIGN_LEFT, color);

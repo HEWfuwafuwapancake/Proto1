@@ -242,6 +242,14 @@
       <ObjectFileOutput>$(ProjectDir)%(Filename).cso</ObjectFileOutput>
     </FxCompile>
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\net\sessioncalc.cpp" />
+    <ClInclude Include="src\net\sessioncalc.h" />
+    <ClCompile Include="src\net\netsocket.cpp" />
+    <ClInclude Include="src\net\netsocket.h" />
+    <ClCompile Include="src\game\netsession.cpp" />
+    <ClInclude Include="src\game\netsession.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

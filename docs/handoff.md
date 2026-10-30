@@ -4,39 +4,22 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）。
 決まったことは [decisions.md](decisions.md)、腕のモデルの原点と長さは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、終わったタスクの記録は [archive/](archive/)（普段は読まない）。
 
-- 最終更新：2026-10-29（Claude。Shota の Proto1、Visual Studio 2022 Community の PC。No.47 キャラモデルを完了し PR #91 を出した。次は No.26 段階B の段階2。No.26 段階B はそのあと）
+- 最終更新：2026-10-30（Codex。Shota の Proto1、Visual Studio 2022 Enterprise の PC。No.26 段階B：段階2 済み。段階3 待ち）
 
 ---
 
 ## 1. 今の状態
 
-- **No.47 キャラモデル：完了・マージ済み**（[PR #91](https://github.com/HEWfuwafuwapancake/Proto1/pull/91)）。体は `mechani_body.obj`（固定ポーズ。オレンジ部分がプレイヤーの色）、腕は肩の取付口から出て半分の大きさ（`Arm::MODEL_SIZE`）。Debug / Release 警告0、テスト各230件成功。ドリルは届く距離も半分になったので、遊んで決める。管理者の依頼で、カメラを近づけた（`camera.cpp` の `FOLLOW_DISTANCE 8→4.5`、`START_PITCH −20°→−12°`）。
-  腕の取付も直した（`arm.cpp`）：高さ・前後はリグの `armMount`（FBX の骨。±14.6・110.5・0 cm）、左右は付け根の箱がめり込まない 0.24m、待機は前へ 75° 下げて外へ 8°（体の横に垂らす）。腕ごとの微調整は各腕の `MOUNT_OFFSET`（`GetMountOffset`。触腕は上 0.24・後ろ 0.06、グラップリングは上 0.08、ドリルは内 0.07・下 0.1、磁石は下 0.05、盾はなし）。
-- **No.26 段階A：段階3 完了**（[PR #90](https://github.com/HEWfuwafuwapancake/Proto1/pull/90)）。`PLAYER_INPUT` 経由の入力・F1〜F4 の装備配布・`LockstepCalc` を検証。コードの追加修正はなし。No.26 は段階Cまで進行中。
-- **Debug / Release のゲームビルド警告0、単体テスト各229件成功**。新しい計算をまとめて壊すと追加7件がすべて失敗し、バイト単位で復元してDebug 229件の再成功を確認。パッドとキーボードの参加・基本操作・RETRY／TITLEは管理者が実操作で確認し、パッド参加者へのキーボード装備配布はCodexが確認した。
-- `GameTimeGetElapsed()` の利用は `src/game/tentacle.cpp` の描画用うねうねだけ（ほかは宣言・定義）。試合の計算には使っていない。
-- 管理者が遊んで決めること：全種類の構えが普段の画面で分かるか／グラップリング・ドリル・磁石の取付位置と強さ。マウス操作は止めたまま（[decisions.md](decisions.md)）。
-- No.19 は止めてある（プラン（案）は `feature/tuning-values`）。
+- **No.26 段階B：段階2 済み。段階3 待ち**。`feature/online-session` で Codex が実装。PR #90・#91 はマージ済みで、そこから開始した。No.26は🔄のまま（Notionも進行中・PR #90）。PR作成とマージは段階3。
+- `NetSocket`（UDP 27026）・`SessionCalc`（引数、ロビー、メッセージ変換、方向別ACK、入力固定）・`NetSession` を追加。`--host` / `--join <IPv4>` / `--delay N`（省略3）で起動し、機器選択後にホストが開始。参加側はホストの返送を待ち、全員のカメラを更新して自分だけ全画面に描く。F1〜F4はオンラインで無効、自分の機器だけ振動・ライトバーを使う。APIと通信の配置は構成ドキュメントの「UDP接続とロビー」。
+- Debug x64のゲームビルド成功・警告0（vswhereでEnterpriseのMSBuildを検出）。`sessioncalc_test.cpp` に主な動きの6テストを書いたが、テストのビルド・実行、Release、わざと壊す確認、ゲーム起動・画面確認は未実施。新しく追加した計算は `src/net/sessioncalc.cpp`。最初のビルドの文字コード警告は修正し、Notion開発ログへ記録済み。
+- 段階3ではTITLE直前の入力が届かない場合の再送、最小ACKによる履歴保持、開始通知の再送、前の試合の入力・開始通知の拒否、オンラインでF1〜F4を押しても自分の装備・Q/Eの選択先が変わらないことも確認する。切断・ビルド一致・チェックサム比較・ping表示は段階C。
+- No.47の体・腕・近づけたカメラはdevelopから引き継いだ。腕の取付と強さは管理者が遊んで調整する。マウス操作は止めたまま。No.19は保留（`feature/tuning-values`）。
 
-## 2. 次にやること：No.26 段階B の段階2（Codex がコーディング）
+## 2. 次にやること：No.26 段階B の段階3（Codex がテスト）
 
 段階1（プラン）は管理者の指示で Claude が作り、**管理者確認済み**（2026-10-29。実装は【当面】のとおり Codex）。同じ日に管理者の希望で、1 を「Tailscale で遠くの人とも遊ぶ」、3 を「起動の引数 `--delay`（指定なしは 3）」に直した。
-No.26 は段階A → B → C の順に、それぞれ「段階2 コーディング → 段階3 テスト」で進める（1段階 = 1 PR）。段階A の検証まで完了。次のセッションでは PR #90・PR #91 のマージを確認し、最新の develop から `feature/online-session` を作る。計算APIとパケットの配置は `docs/dev/01_DX11基盤の構成.md` の「ロックステップの計算」に記載。
-
-### 段階2 のプロンプト（次の Codex の新しいセッションに貼る）
-
-```text
-Proto1 の No.26 段階B の段階2（コーディング）をしてください。AGENTS.md の【当面】の段階2に従います。下のNo.26のプランは管理者確認済みです。
-1. 開始手順とNotion開発ログを確認し、PR #90 のマージ後の develop から .\tools\start-work.ps1 online-session で始める。
-2. src/net/netsocket.h/.cpp にWindows標準WinsockのUDPを追加する。開く・送る・止まらずに受け取る・閉じるをまとめ、ws2_32.libを使う。外部ライブラリは入れない。
-3. src/game/netsession.h/.cpp のNetSessionをGameが持つ。ホスト／参加、2〜4人のスロット割り当て、ロビー、入力の収集・配布をまとめる。全員が機器を選んでからホストの決定で開始する。空きはダミー、途中参加はなし。TITLEに戻っても接続は保つ。
-4. main.cppで --host／--join <IP>／--delay N を読みGameへ渡す。引数なしは従来のローカル対戦。delayの指定なしは3、ホストの値を全員に配る。Aの上限・パケット配置を読み、接続に必要なメッセージは入力パケットと区別する。VERSUS_DEVICE_REMOTEを追加する。
-5. LockstepCalcを使い、1/60秒の各フレームで自分の入力を1回だけ採取して先のフレームへ保管する。待っている間は採取済みの入力を変えず再送する。参加側→ホスト→全員の順で配り、全員分がそろったときだけゲームを進める。累積ACKは方向ごとに扱い、全送信先の最小ACKを使って実行済みの履歴を解放する。送受信と描画は待機中も続ける。
-6. 移動・腕・装備だけでなく、ホストの結果メニューとRETRY／TITLEも共通の入力フレームで進める。カメラは全員分更新し、自分のスロットだけ全画面に描く。振動とライトバーは自分の機器だけ。オンラインの装備選択はF1〜F4に関係なく自分へ配る。
-7. 新しい計算・起動引数の解析・メッセージ変換などはWindows／DirectXなしでテストできる部分を分け、主な動きのテストコードを書く。.vcxproj・filtersと構成ドキュメントも更新する。チェックサムの比較・切断・ビルド一致の拒否・ping表示は段階C。
-8. vswhere.exeでMSBuildを探し、Debugのビルド成功だけ確認する。run-tests.ps1・Release・壊す確認・ゲーム起動は段階3に残す。
-9. tasks.mdはNo.26を🔄のまま、handoff.mdの「今の状態」に「段階B：段階2 済み。段階3 待ち」と書き、実装したAPIと確認上の注意を簡潔に残してsave-work.ps1でcommit・pushする。
-```
+No.26 は段階A → B → C の順に、それぞれ「段階2 コーディング → 段階3 テスト」で進める（1段階 = 1 PR）。次のセッションは同じ `feature/online-session` で続ける。計算APIとパケットの配置は `docs/dev/01_DX11基盤の構成.md` の「ロックステップの計算」「UDP接続とロビー」に記載。
 
 ### 段階3 のプロンプト（段階2 のあと、Codex の新しいセッションに貼る）
 
