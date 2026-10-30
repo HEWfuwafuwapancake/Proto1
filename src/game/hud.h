@@ -8,6 +8,8 @@ class FighterManager;
 class Match;
 class SceneCalc;
 class VersusCalc;
+class NetSession;
+class SessionAddressCalc;
 
 /// @file hud.h
 /// @brief シーンごとの画面表示（タイトル・試合の HUD・結果のメニュー）
@@ -39,8 +41,8 @@ public:
 	/// @brief 試合中の自分の画面の HUD を描く（自分のビューポートで、深度テストを切りライトを消してから呼ぶ）
 	void Draw(void) const;
 
-	/// @brief タイトル・結果のおおいとメニューを画面全体に描く（全画面のビューポートに戻してから呼ぶ）
-	void DrawScene(const VersusCalc& participants) const;
+	/// @brief 起動・モード・IP・ロビー・結果を画面全体に描く（全画面のビューポートに戻してから呼ぶ）
+	void DrawScene(const VersusCalc& participants, const NetSession& net, const SessionAddressCalc& address) const;
 
 private:
 	void DrawPlayerTag(int slot, float centerX, float y, float digitWidth) const;

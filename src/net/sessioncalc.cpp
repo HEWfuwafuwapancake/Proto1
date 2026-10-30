@@ -8,6 +8,68 @@ static constexpr size_t SESSION_HEADER_BYTES = 46;
 static constexpr uint8_t ALL_PLAYERS = (1u << FIGHTER_COUNT) - 1u;
 static constexpr uint64_t DISCONNECT_MILLISECONDS = 3000;
 
+void SessionAddressCalc::Initialize(const std::string& localAddress)
+{
+	*this = SessionAddressCalc{};
+	NET_OPTIONS parsed;
+	if (!SessionCalcParseOptions("--join " + localAddress, parsed)) return;
+	std::istringstream address(localAddress);
+	for (int part = 0; part < 3; ++part) std::getline(address, m_Parts[part], '.');
+	m_Cursor = 3;
+}
+
+void SessionAddressCalc::AppendDigit(int digit)
+{
+	if (digit < 0 || digit > 9) return;
+	if (m_Parts[m_Cursor].size() == 3 && m_Cursor < 3) ++m_Cursor;
+	if (m_Parts[m_Cursor].size() < 3) m_Parts[m_Cursor] += static_cast<char>('0' + digit);
+}
+
+bool SessionAddressCalc::Erase()
+{
+	if (GetText() == "...") return false;
+	while (m_Parts[m_Cursor].empty() && m_Cursor > 0) --m_Cursor;
+	if (!m_Parts[m_Cursor].empty()) m_Parts[m_Cursor].pop_back();
+	return true;
+}
+
+void SessionAddressCalc::Move(int direction)
+{
+	if (direction < 0 && m_Cursor > 0) --m_Cursor;
+	if (direction > 0 && m_Cursor < 3) ++m_Cursor;
+}
+
+void SessionAddressCalc::Adjust(int direction)
+{
+	if (direction == 0) return;
+	if (m_Parts[m_Cursor].empty()) {
+		m_Parts[m_Cursor] = direction > 0 ? "0" : "255";
+		return;
+	}
+	int value = std::stoi(m_Parts[m_Cursor]);
+	value = (std::max)(0, (std::min)(255, value));
+	value = direction > 0 ? (value + 1) % 256 : (value + 255) % 256;
+	m_Parts[m_Cursor] = std::to_string(value);
+}
+
+bool SessionAddressCalc::IsValid() const
+{
+	for (const auto& part : m_Parts) {
+		if (part.empty() || std::stoi(part) > 255) return false;
+	}
+	return true;
+}
+
+std::string SessionAddressCalc::GetText() const
+{
+	std::string text;
+	for (int part = 0; part < 4; ++part) {
+		if (part > 0) text += '.';
+		if (!m_Parts[part].empty()) text += std::to_string(std::stoi(m_Parts[part]));
+	}
+	return text;
+}
+
 bool SessionCalcParseOptions(const std::string& commandLine, NET_OPTIONS& result)
 {
 	NET_OPTIONS options;

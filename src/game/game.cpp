@@ -3,6 +3,7 @@
 #include "input/action.h"
 #include "input/pad.h"
 #include "render/number2d.h"
+#include <cmath>
 
 #ifdef _DEBUG
 #include "core/debug_ostream.h"
@@ -36,8 +37,8 @@ bool Game::Initialize(const NET_OPTIONS& options)
 		m_Huds[i].Initialize(m_Cameras[i], m_Fighters, i, m_Match, m_Scene);
 	}
 	ConfigurePlayers();
-	m_Scene.Start();
 	const bool connected = m_Net.Initialize(options);
+	m_Scene.Start(m_Net.IsOnline());
 	ActionSetOnlineEquip(m_Net.IsOnline());
 	UpdatePadLights();
 #ifdef _DEBUG
@@ -107,24 +108,95 @@ void Game::Restart()
 #endif
 }
 
+void Game::ResetParticipants()
+{
+	m_Participants.Reset();
+	for (auto& value : m_Inputs) value = {};
+	for (auto& value : m_PreviousInputs) value = {};
+	for (int device = 0; device < ACTION_DEVICE_COUNT; ++device) m_DeviceInputs[device] = ActionGetPlayerInput(device);
+	ConfigurePlayers();
+	m_Match.Reset();
+	UpdatePadLights();
+}
+
+bool Game::IsLobbyBack() const
+{
+	for (int device = 0; device < ACTION_DEVICE_COUNT; ++device) {
+		if (ActionGetMenuInput(device).Back) return true;
+	}
+	return false;
+}
+
+void Game::UpdateMenu()
+{
+	const SCENE oldScene = m_Scene.GetScene();
+	SCENE_INPUT input{};
+	for (int device = 0; device < ACTION_DEVICE_COUNT; ++device) {
+		const ACTION_MENU_INPUT menu = ActionGetMenuInput(device);
+		// メニューからロビーへ入った決定を、参加の再入力として使わない。
+		m_DeviceInputs[device] = ActionGetPlayerInput(device);
+		if (menu.Decide && !input.Decide) { input.Decide = true; m_MenuDevice = device; }
+		if (fabsf(menu.MoveY) > fabsf(input.MoveY)) input.MoveY = menu.MoveY;
+		if (oldScene == SCENE_JOIN_ADDRESS) {
+			m_JoinAddress.Move(menu.Horizontal);
+			m_JoinAddress.Adjust(menu.Vertical);
+			for (char c : menu.Text) {
+				if (c >= '0' && c <= '9') m_JoinAddress.AppendDigit(c - '0');
+				else if (c == '.') m_JoinAddress.Move(1);
+				else if (c == '\b' && !m_JoinAddress.Erase()) input.Back = true;
+			}
+			// キーボードの Backspace は上で削除。パッドの×はいつでも戻る。
+			if (device != ACTION_DEVICE_KEYBOARD) input.Back = input.Back || menu.Back;
+		}
+		else input.Back = input.Back || menu.Back;
+	}
+	input.AddressValid = m_JoinAddress.IsValid();
+	const SCENE_EVENT event = m_Scene.Step(input, false);
+	if (oldScene != SCENE_JOIN_ADDRESS && m_Scene.GetScene() == SCENE_JOIN_ADDRESS) {
+		const std::string addresses = NetSocket::GetLocalAddresses();
+		m_JoinAddress.Initialize(addresses.substr(0, addresses.find(" / ")));
+	}
+	if (event == SCENE_EVENT_START_MATCH) {
+		m_Participants.Reset();
+		m_Participants.AssignDevice(m_MenuDevice);
+		ConfigurePlayers();
+		Restart();
+	}
+	else if (event == SCENE_EVENT_HOST || event == SCENE_EVENT_JOIN) {
+		NET_OPTIONS options;
+		options.Mode = event == SCENE_EVENT_HOST ? NET_MODE_HOST : NET_MODE_JOIN;
+		options.Host = m_JoinAddress.GetText();
+		options.Delay = LOCKSTEP_DEFAULT_DELAY;
+		if (m_Net.Initialize(options)) m_Scene.OpenLobby();
+		else m_Scene.ShowModes(); // 理由は NetSession がタイトルバーへ残す。
+		ActionSetOnlineEquip(m_Net.IsOnline());
+		ResetParticipants();
+	}
+}
+
 void Game::Update()
 {
 	const SCENE oldScene = m_Scene.GetScene();
+	if (oldScene == SCENE_GAME_START || oldScene == SCENE_MODE_SELECT || oldScene == SCENE_JOIN_ADDRESS) {
+		UpdateMenu();
+		return;
+	}
+	if (oldScene == SCENE_TITLE && IsLobbyBack()) {
+		m_Scene.Step({ false, false, 0.0f, true }, false);
+		m_Net.Finalize();
+		ActionSetOnlineEquip(false);
+		ResetParticipants();
+		return;
+	}
 	bool start = false;
 	int32_t onlineFrame = -1;
 	if (m_Net.IsOnline()) {
 		m_Net.Update(); // 入力待ちでも受信・再送・機器選択を続ける。
 		if (!m_Net.IsOnline()) {
-			// ホスト切断・参加拒否では、リモート枠と前入力を捨ててローカルのタイトルへ戻す。
+			// ホスト切断・参加拒否では、リモート枠と前入力を捨ててモード選択へ戻す。
 			ActionSetOnlineEquip(false);
-			m_Scene.Start();
-			m_Participants.Reset();
-			for (auto& value : m_Inputs) value = {};
-			for (auto& value : m_PreviousInputs) value = {};
-			for (int device = 0; device < ACTION_DEVICE_COUNT; ++device) m_DeviceInputs[device] = ActionGetPlayerInput(device);
-			ConfigurePlayers();
-			m_Match.Reset();
-			UpdatePadLights();
+			m_Scene.ShowModes();
+			ResetParticipants();
 			return;
 		}
 		if (oldScene == SCENE_TITLE) {
@@ -195,8 +267,9 @@ void Game::Update()
 	else if (oldScene == SCENE_MATCH) m_Match.Update();
 #ifdef _DEBUG
 	if (oldScene != m_Scene.GetScene()) {
-		const char* name = m_Scene.GetScene() == SCENE_TITLE ? "タイトル"
-			: (m_Scene.GetScene() == SCENE_MATCH ? "試合" : "結果");
+		const SCENE scene = m_Scene.GetScene();
+		const char* name = scene == SCENE_TITLE ? "ロビー" : scene == SCENE_MATCH ? "試合"
+			: scene == SCENE_RESULT ? "結果" : "メニュー";
 		hal::dout << "シーン：" << name << std::endl;
 	}
 #endif
@@ -253,5 +326,5 @@ void Game::Draw() const
 		const VERSUS_VIEWPORT empty = GetViewport(3);
 		Number2DDrawBox({ empty.X, empty.Y, empty.Width, empty.Height }, EMPTY_VIEW_COLOR);
 	}
-	m_Huds[0].DrawScene(m_Participants);
+	m_Huds[0].DrawScene(m_Participants, m_Net, m_JoinAddress);
 }

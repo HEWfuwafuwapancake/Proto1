@@ -67,6 +67,8 @@ struct ACTION_STATE
 	ACTION_AXIS Move = {};            ///< 移動の向き
 	ACTION_AXIS Look = {};            ///< カメラを回す角度
 	bool TargetPadReady = true;       ///< スティックを遊びへ戻したか
+	unsigned int MenuButtons = 0;     ///< 今のメニュー用十字キー・×
+	unsigned int OldMenuButtons = 0;  ///< 前のメニュー用十字キー・×
 };
 static ACTION_STATE g_Devices[ACTION_DEVICE_COUNT];
 static ACTION_STATE g_SinglePlayer; // 段階Aでは既存のゲームにパッド0＋キーボードを渡す
@@ -142,6 +144,12 @@ static void UpdateKeyboardTargetInput(ACTION_STATE& state, float dt)
 static void UpdatePadInput(int device, float dt)
 {
 	ACTION_STATE& state = g_Devices[device];
+	state.OldMenuButtons = state.MenuButtons;
+	state.MenuButtons = 0;
+	for (PAD_BUTTON button : { PAD_BUTTON_CROSS, PAD_BUTTON_DPAD_UP, PAD_BUTTON_DPAD_DOWN,
+		PAD_BUTTON_DPAD_LEFT, PAD_BUTTON_DPAD_RIGHT }) {
+		if (PadIsPress(device, button)) state.MenuButtons |= button;
+	}
 	for (int i = 0; i < ACTION_TARGET_LEFT; ++i) {
 		state.OldPress[i] = state.Press[i];
 		state.Press[i] = PadIsPress(device, ACTION_PAD_BUTTONS[i]);
@@ -226,6 +234,31 @@ void ActionUpdate(void)
 static bool IsValidDevice(int device)
 {
 	return device >= 0 && device < ACTION_DEVICE_COUNT;
+}
+
+ACTION_MENU_INPUT ActionGetMenuInput(int device)
+{
+	ACTION_MENU_INPUT input;
+	if (!IsValidDevice(device)) return input;
+	input.Decide = ActionIsTrigger(device, ACTION_DECIDE);
+	input.MoveY = ActionGetMove(device).Y;
+	if (device == ACTION_DEVICE_KEYBOARD) {
+		input.Back = KeyboardIsTrigger(VK_BACK);
+		if (KeyboardIsPress(VK_UP)) input.MoveY = 1.0f;
+		if (KeyboardIsPress(VK_DOWN)) input.MoveY = -1.0f;
+		input.Horizontal = (KeyboardIsTrigger(VK_RIGHT) ? 1 : 0) - (KeyboardIsTrigger(VK_LEFT) ? 1 : 0);
+		input.Text = KeyboardGetAddressText();
+	}
+	else {
+		const auto& state = g_Devices[device];
+		const unsigned int trigger = state.MenuButtons & ~state.OldMenuButtons;
+		input.Back = (trigger & PAD_BUTTON_CROSS) != 0;
+		if (state.MenuButtons & PAD_BUTTON_DPAD_UP) input.MoveY = 1.0f;
+		if (state.MenuButtons & PAD_BUTTON_DPAD_DOWN) input.MoveY = -1.0f;
+		input.Horizontal = ((trigger & PAD_BUTTON_DPAD_RIGHT) ? 1 : 0) - ((trigger & PAD_BUTTON_DPAD_LEFT) ? 1 : 0);
+		input.Vertical = ((trigger & PAD_BUTTON_DPAD_UP) ? 1 : 0) - ((trigger & PAD_BUTTON_DPAD_DOWN) ? 1 : 0);
+	}
+	return input;
 }
 
 bool ActionIsPress(int device, ACTION action)

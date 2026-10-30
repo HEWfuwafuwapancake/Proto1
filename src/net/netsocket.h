@@ -35,7 +35,7 @@ public:
 	static bool ParseAddress(const std::string& ip, uint16_t port, NET_ADDRESS& result);
 	/// @brief 同じIPとポートか取得する
 	static bool SameAddress(const NET_ADDRESS& a, const NET_ADDRESS& b);
-	/// @brief このPCのIPv4一覧を取得する（Winsock初期化後に呼ぶ）
+	/// @brief このPCのIPv4一覧を取得する（接続前にも呼べる。区切りは " / "）
 	static std::string GetLocalAddresses();
 	/// @brief 最後のWinsockエラー番号を取得する
 	int GetError() const { return m_Error; }

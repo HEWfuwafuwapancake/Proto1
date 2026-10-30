@@ -1,5 +1,7 @@
 ﻿#pragma once
 
+#include <string>
+
 /// @file keyboard.h
 /// @brief キーボード入力
 /// @details キーは仮想キーコードで指定する（例：VK_LEFT、VK_SPACE、'W'（英字は大文字））
@@ -35,3 +37,6 @@ bool KeyboardIsTrigger(int key);
 /// @param key 仮想キーコード
 /// @return 離した瞬間の1フレームだけ true
 bool KeyboardIsRelease(int key);
+
+/// @brief 今のフレームに押した数字・ピリオド・Backspace を押した順に取得する（Backspace は '\b'）
+const std::string& KeyboardGetAddressText();

@@ -30,6 +30,9 @@ public:
 
 private:
 	void Restart();
+	void ResetParticipants();
+	void UpdateMenu();
+	bool IsLobbyBack() const;
 	void ConfigurePlayers();
 	void UpdatePadLights() const;
 	VERSUS_VIEWPORT GetViewport(int index) const;
@@ -49,4 +52,6 @@ private:
 	Match m_Match;
 	SceneCalc m_Scene;
 	NetSession m_Net;
+	SessionAddressCalc m_JoinAddress;
+	int m_MenuDevice = ACTION_DEVICE_KEYBOARD; // SOLO の決定を押した機器
 };

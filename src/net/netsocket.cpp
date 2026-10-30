@@ -89,13 +89,15 @@ bool NetSocket::SameAddress(const NET_ADDRESS& a, const NET_ADDRESS& b)
 
 std::string NetSocket::GetLocalAddresses()
 {
+	WSADATA data{};
+	if (WSAStartup(MAKEWORD(2, 2), &data) != 0) return "127.0.0.1";
 	char name[256]{};
-	if (gethostname(name, sizeof(name)) != 0) return "127.0.0.1";
+	if (gethostname(name, sizeof(name)) != 0) { WSACleanup(); return "127.0.0.1"; }
 	addrinfo hints{};
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_DGRAM;
 	addrinfo* addresses = nullptr;
-	if (getaddrinfo(name, nullptr, &hints, &addresses) != 0) return "127.0.0.1";
+	if (getaddrinfo(name, nullptr, &hints, &addresses) != 0) { WSACleanup(); return "127.0.0.1"; }
 	std::string text;
 	for (auto* address = addresses; address != nullptr; address = address->ai_next) {
 		char ip[INET_ADDRSTRLEN]{};
@@ -105,5 +107,6 @@ std::string NetSocket::GetLocalAddresses()
 		text += ip;
 	}
 	freeaddrinfo(addresses);
+	WSACleanup();
 	return text.empty() ? "127.0.0.1" : text;
 }

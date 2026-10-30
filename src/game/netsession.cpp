@@ -14,6 +14,7 @@ static constexpr size_t RECEIVE_BYTES = 1024;
 
 bool NetSession::Initialize(const NET_OPTIONS& options)
 {
+	Finalize();
 	m_Options = options;
 	m_Device = -1;
 	m_Error.clear();
@@ -22,10 +23,12 @@ bool NetSession::Initialize(const NET_OPTIONS& options)
 	if (!IsOnline()) return true;
 	if (!m_Socket.Initialize(options.Mode == NET_MODE_HOST ? SESSION_PORT : 0)) {
 		m_Error = "UDPを開けませんでした。Winsock: " + std::to_string(m_Socket.GetError());
+		Finalize();
 		return false;
 	}
 	if (options.Mode == NET_MODE_JOIN && !NetSocket::ParseAddress(options.Host, SESSION_PORT, m_Peers[0])) {
 		m_Error = "参加先のIPv4アドレスを確認してください。";
+		Finalize();
 		return false;
 	}
 	std::random_device random;
@@ -37,6 +40,12 @@ bool NetSession::Initialize(const NET_OPTIONS& options)
 void NetSession::Finalize()
 {
 	m_Socket.Finalize();
+	m_Options = {};
+	m_Calc = SessionCalc{};
+	m_Device = -1;
+	for (auto& peer : m_Peers) peer = {};
+	m_Addresses.clear();
+	m_ReportedDesync = -1;
 }
 
 void NetSession::Receive()
@@ -94,8 +103,7 @@ void NetSession::Update()
 	ReportDesync();
 	if (m_Calc.GetFailure() != SESSION_FAILURE_NONE) {
 		m_Error = FailureText(m_Calc.GetFailure());
-		m_Options.Mode = NET_MODE_LOCAL;
-		m_Socket.Finalize();
+		Finalize();
 		return;
 	}
 	if (m_Calc.IsHost()) {
@@ -166,7 +174,7 @@ const char* NetSession::FailureText(SESSION_FAILURE failure)
 	switch (failure) {
 	case SESSION_FAILURE_VERSION: return "参加拒否：通信の版が違います。同じ版を使ってください。";
 	case SESSION_FAILURE_BUILD: return "参加拒否：Debug / Release が違います。同じビルドを使ってください。";
-	case SESSION_FAILURE_TIMEOUT: return "ホストから3秒届かなかったため、タイトルへ戻りました。";
+	case SESSION_FAILURE_TIMEOUT: return "ホストから3秒届かなかったため、モード選択へ戻りました。";
 	default: return "";
 	}
 }
