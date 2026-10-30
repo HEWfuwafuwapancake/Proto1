@@ -308,7 +308,8 @@ bool SessionCalc::IsActivePeer(int peer) const
 void SessionCalc::CheckTimeouts()
 {
 	if (!m_Host) {
-		if (m_Failure == SESSION_FAILURE_NONE && m_Now - m_LastReceived[0] >= DISCONNECT_MILLISECONDS) {
+		// ホストが先に起動していなくても、最初の返事が来るまでは待ち続ける。
+		if (m_Session != 0 && m_Failure == SESSION_FAILURE_NONE && m_Now - m_LastReceived[0] >= DISCONNECT_MILLISECONDS) {
 			m_Failure = SESSION_FAILURE_TIMEOUT;
 			m_Running = false;
 		}

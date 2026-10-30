@@ -327,6 +327,17 @@ namespace Proto1Tests
 			Assert::AreEqual(static_cast<int>(SESSION_FAILURE_TIMEOUT), static_cast<int>(client.GetFailure()));
 		}
 
+		TEST_METHOD(Disconnect_ClientWaitsForHostStartedLater)
+		{
+			NET_OPTIONS options;
+			options.Mode = NET_MODE_JOIN;
+			SessionCalc client;
+			client.Initialize(options, 200);
+			client.SetTime(10000); // ホストがまだ起動していない。
+			client.CheckTimeouts();
+			Assert::AreEqual(static_cast<int>(SESSION_FAILURE_NONE), static_cast<int>(client.GetFailure()));
+		}
+
 		TEST_METHOD(Compatibility_RefusesVersionOrBuildBeforeAssigningSlot)
 		{
 			for (bool changeVersion : { true, false }) {

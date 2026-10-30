@@ -87,7 +87,7 @@ namespace Proto1Tests
 			Assert::AreEqual(431, static_cast<int>(bytes.size()));
 			Assert::AreEqual(0x50, static_cast<int>(bytes[0])); // P1N1
 			Assert::AreEqual(0x31, static_cast<int>(bytes[1]));
-			Assert::AreEqual(1, static_cast<int>(bytes[4])); // 版はリトルエンディアン
+			Assert::AreEqual(static_cast<int>(LOCKSTEP_VERSION), static_cast<int>(bytes[4])); // 版はリトルエンディアン
 			Assert::AreEqual(0, static_cast<int>(bytes[5]));
 			LOCKSTEP_PACKET decoded;
 			Assert::IsTrue(LockstepCalc::DecodePacket(bytes.data(), bytes.size(), decoded));
@@ -111,7 +111,7 @@ namespace Proto1Tests
 				}
 			}
 			Assert::IsFalse(LockstepCalc::DecodePacket(bytes.data(), bytes.size() - 1, decoded));
-			bytes[4] = 2; // 違う版のデータをゲームの入力へ渡さない
+			bytes[4] = static_cast<uint8_t>(LOCKSTEP_VERSION + 1); // 違う版のデータをゲームの入力へ渡さない
 			Assert::IsFalse(LockstepCalc::DecodePacket(bytes.data(), bytes.size(), decoded));
 			Assert::AreEqual(42, decoded.Acknowledged); // 失敗時は出力を変えない
 			packet.Count = 0;
