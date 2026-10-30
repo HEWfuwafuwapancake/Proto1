@@ -28,13 +28,25 @@ enum SESSION_MESSAGE_TYPE : uint8_t
 	SESSION_JOIN, ///< スロットの要求
 	SESSION_READY, ///< 自分の機器を選択済み
 	SESSION_STATE, ///< ホストの顔ぶれ・開始状態
-	SESSION_INPUTS ///< セッションと試合番号を付けた入力
+	SESSION_INPUTS, ///< セッションと試合番号を付けた入力
+	SESSION_REJECT ///< 版・ビルドの不一致で参加を拒否
+};
+
+/// @brief 接続を続けられない理由
+enum SESSION_FAILURE
+{
+	SESSION_FAILURE_NONE, ///< 接続を継続
+	SESSION_FAILURE_VERSION, ///< 通信の版が異なる
+	SESSION_FAILURE_BUILD, ///< DebugとReleaseが異なる
+	SESSION_FAILURE_TIMEOUT ///< ホストから3秒受信していない
 };
 
 /// @brief 接続と入力を運ぶ共通の封筒（構造体そのものは送らない）
 struct SESSION_MESSAGE
 {
 	SESSION_MESSAGE_TYPE Type = SESSION_JOIN; ///< メッセージの種類
+	uint16_t Version = LOCKSTEP_VERSION; ///< 接続時に比較する版
+	LOCKSTEP_BUILD Build = LOCKSTEP_CURRENT_BUILD; ///< 接続時に比較するビルド
 	uint32_t Session = 0; ///< ホストの起動ごとに変わる番号
 	uint32_t Nonce = 0; ///< 送信元、またはホストからの宛先の起動番号
 	uint32_t Round = 0; ///< TITLEから開始するたびに増える試合番号（RETRYは同じ）
@@ -43,6 +55,11 @@ struct SESSION_MESSAGE
 	uint8_t Ready = 0; ///< 機器選択済みのスロット
 	int Delay = LOCKSTEP_DEFAULT_DELAY; ///< ホストが決めた遅延
 	bool Running = false; ///< true：ロックステップ中、false：ロビー
+	uint32_t Stamp = 0; ///< 送信元の単調時計のミリ秒（下位32ビット）
+	uint32_t Echo = 0; ///< 相手から最後に受け取ったStamp（往復時間用）
+	int32_t CheckFrame = -1; ///< チェックサムの実行済みフレーム（なしは-1）
+	uint32_t Checksum = 0; ///< CheckFrameの全4体のチェックサム
+	int32_t CheckAck = -1; ///< 相手のチェックサムを比較できた最後のフレーム
 	LOCKSTEP_PACKET Packet; ///< SESSION_INPUTSだけで使う入力と方向別ACK
 };
 
@@ -53,7 +70,27 @@ public:
 	/// @brief 起動設定と0以外の起動番号で初期化する
 	void Initialize(const NET_OPTIONS& options, uint32_t nonce);
 	/// @brief ホストが参加を受け付け、スロットを返す（満員・開始後の新規参加は-1）
-	int Join(uint32_t nonce);
+	int Join(uint32_t nonce, uint16_t version = LOCKSTEP_VERSION, LOCKSTEP_BUILD build = LOCKSTEP_CURRENT_BUILD);
+	/// @brief 同じ版・ビルドか調べ、違うときの理由を返す
+	static SESSION_FAILURE CheckCompatibility(const SESSION_MESSAGE& message);
+	/// @brief 単調時計のミリ秒を設定する（受信の直前に呼ぶ。Windowsの時計は呼び出し元で読む）
+	void SetTime(uint64_t milliseconds) { m_Now = milliseconds; }
+	/// @brief 今の時刻から3秒受信のない相手を切断する（受信処理のあとに呼ぶ）
+	void CheckTimeouts();
+	/// @brief 実行直後の全4体の状態を記録する（60フレームごとだけ計算・比較）
+	void RecordChecksum(int32_t frame, const LOCKSTEP_STATE (&states)[FIGHTER_COUNT]);
+	/// @brief 接続終了の理由を取得する（参加側だけ）
+	SESSION_FAILURE GetFailure() const { return m_Failure; }
+	/// @brief タイムアウトしたスロットのビットを取得する（試合の顔ぶれは保つ）
+	uint8_t GetDisconnectedMask() const { return m_Disconnected; }
+	/// @brief 相手との往復時間をミリ秒で取得する（まだ計測できなければ-1）
+	int GetPing(int peer) const { return m_Ping[peer]; }
+	/// @brief 入力を待ってゲームの計算を止めた更新回数を取得する
+	uint64_t GetWaitFrames() const { return m_WaitFrames; }
+	/// @brief 最初にずれを見つけたフレームを取得する（ずれなしは-1）
+	int32_t GetDesyncFrame() const { return m_DesyncFrame; }
+	/// @brief 最初にずれを見つけた相手のスロットを取得する
+	int GetDesyncPeer() const { return m_DesyncPeer; }
 	/// @brief 選択済みにする、または全員選択済みならホストの再決定で開始する
 	void Decide();
 	/// @brief 送信元のスロットとメッセージを受け取る（参加側にとってホストは0）
@@ -96,6 +133,9 @@ private:
 	void StoreCaptured();
 	void DiscardHistory();
 	bool CanStart() const;
+	void ReceiveMonitor(int peer, const SESSION_MESSAGE& message);
+	void CompareChecksums();
+	bool IsActivePeer(int peer) const;
 	bool m_Host = false;
 	bool m_Running = false;
 	bool m_HasRound = false;
@@ -113,6 +153,19 @@ private:
 	int32_t m_CapturedFrame = -1;
 	bool m_CapturedStored = false;
 	PLAYER_INPUT m_Captured;
+	uint64_t m_Now = 0;
+	uint64_t m_LastReceived[FIGHTER_COUNT] = {};
+	uint32_t m_Echo[FIGHTER_COUNT] = {};
+	int m_Ping[FIGHTER_COUNT] = { -1, -1, -1, -1 };
+	uint8_t m_Disconnected = 0;
+	SESSION_FAILURE m_Failure = SESSION_FAILURE_NONE;
+	uint64_t m_WaitFrames = 0;
+	int32_t m_DesyncFrame = -1;
+	int m_DesyncPeer = -1;
+	std::map<int32_t, uint32_t> m_Checksums;
+	std::map<int32_t, uint32_t> m_RemoteChecksums[FIGHTER_COUNT];
+	int32_t m_CheckAcknowledged[FIGHTER_COUNT] = { -1, -1, -1, -1 };
+	int32_t m_CheckedThrough[FIGHTER_COUNT] = { -1, -1, -1, -1 };
 	LockstepCalc m_Local; // 自分が採取した入力。参加側ではホストの返送を待つ。
 	LockstepCalc m_Shared; // 全員で実行する入力。参加側ではホストからの分だけ。
 };

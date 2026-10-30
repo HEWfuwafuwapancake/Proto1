@@ -241,5 +241,162 @@ namespace Proto1Tests
 			client.CaptureInput({});
 			Assert::IsFalse(client.TakeFrame(frame));
 		}
+
+		TEST_METHOD(Checksum_WaitsForSameFrameResendsAndDetectsEachStateField)
+		{
+			// 位置・%・KOをそれぞれ変え、ホスト側と参加側の両方でずれを検出する。
+			for (int changed = 0; changed < 3; ++changed) {
+				SessionNetwork network(2, 0);
+				auto& host = network.Nodes[0];
+				auto& client = network.Nodes[1];
+				LOCKSTEP_STATE states[FIGHTER_COUNT] = {};
+				host.RecordChecksum(58, states);
+				Assert::AreEqual(-1, host.MakeControl(1).CheckFrame);
+				host.RecordChecksum(59, states);
+				const auto first = host.MakeControl(1);
+				Assert::AreEqual(59, first.CheckFrame);
+				// 次のチェック時刻まで最初のパケットが失われても、古い分を送り直す。
+				host.RecordChecksum(119, states);
+				Assert::AreEqual(59, host.MakeControl(1).CheckFrame);
+				Deliver(client, 0, first); // 自分がまだそのフレームへ到達していない。
+				Assert::AreEqual(-1, client.GetDesyncFrame());
+				client.RecordChecksum(59, states);
+				Deliver(host, 1, client.MakeControl());
+				Assert::AreEqual(-1, host.GetDesyncFrame());
+				Assert::AreEqual(119, host.MakeControl(1).CheckFrame);
+				if (changed == 0) states[3].Position.Z = 2.0f; // ダミーも比較する。
+				if (changed == 1) states[2].Percent = 12.0f;
+				if (changed == 2) states[0].Score = 1;
+				client.RecordChecksum(119, states);
+				Deliver(client, 0, host.MakeControl(1));
+				Deliver(host, 1, client.MakeControl());
+				Assert::AreEqual(119, client.GetDesyncFrame());
+				Assert::AreEqual(119, host.GetDesyncFrame());
+				Assert::AreEqual(1, host.GetDesyncPeer());
+			}
+		}
+
+		TEST_METHOD(Disconnect_HostFillsMissingInputAndKeepsSurvivorInSync)
+		{
+			SessionNetwork network(3, 0);
+			auto& host = network.Nodes[0];
+			auto& survivor = network.Nodes[2];
+			network.Capture();
+			network.Exchange();
+			const auto late = network.Nodes[1].MakeInputs();
+			host.SetTime(2999);
+			Deliver(host, 2, survivor.MakeControl());
+			host.CheckTimeouts();
+			Assert::AreEqual(0, static_cast<int>(host.GetDisconnectedMask()));
+			host.SetTime(3000);
+			host.CheckTimeouts();
+			Assert::AreEqual(2, static_cast<int>(host.GetDisconnectedMask()));
+			Assert::AreEqual(7, static_cast<int>(host.GetMask())); // 人の枠はダミーへ変えない。
+			LOCKSTEP_FRAME a, b;
+			Assert::IsTrue(host.TakeFrame(a));
+			Assert::AreEqual(static_cast<int>(MakeInput(1, 0).MoveX), static_cast<int>(a.Inputs[1].MoveX)); // 配布済みは保持。
+			Assert::IsTrue(survivor.TakeFrame(b));
+			for (int frame = 1; frame < LOCKSTEP_HISTORY * 2; ++frame) {
+				host.CaptureInput(MakeInput(0, frame));
+				survivor.CaptureInput(MakeInput(2, frame));
+				Deliver(host, 2, survivor.MakeInputs());
+				Deliver(host, 1, late); // タイムアウトした人から遅れて届いても復帰させない。
+				Assert::IsTrue(host.TakeFrame(a));
+				Deliver(survivor, 0, host.MakeInputs(2));
+				Assert::IsTrue(survivor.TakeFrame(b));
+				Assert::AreEqual(frame, b.Number);
+				Assert::AreEqual(0, static_cast<int>(b.Inputs[1].MoveX));
+				Assert::AreEqual(0, static_cast<int>(b.Inputs[1].Buttons));
+				Assert::AreEqual(-1, b.Inputs[1].Equip.Number);
+				Assert::AreEqual(static_cast<int>(a.Inputs[2].MoveX), static_cast<int>(b.Inputs[2].MoveX));
+			}
+		}
+
+		TEST_METHOD(Disconnect_ClientUsesHeartbeatAndStopsAfterThreeSeconds)
+		{
+			SessionNetwork network(2, 3);
+			auto& client = network.Nodes[1];
+			client.SetTime(2000);
+			Deliver(client, 0, network.Nodes[0].MakeControl(1)); // 対戦中のSTATEも生存確認。
+			client.SetTime(4999);
+			client.CheckTimeouts();
+			Assert::IsTrue(client.IsRunning());
+			client.SetTime(5000);
+			client.CheckTimeouts();
+			Assert::IsFalse(client.IsRunning());
+			Assert::AreEqual(static_cast<int>(SESSION_FAILURE_TIMEOUT), static_cast<int>(client.GetFailure()));
+		}
+
+		TEST_METHOD(Compatibility_RefusesVersionOrBuildBeforeAssigningSlot)
+		{
+			for (bool changeVersion : { true, false }) {
+				NET_OPTIONS options;
+				options.Mode = NET_MODE_HOST;
+				SessionCalc host, client;
+				host.Initialize(options, 100);
+				options.Mode = NET_MODE_JOIN;
+				client.Initialize(options, 101);
+				auto request = client.MakeControl();
+				if (changeVersion) ++request.Version;
+				else request.Build = LOCKSTEP_CURRENT_BUILD == LOCKSTEP_BUILD_DEBUG ? LOCKSTEP_BUILD_RELEASE : LOCKSTEP_BUILD_DEBUG;
+				Assert::AreEqual(-1, host.Join(request.Nonce, request.Version, request.Build));
+				Assert::AreEqual(1, static_cast<int>(host.GetMask()));
+				// 版が違う制御通知も読めるので、タイムアウトを待たず理由を返せる。
+				std::vector<uint8_t> bytes;
+				Assert::IsTrue(SessionCalc::Encode(request, bytes));
+				SESSION_MESSAGE decoded;
+				Assert::IsTrue(SessionCalc::Decode(bytes.data(), bytes.size(), decoded));
+				const auto expected = changeVersion ? SESSION_FAILURE_VERSION : SESSION_FAILURE_BUILD;
+				Assert::AreEqual(static_cast<int>(expected), static_cast<int>(SessionCalc::CheckCompatibility(decoded)));
+				auto rejection = host.MakeControl();
+				rejection.Type = SESSION_REJECT;
+				rejection.Nonce = 101;
+				rejection.Version = request.Version;
+				rejection.Build = request.Build;
+				Deliver(client, 0, rejection);
+				Assert::AreEqual(static_cast<int>(expected), static_cast<int>(client.GetFailure()));
+				Assert::AreEqual(-1, client.GetLocalSlot());
+			}
+		}
+
+		TEST_METHOD(Monitor_RoundTripPingAndCountsOnlyRunningInputWaits)
+		{
+			SessionNetwork network(2, 0);
+			auto& host = network.Nodes[0];
+			auto& client = network.Nodes[1];
+			host.SetTime(100);
+			client.SetTime(1000); // PCどうしの時計の原点は違ってよい。
+			Deliver(client, 0, host.MakeControl(1));
+			host.SetTime(140);
+			Deliver(host, 1, client.MakeControl());
+			Assert::AreEqual(40, host.GetPing(1));
+			client.SetTime(1040);
+			Deliver(client, 0, host.MakeControl(1));
+			Assert::AreEqual(40, client.GetPing(0));
+			network.Capture();
+			LOCKSTEP_FRAME frame;
+			Assert::IsFalse(host.TakeFrame(frame));
+			Assert::IsFalse(host.TakeFrame(frame));
+			Assert::AreEqual(uint64_t(2), host.GetWaitFrames());
+			network.Exchange();
+			Assert::IsTrue(host.TakeFrame(frame));
+			Assert::AreEqual(uint64_t(2), host.GetWaitFrames());
+			host.ReturnToLobby();
+			Assert::IsFalse(host.TakeFrame(frame));
+			Assert::AreEqual(uint64_t(2), host.GetWaitFrames());
+		}
+
+		TEST_METHOD(Disconnect_LobbyReleasesSlotBeforeRosterIsLocked)
+		{
+			NET_OPTIONS options;
+			options.Mode = NET_MODE_HOST;
+			SessionCalc host;
+			host.Initialize(options, 100);
+			Assert::AreEqual(1, host.Join(101));
+			host.SetTime(3000);
+			host.CheckTimeouts();
+			Assert::AreEqual(1, static_cast<int>(host.GetMask()));
+			Assert::AreEqual(1, host.Join(102));
+		}
 	};
 }
