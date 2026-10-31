@@ -41,6 +41,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 static Game g_Game;
 
 static DWORD g_Fps = 0;	// 直近1秒の FPS
+static uint64_t g_Progress = 0; // 直近1秒に通信の入力で進んだフレーム数
 
 /// 自分の exe の中身から識別番号を作る（オンラインで、違う exe どうしをつながないため。読めなければ 0）
 static uint32_t MakeProgramId()
@@ -74,7 +75,8 @@ static void RefreshTitle(HWND hWnd)
 	const NetSession& net = g_Game.GetNetSession();
 	const int mode = ActionGetEquipMode(net.IsOnline() ? ActionGetEquipPlayer() : equipPlayer);
 	const ArmManager& arms = g_Game.GetArms(equipPlayer);
-	sprintf_s(title, "%s%s  FPS: %lu  %dP%s 左：%s 右：%s%s  振動: %s（SHARE / V） %s", TITLE, net.GetDesyncText().c_str(), g_Fps,
+	const std::string progress = net.IsOnline() ? " 進行: " + std::to_string(g_Progress) + "/s" : "";
+	sprintf_s(title, "%s%s  FPS: %lu%s  %dP%s 左：%s 右：%s%s  振動: %s（SHARE / V） %s", TITLE, net.GetDesyncText().c_str(), g_Fps, progress.c_str(),
 		equipPlayer + 1, net.IsOnline() ? "" : "（F1-F4）", ArmGetName(arms.GetType(0)), ArmGetName(arms.GetType(1)),
 		mode == 0 ? "  [左腕を切り替え中：数字キー 1-6]" : (mode == 1 ? "  [右腕を切り替え中：数字キー 1-6]" : ""),
 		PadIsRumbleEnabled() ? "オン" : "オフ", net.GetStatusText().c_str());
@@ -163,6 +165,7 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
 	timeBeginPeriod(1);	// 分解能を設定
 	dwExecLastTime = dwFPSLastTime = timeGetTime();	// システム時刻をミリ秒単位で取得
 	dwCurrentTime = dwFrameCount = 0;
+	uint64_t advancedLast = 0;
 
 	// 1フレームの長さ（ミリ秒）。17・17・16 を繰り返すと、3フレームで50ミリ秒＝ちょうど1秒に60回になる
 	const DWORD FRAME_TIME[3] = { 17, 17, 16 };
@@ -191,6 +194,9 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
 			// FPS（1秒間に何回 Update・Draw したか）をタイトルバーに出す
 			DWORD elapsed = dwCurrentTime - dwFPSLastTime;	// 1000ミリ秒ちょうどより少し長いので、四捨五入して表示する
 			g_Fps = (dwFrameCount * 1000 + elapsed / 2) / elapsed;
+			const uint64_t advanced = g_Game.GetNetSession().GetAdvancedFrames();
+			g_Progress = advanced >= advancedLast ? ((advanced - advancedLast) * 1000 + elapsed / 2) / elapsed : 0;
+			advancedLast = advanced;
 			RefreshTitle(hWnd);
 
 			dwFPSLastTime = dwCurrentTime;				// FPSを測定した時刻を保存
@@ -222,6 +228,7 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
 		else
 		{
 			// 次のフレームまで少し休む（休まずに回り続けると、CPU を1コアまるごと使ってしまう）
+			g_Game.PollNetwork();
 			Sleep(1);
 		}
 	} while (msg.message != WM_QUIT);

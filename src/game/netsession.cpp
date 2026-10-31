@@ -93,12 +93,32 @@ void NetSession::Send(const NET_ADDRESS& address, const SESSION_MESSAGE& message
 	if (SessionCalc::Encode(message, bytes)) m_Socket.Send(address, bytes.data(), bytes.size());
 }
 
-void NetSession::Update()
+void NetSession::Poll()
 {
 	if (!IsOnline()) return;
+	const int32_t before = m_Calc.GetCompleteThrough();
 	m_Calc.SetTime(static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
 		std::chrono::steady_clock::now() - m_Started).count()));
 	Receive();
+	if (m_Calc.IsHost() && m_Calc.HasRound() && m_Calc.GetCompleteThrough() > before) {
+		for (int slot = 1; slot < FIGHTER_COUNT; ++slot) {
+			if (m_Peers[slot].Port != 0 && (m_Calc.GetDisconnectedMask() & (1u << slot)) == 0)
+				Send(m_Peers[slot], m_Calc.MakeInputs(slot));
+		}
+	}
+}
+
+bool NetSession::TakeFrame(LOCKSTEP_FRAME& frame)
+{
+	if (!m_Calc.TakeFrame(frame)) return false;
+	++m_AdvancedFrames;
+	return true;
+}
+
+void NetSession::Update()
+{
+	if (!IsOnline()) return;
+	Poll();
 	m_Calc.CheckTimeouts();
 	ReportDesync();
 	if (m_Calc.GetFailure() != SESSION_FAILURE_NONE) {

@@ -4,11 +4,14 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）。
 決まったことは [decisions.md](decisions.md)、腕のモデルの原点と長さは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、終わったタスクの記録は [archive/](archive/)（普段は読まない）。
 
-- 最終更新：2026-10-31（Claude。Shota の Proto1、Visual Studio 2022 Community の PC。No.52 のプランが確認済み。次は Codex が実装）
+- 最終更新：2026-10-31（Codex。Shota の Proto1、Visual Studio 2022 Community の PC。No.52は実装・検証済み、ClaudeのPRレビュー待ち）
 
 ---
 
 ## 1. 今の状態
+
+- **No.52はCodexが実装・検証済み、ClaudeのPRレビュー待ち**。Debug / Release（x64）の本体ビルドは警告0、run-tests.ps1は両構成253件成功。Hold補正・読み書き・全員分の受領確認をまとめて壊し、対象3テストの失敗を1回で確認して復元済み（while条件は変更なし）。変更C++のBOM付きUTF-8・CRLFを確認。
+- x64/Debugから127.0.0.1の2つ起動で接続・試合進行・表示を確認（開始のEnterは管理者が操作）。両側で進行60/s、待ち0f、DESYNCなし。変更前Releaseのロビーping15〜17msに対し変更後は概ね0〜5ms。4人Tailscaleは未確認。
 
 - **No.26 オンライン対戦は完了**（PR #90・#92・#93。127.0.0.1 の2つ起動で同期・切断・ビルド拒否を確認済み）。2026-10-31 に Tailscale で離れた PC（鈴木さん）と2人で遊べた（`tailscale ping` は直接で往復約11ms、ゲームの ping はふだん30ms以下、待ち 0f）。
 - No.47 の腕の取付と強さは管理者が遊んで調整する。マウス操作は止めたまま。
@@ -17,38 +20,12 @@
 - **No.50 完了**：Tailscale の2人対戦で ping 30ms 以下なのに delay 9 になったので、自動の delay に使う ping を「直近2秒の最大」から「人ごとの 90% の値の、いちばん遅い人の値」にし、同じ `Echo` の再送は測らないようにした（`SessionCalc::GetAutoDelayPing`）。2人（Tailscale）では delay 5、4人では delay 7（ping 33・66・33ms）になった。4人で `--delay 4` にすると待ちが合計 500f を超えた（「待ち」は試合が始まってからの合計）。
 - **No.51 DESYNC 対策**：4人の Tailscale 対戦でタイトルバーに DESYNC（PC ごとに試合の中身がずれた）が出た。各自が自分でビルドした exe を使っていたこと・sinf などが CPU で FMA3 の計算に切り替わることが原因と考え、起動時に `_set_FMA3_enable(0)`、exe の中身から作った識別番号を接続時に比べて違う exe は断る（`SESSION_FAILURE_PROGRAM`、通信の版 3）、DESYNC をタイトルバーの先頭に出す、を入れた。テスト・127.0.0.1 の2つ起動だけで確かめた。**未確認**：ホストの Release の exe を全員に配って4人で遊び、DESYNC が出ないか（出たら、ずれた値を記録して比べる仕組みを足す）。
 
-## 2. 次にやること：No.52 の段階2（実装：Codex／確認：Claude）
+## 2. 次にやること：No.52 のClaudeレビュー
 
-ブランチ `feature/reduce-delay`。下のプランは管理者が確認済み（2026-10-31。(a) 版 4 にする、(b) 余裕は 2 のまま、(c) Codex が実装）。
-Codex が実装して PR を出したら、Claude が `/code-review <PR番号> --comment` で確かめる。
-
-### No.52 プラン：オンラインの delay を減らす
-
-**分かったこと（コードを読んで）**
-- 受け取り・送り・時刻の更新（`SetTime`）が、どれも 1/60 秒に1回の `NetSession::Update` の中だけ。届いたパケットは次のフレームまで平均 8ms・最大 17ms 待つ。
-- 参加者の入力が他の参加者へ届く道：参加者A が送る →（ホストの次のフレームまで待つ）→ ホストが配る →（B の次のフレームまで待つ）→ B が使う。回線の時間のほかに待ちが2回入る。
-- ping も同じで、相手が返事（`Echo`）を送るのは相手の次のフレーム。だからゲームの ping が回線より 15〜25ms 大きい。自動の delay（`SessionCalcAutoDelay`）はこの ping から決めるので、待ちの分だけ delay も 1〜2 大きくなっている。
-- ホストが配るのは全員の入力がそろったフレームだけ（`LockstepCalc::SelectUnacknowledged`）。だから「そろった瞬間にすぐ配る」と、待ちを1回なくせる。
-
-**変えること**
-1. **フレームのすき間でも受け取る**：`main.cpp` の `Sleep(1)` の前で `Game::PollNetwork()` → `NetSession::Poll()` を呼ぶ。`Poll` は時刻を更新して（`SetTime`）受け取るだけ。切断の判定・入力の採取・`TakeFrame` は今のまま 1/60 秒に1回（`Update`）。
-2. **ホストはそろったらすぐ配る**：`Poll` で受け取ったあと、全員分そろったフレームが増えていたら（`SessionCalc` に `GetCompleteThrough()` を足して前と比べる）、その場で全員に `MakeInputs` を送る。増えていなければ送らない（増えるのは、そろったフレーム1つにつき1人1回。1秒に60個ほど）。
-3. **ping から返事までの待ちを引く**：`SESSION_MESSAGE` に `Hold`（相手の `Stamp` を受け取ってから返すまでのミリ秒）を足し、ping ＝ 経った時間 − `Hold` にする。これで ping が回線の往復に近くなり、自動の delay も自然に下がる。パケットの形が変わるので通信の版を 4 にする。
-4. **ゲームを進めた回数をタイトルバーに出す**：オンラインのとき、FPS の横に「進行: 〇/s」（1秒に `TakeFrame` で進んだフレーム数）。FPS は通信待ちでも 60 と出るので、止まっているかがこれで分かる。
-
-**触るファイル**：`src/core/main.cpp`（すき間で呼ぶ・タイトルバー）、`src/game/game.h/.cpp`（`PollNetwork`）、`src/game/netsession.h/.cpp`（`Poll`・すぐ配る・進んだ回数）、`src/net/sessioncalc.h/.cpp`（`Hold`・`GetCompleteThrough`・版の読み書き）、`src/net/lockstepcalc.h`（版 4）、`tests/Proto1Tests/sessioncalc_test.cpp`、`docs/dev/01_DX11基盤の構成.md`（通信の流れ）。
-
-**テスト（主な動きだけ）**：`Hold` を引いた ping になる／ホストで全員分そろうと `GetCompleteThrough` が進む（1人分だけでは進まない）／`Hold` の読み書きが元に戻る。わざと壊して失敗することも確かめる。
-
-**確かめ方**：単体テスト・Debug / Release のビルド（警告 0）。127.0.0.1 の2つ起動で、つながる・試合が進む・ping が今より小さい・「進行」が 60 前後・待ちが増えない。そのあと管理者に Tailscale の4人で、ping・自動の delay・待ち・「進行」を前（4人で delay 7、ping 33・66・33ms）と比べてもらう（全員に同じ Release の exe を配る）。
-
-**見込み**：ping が 15〜25ms 下がり、自動の delay が 1〜2 下がる（4人で 7 → 5〜6）。それでも足りなければ、次の段で「参加者どうしが直接送る」かロールバックを考える（今回は作らない）。
-
-**確認してほしいこと**
-- (a) 3 の `Hold` を入れて通信の版を 4 にしてよいか（古い exe とはつながらなくなる。No.51 から全員同じ exe が必要なので、手間は変わらない）。
-- (b) 自動の delay の余裕（`AUTO_DELAY_MARGIN` = 2）は今回は変えず、遊んだ結果を見てから決める、でよいか。
-- (c) 実装は Claude か Codex か。
-
+1. feature/reduce-delayのPRをClaudeがレビューする（実装：Codex／レビュー：Claude）。プランの1〜4（Poll・全員分が新しくそろったときの即時配信・Holdによるping補正と版4・進行数表示）は実装済み。AUTO_DELAY_MARGINは2。切断・Decide・入力採取・TakeFrameは1/60秒のまま。
+2. 指摘があれば修正と必要な確認後に保存する。レビュー完了後、tasks.mdとNotionのNo.52を完了にしてマージする。今はレビュー待ちのため進行中・未マージ。
+3. 管理者が全員に同じReleaseのexeを配り、Tailscale4人でping・自動delay・待ち・進行を以前（delay7、ping33・66・33ms）と比べる。No.51のDESYNC再発も確認する。
+4. No.52が完了したらNo.19の段階1（プラン）へ進む。
 ---
 
 - 順番（管理者が決めた）：No.52 → No.19。No.40 ハサミは最後。No.24・No.27 が未完了なので実装へ進まない。

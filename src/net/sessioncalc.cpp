@@ -4,7 +4,7 @@
 
 // 調整用の値（入力のP1N1と区別するP1S1）
 static constexpr uint32_t SESSION_MAGIC = 0x31533150;
-static constexpr size_t SESSION_HEADER_BYTES = 50;
+static constexpr size_t SESSION_HEADER_BYTES = 54;
 
 static uint32_t s_Program = 0; // この実行ファイルの識別番号（NetSession が exe の中身から作る）。
 
@@ -127,7 +127,7 @@ bool SessionCalcParseOptions(const std::string& commandLine, NET_OPTIONS& result
 int SessionCalcAutoDelay(int pingMilliseconds)
 {
 	if (pingMilliseconds < 0) return AUTO_DELAY_MIN;
-	// 往復時間には1フレームごとの送受信の待ちも入っているので、フレーム数へ切り上げて余裕を足すだけでよい。
+	// 返信までの待ちを除いた往復時間をフレーム数へ切り上げ、通信のゆれの余裕を足す。
 	const int frames = (pingMilliseconds * 60 + 999) / 1000 + AUTO_DELAY_MARGIN;
 	return (std::max)(AUTO_DELAY_MIN, (std::min)(AUTO_DELAY_MAX, frames));
 }
@@ -293,6 +293,7 @@ SESSION_MESSAGE SessionCalc::MakeControl(int peer) const
 	if (peer >= 0 && peer < FIGHTER_COUNT) {
 		message.Stamp = static_cast<uint32_t>(m_Now);
 		message.Echo = m_Echo[peer];
+		message.Hold = static_cast<uint32_t>(m_Now - m_LastReceived[peer]);
 		message.CheckAck = m_CheckedThrough[peer];
 		const auto check = m_Checksums.upper_bound(m_CheckAcknowledged[peer]);
 		if (check != m_Checksums.end()) {
@@ -427,8 +428,8 @@ void SessionCalc::ReceiveMonitor(int peer, const SESSION_MESSAGE& message)
 	if (message.Echo != 0 && message.Echo != m_LastEcho[peer]) {
 		m_LastEcho[peer] = message.Echo;
 		const uint32_t elapsed = static_cast<uint32_t>(m_Now) - message.Echo;
-		if (elapsed < DISCONNECT_MILLISECONDS) {
-			m_Ping[peer] = static_cast<int>(elapsed);
+		if (elapsed < DISCONNECT_MILLISECONDS && message.Hold <= elapsed) {
+			m_Ping[peer] = static_cast<int>(elapsed - message.Hold);
 			m_PingHistory[peer].emplace_back(m_Now, m_Ping[peer]);
 		}
 	}
@@ -541,6 +542,7 @@ bool SessionCalc::Encode(const SESSION_MESSAGE& message, std::vector<uint8_t>& b
 	WriteWord(bytes, message.Checksum, 4);
 	WriteWord(bytes, static_cast<uint32_t>(message.CheckAck), 4);
 	WriteWord(bytes, message.Program, 4);
+	WriteWord(bytes, message.Hold, 4);
 	bytes.insert(bytes.end(), payload.begin(), payload.end());
 	return true;
 }
@@ -569,6 +571,7 @@ bool SessionCalc::Decode(const uint8_t* bytes, size_t size, SESSION_MESSAGE& res
 	message.Checksum = ReadWord(bytes, 4);
 	const uint32_t checkAck = ReadWord(bytes, 4);
 	message.Program = ReadWord(bytes, 4);
+	message.Hold = ReadWord(bytes, 4);
 	if ((checkFrame > INT32_MAX && checkFrame != UINT32_MAX) || (checkAck > INT32_MAX && checkAck != UINT32_MAX)) return false;
 	message.CheckFrame = checkFrame == UINT32_MAX ? -1 : static_cast<int32_t>(checkFrame);
 	message.CheckAck = checkAck == UINT32_MAX ? -1 : static_cast<int32_t>(checkAck);

@@ -22,6 +22,8 @@ public:
 	void Finalize();
 	/// @brief 入力の更新後にゲームを1フレーム進める
 	void Update();
+	/// @brief フレームのすき間に通信を受け取り、そろった入力を中継する
+	void PollNetwork() { m_Net.Poll(); }
 	/// @brief 人ごとの画面に 3D と HUD を描き、最後に画面全体のおおいを重ねる
 	void Draw() const;
 	/// @brief タイトルバーに表示する左右の装備を読む（ダミーのスロットは装備を変えられない）

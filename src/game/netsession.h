@@ -14,8 +14,12 @@ public:
 	void Finalize();
 	/// @brief 受信・ロビーの機器選択・未採取の入力の固定・再送を行う（待たない）
 	void Update();
+	/// @brief 時刻を更新して受信し、ホストは新しくそろった入力だけをすぐ配る
+	void Poll();
 	/// @brief 全員の入力が届いたら1フレームを取り出す
-	bool TakeFrame(LOCKSTEP_FRAME& frame) { return m_Calc.TakeFrame(frame); }
+	bool TakeFrame(LOCKSTEP_FRAME& frame);
+	/// @brief このオブジェクトのTakeFrameで進んだフレームの合計を取得する（接続し直しても保つ）
+	uint64_t GetAdvancedFrames() const { return m_AdvancedFrames; }
 	/// @brief 実行直後の全4体の状態を渡し、60フレームごとにずれを見張る
 	void RecordChecksum(int32_t frame, const LOCKSTEP_STATE (&states)[FIGHTER_COUNT]);
 	/// @brief 接続を保ってロビーへ戻る
@@ -57,4 +61,5 @@ private:
 	std::string m_Error;
 	std::chrono::steady_clock::time_point m_Started;
 	int32_t m_ReportedDesync = -1;
+	uint64_t m_AdvancedFrames = 0;
 };
