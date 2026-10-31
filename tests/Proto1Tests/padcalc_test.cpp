@@ -26,6 +26,60 @@ namespace Proto1Tests
 	TEST_CLASS(PadCalcTest)
 	{
 	public:
+		TEST_METHOD(XInput_PositionButtonsTriggerAndStick)
+		{
+			PAD_STATE state{};
+			PadCalcParseXInput(0x1000, 255, 0, 0, 32767, 0, 0, state);
+			Assert::AreEqual((unsigned int)(PAD_BUTTON_CROSS | PAD_BUTTON_L2), state.Buttons);
+			Assert::AreEqual(1.0f, state.LeftStick.Y, PAD_EPSILON);
+			PadCalcParseXInput(0x2000, 0, 0, 0, 0, 0, 0, state);
+			Assert::AreEqual((unsigned int)PAD_BUTTON_CIRCLE, state.Buttons);
+		}
+
+		TEST_METHOD(SwitchPro_FullPositionButtonsAndStick)
+		{
+			Assert::AreEqual((int)PAD_MODEL_SWITCH_PRO, (int)PadCalcIdentifyModel(0x057E, 0x2009));
+			unsigned char report[64] = { 0x30 };
+			report[3] = 0x04; // 下の B
+			report[5] = 0x80; // ZL
+			report[6] = 0; report[7] = 0x08; report[8] = 0xE4; // X=2048、Y=3648
+			report[9] = 0; report[10] = 0x08; report[11] = 0x80;
+			PAD_STATE state{};
+			Assert::IsTrue(PadCalcParseSwitchProReport(report, 64, state));
+			Assert::AreEqual((unsigned int)(PAD_BUTTON_CROSS | PAD_BUTTON_L2), state.Buttons);
+			Assert::AreEqual(0.0f, state.LeftStick.X, PAD_EPSILON);
+			Assert::AreEqual(1.0f, state.LeftStick.Y, PAD_EPSILON);
+			report[3] = 0x08; report[5] = 0; // 右の A
+			Assert::IsTrue(PadCalcParseSwitchProReport(report, 64, state));
+			Assert::AreEqual((unsigned int)PAD_BUTTON_CIRCLE, state.Buttons);
+		}
+
+		TEST_METHOD(SwitchPro_SimplePositionButtonsAndDpad)
+		{
+			unsigned char report[12] = { 0x3F, 0x01, 0, 1, 0, 0x80, 0, 0x80, 0, 0x80, 0, 0x80 };
+			PAD_STATE state{};
+			Assert::IsTrue(PadCalcParseSwitchProReport(report, 12, state));
+			Assert::AreEqual((unsigned int)(PAD_BUTTON_CROSS | PAD_BUTTON_DPAD_UP | PAD_BUTTON_DPAD_RIGHT), state.Buttons);
+			report[1] = 0x02; report[3] = 8;
+			Assert::IsTrue(PadCalcParseSwitchProReport(report, 12, state));
+			Assert::AreEqual((unsigned int)PAD_BUTTON_CIRCLE, state.Buttons);
+		}
+
+		TEST_METHOD(SwitchPro_InitializationBytes)
+		{
+			unsigned char report[64]{};
+			Assert::IsTrue(PadCalcBuildSwitchUsbCommand(report, 64, 0x02));
+			Assert::AreEqual(0x80, (int)report[0]);
+			Assert::AreEqual(0x02, (int)report[1]);
+			Assert::IsTrue(PadCalcBuildSwitchUsbCommand(report, 64, 0x04));
+			Assert::AreEqual(0x04, (int)report[1]);
+			Assert::IsTrue(PadCalcBuildSwitchInputMode(report, 64, 7));
+			const unsigned char expected[] = { 0x01, 7, 0, 1, 0x40, 0x40, 0, 1, 0x40, 0x40, 3, 0x30 };
+			for (int i = 0; i < 64; ++i) {
+				Assert::AreEqual(i < 12 ? (int)expected[i] : 0, (int)report[i]);
+			}
+		}
+
 		TEST_METHOD(Identify_SonyModels)
 		{
 			Assert::AreEqual((int)PAD_MODEL_DS4, (int)PadCalcIdentifyModel(0x054C, 0x05C4));
