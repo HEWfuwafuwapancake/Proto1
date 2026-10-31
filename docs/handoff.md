@@ -22,10 +22,11 @@
 
 ## 2. 次にやること：No.52 のClaudeレビュー
 
-1. feature/reduce-delayのPRをClaudeがレビューする（実装：Codex／レビュー：Claude）。プランの1〜4（Poll・全員分が新しくそろったときの即時配信・Holdによるping補正と版4・進行数表示）は実装済み。AUTO_DELAY_MARGINは2。切断・Decide・入力採取・TakeFrameは1/60秒のまま。
+1. feature/reduce-delayの[PR #99](https://github.com/HEWfuwafuwapancake/Proto1/pull/99)をClaudeがレビューする（実装：Codex／レビュー：Claude）。プランの1〜4（Poll・全員分が新しくそろったときの即時配信・Holdによるping補正と版4・進行数表示）は実装済み。AUTO_DELAY_MARGINは2。切断・Decide・入力採取・TakeFrameは1/60秒のまま。
 2. 指摘があれば修正と必要な確認後に保存する。レビュー完了後、tasks.mdとNotionのNo.52を完了にしてマージする。今はレビュー待ちのため進行中・未マージ。
 3. 管理者が全員に同じReleaseのexeを配り、Tailscale4人でping・自動delay・待ち・進行を以前（delay7、ping33・66・33ms）と比べる。No.51のDESYNC再発も確認する。
 4. No.52が完了したらNo.19の段階1（プラン）へ進む。
+
 ---
 
 - 順番（管理者が決めた）：No.52 → No.19。No.40 ハサミは最後。No.24・No.27 が未完了なので実装へ進まない。
