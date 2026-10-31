@@ -4,7 +4,7 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）。
 決まったことは [decisions.md](decisions.md)、腕のモデルの原点と長さは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、終わったタスクの記録は [archive/](archive/)（普段は読まない）。
 
-- 最終更新：2026-10-31（Claude。Shota の Proto1、Visual Studio 2022 Community の PC。No.51 のプランを書いた。管理者の確認待ち）
+- 最終更新：2026-10-31（Claude。Shota の Proto1、Visual Studio 2022 Community の PC。No.51 のプランは管理者確認済み。Codex が段階2）
 
 ---
 
@@ -16,35 +16,50 @@
 - **No.49 delay の自動設定は完了**。4人の対戦で delay 3 では入力待ちで止まりラグかったため、ホストが試合の開始時に ping から決める（`--delay` を付けたら固定）。
 - **No.50 完了**：Tailscale の2人対戦で ping 30ms 以下なのに delay 9 になったので、自動の delay に使う ping を「直近2秒の最大」から「人ごとの 90% の値の、いちばん遅い人の値」にし、同じ `Echo` の再送は測らないようにした（`SessionCalc::GetAutoDelayPing`）。テストだけで確かめた。**未確認**：もう一度 Tailscale で遊んで `delay 〇（自動）` が 4 前後・待ち 0f か。4人で「待ち 〇f」が増えないか。それでもカクつくなら、ホストを通さずに直接送る・ロールバックを考える。
 
-## 2. 次にやること：No.51 ほかのコントローラーへの対応（段階1 プラン。管理者の確認待ち）
+## 2. 次にやること：No.51 ほかのコントローラーへの対応（Codex が段階2）
 
-管理者の依頼（2026-10-31）。対象は次の3つ。今の `src/input/pad.cpp` はソニーの VID（0x054C）だけを Raw Input の HID で読み、ほかの機器は無視している。
+管理者の依頼（2026-10-31）。プランは管理者確認済み（2026-10-31）。**Switch 2 Pro コンはいったん保留**（USB でも起動の合図を bulk の口に送る必要があり、WinUSB ドライバーの入れ替えが要るため）。
+対象は次の2つ。今の `src/input/pad.cpp` はソニーの VID（0x054C）だけを Raw Input の HID で読み、ほかの機器は無視している。作業ブランチは `feature/pad-support-plan`（プランを push 済み）。A と B をまとめて1つの PR にする。
 
 | コントローラー | PC へのつなぎ方と見え方 | 読み方 |
 |---|---|---|
-| GameSir Super Nova | 2.4G の受信機か有線で **XInput モード**（－と＋を長押しで切り替え。Bluetooth では XInput にならない） | 段階A の XInput |
-| Switch 2 Pro コン（057E:2069） | USB でも、本体が送る「起動の合図」を受けるまで入力を送らない。合図は HID ではなく USB の別の口（bulk）に送るので、Windows では WinUSB ドライバー（Zadig などで入れ替え）が要る。Bluetooth は PC では使えない | **Steam から起動**すると Steam が XInput の仮想パッドにする → 段階A で読める。直接読むのはやらない（下の「決めること」1） |
-| 茶色のコントローラー（Switch 用・ジャイロ・連射つき） | 型番が分からない。この種類はふつう **Switch の Pro コン（057E:2009）のふり**をする | 段階B の Switch Pro コン形式（実機の VID/PID を先に確かめる） |
+| GameSir Super Nova | 2.4G の受信機か有線で **XInput モード**（－と＋を長押しで切り替え。Bluetooth では XInput にならない） | A：XInput |
+| 茶色のコントローラー（Switch 用・ジャイロ・連射つき。型番は分からない） | この種類はふつう **Switch の Pro コン（VID 057E・PID 2009）のふり**をする（Bluetooth・有線） | B：Switch Pro コン形式（GameSir を Switch モードにしたときもこれ） |
 
-**段階A：XInput（Xbox 形式）のパッドを読む**（GameSir・Steam 経由の Switch 2 Pro コン・ほかの多くのパッド）
-- `src/input/pad.cpp` に XInput（`Xinput.h`、`XInput1_4.lib`。Windows 標準）を足す。`PadUpdate` で `XInputGetState(0〜3)` を読み、今の4つの番号（`PAD_COUNT`）に、つないだ順で DS4 / DualSense と混ぜて割り当てる。`PAD_DEVICE` に「XInput の何番か」を持たせ、`PAD_MODEL_XINPUT` を足す。
-- つながっていない XInput の番号を毎フレーム調べると重いので、未接続の番号は 1 秒ごとに調べる（調整用の値）。
-- 変換は `src/input/padcalc` に DirectX・Windows なしの関数 `PadCalcParseXInput`（ボタンのビット・スティックの -32768〜32767・トリガー 0〜255 → `PAD_STATE`）を足し、テストする。ボタンは**位置で合わせる**：下 A→×、右 B→○、左 X→□、上 Y→△、LB/RB→L1/R1、LT/RT→L2/R2（少し押せば押した扱い、調整用の値）、View→SHARE、Menu→OPTIONS、Guide は読めないので PS はなし。
-- 振動は `XInputSetState`（左＝大きいモーター、右＝小さいモーター）。ライトバーはないので何もしない。
-- XInput のパッドは Raw Input の HID にも出るが、今の `PadCalcIdentifyModel` はソニー以外を無視するので二重にならない。
+**全体**
+- 番号は今の4つ（`PAD_COUNT`）を、DS4・DualSense・XInput・Switch Pro コンで共有し、つないだ順に空いている番号へ入れる（今と同じ。外れた番号は空ける）。`action.cpp` と `src/game` は変えない（`PAD_BUTTON` で読んでいるので）。
+- ボタンは**位置で合わせる**（管理者確認済み）：下→×、右→○、左→□、上→△。つまり Xbox 配置は A→×・B→○・X→□・Y→△、Switch 配置は B→×・A→○・Y→□・X→△。どのパッドでも下のボタンでジャンプ、右のボタンで決定。
+- `PAD_MODEL` に `PAD_MODEL_XINPUT`・`PAD_MODEL_SWITCH_PRO` を足す。`pad.h` / `padcalc.h` の `@file` の説明、`docs/dev/01_DX11基盤の構成.md` と `docs/plan/01_企画の要点.md` の対応パッドの記述も直す。
+- Debug のとき、対応外のゲームパッド（Raw Input の usage 0x01/0x05）を見つけたら、VID と PID を1回だけ Debug 出力に出す（茶色のものが 057E:2009 でなかったときに調べるため）。
 
-**段階B：Switch の Pro コン形式（057E:2009）を Raw Input の HID で読む**（茶色のコントローラー、GameSir の Switch モード）
-- `PadCalcIdentifyModel` に 057E:2009 → `PAD_MODEL_SWITCH_PRO` を足す。Debug のときは、対応外のゲームパッドをつないだら VID/PID を Debug 出力に出す（茶色のものの確認に使う）。
-- Bluetooth は何も送らなくても届く簡易レポート（番号 0x3F）を読む。USB で入力が来ないときは、つないだ直後に 0x80 0x02 → 0x80 0x04 を送り、届く 0x30 のレポートを読む（両方の読み方を `padcalc` に作り、テストする）。ボタンは段階A と同じく位置で合わせる（Switch の B が下＝×、A が右＝○）。
-- 振動（HD 振動の形式が難しい）とジャイロは作らない。
+**A：XInput（Xbox 形式）**
+- `pad.cpp` に XInput を足す（`<Xinput.h>`、`#pragma comment(lib, "XInput.lib")`。Windows 標準で外部ライブラリなし）。`PAD_DEVICE` に XInput の番号（0〜3、使わないときは -1）を持たせる。
+- `PadUpdate` で、割り当て済みの XInput は毎フレーム `XInputGetState`。外れたら（`ERROR_DEVICE_NOT_CONNECTED`）番号を空ける。まだ割り当てていない XInput の番号は、未接続を毎フレーム調べると重いので `XINPUT_POLL_INTERVAL = 1.0f` 秒ごとに調べる（「調整用の値」）。ウィンドウが選ばれていないときは今と同じく「何も押していない」。
+- 変換は `padcalc` に Windows を使わない関数 `PadCalcParseXInput(unsigned int buttons, unsigned char leftTrigger, unsigned char rightTrigger, short lx, short ly, short rx, short ry, PAD_STATE& state)` を作る（XInput のビットの値は padcalc.cpp に自前の定数で書く）。スティックは -32768〜32767 → -1〜1（上がプラスのまま）。LB/RB→L1/R1、LT/RT→L2/R2（`PAD_TRIGGER_THRESHOLD`。0〜255 のうちこれを超えたら押した扱い。DualSense と同じ考え）、View(Back)→SHARE、Menu(Start)→OPTIONS、スティック押し込み→L3/R3、十字→十字。Guide は XInput では読めないので PS はなし。
+- 振動は `XInputSetState`（左モーター＝大きい、右モーター＝小さい、0〜65535）。今の `SendOutput` と同じく、値が変わったときだけ送り、非選択中・外れたときは 0 にする。ライトバーはないので何もしない。
+- XInput のパッドは Raw Input の HID にも出るが、VID がソニーでないので今の `AddDevice` では読まれない（二重にならない）。
 
-**決めること（おすすめは1つ目）**
-1. Switch 2 Pro コン：**Steam から起動して XInput として読む**（コードは段階A だけ。Steam に「ゲーム以外の製品」として Proto1.exe を足す）／直接読む（各 PC で WinUSB ドライバーを入れ替える必要があり、ほかのゲームで使えなくなることもあるので、おすすめしない）
-2. ボタンの合わせ方：**位置で合わせる**（下のボタンでジャンプ・右で決定。どのパッドでも手の動きが同じ）／文字で合わせる（Switch の A を決定にする）
-3. 進め方：**段階A を先に PR にして遊び、そのあと段階B**／A・B をまとめて1つの PR
-4. 茶色のコントローラーの型番か、商品のページを教えてもらえると、段階B の前に Pro コン形式か確かめられる
+**B：Switch の Pro コン形式（057E:2009）を Raw Input の HID で読む**
+- `PadCalcIdentifyModel` に 057E:2009 → `PAD_MODEL_SWITCH_PRO` を足す。
+- つないで最初の入力が届いたら、出力用のハンドルを開き（今の `OpenOutputDevice` と同じ。長さは HID の `OutputReportByteLength`）、次を送る（作るのは padcalc の関数にしてテストする）。
+  1. USB 用の合図：`0x80 0x02`（ハンドシェイク）→ `0x80 0x04`（USB の HID だけで話す）。Bluetooth では失敗するが、無視してよい（警告も出さない）。
+  2. 入力の形を「フル」にするサブコマンド：`[0]=0x01 [1]=カウンター(0〜15) [2..9]=振動なし（00 01 40 40 00 01 40 40） [10]=0x03 [11]=0x30`。これで USB でも Bluetooth でも 0x30 のレポートが来る。
+  失敗しても入力の読み取りは続ける（安物は返事をしないこともある）。
+- 入力は2種類読む（どちらも padcalc にしてテストする）：
+  - **0x30（フル）**：[3] Y(0x01) X(0x02) B(0x04) A(0x08) R(0x40) ZR(0x80)、[4] －(0x01) ＋(0x02) Rスティック押し(0x04) Lスティック押し(0x08) HOME(0x10)、[5] 下(0x01) 上(0x02) 右(0x04) 左(0x08) L(0x40) ZL(0x80)。スティックは12ビット：左 X=[6]|([7]&0x0F)<<8、Y=([7]>>4)|[8]<<4、右は [9]〜[11] で同じ。中心 2048、上がプラス。`SWITCH_STICK_RANGE = 1600`（中心からこれだけ倒したら 1。超えたら 1 に切る）。
+  - **0x3F（簡易。Bluetooth で合図が効かなかったとき）**：[1] B(0x01) A(0x02) Y(0x04) X(0x08) L(0x10) R(0x20) ZL(0x40) ZR(0x80)、[2] －(0x01) ＋(0x02) Lスティック押し(0x04) Rスティック押し(0x08) HOME(0x10)、[3] 方向（0=上から時計回りに 0〜7、8=中立）、[4]〜[11] 左X・左Y・右X・右Y（16ビット、リトルエンディアン、中心 0x8000）。**Y の向きは実機で確かめる**（下がプラスなら逆にする）。
+- 割り当て：L→L1、R→R1、ZL→L2、ZR→R2、－→SHARE、＋→OPTIONS、HOME→PS、スティック押し→L3/R3。
+- 振動（HD 振動の形式が難しい）・ジャイロ・プレイヤーランプは作らない。
 
-**確かめ方**：`run-tests.ps1`（Debug・Release）、Debug / Release で警告 0。段階A は GameSir（受信機と有線）と Steam 経由の Switch 2 Pro コンで、移動・カメラ・ジャンプ・腕・メニュー・振動を実機で触る（管理者に頼む）。DS4 / DualSense と混ぜて番号がずれないこと、抜き差しで番号が空くこと。画面を撮る確認はいらない（見た目は変わらない）。
+**テスト**（`tests/Proto1Tests/padcalc_test.cpp` に足す。主な動きだけ）：XInput の A・B・LT と左スティックの上、Switch 0x30 の B・A・ZL・左スティックの上、0x3F の B・A と方向、`PadCalcIdentifyModel` の 057E:2009、サブコマンドのバイト列。
+
+**確かめ方（段階3）**：Debug / Release 警告 0、`run-tests.ps1`（Debug・Release）、新しい計算をまとめて壊してテストが落ちること。見た目は変わらないので画面撮りはしない。実機は管理者に頼む：GameSir（受信機・有線、XInput モード）と茶色のコントローラー（Bluetooth・有線）で、移動・カメラ・ジャンプ・腕（L1/R1）・メニュー（十字・×・○）・振動（GameSir だけ）。DS4・DualSense と混ぜても番号がずれないこと、抜き差しで番号が空くこと。茶色のものが動かなければ、Debug 出力の VID/PID を見る。
+
+**段階2 のプロンプト（Codex）**
+> CLAUDE.md・AGENTS.md の手順でセッションを始め、`feature/pad-support-plan` で No.51 の段階2（コーディング）をしてください。プランは `docs/handoff.md` の「次にやること」です。AGENTS.md の「コードを書くだけ」のとおり、Debug のビルドが通るところまで確かめて `save-work.ps1` で保存し、「今の状態」を「段階2 済み。段階3 待ち」にしてください。プランと違うことをしたくなったら、書く前に聞いてください。
+
+**段階3 のプロンプト**
+> CLAUDE.md・AGENTS.md の手順でセッションを始め、`feature/pad-support-plan` で No.51 の段階3（テスト）をしてください。プランは `docs/handoff.md` の「次にやること」です。AGENTS.md の段階3 の順で確かめてください。実機での確認は管理者に頼み、結果を「今の状態」に書いてください。
 
 ---
 
