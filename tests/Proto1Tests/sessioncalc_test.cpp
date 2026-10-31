@@ -174,11 +174,13 @@ namespace Proto1Tests
 			SessionNetwork network(2, 6);
 			network.Capture();
 			for (auto message : { network.Nodes[0].MakeControl(1), network.Nodes[1].MakeInputs() }) {
+				message.Hold = 1234;
 				std::vector<uint8_t> bytes;
 				Assert::IsTrue(SessionCalc::Encode(message, bytes));
 				SESSION_MESSAGE decoded;
 				Assert::IsTrue(SessionCalc::Decode(bytes.data(), bytes.size(), decoded));
 				Assert::AreEqual(message.Nonce, decoded.Nonce);
+				Assert::AreEqual(message.Hold, decoded.Hold);
 				Assert::AreEqual(message.Session, decoded.Session);
 				Assert::AreEqual(message.Round, decoded.Round);
 				Assert::AreEqual(message.Slot, decoded.Slot);
@@ -191,6 +193,19 @@ namespace Proto1Tests
 				bytes.push_back(0);
 				Assert::IsFalse(SessionCalc::Decode(bytes.data(), bytes.size(), decoded));
 			}
+		}
+
+		TEST_METHOD(Inputs_CompleteThroughWaitsForEveryPlayer)
+		{
+			SessionNetwork network(3, 0);
+			auto& host = network.Nodes[0];
+			Assert::AreEqual(-1, host.GetCompleteThrough());
+			network.Capture();
+			Assert::AreEqual(-1, host.GetCompleteThrough());
+			Deliver(host, 1, network.Nodes[1].MakeInputs());
+			Assert::AreEqual(-1, host.GetCompleteThrough());
+			Deliver(host, 2, network.Nodes[2].MakeInputs());
+			Assert::AreEqual(0, host.GetCompleteThrough());
 		}
 
 		TEST_METHOD(Inputs_FixedWhileWaitingAndRequireHostEcho)
@@ -411,6 +426,47 @@ namespace Proto1Tests
 				Assert::AreEqual(static_cast<int>(expected), static_cast<int>(client.GetFailure()));
 				Assert::AreEqual(-1, client.GetLocalSlot());
 			}
+		}
+
+		TEST_METHOD(Monitor_SubtractsReplyHoldFromPing)
+		{
+			SessionNetwork network(2, 0);
+			auto& host = network.Nodes[0];
+			auto& client = network.Nodes[1];
+			host.SetTime(100);
+			client.SetTime(1000);
+			Deliver(client, 0, host.MakeControl(1));
+			client.SetTime(1015);
+			const auto reply = client.MakeControl();
+			Assert::AreEqual(uint32_t(15), reply.Hold);
+			host.SetTime(140);
+			Deliver(host, 1, reply);
+			Assert::AreEqual(25, host.GetPing(1));
+			Assert::AreEqual(25, host.GetAutoDelayPing());
+			auto invalid = reply;
+			invalid.Echo = 130;
+			invalid.Hold = 11; // 経った10msより長い待ちは測らない。
+			Deliver(host, 1, invalid);
+			Assert::AreEqual(25, host.GetPing(1));
+		}
+
+		TEST_METHOD(Monitor_LateOldStampDoesNotReplaceEcho)
+		{
+			SessionNetwork network(2, 0);
+			auto& host = network.Nodes[0];
+			auto& client = network.Nodes[1];
+			host.SetTime(100);
+			const auto older = host.MakeControl(1);
+			host.SetTime(110);
+			const auto newer = host.MakeControl(1);
+			client.SetTime(1000);
+			Deliver(client, 0, newer);
+			client.SetTime(1005);
+			Deliver(client, 0, older); // 順番が入れ替わって遅れて届いた。
+			client.SetTime(1015);
+			const auto reply = client.MakeControl();
+			Assert::AreEqual(uint32_t(110), reply.Echo);
+			Assert::AreEqual(uint32_t(15), reply.Hold);
 		}
 
 		TEST_METHOD(Monitor_RoundTripPingAndCountsOnlyRunningInputWaits)

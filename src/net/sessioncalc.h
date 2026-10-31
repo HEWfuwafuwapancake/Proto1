@@ -110,6 +110,7 @@ struct SESSION_MESSAGE
 	bool Running = false; ///< true：ロックステップ中、false：ロビー
 	uint32_t Stamp = 0; ///< 送信元の単調時計のミリ秒（下位32ビット）
 	uint32_t Echo = 0; ///< 相手から最後に受け取ったStamp（往復時間用）
+	uint32_t Hold = 0; ///< 相手のStampを受け取ってから返すまでのミリ秒
 	int32_t CheckFrame = -1; ///< チェックサムの実行済みフレーム（なしは-1）
 	uint32_t Checksum = 0; ///< CheckFrameの全4体のチェックサム
 	int32_t CheckAck = -1; ///< 相手のチェックサムを比較できた最後のフレーム
@@ -181,6 +182,8 @@ public:
 	int GetAutoDelayPing() const;
 	/// @brief 次に実行するフレームを取得する
 	int32_t GetNextFrame() const { return m_Shared.GetNextFrame(); }
+	/// @brief 全員の入力が連続してそろった最後のフレームを取得する（未受領は-1）
+	int32_t GetCompleteThrough() const { return m_Shared.GetReceivedThrough(m_Mask); }
 	/// @brief メッセージを明示的なリトルエンディアンへ変換する
 	static bool Encode(const SESSION_MESSAGE& message, std::vector<uint8_t>& bytes);
 	/// @brief 長さ・種類・値を確認して読む（失敗時は出力を変えない）
@@ -214,6 +217,7 @@ private:
 	uint64_t m_Now = 0;
 	uint64_t m_LastReceived[FIGHTER_COUNT] = {};
 	uint32_t m_Echo[FIGHTER_COUNT] = {};
+	uint64_t m_EchoReceived[FIGHTER_COUNT] = {}; // m_Echo の Stamp を受け取った時刻（返すまでの Hold に使う）。
 	uint32_t m_LastEcho[FIGHTER_COUNT] = {}; // 前に往復時間を測った Echo（同じ Echo の再送は測らない）。
 	int m_Ping[FIGHTER_COUNT] = { -1, -1, -1, -1 };
 	std::deque<std::pair<uint64_t, int>> m_PingHistory[FIGHTER_COUNT]; // 受け取った時刻と往復時間。
