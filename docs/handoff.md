@@ -4,7 +4,7 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）。
 決まったことは [decisions.md](decisions.md)、腕のモデルの原点と長さは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、終わったタスクの記録は [archive/](archive/)（普段は読まない）。
 
-- 最終更新：2026-10-31（Claude。Shota の Proto1、Visual Studio 2022 Community の PC。No.51 DESYNC 対策を実装。次は No.52 の段階1）
+- 最終更新：2026-10-31（Claude。Shota の Proto1、Visual Studio 2022 Community の PC。No.52 のプランを書いた。次は管理者の確認 → 実装）
 
 ---
 
@@ -17,12 +17,36 @@
 - **No.50 完了**：Tailscale の2人対戦で ping 30ms 以下なのに delay 9 になったので、自動の delay に使う ping を「直近2秒の最大」から「人ごとの 90% の値の、いちばん遅い人の値」にし、同じ `Echo` の再送は測らないようにした（`SessionCalc::GetAutoDelayPing`）。2人（Tailscale）では delay 5、4人では delay 7（ping 33・66・33ms）になった。4人で `--delay 4` にすると待ちが合計 500f を超えた（「待ち」は試合が始まってからの合計）。
 - **No.51 DESYNC 対策**：4人の Tailscale 対戦でタイトルバーに DESYNC（PC ごとに試合の中身がずれた）が出た。各自が自分でビルドした exe を使っていたこと・sinf などが CPU で FMA3 の計算に切り替わることが原因と考え、起動時に `_set_FMA3_enable(0)`、exe の中身から作った識別番号を接続時に比べて違う exe は断る（`SESSION_FAILURE_PROGRAM`、通信の版 3）、DESYNC をタイトルバーの先頭に出す、を入れた。テスト・127.0.0.1 の2つ起動だけで確かめた。**未確認**：ホストの Release の exe を全員に配って4人で遊び、DESYNC が出ないか（出たら、ずれた値を記録して比べる仕組みを足す）。
 
-## 2. 次にやること：No.52 の段階1（プラン。オンラインの delay を減らす）
+## 2. 次にやること：No.52 の段階2（実装。プランは管理者の確認待ち）
 
-`docs/tasks.md` の No.52 のプランを書き、管理者の確認を待つ。調べて分かっていること：
-- ゲームの ping が回線（`tailscale ping`：49・8・20ms）より 15〜25ms 大きい。受け取りが 1/60 秒に1回（`NetSession::Update`）なので、届いたパケットが次のフレームまで待つ（ホストを通ると2回）。
-- 案：`main.cpp` のフレームのすき間（`Sleep(1)` の所）でも受け取り、ホストはすぐ配り直す（入力の採取は今のまま 1/60 秒に1回）。ほかに、FPS とは別に「1秒に何回ゲームを進めたか」をタイトルバーに出す（FPS は通信待ちでも描画の回数で 60 と出る）。
-- それでも足りなければ、参加者どうしが直接送る・ロールバック。No.19 はそのあと。
+ブランチ `feature/reduce-delay`。下のプランの確認を取ってから実装する（「確認してほしいこと」の3つも聞く）。
+
+### No.52 プラン：オンラインの delay を減らす
+
+**分かったこと（コードを読んで）**
+- 受け取り・送り・時刻の更新（`SetTime`）が、どれも 1/60 秒に1回の `NetSession::Update` の中だけ。届いたパケットは次のフレームまで平均 8ms・最大 17ms 待つ。
+- 参加者の入力が他の参加者へ届く道：参加者A が送る →（ホストの次のフレームまで待つ）→ ホストが配る →（B の次のフレームまで待つ）→ B が使う。回線の時間のほかに待ちが2回入る。
+- ping も同じで、相手が返事（`Echo`）を送るのは相手の次のフレーム。だからゲームの ping が回線より 15〜25ms 大きい。自動の delay（`SessionCalcAutoDelay`）はこの ping から決めるので、待ちの分だけ delay も 1〜2 大きくなっている。
+- ホストが配るのは全員の入力がそろったフレームだけ（`LockstepCalc::SelectUnacknowledged`）。だから「そろった瞬間にすぐ配る」と、待ちを1回なくせる。
+
+**変えること**
+1. **フレームのすき間でも受け取る**：`main.cpp` の `Sleep(1)` の前で `Game::PollNetwork()` → `NetSession::Poll()` を呼ぶ。`Poll` は時刻を更新して（`SetTime`）受け取るだけ。切断の判定・入力の採取・`TakeFrame` は今のまま 1/60 秒に1回（`Update`）。
+2. **ホストはそろったらすぐ配る**：`Poll` で受け取ったあと、全員分そろったフレームが増えていたら（`SessionCalc` に `GetCompleteThrough()` を足して前と比べる）、その場で全員に `MakeInputs` を送る。増えていなければ送らない（増えるのは、そろったフレーム1つにつき1人1回。1秒に60個ほど）。
+3. **ping から返事までの待ちを引く**：`SESSION_MESSAGE` に `Hold`（相手の `Stamp` を受け取ってから返すまでのミリ秒）を足し、ping ＝ 経った時間 − `Hold` にする。これで ping が回線の往復に近くなり、自動の delay も自然に下がる。パケットの形が変わるので通信の版を 4 にする。
+4. **ゲームを進めた回数をタイトルバーに出す**：オンラインのとき、FPS の横に「進行: 〇/s」（1秒に `TakeFrame` で進んだフレーム数）。FPS は通信待ちでも 60 と出るので、止まっているかがこれで分かる。
+
+**触るファイル**：`src/core/main.cpp`（すき間で呼ぶ・タイトルバー）、`src/game/game.h/.cpp`（`PollNetwork`）、`src/game/netsession.h/.cpp`（`Poll`・すぐ配る・進んだ回数）、`src/net/sessioncalc.h/.cpp`（`Hold`・`GetCompleteThrough`・版の読み書き）、`src/net/lockstepcalc.h`（版 4）、`tests/Proto1Tests/sessioncalc_test.cpp`、`docs/dev/01_DX11基盤の構成.md`（通信の流れ）。
+
+**テスト（主な動きだけ）**：`Hold` を引いた ping になる／ホストで全員分そろうと `GetCompleteThrough` が進む（1人分だけでは進まない）／`Hold` の読み書きが元に戻る。わざと壊して失敗することも確かめる。
+
+**確かめ方**：単体テスト・Debug / Release のビルド（警告 0）。127.0.0.1 の2つ起動で、つながる・試合が進む・ping が今より小さい・「進行」が 60 前後・待ちが増えない。そのあと管理者に Tailscale の4人で、ping・自動の delay・待ち・「進行」を前（4人で delay 7、ping 33・66・33ms）と比べてもらう（全員に同じ Release の exe を配る）。
+
+**見込み**：ping が 15〜25ms 下がり、自動の delay が 1〜2 下がる（4人で 7 → 5〜6）。それでも足りなければ、次の段で「参加者どうしが直接送る」かロールバックを考える（今回は作らない）。
+
+**確認してほしいこと**
+- (a) 3 の `Hold` を入れて通信の版を 4 にしてよいか（古い exe とはつながらなくなる。No.51 から全員同じ exe が必要なので、手間は変わらない）。
+- (b) 自動の delay の余裕（`AUTO_DELAY_MARGIN` = 2）は今回は変えず、遊んだ結果を見てから決める、でよいか。
+- (c) 実装は Claude か Codex か。
 
 ---
 
