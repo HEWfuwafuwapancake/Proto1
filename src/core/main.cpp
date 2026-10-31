@@ -4,6 +4,7 @@
 #include <mmsystem.h>
 #include <imm.h>
 #include <stdio.h>
+#include <math.h>
 #include "core/dx11.h"
 #include "core/gametime.h"
 #include "core/main.h"
@@ -41,6 +42,24 @@ static Game g_Game;
 
 static DWORD g_Fps = 0;	// 直近1秒の FPS
 
+/// 自分の exe の中身から識別番号を作る（オンラインで、違う exe どうしをつながないため。読めなければ 0）
+static uint32_t MakeProgramId()
+{
+	char path[MAX_PATH];
+	const DWORD length = GetModuleFileName(nullptr, path, MAX_PATH);
+	if (length == 0 || length >= MAX_PATH) return 0;
+	FILE* file = nullptr;
+	if (fopen_s(&file, path, "rb") != 0 || file == nullptr) return 0;
+	uint32_t hash = 2166136261u;	// FNV-1a
+	unsigned char buffer[4096];
+	size_t read = 0;
+	while ((read = fread(buffer, 1, sizeof(buffer), file)) > 0) {
+		for (size_t i = 0; i < read; ++i) hash = (hash ^ buffer[i]) * 16777619u;
+	}
+	fclose(file);
+	return hash == 0 ? 1 : hash;
+}
+
 static int GetEquipSlot()
 {
 	const NetSession& net = g_Game.GetNetSession();
@@ -55,7 +74,7 @@ static void RefreshTitle(HWND hWnd)
 	const NetSession& net = g_Game.GetNetSession();
 	const int mode = ActionGetEquipMode(net.IsOnline() ? ActionGetEquipPlayer() : equipPlayer);
 	const ArmManager& arms = g_Game.GetArms(equipPlayer);
-	sprintf_s(title, "%s  FPS: %lu  %dP%s 左：%s 右：%s%s  振動: %s（SHARE / V） %s", TITLE, g_Fps,
+	sprintf_s(title, "%s%s  FPS: %lu  %dP%s 左：%s 右：%s%s  振動: %s（SHARE / V） %s", TITLE, net.GetDesyncText().c_str(), g_Fps,
 		equipPlayer + 1, net.IsOnline() ? "" : "（F1-F4）", ArmGetName(arms.GetType(0)), ArmGetName(arms.GetType(1)),
 		mode == 0 ? "  [左腕を切り替え中：数字キー 1-6]" : (mode == 1 ? "  [右腕を切り替え中：数字キー 1-6]" : ""),
 		PadIsRumbleEnabled() ? "オン" : "オフ", net.GetStatusText().c_str());
@@ -73,6 +92,12 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
 	_In_ LPSTR lpCmdLine, _In_ int nCmdShow)
 {
 	UNREFERENCED_PARAMETER(hPrevInstance);
+#ifdef _M_X64
+	// sinf などが CPU によって FMA3 の計算に切り替わると、PC ごとに結果が少しずれる（オンラインの DESYNC）。
+	// どの CPU でも同じ計算にそろえる。
+	_set_FMA3_enable(0);
+#endif
+	SessionCalcSetProgram(MakeProgramId());
 	NET_OPTIONS options;
 	if (!SessionCalcParseOptions(lpCmdLine, options)) {
 		MessageBox(nullptr, "起動引数を確認してください。\n--host [--delay 0-120]\n--join <IPv4>\n指定なし：ローカル対戦", TITLE, MB_OK | MB_ICONERROR);
