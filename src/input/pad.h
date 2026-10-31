@@ -4,8 +4,9 @@
 #include "input/padcalc.h"
 
 /// @file pad.h
-/// @brief DUALSHOCK 4 / DualSense の USB 入力と、振動・ライトバーの出力（Raw Input と HID）
-/// @details 最大4台を接続順に0〜3へ割り当てる。外れた番号は空き、ほかの番号は詰めない。
+/// @brief DS4 / DualSense の USB、XInput、Switch Pro 形式の入力（Raw Input・HID・XInput）
+/// @details 振動はソニーと XInput、ライトバーはソニーだけに出力する。
+///          最大4台を接続順に0〜3へ割り当てる。外れた番号は空き、ほかの番号は詰めない。
 ///          つないでいないとき・外れたとき・
 ///          ウィンドウが選ばれていないときは「何も押していない」扱いにする
 

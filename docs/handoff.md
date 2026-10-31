@@ -4,12 +4,13 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）。
 決まったことは [decisions.md](decisions.md)、腕のモデルの原点と長さは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、終わったタスクの記録は [archive/](archive/)（普段は読まない）。
 
-- 最終更新：2026-10-31（Claude。Shota の Proto1、Visual Studio 2022 Community の PC。No.51 DESYNC 対策を実装。次は No.52 の段階1）
+- 最終更新：2026-10-31（Claude。Shota の Proto1、Visual Studio 2022 Community の PC。No.53 を develop にマージ（実機確認待ち）。次は No.52 の段階1）
 
 ---
 
 ## 1. 今の状態
 
+- **No.53 ほかのコントローラー：develop にマージ済み。メンバーの実機確認待ち**（No.51・52 は別の作業で使われていたので No.53 にした）。XInput（GameSir Super Nova を受信機か有線で XInput モードに。－と＋を長押し）と Switch の Pro コン形式（057E:2009。茶色のコントローラー、Bluetooth・有線）を読む。ボタンは位置で合わせる（下→ジャンプ・戻る、右→決定）。振動は XInput だけ。Switch 2 Pro コンは保留。テスト・Debug / Release 警告0・壊す確認は済み。**未確認**：実機で移動・カメラ・ジャンプ・腕・メニュー・振動、Bluetooth のスティックの上下の向き、DS4 / DualSense と混ぜたときの番号。動かなければ Debug の出力の「対応外のゲームパッド VID=… PID=…」を見る。
 - **No.26 オンライン対戦は完了**（PR #90・#92・#93。127.0.0.1 の2つ起動で同期・切断・ビルド拒否を確認済み）。2026-10-31 に Tailscale で離れた PC（鈴木さん）と2人で遊べた（`tailscale ping` は直接で往復約11ms、ゲームの ping はふだん30ms以下、待ち 0f）。
 - No.47 の腕の取付と強さは管理者が遊んで調整する。マウス操作は止めたまま。
 - **No.48 ゲーム内のモード選択は完了**。起動の引数なしで、GAME START → モード選択（SOLO・LOCAL VS・ONLINE HOST・ONLINE JOIN）から始められる。2つ起動で HOST・JOIN・試合・ロビーの BACK・ホストを閉じると参加側がモード選択へ、を確認済み。**未確認**：パッドでのメニュー操作（パッドがなかった）、LOCAL VS で試合を始めること・結果の TITLE からモード選択へ戻ること（テストだけ）。
