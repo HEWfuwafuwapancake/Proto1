@@ -38,6 +38,8 @@ public:
 	uint8_t GetReadyMask() const { return m_Calc.GetReadyMask(); }
 	/// @brief タイトルバーに表示する接続状態を取得する
 	std::string GetStatusText() const;
+	/// @brief ずれ（DESYNC）を見つけたときの表示を取得する（タイトルバーの先頭に出す。ずれなしは空）
+	std::string GetDesyncText() const;
 	/// @brief 起動失敗の説明を取得する
 	const std::string& GetError() const { return m_Error; }
 
