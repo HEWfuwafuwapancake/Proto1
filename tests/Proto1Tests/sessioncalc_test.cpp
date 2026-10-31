@@ -380,9 +380,9 @@ namespace Proto1Tests
 			Assert::AreEqual(static_cast<int>(SESSION_FAILURE_NONE), static_cast<int>(client.GetFailure()));
 		}
 
-		TEST_METHOD(Compatibility_RefusesVersionOrBuildBeforeAssigningSlot)
+		TEST_METHOD(Compatibility_RefusesVersionBuildOrProgramBeforeAssigningSlot)
 		{
-			for (bool changeVersion : { true, false }) {
+			for (const SESSION_FAILURE expected : { SESSION_FAILURE_VERSION, SESSION_FAILURE_BUILD, SESSION_FAILURE_PROGRAM }) {
 				NET_OPTIONS options;
 				options.Mode = NET_MODE_HOST;
 				SessionCalc host, client;
@@ -390,22 +390,23 @@ namespace Proto1Tests
 				options.Mode = NET_MODE_JOIN;
 				client.Initialize(options, 101);
 				auto request = client.MakeControl();
-				if (changeVersion) ++request.Version;
-				else request.Build = LOCKSTEP_CURRENT_BUILD == LOCKSTEP_BUILD_DEBUG ? LOCKSTEP_BUILD_RELEASE : LOCKSTEP_BUILD_DEBUG;
-				Assert::AreEqual(-1, host.Join(request.Nonce, request.Version, request.Build));
+				if (expected == SESSION_FAILURE_VERSION) ++request.Version;
+				else if (expected == SESSION_FAILURE_BUILD) request.Build = LOCKSTEP_CURRENT_BUILD == LOCKSTEP_BUILD_DEBUG ? LOCKSTEP_BUILD_RELEASE : LOCKSTEP_BUILD_DEBUG;
+				else request.Program = SessionCalcGetProgram() + 1; // 別の PC でビルドした exe
+				Assert::AreEqual(-1, host.Join(request.Nonce, request.Version, request.Build, request.Program));
 				Assert::AreEqual(1, static_cast<int>(host.GetMask()));
 				// 版が違う制御通知も読めるので、タイムアウトを待たず理由を返せる。
 				std::vector<uint8_t> bytes;
 				Assert::IsTrue(SessionCalc::Encode(request, bytes));
 				SESSION_MESSAGE decoded;
 				Assert::IsTrue(SessionCalc::Decode(bytes.data(), bytes.size(), decoded));
-				const auto expected = changeVersion ? SESSION_FAILURE_VERSION : SESSION_FAILURE_BUILD;
 				Assert::AreEqual(static_cast<int>(expected), static_cast<int>(SessionCalc::CheckCompatibility(decoded)));
 				auto rejection = host.MakeControl();
 				rejection.Type = SESSION_REJECT;
 				rejection.Nonce = 101;
 				rejection.Version = request.Version;
 				rejection.Build = request.Build;
+				rejection.Program = request.Program;
 				Deliver(client, 0, rejection);
 				Assert::AreEqual(static_cast<int>(expected), static_cast<int>(client.GetFailure()));
 				Assert::AreEqual(-1, client.GetLocalSlot());

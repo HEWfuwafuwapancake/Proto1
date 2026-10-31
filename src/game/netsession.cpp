@@ -80,7 +80,7 @@ void NetSession::Receive()
 				m_Calc.Receive(peer, message);
 				continue;
 			}
-			const int slot = m_Calc.Join(message.Nonce, message.Version, message.Build);
+			const int slot = m_Calc.Join(message.Nonce, message.Version, message.Build, message.Program);
 			if (slot > 0 && m_Peers[slot].Port == 0) m_Peers[slot] = from;
 		}
 		else if (peer > 0) m_Calc.Receive(peer, message);
@@ -164,8 +164,15 @@ std::string NetSession::GetStatusText() const
 	for (int peer = 1; peer < FIGHTER_COUNT; ++peer) {
 		if (m_Calc.GetDisconnectedMask() & (1u << peer)) text << " 切断(無入力):" << peer + 1 << "P";
 	}
-	if (m_Calc.GetDesyncFrame() >= 0) text << " DESYNC " << m_Calc.GetDesyncPeer() + 1 << "P frame " << m_Calc.GetDesyncFrame();
 	if (!m_Error.empty()) text << " " << m_Error;
+	return text.str();
+}
+
+std::string NetSession::GetDesyncText() const
+{
+	if (!IsOnline() || m_Calc.GetDesyncFrame() < 0) return {};
+	std::ostringstream text;
+	text << " [DESYNC " << m_Calc.GetDesyncPeer() + 1 << "P frame " << m_Calc.GetDesyncFrame() << "]";
 	return text.str();
 }
 
@@ -174,6 +181,7 @@ const char* NetSession::FailureText(SESSION_FAILURE failure)
 	switch (failure) {
 	case SESSION_FAILURE_VERSION: return "参加拒否：通信の版が違います。同じ版を使ってください。";
 	case SESSION_FAILURE_BUILD: return "参加拒否：Debug / Release が違います。同じビルドを使ってください。";
+	case SESSION_FAILURE_PROGRAM: return "参加拒否：exe が違います。ホストと同じ exe を使ってください。";
 	case SESSION_FAILURE_TIMEOUT: return "ホストから3秒届かなかったため、モード選択へ戻りました。";
 	default: return "";
 	}

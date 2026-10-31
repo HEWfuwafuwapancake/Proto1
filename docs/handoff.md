@@ -4,21 +4,22 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）。
 決まったことは [decisions.md](decisions.md)、腕のモデルの原点と長さは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、終わったタスクの記録は [archive/](archive/)（普段は読まない）。
 
-- 最終更新：2026-10-31（Codex。Shota の Proto1-pad-support worktree、Visual Studio 2022 Community の PC。No.51 段階2 済み。段階3 待ち）
+- 最終更新：2026-10-31（Claude。Shota の Proto1-pad-support worktree、Visual Studio 2022 Community の PC。No.53 段階3 中。そのあと No.52 の段階1）
 
 ---
 
 ## 1. 今の状態
 
-- **No.51：段階2 済み。段階3 待ち**。XInput・Switch Pro 形式の入力、共有4枠、XInput の振動、Switch の初期化送信、対応外 VID/PID の Debug 出力とテストコードを追加。Debug / x64 のゲーム本体ビルド成功（警告表示なし）。テスト実行・Release・わざと壊す確認・実機確認は未実施。0x3F のYは下がプラスとして反転し、実機で確認する。
+- **No.53（ほかのコントローラー）：段階2 済み。段階3 中**。XInput・Switch Pro 形式の入力、共有4枠、XInput の振動、Switch の初期化送信、対応外 VID/PID の Debug 出力とテストコードを追加。Debug / x64 のゲーム本体ビルド成功（警告表示なし）。テスト実行・Release・わざと壊す確認・実機確認は未実施。0x3F のYは下がプラスとして反転し、実機で確認する。
 - 作業場所は `C:\Users\shota\source\repos\Proto1-pad-support`、ブランチは `feature/pad-support-plan`。元の `Proto1` は別作業の未コミット変更があったため、管理者の許可で worktree を分けた。段階3 もこの worktree で続ける。
 - **No.26 オンライン対戦は完了**（PR #90・#92・#93。127.0.0.1 の2つ起動で同期・切断・ビルド拒否を確認済み）。2026-10-31 に Tailscale で離れた PC（鈴木さん）と2人で遊べた（`tailscale ping` は直接で往復約11ms、ゲームの ping はふだん30ms以下、待ち 0f）。
 - No.47 の腕の取付と強さは管理者が遊んで調整する。マウス操作は止めたまま。
 - **No.48 ゲーム内のモード選択は完了**。起動の引数なしで、GAME START → モード選択（SOLO・LOCAL VS・ONLINE HOST・ONLINE JOIN）から始められる。2つ起動で HOST・JOIN・試合・ロビーの BACK・ホストを閉じると参加側がモード選択へ、を確認済み。**未確認**：パッドでのメニュー操作（パッドがなかった）、LOCAL VS で試合を始めること・結果の TITLE からモード選択へ戻ること（テストだけ）。
 - **No.49 delay の自動設定は完了**。4人の対戦で delay 3 では入力待ちで止まりラグかったため、ホストが試合の開始時に ping から決める（`--delay` を付けたら固定）。
-- **No.50 完了**：Tailscale の2人対戦で ping 30ms 以下なのに delay 9 になったので、自動の delay に使う ping を「直近2秒の最大」から「人ごとの 90% の値の、いちばん遅い人の値」にし、同じ `Echo` の再送は測らないようにした（`SessionCalc::GetAutoDelayPing`）。テストだけで確かめた。**未確認**：もう一度 Tailscale で遊んで `delay 〇（自動）` が 4 前後・待ち 0f か。4人で「待ち 〇f」が増えないか。それでもカクつくなら、ホストを通さずに直接送る・ロールバックを考える。
+- **No.50 完了**：Tailscale の2人対戦で ping 30ms 以下なのに delay 9 になったので、自動の delay に使う ping を「直近2秒の最大」から「人ごとの 90% の値の、いちばん遅い人の値」にし、同じ `Echo` の再送は測らないようにした（`SessionCalc::GetAutoDelayPing`）。2人（Tailscale）では delay 5、4人では delay 7（ping 33・66・33ms）になった。4人で `--delay 4` にすると待ちが合計 500f を超えた（「待ち」は試合が始まってからの合計）。
+- **No.51 DESYNC 対策**：4人の Tailscale 対戦でタイトルバーに DESYNC（PC ごとに試合の中身がずれた）が出た。各自が自分でビルドした exe を使っていたこと・sinf などが CPU で FMA3 の計算に切り替わることが原因と考え、起動時に `_set_FMA3_enable(0)`、exe の中身から作った識別番号を接続時に比べて違う exe は断る（`SESSION_FAILURE_PROGRAM`、通信の版 3）、DESYNC をタイトルバーの先頭に出す、を入れた。テスト・127.0.0.1 の2つ起動だけで確かめた。**未確認**：ホストの Release の exe を全員に配って4人で遊び、DESYNC が出ないか（出たら、ずれた値を記録して比べる仕組みを足す）。
 
-## 2. 次にやること：No.51 ほかのコントローラーへの対応（段階3 テスト）
+## 2. 次にやること：No.53 ほかのコントローラーへの対応（段階3 テスト）
 
 管理者の依頼（2026-10-31）。プランは管理者確認済み（2026-10-31）。**Switch 2 Pro コンはいったん保留**（USB でも起動の合図を bulk の口に送る必要があり、WinUSB ドライバーの入れ替えが要るため）。
 対象は次の2つ。今の `src/input/pad.cpp` はソニーの VID（0x054C）だけを Raw Input の HID で読み、ほかの機器は無視している。作業ブランチは `feature/pad-support-plan`（プランを push 済み）。A と B をまとめて1つの PR にする。
@@ -58,14 +59,21 @@
 **確かめ方（段階3）**：Debug / Release 警告 0、`run-tests.ps1`（Debug・Release）、新しい計算をまとめて壊してテストが落ちること。見た目は変わらないので画面撮りはしない。実機は管理者に頼む：GameSir（受信機・有線、XInput モード）と茶色のコントローラー（Bluetooth・有線）で、移動・カメラ・ジャンプ・腕（L1/R1）・メニュー（十字・×・○）・振動（GameSir だけ）。DS4・DualSense と混ぜても番号がずれないこと、抜き差しで番号が空くこと。茶色のものが動かなければ、Debug 出力の VID/PID を見る。
 
 **段階2 のプロンプト（Codex）**
-> CLAUDE.md・AGENTS.md の手順でセッションを始め、`feature/pad-support-plan` で No.51 の段階2（コーディング）をしてください。プランは `docs/handoff.md` の「次にやること」です。AGENTS.md の「コードを書くだけ」のとおり、Debug のビルドが通るところまで確かめて `save-work.ps1` で保存し、「今の状態」を「段階2 済み。段階3 待ち」にしてください。プランと違うことをしたくなったら、書く前に聞いてください。
+> CLAUDE.md・AGENTS.md の手順でセッションを始め、`feature/pad-support-plan` で No.53 の段階2（コーディング）をしてください。プランは `docs/handoff.md` の「次にやること」です。AGENTS.md の「コードを書くだけ」のとおり、Debug のビルドが通るところまで確かめて `save-work.ps1` で保存し、「今の状態」を「段階2 済み。段階3 待ち」にしてください。プランと違うことをしたくなったら、書く前に聞いてください。
 
 **段階3 のプロンプト**
-> CLAUDE.md・AGENTS.md の手順でセッションを始め、`feature/pad-support-plan` で No.51 の段階3（テスト）をしてください。プランは `docs/handoff.md` の「次にやること」です。AGENTS.md の段階3 の順で確かめてください。実機での確認は管理者に頼み、結果を「今の状態」に書いてください。
+> CLAUDE.md・AGENTS.md の手順でセッションを始め、`feature/pad-support-plan` で No.53 の段階3（テスト）をしてください。プランは `docs/handoff.md` の「次にやること」です。AGENTS.md の段階3 の順で確かめてください。実機での確認は管理者に頼み、結果を「今の状態」に書いてください。
+
+### そのあと：No.52 の段階1（プラン。オンラインの delay を減らす）
+
+`docs/tasks.md` の No.52 のプランを書き、管理者の確認を待つ。調べて分かっていること：
+- ゲームの ping が回線（`tailscale ping`：49・8・20ms）より 15〜25ms 大きい。受け取りが 1/60 秒に1回（`NetSession::Update`）なので、届いたパケットが次のフレームまで待つ（ホストを通ると2回）。
+- 案：`main.cpp` のフレームのすき間（`Sleep(1)` の所）でも受け取り、ホストはすぐ配り直す（入力の採取は今のまま 1/60 秒に1回）。ほかに、FPS とは別に「1秒に何回ゲームを進めたか」をタイトルバーに出す（FPS は通信待ちでも描画の回数で 60 と出る）。
+- それでも足りなければ、参加者どうしが直接送る・ロールバック。No.19 はそのあと。
 
 ---
 
-- 順番（管理者が決めた）：No.51 を No.19 より先に行う（2026-10-31）。No.19 はそのあと。No.40 ハサミは最後。No.24・No.27 が未完了なので実装へ進まない。
+- 順番（管理者が決めた）：No.53 → No.52 → No.19。No.40 ハサミは最後。No.24・No.27 が未完了なので実装へ進まない。
 - 画面を撮る方法（段階3）：画面操作のツールがなくても、PowerShell で撮れる。ゲームを `Start-Process -WorkingDirectory <リポジトリ>` で起動し、user32 の `SetForegroundWindow`（`Alt` を押したまま呼ぶ。下を参照）・`keybd_event`・`mouse_event`、`System.Drawing` の `CopyFromScreen` でウィンドウを撮る。キーや クリックを送る前に毎回 `GetForegroundWindow()` がゲームか確かめ、違えば止める。日本語を書いた .ps1 は BOM付きUTF-8。撮った画像は結果を書く前に必ず見る。Alt を押して離すとゲームのシステムメニューが開いて Enter を吸うので、Alt を押したまま前に出し、F13 を1回押してから Alt を離す。ほかのウィンドウが上に出ることがあるので、撮る直前にもう一度前に出す。Debug 出力は DBWIN_BUFFER を読む一時スクリプトで取れる。
 - 画面の確認のヒント：カメラは敵を見続けるので、腕を横から見たいときは `camera.cpp` の `Camera::MakeMatrices` でビューを置きかえた一時ビルドを、OutDir・IntDir を scratchpad に分けて作る（コミットしない。終わったら `git checkout` で戻す）。**ビューの見ている点を肩（`ArmCalcShoulder` に `Player` の位置・向きを渡した点）にすると、肩が画面の真ん中に来て、部品が肩についているか分かる**。真横（キャラの左へ 2.5、前へ 0.6、肩と同じ高さ）から見ると、部品が上下どちらに曲がっているか分かる。
 

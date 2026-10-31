@@ -34,6 +34,11 @@ struct NET_OPTIONS
 	int Delay = LOCKSTEP_AUTO_DELAY; ///< ホストが配る入力遅延（LOCKSTEP_AUTO_DELAY なら試合の開始時に ping から決める）
 };
 
+/// @brief この実行ファイルの識別番号を設定する（exe の中身から作る。違う exe どうしはつながない）
+void SessionCalcSetProgram(uint32_t program);
+/// @brief この実行ファイルの識別番号を取得する（未設定は0）
+uint32_t SessionCalcGetProgram();
+
 /// @brief 起動引数を読み取る（不明な引数・重複・値の不足はfalse。失敗時は出力を変えない）
 bool SessionCalcParseOptions(const std::string& commandLine, NET_OPTIONS& result);
 
@@ -84,6 +89,7 @@ enum SESSION_FAILURE
 	SESSION_FAILURE_NONE, ///< 接続を継続
 	SESSION_FAILURE_VERSION, ///< 通信の版が異なる
 	SESSION_FAILURE_BUILD, ///< DebugとReleaseが異なる
+	SESSION_FAILURE_PROGRAM, ///< 実行ファイル（exe）が異なる（計算の結果がずれるため）
 	SESSION_FAILURE_TIMEOUT ///< ホストから3秒受信していない
 };
 
@@ -93,6 +99,7 @@ struct SESSION_MESSAGE
 	SESSION_MESSAGE_TYPE Type = SESSION_JOIN; ///< メッセージの種類
 	uint16_t Version = LOCKSTEP_VERSION; ///< 接続時に比較する版
 	LOCKSTEP_BUILD Build = LOCKSTEP_CURRENT_BUILD; ///< 接続時に比較するビルド
+	uint32_t Program = SessionCalcGetProgram(); ///< 接続時に比較する実行ファイルの識別番号
 	uint32_t Session = 0; ///< ホストの起動ごとに変わる番号
 	uint32_t Nonce = 0; ///< 送信元、またはホストからの宛先の起動番号
 	uint32_t Round = 0; ///< TITLEから開始するたびに増える試合番号（RETRYは同じ）
@@ -116,8 +123,9 @@ public:
 	/// @brief 起動設定と0以外の起動番号で初期化する
 	void Initialize(const NET_OPTIONS& options, uint32_t nonce);
 	/// @brief ホストが参加を受け付け、スロットを返す（満員・開始後の新規参加は-1）
-	int Join(uint32_t nonce, uint16_t version = LOCKSTEP_VERSION, LOCKSTEP_BUILD build = LOCKSTEP_CURRENT_BUILD);
-	/// @brief 同じ版・ビルドか調べ、違うときの理由を返す
+	int Join(uint32_t nonce, uint16_t version = LOCKSTEP_VERSION, LOCKSTEP_BUILD build = LOCKSTEP_CURRENT_BUILD,
+		uint32_t program = SessionCalcGetProgram());
+	/// @brief 同じ版・ビルド・実行ファイルか調べ、違うときの理由を返す
 	static SESSION_FAILURE CheckCompatibility(const SESSION_MESSAGE& message);
 	/// @brief 単調時計のミリ秒を設定する（受信の直前に呼ぶ。Windowsの時計は呼び出し元で読む）
 	void SetTime(uint64_t milliseconds) { m_Now = milliseconds; }

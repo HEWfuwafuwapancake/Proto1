@@ -4,7 +4,19 @@
 
 // 調整用の値（入力のP1N1と区別するP1S1）
 static constexpr uint32_t SESSION_MAGIC = 0x31533150;
-static constexpr size_t SESSION_HEADER_BYTES = 46;
+static constexpr size_t SESSION_HEADER_BYTES = 50;
+
+static uint32_t s_Program = 0; // この実行ファイルの識別番号（NetSession が exe の中身から作る）。
+
+void SessionCalcSetProgram(uint32_t program)
+{
+	s_Program = program;
+}
+
+uint32_t SessionCalcGetProgram()
+{
+	return s_Program;
+}
 static constexpr uint8_t ALL_PLAYERS = (1u << FIGHTER_COUNT) - 1u;
 static constexpr uint64_t DISCONNECT_MILLISECONDS = 3000;
 
@@ -138,12 +150,13 @@ SESSION_FAILURE SessionCalc::CheckCompatibility(const SESSION_MESSAGE& message)
 {
 	if (message.Version != LOCKSTEP_VERSION) return SESSION_FAILURE_VERSION;
 	if (message.Build != LOCKSTEP_CURRENT_BUILD) return SESSION_FAILURE_BUILD;
+	if (message.Program != s_Program) return SESSION_FAILURE_PROGRAM;
 	return SESSION_FAILURE_NONE;
 }
 
-int SessionCalc::Join(uint32_t nonce, uint16_t version, LOCKSTEP_BUILD build)
+int SessionCalc::Join(uint32_t nonce, uint16_t version, LOCKSTEP_BUILD build, uint32_t program)
 {
-	if (!m_Host || nonce == 0 || version != LOCKSTEP_VERSION || build != LOCKSTEP_CURRENT_BUILD) return -1;
+	if (!m_Host || nonce == 0 || version != LOCKSTEP_VERSION || build != LOCKSTEP_CURRENT_BUILD || program != s_Program) return -1;
 	for (int slot = 1; slot < FIGHTER_COUNT; ++slot) {
 		if (m_PeerNonces[slot] == nonce) return (m_Disconnected & (1u << slot)) ? -1 : slot;
 	}
@@ -527,6 +540,7 @@ bool SessionCalc::Encode(const SESSION_MESSAGE& message, std::vector<uint8_t>& b
 	WriteWord(bytes, static_cast<uint32_t>(message.CheckFrame), 4);
 	WriteWord(bytes, message.Checksum, 4);
 	WriteWord(bytes, static_cast<uint32_t>(message.CheckAck), 4);
+	WriteWord(bytes, message.Program, 4);
 	bytes.insert(bytes.end(), payload.begin(), payload.end());
 	return true;
 }
@@ -554,6 +568,7 @@ bool SessionCalc::Decode(const uint8_t* bytes, size_t size, SESSION_MESSAGE& res
 	const uint32_t checkFrame = ReadWord(bytes, 4);
 	message.Checksum = ReadWord(bytes, 4);
 	const uint32_t checkAck = ReadWord(bytes, 4);
+	message.Program = ReadWord(bytes, 4);
 	if ((checkFrame > INT32_MAX && checkFrame != UINT32_MAX) || (checkAck > INT32_MAX && checkAck != UINT32_MAX)) return false;
 	message.CheckFrame = checkFrame == UINT32_MAX ? -1 : static_cast<int32_t>(checkFrame);
 	message.CheckAck = checkAck == UINT32_MAX ? -1 : static_cast<int32_t>(checkAck);
