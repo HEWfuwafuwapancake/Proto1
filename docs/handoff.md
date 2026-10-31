@@ -4,7 +4,7 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）。
 決まったことは [decisions.md](decisions.md)、腕のモデルの原点と長さは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、終わったタスクの記録は [archive/](archive/)（普段は読まない）。
 
-- 最終更新：2026-10-31（Claude。Shota の Proto1、Visual Studio 2022 Community の PC。No.50 完了。次は No.19 の段階1）
+- 最終更新：2026-10-31（Claude。Shota の Proto1、Visual Studio 2022 Community の PC。No.51 のプランを書いた。管理者の確認待ち）
 
 ---
 
@@ -16,13 +16,39 @@
 - **No.49 delay の自動設定は完了**。4人の対戦で delay 3 では入力待ちで止まりラグかったため、ホストが試合の開始時に ping から決める（`--delay` を付けたら固定）。
 - **No.50 完了**：Tailscale の2人対戦で ping 30ms 以下なのに delay 9 になったので、自動の delay に使う ping を「直近2秒の最大」から「人ごとの 90% の値の、いちばん遅い人の値」にし、同じ `Echo` の再送は測らないようにした（`SessionCalc::GetAutoDelayPing`）。テストだけで確かめた。**未確認**：もう一度 Tailscale で遊んで `delay 〇（自動）` が 4 前後・待ち 0f か。4人で「待ち 〇f」が増えないか。それでもカクつくなら、ホストを通さずに直接送る・ロールバックを考える。
 
-## 2. 次にやること：No.19 の段階1（プラン）
+## 2. 次にやること：No.51 ほかのコントローラーへの対応（段階1 プラン。管理者の確認待ち）
 
-`docs/tasks.md` の No.19（調整用の値の整理）のプランを、AGENTS.md の段階1 の手順で書き、管理者の確認を待つ。
+管理者の依頼（2026-10-31）。対象は次の3つ。今の `src/input/pad.cpp` はソニーの VID（0x054C）だけを Raw Input の HID で読み、ほかの機器は無視している。
+
+| コントローラー | PC へのつなぎ方と見え方 | 読み方 |
+|---|---|---|
+| GameSir Super Nova | 2.4G の受信機か有線で **XInput モード**（－と＋を長押しで切り替え。Bluetooth では XInput にならない） | 段階A の XInput |
+| Switch 2 Pro コン（057E:2069） | USB でも、本体が送る「起動の合図」を受けるまで入力を送らない。合図は HID ではなく USB の別の口（bulk）に送るので、Windows では WinUSB ドライバー（Zadig などで入れ替え）が要る。Bluetooth は PC では使えない | **Steam から起動**すると Steam が XInput の仮想パッドにする → 段階A で読める。直接読むのはやらない（下の「決めること」1） |
+| 茶色のコントローラー（Switch 用・ジャイロ・連射つき） | 型番が分からない。この種類はふつう **Switch の Pro コン（057E:2009）のふり**をする | 段階B の Switch Pro コン形式（実機の VID/PID を先に確かめる） |
+
+**段階A：XInput（Xbox 形式）のパッドを読む**（GameSir・Steam 経由の Switch 2 Pro コン・ほかの多くのパッド）
+- `src/input/pad.cpp` に XInput（`Xinput.h`、`XInput1_4.lib`。Windows 標準）を足す。`PadUpdate` で `XInputGetState(0〜3)` を読み、今の4つの番号（`PAD_COUNT`）に、つないだ順で DS4 / DualSense と混ぜて割り当てる。`PAD_DEVICE` に「XInput の何番か」を持たせ、`PAD_MODEL_XINPUT` を足す。
+- つながっていない XInput の番号を毎フレーム調べると重いので、未接続の番号は 1 秒ごとに調べる（調整用の値）。
+- 変換は `src/input/padcalc` に DirectX・Windows なしの関数 `PadCalcParseXInput`（ボタンのビット・スティックの -32768〜32767・トリガー 0〜255 → `PAD_STATE`）を足し、テストする。ボタンは**位置で合わせる**：下 A→×、右 B→○、左 X→□、上 Y→△、LB/RB→L1/R1、LT/RT→L2/R2（少し押せば押した扱い、調整用の値）、View→SHARE、Menu→OPTIONS、Guide は読めないので PS はなし。
+- 振動は `XInputSetState`（左＝大きいモーター、右＝小さいモーター）。ライトバーはないので何もしない。
+- XInput のパッドは Raw Input の HID にも出るが、今の `PadCalcIdentifyModel` はソニー以外を無視するので二重にならない。
+
+**段階B：Switch の Pro コン形式（057E:2009）を Raw Input の HID で読む**（茶色のコントローラー、GameSir の Switch モード）
+- `PadCalcIdentifyModel` に 057E:2009 → `PAD_MODEL_SWITCH_PRO` を足す。Debug のときは、対応外のゲームパッドをつないだら VID/PID を Debug 出力に出す（茶色のものの確認に使う）。
+- Bluetooth は何も送らなくても届く簡易レポート（番号 0x3F）を読む。USB で入力が来ないときは、つないだ直後に 0x80 0x02 → 0x80 0x04 を送り、届く 0x30 のレポートを読む（両方の読み方を `padcalc` に作り、テストする）。ボタンは段階A と同じく位置で合わせる（Switch の B が下＝×、A が右＝○）。
+- 振動（HD 振動の形式が難しい）とジャイロは作らない。
+
+**決めること（おすすめは1つ目）**
+1. Switch 2 Pro コン：**Steam から起動して XInput として読む**（コードは段階A だけ。Steam に「ゲーム以外の製品」として Proto1.exe を足す）／直接読む（各 PC で WinUSB ドライバーを入れ替える必要があり、ほかのゲームで使えなくなることもあるので、おすすめしない）
+2. ボタンの合わせ方：**位置で合わせる**（下のボタンでジャンプ・右で決定。どのパッドでも手の動きが同じ）／文字で合わせる（Switch の A を決定にする）
+3. 進め方：**段階A を先に PR にして遊び、そのあと段階B**／A・B をまとめて1つの PR
+4. 茶色のコントローラーの型番か、商品のページを教えてもらえると、段階B の前に Pro コン形式か確かめられる
+
+**確かめ方**：`run-tests.ps1`（Debug・Release）、Debug / Release で警告 0。段階A は GameSir（受信機と有線）と Steam 経由の Switch 2 Pro コンで、移動・カメラ・ジャンプ・腕・メニュー・振動を実機で触る（管理者に頼む）。DS4 / DualSense と混ぜて番号がずれないこと、抜き差しで番号が空くこと。画面を撮る確認はいらない（見た目は変わらない）。
 
 ---
 
-- 順番（管理者が決めた）：No.19 が次。No.40 ハサミは最後。No.24・No.27 が未完了なので実装へ進まない。
+- 順番（管理者が決めた）：No.51 を No.19 より先に行う（2026-10-31）。No.19 はそのあと。No.40 ハサミは最後。No.24・No.27 が未完了なので実装へ進まない。
 - 画面を撮る方法（段階3）：画面操作のツールがなくても、PowerShell で撮れる。ゲームを `Start-Process -WorkingDirectory <リポジトリ>` で起動し、user32 の `SetForegroundWindow`（`Alt` を押したまま呼ぶ。下を参照）・`keybd_event`・`mouse_event`、`System.Drawing` の `CopyFromScreen` でウィンドウを撮る。キーや クリックを送る前に毎回 `GetForegroundWindow()` がゲームか確かめ、違えば止める。日本語を書いた .ps1 は BOM付きUTF-8。撮った画像は結果を書く前に必ず見る。Alt を押して離すとゲームのシステムメニューが開いて Enter を吸うので、Alt を押したまま前に出し、F13 を1回押してから Alt を離す。ほかのウィンドウが上に出ることがあるので、撮る直前にもう一度前に出す。Debug 出力は DBWIN_BUFFER を読む一時スクリプトで取れる。
 - 画面の確認のヒント：カメラは敵を見続けるので、腕を横から見たいときは `camera.cpp` の `Camera::MakeMatrices` でビューを置きかえた一時ビルドを、OutDir・IntDir を scratchpad に分けて作る（コミットしない。終わったら `git checkout` で戻す）。**ビューの見ている点を肩（`ArmCalcShoulder` に `Player` の位置・向きを渡した点）にすると、肩が画面の真ん中に来て、部品が肩についているか分かる**。真横（キャラの左へ 2.5、前へ 0.6、肩と同じ高さ）から見ると、部品が上下どちらに曲がっているか分かる。
 
