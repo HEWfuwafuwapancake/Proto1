@@ -4,14 +4,14 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）。
 決まったことは [decisions.md](decisions.md)、腕のモデルの原点と長さは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、終わったタスクの記録は [archive/](archive/)（普段は読まない）。
 
-- 最終更新：2026-10-31（Codex。Shota の Proto1、Visual Studio 2022 Community の PC。No.52は実装・検証済み、ClaudeのPRレビュー待ち）
+- 最終更新：2026-10-31（Claude。Shota の Proto1、Visual Studio 2022 Community の PC。No.52のPRレビュー済み、指摘への対応待ち）
 
 ---
 
 ## 1. 今の状態
 
-- **No.52はCodexが実装・検証済み、ClaudeのPRレビュー待ち**。Debug / Release（x64）の本体ビルドは警告0、run-tests.ps1は両構成253件成功。Hold補正・読み書き・全員分の受領確認をまとめて壊し、対象3テストの失敗を1回で確認して復元済み（while条件は変更なし）。変更C++のBOM付きUTF-8・CRLFを確認。
-- x64/Debugから127.0.0.1の2つ起動で接続・試合進行・表示を確認（開始のEnterは管理者が操作）。両側で進行60/s、待ち0f、DESYNCなし。変更前Releaseのロビーping15〜17msに対し変更後は概ね0〜5ms。4人Tailscaleは未確認。
+- **No.52はCodexが実装・検証済み、ClaudeがPR #99をレビュー済み（指摘4件をPRにコメント）**。Debug / Release（x64）の本体ビルドは警告0、run-tests.ps1は両構成253件成功。Hold補正・読み書き・全員分の受領確認をまとめて壊し、対象3テストの失敗を1回で確認して復元済み（while条件は変更なし）。変更C++のBOM付きUTF-8・CRLFを確認。
+- x64/Debugから127.0.0.1の2つ起動で接続・試合進行・表示を確認。Claudeも確認：ロビーping 2〜3ms・進行0/s、試合中は両側で進行60/s、ping 1〜4ms、待ち0f、DESYNCなし（15秒）。変更前Releaseのロビーping15〜17msに対し変更後は概ね0〜5ms。4人Tailscaleは未確認。
 
 - **No.26 オンライン対戦は完了**（PR #90・#92・#93。127.0.0.1 の2つ起動で同期・切断・ビルド拒否を確認済み）。2026-10-31 に Tailscale で離れた PC（鈴木さん）と2人で遊べた（`tailscale ping` は直接で往復約11ms、ゲームの ping はふだん30ms以下、待ち 0f）。
 - No.47 の腕の取付と強さは管理者が遊んで調整する。マウス操作は止めたまま。
@@ -20,9 +20,9 @@
 - **No.50 完了**：Tailscale の2人対戦で ping 30ms 以下なのに delay 9 になったので、自動の delay に使う ping を「直近2秒の最大」から「人ごとの 90% の値の、いちばん遅い人の値」にし、同じ `Echo` の再送は測らないようにした（`SessionCalc::GetAutoDelayPing`）。2人（Tailscale）では delay 5、4人では delay 7（ping 33・66・33ms）になった。4人で `--delay 4` にすると待ちが合計 500f を超えた（「待ち」は試合が始まってからの合計）。
 - **No.51 DESYNC 対策**：4人の Tailscale 対戦でタイトルバーに DESYNC（PC ごとに試合の中身がずれた）が出た。各自が自分でビルドした exe を使っていたこと・sinf などが CPU で FMA3 の計算に切り替わることが原因と考え、起動時に `_set_FMA3_enable(0)`、exe の中身から作った識別番号を接続時に比べて違う exe は断る（`SESSION_FAILURE_PROGRAM`、通信の版 3）、DESYNC をタイトルバーの先頭に出す、を入れた。テスト・127.0.0.1 の2つ起動だけで確かめた。**未確認**：ホストの Release の exe を全員に配って4人で遊び、DESYNC が出ないか（出たら、ずれた値を記録して比べる仕組みを足す）。
 
-## 2. 次にやること：No.52 のClaudeレビュー
+## 2. 次にやること：No.52 のレビュー指摘への対応
 
-1. feature/reduce-delayの[PR #99](https://github.com/HEWfuwafuwapancake/Proto1/pull/99)をClaudeがレビューする（実装：Codex／レビュー：Claude）。プランの1〜4（Poll・全員分が新しくそろったときの即時配信・Holdによるping補正と版4・進行数表示）は実装済み。AUTO_DELAY_MARGINは2。切断・Decide・入力採取・TakeFrameは1/60秒のまま。
+1. [PR #99](https://github.com/HEWfuwafuwapancake/Proto1/pull/99)のClaudeの指摘4件（Holdの起点が`m_LastReceived`でEchoしたStampとずれる・順番の入れ替わった古いStampでEchoが戻る・入力の送信がほぼ倍・main.cppの通らない分岐）を、直すか見送るか管理者が決める。直すならCodexが対応する。
 2. 指摘があれば修正と必要な確認後に保存する。レビュー完了後、tasks.mdとNotionのNo.52を完了にしてマージする。今はレビュー待ちのため進行中・未マージ。
 3. 管理者が全員に同じReleaseのexeを配り、Tailscale4人でping・自動delay・待ち・進行を以前（delay7、ping33・66・33ms）と比べる。No.51のDESYNC再発も確認する。
 4. No.52が完了したらNo.19の段階1（プラン）へ進む。
