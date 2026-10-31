@@ -195,7 +195,7 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
 			DWORD elapsed = dwCurrentTime - dwFPSLastTime;	// 1000ミリ秒ちょうどより少し長いので、四捨五入して表示する
 			g_Fps = (dwFrameCount * 1000 + elapsed / 2) / elapsed;
 			const uint64_t advanced = g_Game.GetNetSession().GetAdvancedFrames();
-			g_Progress = advanced >= advancedLast ? ((advanced - advancedLast) * 1000 + elapsed / 2) / elapsed : 0;
+			g_Progress = ((advanced - advancedLast) * 1000 + elapsed / 2) / elapsed;
 			advancedLast = advanced;
 			RefreshTitle(hWnd);
 

@@ -450,6 +450,25 @@ namespace Proto1Tests
 			Assert::AreEqual(25, host.GetPing(1));
 		}
 
+		TEST_METHOD(Monitor_LateOldStampDoesNotReplaceEcho)
+		{
+			SessionNetwork network(2, 0);
+			auto& host = network.Nodes[0];
+			auto& client = network.Nodes[1];
+			host.SetTime(100);
+			const auto older = host.MakeControl(1);
+			host.SetTime(110);
+			const auto newer = host.MakeControl(1);
+			client.SetTime(1000);
+			Deliver(client, 0, newer);
+			client.SetTime(1005);
+			Deliver(client, 0, older); // 順番が入れ替わって遅れて届いた。
+			client.SetTime(1015);
+			const auto reply = client.MakeControl();
+			Assert::AreEqual(uint32_t(110), reply.Echo);
+			Assert::AreEqual(uint32_t(15), reply.Hold);
+		}
+
 		TEST_METHOD(Monitor_RoundTripPingAndCountsOnlyRunningInputWaits)
 		{
 			SessionNetwork network(2, 0);

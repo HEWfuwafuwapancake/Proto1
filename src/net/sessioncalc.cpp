@@ -165,6 +165,7 @@ int SessionCalc::Join(uint32_t nonce, uint16_t version, LOCKSTEP_BUILD build, ui
 		if (m_PeerNonces[slot] != 0) continue;
 		m_PeerNonces[slot] = nonce;
 		m_LastReceived[slot] = m_Now;
+		m_Echo[slot] = 0; // 前にこの枠にいた人の時刻は、新しい人の時刻と比べない。
 		m_Mask |= static_cast<uint8_t>(1u << slot);
 		return slot;
 	}
@@ -293,7 +294,7 @@ SESSION_MESSAGE SessionCalc::MakeControl(int peer) const
 	if (peer >= 0 && peer < FIGHTER_COUNT) {
 		message.Stamp = static_cast<uint32_t>(m_Now);
 		message.Echo = m_Echo[peer];
-		message.Hold = static_cast<uint32_t>(m_Now - m_LastReceived[peer]);
+		message.Hold = static_cast<uint32_t>(m_Now - m_EchoReceived[peer]);
 		message.CheckAck = m_CheckedThrough[peer];
 		const auto check = m_Checksums.upper_bound(m_CheckAcknowledged[peer]);
 		if (check != m_Checksums.end()) {
@@ -423,7 +424,11 @@ void SessionCalc::CheckTimeouts()
 void SessionCalc::ReceiveMonitor(int peer, const SESSION_MESSAGE& message)
 {
 	m_LastReceived[peer] = m_Now;
-	m_Echo[peer] = message.Stamp;
+	// 遅れて届いた古い Stamp は返さない（返すと往復時間が入れ替わった分だけ長く測られる）。
+	if (m_Echo[peer] == 0 || static_cast<int32_t>(message.Stamp - m_Echo[peer]) > 0) {
+		m_Echo[peer] = message.Stamp;
+		m_EchoReceived[peer] = m_Now;
+	}
 	// 相手が新しい時刻をまだ受け取っていないと同じ Echo が返り、待ったフレームの分だけ長く測れてしまう。
 	if (message.Echo != 0 && message.Echo != m_LastEcho[peer]) {
 		m_LastEcho[peer] = message.Echo;

@@ -217,6 +217,7 @@ private:
 	uint64_t m_Now = 0;
 	uint64_t m_LastReceived[FIGHTER_COUNT] = {};
 	uint32_t m_Echo[FIGHTER_COUNT] = {};
+	uint64_t m_EchoReceived[FIGHTER_COUNT] = {}; // m_Echo の Stamp を受け取った時刻（返すまでの Hold に使う）。
 	uint32_t m_LastEcho[FIGHTER_COUNT] = {}; // 前に往復時間を測った Echo（同じ Echo の再送は測らない）。
 	int m_Ping[FIGHTER_COUNT] = { -1, -1, -1, -1 };
 	std::deque<std::pair<uint64_t, int>> m_PingHistory[FIGHTER_COUNT]; // 受け取った時刻と往復時間。

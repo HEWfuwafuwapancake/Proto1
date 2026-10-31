@@ -49,6 +49,7 @@ public:
 
 private:
 	void Receive();
+	void ReceiveNow(bool relay);
 	void Send(const NET_ADDRESS& address, const SESSION_MESSAGE& message);
 	void ReportDesync();
 	static const char* FailureText(SESSION_FAILURE failure);
