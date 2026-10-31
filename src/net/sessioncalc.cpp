@@ -177,7 +177,7 @@ void SessionCalc::Decide()
 		m_Ready |= 1;
 		if (alreadyReady && CanStart()) {
 			// 試合の途中では変えない。参加側へは開始の状態通知で配る。
-			if (m_AutoDelay) m_Delay = SessionCalcAutoDelay(GetPeakPing());
+			if (m_AutoDelay) m_Delay = SessionCalcAutoDelay(GetAutoDelayPing());
 			BeginRound(m_Round + 1);
 		}
 	}
@@ -397,6 +397,7 @@ void SessionCalc::CheckTimeouts()
 			m_Mask &= static_cast<uint8_t>(~(1u << peer));
 			m_Ready &= m_Mask;
 			m_PeerNonces[peer] = 0;
+			m_LastEcho[peer] = 0;
 		}
 		m_RemoteChecksums[peer].clear();
 	}
@@ -409,7 +410,9 @@ void SessionCalc::ReceiveMonitor(int peer, const SESSION_MESSAGE& message)
 {
 	m_LastReceived[peer] = m_Now;
 	m_Echo[peer] = message.Stamp;
-	if (message.Echo != 0) {
+	// 相手が新しい時刻をまだ受け取っていないと同じ Echo が返り、待ったフレームの分だけ長く測れてしまう。
+	if (message.Echo != 0 && message.Echo != m_LastEcho[peer]) {
+		m_LastEcho[peer] = message.Echo;
 		const uint32_t elapsed = static_cast<uint32_t>(m_Now) - message.Echo;
 		if (elapsed < DISCONNECT_MILLISECONDS) {
 			m_Ping[peer] = static_cast<int>(elapsed);
@@ -430,16 +433,24 @@ void SessionCalc::ReceiveMonitor(int peer, const SESSION_MESSAGE& message)
 	CompareChecksums();
 }
 
-int SessionCalc::GetPeakPing() const
+int SessionCalc::GetAutoDelayPing() const
 {
-	int peak = -1;
+	int slowest = -1;
+	std::vector<int> pings;
 	for (int peer = 0; peer < FIGHTER_COUNT; ++peer) {
 		if (!IsActivePeer(peer)) continue;
+		pings.clear();
 		for (const auto& sample : m_PingHistory[peer]) {
-			if (m_Now - sample.first <= AUTO_DELAY_PING_WINDOW) peak = (std::max)(peak, sample.second);
+			if (m_Now - sample.first <= AUTO_DELAY_PING_WINDOW) pings.push_back(sample.second);
 		}
+		if (pings.empty()) continue;
+		// 小さい順の90%の位置（切り上げ）。遅いほうの1割を使わず、一瞬の遅れで delay を上げない。
+		const size_t rank = (pings.size() * AUTO_DELAY_PING_PERCENTILE + 99) / 100;
+		const size_t index = rank == 0 ? 0 : rank - 1;
+		std::nth_element(pings.begin(), pings.begin() + index, pings.end());
+		slowest = (std::max)(slowest, pings[index]);
 	}
-	return peak;
+	return slowest;
 }
 
 void SessionCalc::RecordChecksum(int32_t frame, const LOCKSTEP_STATE (&states)[FIGHTER_COUNT])

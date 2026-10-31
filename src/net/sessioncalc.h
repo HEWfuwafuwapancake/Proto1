@@ -13,8 +13,10 @@ static constexpr int AUTO_DELAY_MARGIN = 2;
 static constexpr int AUTO_DELAY_MIN = 3;
 /// @brief 自動の入力の遅れの上限（フレーム）
 static constexpr int AUTO_DELAY_MAX = 20;
-/// @brief 自動の入力の遅れに使う ping の期間（ミリ秒。この間のいちばん大きい値を使う）
+/// @brief 自動の入力の遅れに使う ping の期間（ミリ秒。この間の AUTO_DELAY_PING_PERCENTILE の値を使う）
 static constexpr uint64_t AUTO_DELAY_PING_WINDOW = 2000;
+/// @brief 自動の入力の遅れに使う ping の位置（%。小さい順に並べたこの位置の値。たまに遅れた分は使わない）
+static constexpr int AUTO_DELAY_PING_PERCENTILE = 90;
 
 /// @brief 起動時の対戦方法
 enum NET_MODE
@@ -167,8 +169,8 @@ public:
 	int GetDelay() const { return m_Delay; }
 	/// @brief ホストが入力の遅れを ping から自動で決めるか取得する（参加側は常にfalse）
 	bool IsAutoDelay() const { return m_Host && m_AutoDelay; }
-	/// @brief 接続中の相手との、直近2秒の往復時間の最大をミリ秒で取得する（未計測は-1）
-	int GetPeakPing() const;
+	/// @brief 自動の入力の遅れに使う往復時間をミリ秒で取得する（人ごとの直近2秒の90%の値の、いちばん遅い人の値。未計測は-1）
+	int GetAutoDelayPing() const;
 	/// @brief 次に実行するフレームを取得する
 	int32_t GetNextFrame() const { return m_Shared.GetNextFrame(); }
 	/// @brief メッセージを明示的なリトルエンディアンへ変換する
@@ -204,6 +206,7 @@ private:
 	uint64_t m_Now = 0;
 	uint64_t m_LastReceived[FIGHTER_COUNT] = {};
 	uint32_t m_Echo[FIGHTER_COUNT] = {};
+	uint32_t m_LastEcho[FIGHTER_COUNT] = {}; // 前に往復時間を測った Echo（同じ Echo の再送は測らない）。
 	int m_Ping[FIGHTER_COUNT] = { -1, -1, -1, -1 };
 	std::deque<std::pair<uint64_t, int>> m_PingHistory[FIGHTER_COUNT]; // 受け取った時刻と往復時間。
 	bool m_AutoDelay = false;

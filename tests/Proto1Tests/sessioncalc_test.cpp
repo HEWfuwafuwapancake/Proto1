@@ -439,7 +439,7 @@ namespace Proto1Tests
 			Assert::AreEqual(uint64_t(2), host.GetWaitFrames());
 		}
 
-		TEST_METHOD(AutoDelay_HostUsesPeakPingOfLastTwoSecondsAtRoundStart)
+		TEST_METHOD(AutoDelay_HostUsesPingOfLastTwoSecondsAtRoundStart)
 		{
 			Assert::AreEqual(3, SessionCalcAutoDelay(-1));
 			Assert::AreEqual(3, SessionCalcAutoDelay(5));
@@ -463,9 +463,9 @@ namespace Proto1Tests
 					Deliver(host, 1, client.MakeControl());
 				};
 				measure(100, 200);
-				Assert::AreEqual(200, host.GetPeakPing());
+				Assert::AreEqual(200, host.GetAutoDelayPing());
 				measure(3000, 60); // 2秒より前の 200ms は使わない。
-				Assert::AreEqual(60, host.GetPeakPing());
+				Assert::AreEqual(60, host.GetAutoDelayPing());
 				client.Decide();
 				Deliver(host, 1, client.MakeControl());
 				host.Decide();
@@ -478,6 +478,41 @@ namespace Proto1Tests
 				Assert::IsTrue(client.IsRunning());
 				Assert::AreEqual(expected, client.GetDelay());
 			}
+		}
+
+		TEST_METHOD(AutoDelay_IgnoresRareSpikeAndRepeatedEcho)
+		{
+			NET_OPTIONS options;
+			options.Mode = NET_MODE_HOST;
+			SessionCalc host, client;
+			host.Initialize(options, 100);
+			options.Mode = NET_MODE_JOIN;
+			client.Initialize(options, 101);
+			Assert::AreEqual(1, host.Join(101));
+			// 同じ Echo がもう一度届いても、2回目（80ms 後）は測らない。
+			host.SetTime(100);
+			Deliver(client, 0, host.MakeControl(1));
+			host.SetTime(130);
+			Deliver(host, 1, client.MakeControl());
+			host.SetTime(180);
+			Deliver(host, 1, client.MakeControl());
+			Assert::AreEqual(30, host.GetAutoDelayPing());
+			// 30ms が19回と 100ms が1回なら、一瞬の 100ms は使わない。
+			for (int i = 1; i < 20; ++i) {
+				const uint32_t sent = 200 + i * 50;
+				const int ping = i == 10 ? 100 : 30;
+				host.SetTime(sent);
+				Deliver(client, 0, host.MakeControl(1));
+				host.SetTime(sent + ping);
+				Deliver(host, 1, client.MakeControl());
+			}
+			Assert::AreEqual(30, host.GetAutoDelayPing());
+			client.Decide();
+			Deliver(host, 1, client.MakeControl());
+			host.Decide();
+			host.Decide();
+			Assert::IsTrue(host.IsRunning());
+			Assert::AreEqual(4, host.GetDelay());
 		}
 
 		TEST_METHOD(Disconnect_LobbyReleasesSlotBeforeRosterIsLocked)
