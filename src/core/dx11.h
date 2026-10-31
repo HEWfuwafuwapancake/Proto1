@@ -35,6 +35,13 @@ void SetRenderTarget(void);
 /// @param enable 3D描画は true、2D（UI）描画は false
 void SetDepthEnable(bool enable);
 
+/// @brief 描く範囲（ビューポート）を設定する（ピクセル。左上が原点）
+/// @param x 左端
+/// @param y 上端
+/// @param width 幅
+/// @param height 高さ
+void SetViewport(float x, float y, float width, float height);
+
 /// @brief 画面（空の色）と深度バッファを消す（毎フレーム、描く前に呼ぶ）
 void Clear(void);
 

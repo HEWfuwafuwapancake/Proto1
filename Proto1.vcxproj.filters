@@ -19,6 +19,9 @@
     <Filter Include="src\physics">
       <UniqueIdentifier>{3F6C2B8E-7D41-5A9C-B2E5-8C1D4F7A6E30}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\net">
+      <UniqueIdentifier>{92FE875A-7C6C-42F1-A966-5F118976C7B2}</UniqueIdentifier>
+    </Filter>
     <Filter Include="shaders">
       <UniqueIdentifier>{99D17477-4D96-57CB-A6F0-36CA83AA5DE4}</UniqueIdentifier>
     </Filter>
@@ -27,6 +30,12 @@
     <ClCompile Include="src\core\debug_ostream.cpp">
       <Filter>src\core</Filter>
     </ClCompile>
+    <ClCompile Include="src\net\lockstepcalc.cpp">
+      <Filter>src\net</Filter>
+    </ClCompile>
+    <ClInclude Include="src\net\lockstepcalc.h">
+      <Filter>src\net</Filter>
+    </ClInclude>
     <ClCompile Include="src\core\dx11.cpp">
       <Filter>src\core</Filter>
     </ClCompile>
@@ -51,7 +60,7 @@
     <ClCompile Include="src\game\field.cpp">
       <Filter>src\game</Filter>
     </ClCompile>
-    <ClCompile Include="src\game\player.cpp">
+    <ClCompile Include="src\game\fighter.cpp">
       <Filter>src\game</Filter>
     </ClCompile>
     <ClCompile Include="src\game\stage.cpp">
@@ -69,7 +78,7 @@
     <ClCompile Include="src\physics\knockbackcalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
-    <ClCompile Include="src\game\dummy.cpp">
+    <ClCompile Include="src\game\fightermanager.cpp">
       <Filter>src\game</Filter>
     </ClCompile>
     <ClCompile Include="src\physics\playercalc.cpp">
@@ -146,7 +155,7 @@
     <ClInclude Include="src\game\field.h">
       <Filter>src\game</Filter>
     </ClInclude>
-    <ClInclude Include="src\game\player.h">
+    <ClInclude Include="src\game\fighter.h">
       <Filter>src\game</Filter>
     </ClInclude>
     <ClInclude Include="src\game\stage.h">
@@ -164,7 +173,7 @@
     <ClInclude Include="src\physics\knockbackcalc.h">
       <Filter>src\physics</Filter>
     </ClInclude>
-    <ClInclude Include="src\game\dummy.h">
+    <ClInclude Include="src\game\fightermanager.h">
       <Filter>src\game</Filter>
     </ClInclude>
     <ClInclude Include="src\physics\vec3.h">
@@ -319,6 +328,34 @@
     </ClInclude>
     <ClInclude Include="src\physics\scenecalc.h">
       <Filter>src\physics</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\physics\versuscalc.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
+    <ClInclude Include="src\physics\versuscalc.h">
+      <Filter>src\physics</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\net\sessioncalc.cpp">
+      <Filter>src\net</Filter>
+    </ClCompile>
+    <ClInclude Include="src\net\sessioncalc.h">
+      <Filter>src\net</Filter>
+    </ClInclude>
+    <ClCompile Include="src\net\netsocket.cpp">
+      <Filter>src\net</Filter>
+    </ClCompile>
+    <ClInclude Include="src\net\netsocket.h">
+      <Filter>src\net</Filter>
+    </ClInclude>
+    <ClCompile Include="src\game\netsession.cpp">
+      <Filter>src\game</Filter>
+    </ClCompile>
+    <ClInclude Include="src\game\netsession.h">
+      <Filter>src\game</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

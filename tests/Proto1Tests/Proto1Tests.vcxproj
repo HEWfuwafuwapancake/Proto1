@@ -80,6 +80,9 @@
     <ClCompile Include="..\..\src\core\gametime.cpp" />
     <ClCompile Include="..\..\src\core\timer.cpp" />
     <ClCompile Include="..\..\src\input\actioncalc.cpp" />
+    <ClCompile Include="..\..\src\net\lockstepcalc.cpp" />
+    <ClInclude Include="..\..\src\net\lockstepcalc.h" />
+    <ClCompile Include="lockstepcalc_test.cpp" />
     <ClCompile Include="..\..\src\input\padcalc.cpp" />
     <ClCompile Include="..\..\src\physics\cameracalc.cpp" />
     <ClCompile Include="..\..\src\physics\armcalc.cpp" />
@@ -119,7 +122,17 @@
     <ClCompile Include="objcalc_test.cpp" />
     <ClCompile Include="..\..\src\render\objcalc.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\src\net\sessioncalc.cpp" />
+    <ClInclude Include="..\..\src\net\sessioncalc.h" />
+    <ClCompile Include="sessioncalc_test.cpp" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+  <ItemGroup>
+    <ClCompile Include="versuscalc_test.cpp" />
+    <ClCompile Include="..\..\src\physics\versuscalc.cpp" />
+    <ClInclude Include="..\..\src\physics\versuscalc.h" />
+  </ItemGroup>
 </Project>

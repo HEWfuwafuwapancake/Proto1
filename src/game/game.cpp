@@ -1,104 +1,330 @@
 ﻿#include "game/game.h"
 #include "core/shader.h"
 #include "input/action.h"
+#include "input/pad.h"
+#include "render/number2d.h"
+#include <cmath>
 
 #ifdef _DEBUG
 #include "core/debug_ostream.h"
 #include <iostream>
 #endif
 
-void Game::Initialize()
+// 調整用の値
+static constexpr XMFLOAT4 EMPTY_VIEW_COLOR = { 0.0f, 0.0f, 0.0f, 1.0f };	// 3人のときの空いた画面（黒）
+
+VERSUS_VIEWPORT Game::GetViewport(int index) const
+{
+	return VersusCalcViewport(m_Net.IsOnline() ? 1 : m_HumanCount, index, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT);
+}
+
+bool Game::Initialize(const NET_OPTIONS& options)
 {
 	// 相手への参照は先に渡せるが、Reset の中では初期化済みの相手だけを使う。
 	m_Stage.Initialize();
-	m_Player.Initialize(m_Stage, m_Camera, m_Dummies, m_Arms);
-	m_Dummies.Initialize(m_Stage, m_Player, m_Camera);
-	m_Camera.Initialize(m_Stage, m_Player, m_Dummies, m_Arms, m_Match);
-	m_Arms.Initialize(m_Stage, m_Player, m_Dummies, m_Camera);
-	m_Match.Initialize(m_Dummies, m_Arms);
-	m_Hud.Initialize(m_Camera, m_Dummies, m_Match, m_Scene);
-	m_Scene.Start();
+	m_Participants.Reset();
+	for (auto& input : m_Inputs) input = {};
+	for (auto& input : m_PreviousInputs) input = {};
+	for (auto& input : m_DeviceInputs) input = {};
+	m_Fighters.Initialize(m_Stage, m_Participants);
+	// モデルは起動時に4枠分だけ読む。参加やTITLE・RETRYでは作り直さない。
+	for (int i = 0; i < FIGHTER_COUNT; ++i) {
+		m_Cameras[i].Initialize(m_Stage, m_Fighters, i, m_Arms[i], m_Match);
+		m_Arms[i].Initialize(m_Stage, m_Fighters, i, m_Cameras[i]);
+	}
+	m_Match.Initialize(m_Fighters, m_Arms);
+	for (int i = 0; i < FIGHTER_COUNT; ++i) {
+		m_Huds[i].Initialize(m_Cameras[i], m_Fighters, i, m_Match, m_Scene);
+	}
+	ConfigurePlayers();
+	const bool connected = m_Net.Initialize(options);
+	m_Scene.Start(m_Net.IsOnline());
+	ActionSetOnlineEquip(m_Net.IsOnline());
+	UpdatePadLights();
 #ifdef _DEBUG
-	hal::dout << "シーン：タイトル" << std::endl;
+	hal::dout << "シーン：タイトル（人 " << m_HumanCount << " 人）" << std::endl;
 #endif
+	return connected;
 }
 
 void Game::Finalize()
 {
-	m_Hud.Finalize();
+	m_Net.Finalize();
+	for (int i = 0; i < FIGHTER_COUNT; ++i) m_Huds[i].Finalize();
 	m_Match.Finalize();
-	m_Arms.Finalize();
-	m_Camera.Finalize();
-	m_Dummies.Finalize();
-	m_Player.Finalize();
+	for (int i = 0; i < FIGHTER_COUNT; ++i) {
+		m_Arms[i].Finalize();
+		m_Cameras[i].Finalize();
+	}
 	m_Stage.Finalize();
+}
+
+void Game::ConfigurePlayers()
+{
+	// 前の顔ぶれの保持をすべて離してから、新しい体へ割り当てる。
+	for (int i = 0; i < FIGHTER_COUNT; ++i) m_Arms[i].Reset();
+	m_Fighters.Initialize(m_Stage, m_Participants);
+	m_HumanCount = 0;
+	for (int i = 0; i < FIGHTER_COUNT; ++i) {
+		m_Fighters.GetFighter(i).SetInput(m_Inputs[i], m_PreviousInputs[i]);
+		if (m_Fighters.GetFighter(i).IsHuman()) m_Humans[m_HumanCount++] = i;
+	}
+	for (int k = 0; k < m_HumanCount; ++k) {
+		const int slot = m_Humans[k];
+		const VERSUS_VIEWPORT view = GetViewport(k);
+		m_Fighters.BindPlayer(slot, m_Cameras[slot], m_Arms[slot]);
+		m_Cameras[slot].SetViewSize(view.Width, view.Height);
+		m_Cameras[slot].Reset();
+		m_Huds[slot].SetViewSize(view.Width, view.Height);
+	}
+	if (m_HumanCount == 0) {
+		// 未参加のタイトルは1つのカメラで初期配置を映す。
+		m_Cameras[0].SetViewSize((float)SCREEN_WIDTH, (float)SCREEN_HEIGHT);
+		m_Cameras[0].Reset();
+	}
+}
+
+void Game::UpdatePadLights() const
+{
+	for (int pad = 0; pad < PAD_COUNT; ++pad) {
+		if (m_Net.IsOnline() && pad != m_Net.GetLocalDevice()) continue;
+		XMFLOAT4 color{}; // 未参加は消灯
+		for (int slot = 0; slot < FIGHTER_COUNT; ++slot) {
+			if (m_Participants.GetDevice(slot) == pad) color = Fighter::GetPlayerColor(slot);
+		}
+		PadSetLightColor(pad, color.x, color.y, color.z);
+	}
 }
 
 void Game::Restart()
 {
 	// 敵を戻す前に腕を離し、プレイヤー・敵のあとにカメラを戻す。
-	m_Arms.Reset();
-	m_Player.Reset();
-	m_Dummies.Reset();
-	m_Camera.Reset();
+	for (int k = 0; k < m_HumanCount; ++k) m_Arms[m_Humans[k]].Reset();
+	m_Fighters.Reset();
+	for (int k = 0; k < m_HumanCount; ++k) m_Cameras[m_Humans[k]].Reset();
 	m_Match.Reset();
 #ifdef _DEBUG
 	hal::dout << "試合：やり直し" << std::endl;
 #endif
 }
 
+void Game::ResetParticipants()
+{
+	m_Participants.Reset();
+	for (auto& value : m_Inputs) value = {};
+	for (auto& value : m_PreviousInputs) value = {};
+	for (int device = 0; device < ACTION_DEVICE_COUNT; ++device) m_DeviceInputs[device] = ActionGetPlayerInput(device);
+	ConfigurePlayers();
+	m_Match.Reset();
+	UpdatePadLights();
+}
+
+bool Game::IsLobbyBack() const
+{
+	for (int device = 0; device < ACTION_DEVICE_COUNT; ++device) {
+		if (ActionGetMenuInput(device).Back) return true;
+	}
+	return false;
+}
+
+void Game::UpdateMenu()
+{
+	const SCENE oldScene = m_Scene.GetScene();
+	SCENE_INPUT input{};
+	for (int device = 0; device < ACTION_DEVICE_COUNT; ++device) {
+		const ACTION_MENU_INPUT menu = ActionGetMenuInput(device);
+		// メニューからロビーへ入った決定を、参加の再入力として使わない。
+		m_DeviceInputs[device] = ActionGetPlayerInput(device);
+		if (menu.Decide && !input.Decide) { input.Decide = true; m_MenuDevice = device; }
+		if (fabsf(menu.MoveY) > fabsf(input.MoveY)) input.MoveY = menu.MoveY;
+		if (oldScene == SCENE_JOIN_ADDRESS) {
+			m_JoinAddress.Move(menu.Horizontal);
+			m_JoinAddress.Adjust(menu.Vertical);
+			for (char c : menu.Text) {
+				if (c >= '0' && c <= '9') m_JoinAddress.AppendDigit(c - '0');
+				else if (c == '.') m_JoinAddress.Move(1);
+				else if (c == '\b' && !m_JoinAddress.Erase()) input.Back = true;
+			}
+			// キーボードの Backspace は上で削除。パッドの×はいつでも戻る。
+			if (device != ACTION_DEVICE_KEYBOARD) input.Back = input.Back || menu.Back;
+		}
+		else input.Back = input.Back || menu.Back;
+	}
+	input.AddressValid = m_JoinAddress.IsValid();
+	const SCENE_EVENT event = m_Scene.Step(input, false);
+	if (oldScene != SCENE_JOIN_ADDRESS && m_Scene.GetScene() == SCENE_JOIN_ADDRESS) {
+		const std::string addresses = NetSocket::GetLocalAddresses();
+		m_JoinAddress.Initialize(addresses.substr(0, addresses.find(" / ")));
+	}
+	if (event == SCENE_EVENT_START_MATCH) {
+		m_Participants.Reset();
+		m_Participants.AssignDevice(m_MenuDevice);
+		ConfigurePlayers();
+		Restart();
+	}
+	else if (event == SCENE_EVENT_HOST || event == SCENE_EVENT_JOIN) {
+		NET_OPTIONS options;
+		options.Mode = event == SCENE_EVENT_HOST ? NET_MODE_HOST : NET_MODE_JOIN;
+		options.Host = m_JoinAddress.GetText();
+		options.Delay = LOCKSTEP_AUTO_DELAY;
+		if (m_Net.Initialize(options)) m_Scene.OpenLobby();
+		else m_Scene.ShowModes(); // 理由は NetSession がタイトルバーへ残す。
+		ActionSetOnlineEquip(m_Net.IsOnline());
+		ResetParticipants();
+	}
+}
+
 void Game::Update()
 {
-	const SCENE_INPUT input{ ActionIsTrigger(ACTION_DECIDE), ActionIsTrigger(ACTION_RESTART), ActionGetMove().Y };
 	const SCENE oldScene = m_Scene.GetScene();
+	if (oldScene == SCENE_GAME_START || oldScene == SCENE_MODE_SELECT || oldScene == SCENE_JOIN_ADDRESS) {
+		UpdateMenu();
+		return;
+	}
+	if (oldScene == SCENE_TITLE && IsLobbyBack()) {
+		m_Scene.Step({ false, false, 0.0f, true }, false);
+		m_Net.Finalize();
+		ActionSetOnlineEquip(false);
+		ResetParticipants();
+		return;
+	}
+	bool start = false;
+	int32_t onlineFrame = -1;
+	if (m_Net.IsOnline()) {
+		m_Net.Update(); // 入力待ちでも受信・再送・機器選択を続ける。
+		if (!m_Net.IsOnline()) {
+			// ホスト切断・参加拒否では、リモート枠と前入力を捨ててモード選択へ戻す。
+			ActionSetOnlineEquip(false);
+			m_Scene.ShowModes();
+			ResetParticipants();
+			return;
+		}
+		if (oldScene == SCENE_TITLE) {
+			for (int slot = 0; slot < FIGHTER_COUNT; ++slot) {
+				int device = VERSUS_DEVICE_DUMMY;
+				if (m_Net.GetReadyMask() & (1u << slot)) {
+					device = slot == m_Net.GetLocalSlot() ? m_Net.GetLocalDevice() : VERSUS_DEVICE_REMOTE;
+				}
+				m_Participants.SetSlotDevice(slot, device);
+			}
+		}
+		UpdatePadLights();
+		LOCKSTEP_FRAME frame;
+		if (!m_Net.TakeFrame(frame)) return; // ゲームの計算・前入力・カメラは進めない。
+		onlineFrame = frame.Number;
+		start = oldScene == SCENE_TITLE;
+		if (start) {
+			for (auto& value : m_Inputs) value = {};
+		}
+		for (int slot = 0; slot < FIGHTER_COUNT; ++slot) {
+			m_PreviousInputs[slot] = m_Inputs[slot];
+			m_Inputs[slot] = frame.Inputs[slot];
+			m_Fighters.GetFighter(slot).SetInput(m_Inputs[slot], m_PreviousInputs[slot]);
+		}
+	}
+	else {
+		// 同一フレームの参加は機器番号順。開始フレームの参加も取り込む。
+		for (int device = 0; device < ACTION_DEVICE_COUNT; ++device) {
+			const PLAYER_INPUT current = ActionGetPlayerInput(device);
+			if (oldScene == SCENE_TITLE && ActionCalcPlayerTrigger(current, m_DeviceInputs[device], ACTION_DECIDE)
+				&& m_Participants.JoinOrStart(device)) start = true;
+			m_DeviceInputs[device] = current;
+		}
+		for (int slot = 0; slot < FIGHTER_COUNT; ++slot) {
+			m_PreviousInputs[slot] = m_Inputs[slot];
+			const int device = m_Participants.GetDevice(slot);
+			m_Inputs[slot] = device >= 0 && device < ACTION_DEVICE_COUNT ? m_DeviceInputs[device] : ActionGetPlayerInput(device);
+			// F1〜F4は機器ではなく人のスロットを選ぶ。パッドの人にも従来どおり配る。
+			m_Inputs[slot].Equip = m_Participants.IsHuman(slot) ? ActionGetEquipKey(slot) : ACTION_EQUIP_KEY{ -1, -1 };
+			m_Fighters.GetFighter(slot).SetInput(m_Inputs[slot], m_PreviousInputs[slot]);
+		}
+	}
+	SCENE_INPUT input{ ActionCalcPlayerTrigger(m_Inputs[0], m_PreviousInputs[0], ACTION_DECIDE),
+		ActionCalcPlayerTrigger(m_Inputs[0], m_PreviousInputs[0], ACTION_RESTART), ActionCalcPlayerMove(m_Inputs[0]).Y };
+	if (oldScene == SCENE_TITLE) input = { start, false, 0.0f };
 	if (oldScene == SCENE_MATCH) {
-		// プレイヤー → ダミー → カメラ → キャラの向き → 腕の順を保つ。
+		// 全員の体・体当たり → カメラ → キャラの向き → 腕の順を保つ。
 		m_Stage.Update();
 		if (m_Match.IsPlaying()) {
-			m_Player.Update();
-			m_Dummies.Update();
+			m_Fighters.Update();
 		}
-		m_Camera.Update();
-		if (m_Match.IsPlaying()) m_Player.UpdateFacing();
+		for (int k = 0; k < m_HumanCount; ++k) m_Cameras[m_Humans[k]].Update();
+		if (m_Match.IsPlaying()) m_Fighters.UpdateFacing();
 		// 装備切り替えは時間切れのあとも受け付ける。
-		m_Arms.Update(m_Match.IsPlaying());
+		for (int k = 0; k < m_HumanCount; ++k) m_Arms[m_Humans[k]].Update(m_Match.IsPlaying());
 	}
 	const SCENE_EVENT event = m_Scene.Step(input, m_Match.GetState() == MATCH_STATE_FINISHED);
-	if (event == SCENE_EVENT_START_MATCH || event == SCENE_EVENT_BACK_TITLE) Restart();
+	if (event == SCENE_EVENT_START_MATCH) {
+		if (oldScene == SCENE_TITLE) ConfigurePlayers();
+		Restart();
+	}
+	else if (event == SCENE_EVENT_BACK_TITLE) {
+		if (m_Net.IsOnline()) m_Net.ReturnToLobby();
+		else m_Participants.Reset();
+		ConfigurePlayers();
+		m_Match.Reset();
+	}
 	else if (oldScene == SCENE_MATCH) m_Match.Update();
 #ifdef _DEBUG
 	if (oldScene != m_Scene.GetScene()) {
-		const char* name = m_Scene.GetScene() == SCENE_TITLE ? "タイトル"
-			: (m_Scene.GetScene() == SCENE_MATCH ? "試合" : "結果");
+		const SCENE scene = m_Scene.GetScene();
+		const char* name = scene == SCENE_TITLE ? "ロビー" : scene == SCENE_MATCH ? "試合"
+			: scene == SCENE_RESULT ? "結果" : "メニュー";
 		hal::dout << "シーン：" << name << std::endl;
 	}
 #endif
-	m_Hud.Update();
+	for (int k = 0; k < m_HumanCount; ++k) m_Huds[m_Humans[k]].Update();
+	if (onlineFrame >= 0 && (onlineFrame + 1) % LOCKSTEP_CHECKSUM_INTERVAL == 0) {
+		LOCKSTEP_STATE states[FIGHTER_COUNT];
+		for (int slot = 0; slot < FIGHTER_COUNT; ++slot) {
+			const Fighter& fighter = m_Fighters.GetFighter(slot);
+			const XMFLOAT3 position = fighter.GetPosition();
+			states[slot] = { { position.x, position.y, position.z }, fighter.GetPercent(), m_Fighters.GetScore(slot) };
+		}
+		m_Net.RecordChecksum(onlineFrame, states);
+	}
+	UpdatePadLights();
 }
 
 void Game::Draw() const
 {
-	// ---- 3D描画 ----
-	SetDepthEnable(true);
-	m_Camera.Draw();
-
 	// ライト（斜め上から当たる白い光）
 	LIGHT light{};
-	light.Enable = TRUE;
-	light.Direction = { 0.5f, -1.0f, 0.8f, 0.0f };
 	light.Diffuse = { 1.0f, 1.0f, 1.0f, 1.0f };
 	light.Ambient = { 0.3f, 0.3f, 0.3f, 1.0f };
-	Shader_SetLight(light);
+	light.Direction = { 0.5f, -1.0f, 0.8f, 0.0f };
 
-	m_Stage.Draw();
-	m_Player.Draw();
-	m_Dummies.Draw();
-	m_Arms.Draw();
+	// 人ごとに「ビューポート → そのカメラ → 3D → その人の HUD」の順に描く。
+	const int viewCount = m_Net.IsOnline() ? 1 : (m_HumanCount > 0 ? m_HumanCount : 1);
+	for (int k = 0; k < viewCount; ++k) {
+		const int slot = m_Net.IsOnline() && m_HumanCount > 0 ? m_Net.GetLocalSlot() : (m_HumanCount > 0 ? m_Humans[k] : 0);
+		const Camera& camera = m_Cameras[slot];
+		const VERSUS_VIEWPORT view = GetViewport(k);
+		SetViewport(view.X, view.Y, view.Width, view.Height);
 
-	// ---- 2D描画（UI）：3Dの上に重ねるので最後に描く ----
-	SetDepthEnable(false);
-	light.Enable = FALSE;
-	Shader_SetLight(light);
+		// ---- 3D描画 ----
+		SetDepthEnable(true);
+		camera.Draw();
+		light.Enable = TRUE;
+		Shader_SetLight(light);
 
-	m_Hud.Draw();
+		m_Stage.Draw();
+		m_Fighters.Draw(camera.GetTarget());
+		for (int j = 0; j < m_HumanCount; ++j) m_Arms[m_Humans[j]].Draw();
+
+		// ---- 2D描画（UI）：3Dの上に重ねるので最後に描く ----
+		SetDepthEnable(false);
+		light.Enable = FALSE;
+		Shader_SetLight(light);
+
+		m_Huds[slot].Draw();
+	}
+
+	// ---- 画面全体：3人のときの空き → タイトル・結果のおおい ----
+	SetViewport(0.0f, 0.0f, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT);
+	if (!m_Net.IsOnline() && m_HumanCount == 3) {
+		const VERSUS_VIEWPORT empty = GetViewport(3);
+		Number2DDrawBox({ empty.X, empty.Y, empty.Width, empty.Height }, EMPTY_VIEW_COLOR);
+	}
+	m_Huds[0].DrawScene(m_Participants, m_Net, m_JoinAddress);
 }

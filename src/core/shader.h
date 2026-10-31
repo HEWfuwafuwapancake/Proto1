@@ -58,6 +58,11 @@ void Shader_SetProjectionMatrix(const DirectX::XMMATRIX& matrix);
 /// @brief 2D描画用（左上が原点・ピクセル単位）の行列をまとめて設定する
 void Shader_Set2DMatrix();
 
+/// @brief 2D描画で、今のビューポート全体に当てはめる座標の幅と高さを設定する（はじめは画面の大きさ）
+/// @param width 右端の x 座標
+/// @param height 下端の y 座標
+void Shader_Set2DSize(float width, float height);
+
 /// @brief マテリアル（物体の色）を設定する
 /// @param material マテリアル
 void Shader_SetMaterial(const MATERIAL& material);

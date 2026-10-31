@@ -6,10 +6,16 @@
 static BYTE g_KeyState[256] = {};		// 今のフレームのキーの状態
 static BYTE g_OldKeyState[256] = {};	// 1つ前のフレームのキーの状態
 static KeyboardTriggerCalc g_Triggers[256]; // 短い押下をフレームまで保持する
+static std::string g_PendingAddressText;
+static std::string g_AddressText;
 
 void KeyboardOnKeyDown(int key, bool repeat)
 {
 	g_Triggers[key & 0xFF].Press(repeat, (GetKeyState(VK_SHIFT) & 0x8000) != 0);
+	if (key >= '0' && key <= '9') g_PendingAddressText += static_cast<char>(key);
+	else if (key >= VK_NUMPAD0 && key <= VK_NUMPAD9) g_PendingAddressText += static_cast<char>('0' + key - VK_NUMPAD0);
+	else if (key == VK_OEM_PERIOD || key == VK_DECIMAL) g_PendingAddressText += '.';
+	else if (key == VK_BACK) g_PendingAddressText += '\b';
 }
 
 void KeyboardReset(void)
@@ -17,6 +23,8 @@ void KeyboardReset(void)
 	memset(g_KeyState, 0, sizeof(g_KeyState));
 	memset(g_OldKeyState, 0, sizeof(g_OldKeyState));
 	for (KeyboardTriggerCalc& trigger : g_Triggers) trigger.Reset();
+	g_PendingAddressText.clear();
+	g_AddressText.clear();
 }
 
 
@@ -30,6 +38,13 @@ void KeyboardUpdate(void)
 		KeyboardReset();
 	}
 	for (KeyboardTriggerCalc& trigger : g_Triggers) trigger.Update();
+	g_AddressText.swap(g_PendingAddressText);
+	g_PendingAddressText.clear();
+}
+
+const std::string& KeyboardGetAddressText()
+{
+	return g_AddressText;
 }
 
 bool KeyboardIsPress(int key)

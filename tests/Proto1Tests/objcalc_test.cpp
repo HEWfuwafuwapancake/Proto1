@@ -106,6 +106,25 @@ namespace Proto1Tests
 			const VEC3 w = Vec3Sub(plain[2].Position, plain[0].Position);
 			Assert::AreEqual(-1.0f, (u.X * w.Y - u.Y * w.X) / Vec3Length(u) / Vec3Length(w), OBJ_EPSILON);
 		}
+		TEST_METHOD(Materials_KdAndUsemtlSetVertexMaterial)
+		{
+			std::vector<OBJ_MATERIAL> m;
+			Assert::IsTrue(ObjCalcParseMtl("newmtl A\nillum 4\nKd 0.5 0.25 1\nnewmtl B\nKa 0 0 0\n", m));
+			Assert::AreEqual(size_t(2), m.size());
+			Assert::AreEqual(std::string("B"), m[1].Name);
+			Assert::AreEqual(0.25f, m[0].Diffuse.Y, OBJ_EPSILON);
+			Assert::AreEqual(1.0f, m[1].Diffuse.X, OBJ_EPSILON); // Kd がなければ白
+			const std::string obj = std::string("mtllib body.mtl\n") + TRIANGLE
+				+ "f 1 2 3\nusemtl B\nf 1 2 3\nusemtl A\nf 1 2 3\nusemtl none\nf 1 2 3\n";
+			Assert::AreEqual(std::string("body.mtl"), ObjCalcGetMtlLib(obj));
+			std::vector<OBJ_VERTEX> v;
+			Assert::IsTrue(ObjCalcParse(obj, m, v));
+			Assert::AreEqual(size_t(12), v.size());
+			Assert::AreEqual(-1, v[0].Material);
+			Assert::AreEqual(1, v[3].Material);
+			Assert::AreEqual(0, v[8].Material);
+			Assert::AreEqual(-1, v[9].Material);
+		}
 		TEST_METHOD(BrokenLines_FailAndClearOutput)
 		{
 			for (const char* broken : { "v 1 2", "v x 2 3", "v 1 2 3bad", "vn 1 2", "vn 0 0 0",

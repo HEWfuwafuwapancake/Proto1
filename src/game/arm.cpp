@@ -1,11 +1,12 @@
 ﻿#include "game/arm.h"
-#include "game/player.h"
+#include "game/fighter.h"
+#include "game/fightermanager.h"
 #include "game/arm_grapple.h"
 #include "game/arm_drill.h"
 #include "game/arm_magnet.h"
 #include "game/arm_shield.h"
 #include "game/tentacle.h"
-#include "input/action.h"
+#include "input/pad.h"
 #include "physics/armcalc.h"
 #include "physics/tentaclecalc.h"
 #include "render/model.h"
@@ -17,11 +18,13 @@
 #endif
 
 // 調整用の値（今後追加する腕も、取付位置と待機方向はここを使う）
-static constexpr float ARM_REST_PITCH = -XM_PI / 4.0f; // 待機の腕を正面から 45° 下げる
-static constexpr float ARM_REST_SPREAD = XMConvertToRadians(25.0f); // 片側ずつ外へ開く角度
-static constexpr float SHOULDER_OFFSET = 0.65f;
-static constexpr float SHOULDER_FORWARD = -0.1f; // 肩を少し後ろへ引いて胸を張る
-static constexpr float HAND_HEIGHT = 1.35f;
+static constexpr float ARM_REST_PITCH = XMConvertToRadians(-75.0f); // 待機の腕を正面から 75° 下げる（体の横に垂らす）
+static constexpr float ARM_REST_SPREAD = XMConvertToRadians(8.0f); // 片側ずつ外へ開く角度
+// 肩の高さ・前後はキャラのリグの armMount（X ±14.6・高さ 110.5・Z 0 cm × 1.8 / 157.9）に合わせる。
+// 左右は腕の付け根の箱が胸にめり込まないよう、取付口（0.165）より外へ出す。
+static constexpr float SHOULDER_OFFSET = 0.24f;
+static constexpr float SHOULDER_FORWARD = 0.0f;
+static constexpr float HAND_HEIGHT = 1.26f;
 static constexpr XMFLOAT4 LEFT_COLOR{ 0.8f, 0.3f, 0.65f, 1.0f };
 static constexpr XMFLOAT4 RIGHT_COLOR{ 0.35f, 0.8f, 0.6f, 1.0f };
 static constexpr XMFLOAT4 HOLD_COLOR{ 1.0f, 0.7f, 0.2f, 1.0f };
@@ -57,9 +60,9 @@ void ArmManager::ChangeType(int hand, int next)
 #endif
 }
 
-void ArmManager::Initialize(const Stage& stage, Player& player, DummyManager& dummies, const Camera& camera)
+void ArmManager::Initialize(const Stage& stage, FighterManager& fighters, int slot, const Camera& camera)
 {
-	m_Links = { &player, &dummies, &camera, &stage };
+	m_Links = { &fighters, slot, &camera, &stage };
 	m_Types[0] = m_Types[1] = ARM_TYPE_TENTACLE;
 	for (int type = 0; type < ARM_TYPE_COUNT; ++type) {
 		if (ARM_FACTORIES[type] == nullptr) continue;
@@ -88,18 +91,24 @@ void ArmManager::Update(bool playing)
 {
 	bool available[ARM_TYPE_COUNT];
 	for (int type = 0; type < ARM_TYPE_COUNT; ++type) available[type] = ARM_FACTORIES[type] != nullptr;
-	const ACTION_EQUIP_KEY key = ActionGetEquipKey();
+	const ACTION_EQUIP_KEY key = m_Links.Fighters->GetFighter(m_Links.Slot).GetEquipInput();
 	for (int hand = 0; hand < 2; ++hand) {
 		if (key.Hand == hand) ChangeType(hand, ArmCalcSelect(key.Number, available, ARM_TYPE_COUNT));
 	}
 	if (!playing) return;
+	const Fighter& player = m_Links.Fighters->GetFighter(m_Links.Slot);
+	if (!player.CanUseArms() || player.DidRespawn()) {
+		Reset();
+		return;
+	}
 	for (int hand = 0; hand < 2; ++hand) {
-		m_Arms[hand][m_Types[hand]]->Update(ActionIsTrigger(hand == 0 ? ACTION_ARM_LEFT : ACTION_ARM_RIGHT));
+		m_Arms[hand][m_Types[hand]]->Update(player.IsTrigger(hand == 0 ? ACTION_ARM_LEFT : ACTION_ARM_RIGHT));
 	}
 }
 
 void ArmManager::Draw(void) const
 {
+	if (!m_Links.Fighters->IsActive(m_Links.Slot)) return;
 	for (int hand = 0; hand < 2; ++hand) m_Arms[hand][m_Types[hand]]->Draw();
 }
 
@@ -134,11 +143,18 @@ const char* ArmGetName(ARM_TYPE type)
 	return type >= 0 && type < ARM_TYPE_COUNT ? ARM_NAMES[type] : "不明";
 }
 
+Fighter& Arm::GetPlayer() const
+{
+	return GetFighters().GetFighter(GetSlot());
+}
+
 VEC3 Arm::GetShoulder() const
 {
 	const int hand = GetHand();
 	const XMFLOAT3 p = GetPlayer().GetPosition();
-	return ArmCalcShoulder({ p.x, p.y, p.z }, GetPlayer().GetYaw(), hand, SHOULDER_OFFSET, HAND_HEIGHT, SHOULDER_FORWARD);
+	const VEC3 mount = GetMountOffset();
+	return ArmCalcShoulder({ p.x, p.y, p.z }, GetPlayer().GetYaw(), hand,
+		SHOULDER_OFFSET + mount.X, HAND_HEIGHT + mount.Y, SHOULDER_FORWARD + mount.Z);
 }
 
 VEC3 Arm::GetRestDirection(float pitchOffset) const
@@ -163,4 +179,10 @@ void Arm::DrawPiece(int model, VEC3 start, VEC3 end, float sourceLength, float t
 int Arm::LoadModel(const char* path) const
 {
 	return ModelLoad(path, GetHand() == 1);
+}
+
+void Arm::Rumble(float smallMotor, float largeMotor, float seconds) const
+{
+	const int device = GetPlayer().GetDevice();
+	PadRumble(device == VERSUS_DEVICE_COMBINED ? 0 : device, smallMotor, largeMotor, seconds);
 }

@@ -1,15 +1,16 @@
 ﻿#include "game/arm.h"
 #include "game/camera.h"
 #include "game/arm_drill.h"
-#include "game/dummy.h"
-#include "game/player.h"
+#include "game/fightermanager.h"
+#include "game/fighter.h"
 #include "core/gametime.h"
 #include "physics/armcalc.h"
 #include "physics/drillcalc.h"
 #include "input/pad.h"
 
 // 調整用の値
-static constexpr float MODEL_SCALE = 0.08f;
+static constexpr float MODEL_SCALE = 0.08f * Arm::MODEL_SIZE;
+static constexpr VEC3 MOUNT_OFFSET{ -0.07f, -0.1f, 0.0f }; // 取付位置のずらし（外・上・前 m）。体へ寄せて下げる
 static constexpr DRILL_GRIP DRILL_MODEL_GRIP{
 	{ 0.311337f, -5.719436f, -5.081741f }, { 0.0f, -0.707106781f, 0.707106781f }, MODEL_SCALE
 };
@@ -58,6 +59,11 @@ DrillArm::~DrillArm()
 	Reset();
 }
 
+VEC3 DrillArm::GetMountOffset() const
+{
+	return MOUNT_OFFSET;
+}
+
 bool DrillArm::IsThrusting() const
 {
 	return m_Arm.GetState() == DRILL_STRIKING || m_Arm.GetState() == DRILL_BORING;
@@ -70,23 +76,23 @@ void DrillArm::Update(bool trigger)
 	const VEC3 origin = GetShoulder();
 	const float yaw = GetCamera().GetYaw();
 	const VEC3 forward{ sinf(yaw), 0.0f, cosf(yaw) };
-	TENTACLE_TARGET targets[DUMMY_COUNT];
-	for (int i = 0; i < DUMMY_COUNT; ++i) targets[i] = GetDummies().GetTarget(i);
+	TENTACLE_TARGET targets[FIGHTER_COUNT];
+	for (int i = 0; i < FIGHTER_COUNT; ++i) targets[i] = GetFighters().GetTarget(i, GetSlot());
 	const int target = GetCamera().GetTarget();
-	const bool hasTarget = target >= 0 && target < DUMMY_COUNT;
+	const bool hasTarget = target >= 0 && target < FIGHTER_COUNT;
 	const VEC3 center = hasTarget
 		? Vec3Scale(Vec3Add(targets[target].Body.Start, targets[target].Body.End), 0.5f) : VEC3{};
 	const VEC3 aim = TentacleCalcAim(origin, center, hasTarget, forward);
 	const float dt = fmaxf(0.0f, GameTimeGetDeltaTime());
 	const DRILL_EVENT event = arm.Step(origin, aim, hand == 1, trigger, GetPlayer().DidRespawn(),
-		dt, PARAMS, targets, DUMMY_COUNT);
+		dt, PARAMS, targets, FIGHTER_COUNT);
 	for (int tick = 0; tick < event.DamageTicks; ++tick) {
-		GetDummies().AddDamage(event.Target, TICK_DAMAGE);
-		PadRumble(TICK_RUMBLE_SMALL, TICK_RUMBLE_LARGE, TICK_RUMBLE_SECONDS);
+		GetFighters().AddDamage(event.Target, GetSlot(), TICK_DAMAGE);
+		Rumble(TICK_RUMBLE_SMALL, TICK_RUMBLE_LARGE, TICK_RUMBLE_SECONDS);
 	}
 	if (event.Push) {
-		GetDummies().Launch(event.Target, DrillCalcPushDirection(arm.GetDirection(), PUSH_UP), 0.0f, PUSH_POWER);
-		PadRumble(PUSH_RUMBLE_SMALL, PUSH_RUMBLE_LARGE, PUSH_RUMBLE_SECONDS);
+		GetFighters().Launch(event.Target, GetSlot(), DrillCalcPushDirection(arm.GetDirection(), PUSH_UP), 0.0f, PUSH_POWER);
+		Rumble(PUSH_RUMBLE_SMALL, PUSH_RUMBLE_LARGE, PUSH_RUMBLE_SECONDS);
 	}
 	const float step = dt / DRILL_AIM_SECONDS;
 	m_Straighten = IsThrusting()

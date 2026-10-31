@@ -1,6 +1,6 @@
 ﻿#include "game/arm_shield.h"
-#include "game/dummy.h"
-#include "game/player.h"
+#include "game/fightermanager.h"
+#include "game/fighter.h"
 #include "core/gametime.h"
 #include "input/pad.h"
 #include "physics/armcalc.h"
@@ -20,7 +20,7 @@ static constexpr float COOLDOWN_SECONDS = 0.3f;
 static constexpr SHIELD_PARAMS PARAMS{
 	GUARD_SECONDS, BASH_SECONDS, COOLDOWN_SECONDS, BASH_RANGE, BASH_RADIUS
 };
-static constexpr float MODEL_SCALE = 0.08f;
+static constexpr float MODEL_SCALE = 0.08f * Arm::MODEL_SIZE;
 static constexpr float BASE_LENGTH = 19.250364f; // OBJ の肩から -Y 側の端までの長さ（cm）。
 static constexpr float PLATE_LENGTH = 2.901904f; // 板の取付原点から -Y 側の端までの長さ（cm）。
 static constexpr VEC3 PLATE_OFFSET{ 0.229075f, -15.022320f, -0.102787f }; // Z 反転済みの取付位置（cm）。
@@ -53,13 +53,13 @@ void ShieldArm::Update(bool trigger)
 		const CAPSULE capsule = ShieldCalcBashCapsule(GetShoulder(), forward, PARAMS);
 		const VEC3 velocity = ShieldCalcPushVelocity(forward, BASH_SPEED, BASH_UP);
 		bool hit = false;
-		for (int i = 0; i < DUMMY_COUNT; ++i) {
-			const TENTACLE_TARGET target = GetDummies().GetTarget(i);
+		for (int i = 0; i < FIGHTER_COUNT; ++i) {
+			const TENTACLE_TARGET target = GetFighters().GetTarget(i, GetSlot());
 			if (!target.Available || !CollisionCapsuleCapsule(capsule, target.Body).Hit) continue;
-			GetDummies().Push(i, velocity);
+			GetFighters().Push(i, GetSlot(), velocity);
 			hit = true;
 		}
-		if (hit) PadRumble(BASH_RUMBLE_SMALL, BASH_RUMBLE_LARGE, BASH_RUMBLE_SECONDS);
+		if (hit) Rumble(BASH_RUMBLE_SMALL, BASH_RUMBLE_LARGE, BASH_RUMBLE_SECONDS);
 	}
 	const bool raised = m_Arm.GetState() == SHIELD_GUARDING || m_Arm.GetState() == SHIELD_BASHING;
 	const float step = dt / GUARD_RAISE_SECONDS;

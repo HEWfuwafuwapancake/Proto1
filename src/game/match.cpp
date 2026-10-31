@@ -1,7 +1,7 @@
 ﻿#include "game/match.h"
 #include "core/debug_ostream.h"
 #include "core/gametime.h"
-#include "game/dummy.h"
+#include "game/fightermanager.h"
 #include "game/arm.h"
 #include "input/pad.h"
 
@@ -14,15 +14,15 @@
 	調整用の値
 ------------------------------------------------------------------------------*/
 static constexpr float MATCH_SECONDS = 90.0f;	// 制限時間（秒）
-static constexpr float PLAYING_LIGHT_COLOR[3] = { 0.95f, 0.45f, 0.35f }; // プレイヤーのサーモンピンク
-static constexpr float FINISHED_LIGHT_COLOR[3] = { 1.0f, 0.0f, 0.0f };   // 時間切れは赤
 
 
 void Match::Reset(void)
 {
-	m_Match.Start(MATCH_SECONDS, m_Dummies->GetTotalOutCount());
-	PadRumble(0.0f, 0.0f, 0.0f);
-	PadSetLightColor(PLAYING_LIGHT_COLOR[0], PLAYING_LIGHT_COLOR[1], PLAYING_LIGHT_COLOR[2]);
+	m_Match.Start(MATCH_SECONDS, GetTotalScore());
+	for (int slot = 0; slot < FIGHTER_COUNT; ++slot) {
+		const int device = m_Fighters->GetFighter(slot).GetDevice();
+		PadRumble(device == VERSUS_DEVICE_COMBINED ? 0 : device, 0.0f, 0.0f, 0.0f);
+	}
 }
 
 void Match::Finalize(void)
@@ -32,16 +32,22 @@ void Match::Finalize(void)
 
 void Match::Update(void)
 {
-	const MATCH_EVENT event = m_Match.Step(GameTimeGetDeltaTime(), m_Dummies->GetTotalOutCount());
+	// KOの持ち主はVersusCalcに任せ、MatchCalcは合計の増分と時間を扱う。
+	const MATCH_EVENT event = m_Match.Step(GameTimeGetDeltaTime(), GetTotalScore());
 #ifdef _DEBUG
 	if (event == MATCH_EVENT_SCORED) {
 		hal::dout << "試合：得点 " << m_Match.GetScore() << std::endl;
 	}
 #endif
 	if (event == MATCH_EVENT_TIME_UP) {
-		PadRumble(0.0f, 0.0f, 0.0f);
-		PadSetLightColor(FINISHED_LIGHT_COLOR[0], FINISHED_LIGHT_COLOR[1], FINISHED_LIGHT_COLOR[2]);
-		m_Arms->Reset();	// つかんでいる敵を離してから止める
+		for (int slot = 0; slot < FIGHTER_COUNT; ++slot) {
+			const int device = m_Fighters->GetFighter(slot).GetDevice();
+			PadRumble(device == VERSUS_DEVICE_COMBINED ? 0 : device, 0.0f, 0.0f, 0.0f);
+		}
+		// つかんでいる敵を離してから止める
+		for (int i = 0; i < FIGHTER_COUNT; ++i) {
+			if (m_Fighters->GetFighter(i).IsHuman()) m_Arms[i].Reset();
+		}
 #ifdef _DEBUG
 		hal::dout << "試合：時間切れ（得点 " << m_Match.GetScore() << "）" << std::endl;
 #endif
@@ -58,9 +64,16 @@ int Match::GetRemainingSeconds(void) const
 	return m_Match.GetDisplaySeconds();
 }
 
-int Match::GetScore(void) const
+int Match::GetScore(int slot) const
 {
-	return m_Match.GetScore();
+	return m_Fighters->GetScore(slot);
+}
+
+int Match::GetTotalScore() const
+{
+	int total = 0;
+	for (int slot = 0; slot < FIGHTER_COUNT; ++slot) total += m_Fighters->GetScore(slot);
+	return total;
 }
 
 MATCH_STATE Match::GetState(void) const
@@ -68,9 +81,9 @@ MATCH_STATE Match::GetState(void) const
 	return m_Match.GetState();
 }
 
-void Match::Initialize(const DummyManager& dummies, ArmManager& arms)
+void Match::Initialize(const FighterManager& fighters, ArmManager* arms)
 {
-	m_Dummies = &dummies;
-	m_Arms = &arms;
+	m_Fighters = &fighters;
+	m_Arms = arms;
 	Reset();
 }

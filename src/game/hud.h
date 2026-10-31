@@ -1,10 +1,15 @@
 ﻿#pragma once
 
 
+#include "core/dx11.h"
+
 class Camera;
-class DummyManager;
+class FighterManager;
 class Match;
 class SceneCalc;
+class VersusCalc;
+class NetSession;
+class SessionAddressCalc;
 
 /// @file hud.h
 /// @brief シーンごとの画面表示（タイトル・試合の HUD・結果のメニュー）
@@ -17,7 +22,7 @@ class Hud
 public:
 
 	/// @brief カメラ・ダミー・試合・シーンへの参照を受け取る（Number2DInitialize のあとに呼ぶ）
-	void Initialize(const Camera& camera, const DummyManager& dummies, const Match& match, const SceneCalc& scene);
+	void Initialize(const Camera& camera, const FighterManager& fighters, int slot, const Match& match, const SceneCalc& scene);
 
 	/// @brief 状態を最初に戻す（参照はそのまま）
 	void Reset(void);
@@ -28,15 +33,29 @@ public:
 	/// @brief 画面表示の更新（今は何もしない。値は描くときに読む）
 	void Update(void);
 
-	/// @brief 画面表示を描く（2D 描画の中で、深度テストを切りライトを消してから呼ぶ）
+	/// @brief 自分の画面の大きさを設定する（HUD は 1280×720 を縦横同じ倍率で縮めて当てはめる）
+	/// @param width 幅（ピクセル）
+	/// @param height 高さ（ピクセル）
+	void SetViewSize(float width, float height);
+
+	/// @brief 試合中の自分の画面の HUD を描く（自分のビューポートで、深度テストを切りライトを消してから呼ぶ）
 	void Draw(void) const;
 
+	/// @brief 起動・モード・IP・ロビー・結果を画面全体に描く（全画面のビューポートに戻してから呼ぶ）
+	void DrawScene(const VersusCalc& participants, const NetSession& net, const SessionAddressCalc& address) const;
+
 private:
-	void DrawDummyPercent(int index) const;
+	void DrawPlayerTag(int slot, float centerX, float y, float digitWidth) const;
+	void DrawPercent(float percent, float centerX, float y, float digitWidth, const XMFLOAT4& color) const;
+	void DrawFighterPercent(int index) const;
 	void DrawMenuItem(const char* text, float y, bool selected) const;
 	void DrawMenuHelp(float selectY, float decideY) const;
 	const Camera* m_Camera = nullptr;
-	const DummyManager* m_Dummies = nullptr;
+	const FighterManager* m_Fighters = nullptr;
 	const Match* m_Match = nullptr;
 	const SceneCalc* m_Scene = nullptr;
+	int m_Slot = 0;
+	float m_Width = 1280.0f;	// HUD の座標での画面の幅
+	float m_Height = 720.0f;	// HUD の座標での画面の高さ
+	float m_Scale = 1.0f;		// HUD の座標 → ビューポートのピクセルの倍率
 };

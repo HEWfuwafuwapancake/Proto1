@@ -135,6 +135,7 @@
     <ClCompile Include="src\core\gametime.cpp" />
     <ClCompile Include="src\input\action.cpp" />
     <ClCompile Include="src\input\actioncalc.cpp" />
+    <ClCompile Include="src\net\lockstepcalc.cpp" />
     <ClCompile Include="src\input\keyboard.cpp" />
     <ClCompile Include="src\core\main.cpp" />
     <ClCompile Include="src\input\mouse.cpp" />
@@ -151,7 +152,7 @@
     <ClCompile Include="src\physics\collision.cpp" />
     <ClCompile Include="src\physics\dummycalc.cpp" />
     <ClCompile Include="src\physics\knockbackcalc.cpp" />
-    <ClCompile Include="src\game\dummy.cpp" />
+    <ClCompile Include="src\game\fightermanager.cpp" />
     <ClCompile Include="src\game\tentacle.cpp" />
     <ClCompile Include="src\game\arm.cpp" />
     <ClCompile Include="src\game\arm_grapple.cpp" />
@@ -167,7 +168,7 @@
     <ClCompile Include="src\game\match.cpp" />
     <ClCompile Include="src\physics\matchcalc.cpp" />
     <ClCompile Include="src\physics\scenecalc.cpp" />
-    <ClCompile Include="src\game\player.cpp" />
+    <ClCompile Include="src\game\fighter.cpp" />
     <ClCompile Include="src\render\shape.cpp" />
     <ClCompile Include="src\render\model.cpp" />
     <ClCompile Include="src\render\objcalc.cpp" />
@@ -182,6 +183,7 @@
     <ClInclude Include="src\core\gametime.h" />
     <ClInclude Include="src\input\action.h" />
     <ClInclude Include="src\input\actioncalc.h" />
+    <ClInclude Include="src\net\lockstepcalc.h" />
     <ClInclude Include="src\input\keyboard.h" />
     <ClInclude Include="src\input\keyboardcalc.h" />
     <ClInclude Include="src\core\main.h" />
@@ -200,7 +202,7 @@
     <ClInclude Include="src\physics\collision.h" />
     <ClInclude Include="src\physics\dummycalc.h" />
     <ClInclude Include="src\physics\knockbackcalc.h" />
-    <ClInclude Include="src\game\dummy.h" />
+    <ClInclude Include="src\game\fightermanager.h" />
     <ClInclude Include="src\game\tentacle.h" />
     <ClInclude Include="src\game\arm.h" />
     <ClInclude Include="src\game\arm_grapple.h" />
@@ -217,7 +219,7 @@
     <ClInclude Include="src\physics\matchcalc.h" />
     <ClInclude Include="src\physics\scenecalc.h" />
     <ClInclude Include="src\physics\vec3.h" />
-    <ClInclude Include="src\game\player.h" />
+    <ClInclude Include="src\game\fighter.h" />
     <ClInclude Include="src\render\shape.h" />
     <ClInclude Include="src\render\model.h" />
     <ClInclude Include="src\render\objcalc.h" />
@@ -240,7 +242,19 @@
       <ObjectFileOutput>$(ProjectDir)%(Filename).cso</ObjectFileOutput>
     </FxCompile>
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\net\sessioncalc.cpp" />
+    <ClInclude Include="src\net\sessioncalc.h" />
+    <ClCompile Include="src\net\netsocket.cpp" />
+    <ClInclude Include="src\net\netsocket.h" />
+    <ClCompile Include="src\game\netsession.cpp" />
+    <ClInclude Include="src\game\netsession.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+  <ItemGroup>
+    <ClCompile Include="src\physics\versuscalc.cpp" />
+    <ClInclude Include="src\physics\versuscalc.h" />
+  </ItemGroup>
 </Project>

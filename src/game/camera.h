@@ -4,8 +4,8 @@
 #include "physics/cameracalc.h"
 
 class Stage;
-class Player;
-class DummyManager;
+class Fighter;
+class FighterManager;
 class ArmManager;
 class Match;
 
@@ -28,8 +28,13 @@ public:
 	XMFLOAT3 GetDirection(void) const;
 
 
-	/// @brief 向きを最初に戻して正面の敵を選び、プレイヤーの後ろに置く（Player::Initialize・DummyManager::Initialize のあとに呼ぶ）
-	void Initialize(const Stage& stage, const Player& player, const DummyManager& dummies, const ArmManager& arms, const Match& match);
+	/// @brief 正面の相手を選び、自分の体の後ろへ置く（FighterManager::Initializeのあと）
+	void Initialize(const Stage& stage, const FighterManager& fighters, int slot, const ArmManager& arms, const Match& match);
+
+	/// @brief 描く範囲の大きさを設定する（縦横比と WorldToScreen に使う。はじめは画面全体）
+	/// @param width 幅（ピクセル）
+	/// @param height 高さ（ピクセル）
+	void SetViewSize(float width, float height);
 
 	/// @brief 状態を最初に戻す（参照はそのまま）
 	void Reset(void);
@@ -38,7 +43,7 @@ public:
 	void Finalize(void);
 
 	/// @brief ターゲット・手動入力・横移動から目標を作り、角度・距離・注視点を別々のバネで追う
-	/// @details 毎フレーム、Player::Update のあとに呼ぶ（動いたあとのプレイヤーを追いかける）。浮島にめり込むときは手前まで近づける
+	/// @details 毎フレーム、FighterManager::Update のあとに呼ぶ（動いたあとの自分の体を追いかける）。浮島にめり込むときは手前まで近づける
 	void Update(void);
 
 	/// @brief ビュー行列とプロジェクション行列をシェーダーに設定する
@@ -47,7 +52,7 @@ public:
 
 	/// @brief ワールド座標の点が、画面のどこに映るかを取得する（頭の上の % の表示に使う）
 	/// @param world 点（ワールド座標）
-	/// @param[out] screen 画面の位置（左上が原点のピクセル。画面の外になることもある）
+	/// @param[out] screen 描く範囲の中の位置（範囲の左上が原点のピクセル。範囲の外になることもある）
 	/// @return 点がカメラの前にあれば true、後ろ（映らない）なら false（そのとき screen は変えない）
 	bool WorldToScreen(const XMFLOAT3& world, XMFLOAT2* screen) const;
 
@@ -59,8 +64,8 @@ public:
 	/// @return 左右の向き（ラジアン。0 で +Z 方向、プラスで右回り）
 	float GetYaw(void) const;
 
-	/// @brief 現在ロックオンしている敵のダミー番号を取得する
-	/// @return ダミー番号（0〜DUMMY_COUNT-1）。ターゲットなし・敵をつかんでいる間は-1
+	/// @brief 現在ロックオンしている相手のスロット番号を取得する
+	/// @return スロット番号（0〜3。自分を除く）。ターゲットなし・敵をつかんでいる間は-1
 	int GetTarget(void) const;
 
 private:
@@ -87,13 +92,16 @@ private:
 	float m_DistanceVelocity = {};	// 距離のバネの速度
 	float m_ManualPause = {};		// 横移動について回るのを止める残り秒数
 	VEC3 m_PlayerGoal = {};			// 自由カメラ用の遊び・最後に立っていた高さ（敵の注視点と分ける）
-	int m_LockTarget = -1;		// 現在ロックオンしているダミー番号
+	int m_LockTarget = -1;		// 現在ロックオンしている相手のスロット番号
 	int m_SavedTarget = -1;	// つかむ前のターゲット番号
 	bool m_WasHolding = false;	// 1つ前のフレームで敵をつかんでいたか
 	float m_SwitchRemaining = 0.0f;	// 切り替え用の速い角度のバネを使う残り秒数
 	const Stage* m_Stage = nullptr;
-	const Player* m_Player = nullptr;
-	const DummyManager* m_Dummies = nullptr;
+	const Fighter* m_Player = nullptr;
+	const FighterManager* m_Fighters = nullptr;
 	const ArmManager* m_Arms = nullptr;
 	const Match* m_Match = nullptr;
+	int m_Slot = 0;
+	float m_ViewWidth = (float)SCREEN_WIDTH;	// 描く範囲の幅
+	float m_ViewHeight = (float)SCREEN_HEIGHT;	// 描く範囲の高さ
 };

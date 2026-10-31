@@ -29,6 +29,10 @@ static ID3D11Buffer* g_pLightBuffer = nullptr;		// b4
 static ID3D11Device* g_pDevice = nullptr;
 static ID3D11DeviceContext* g_pContext = nullptr;
 
+// 2D描画で、ビューポート全体に当てはめる座標の幅と高さ
+static float g_2DWidth = (float)SCREEN_WIDTH;
+static float g_2DHeight = (float)SCREEN_HEIGHT;
+
 
 // 事前コンパイル済みシェーダー（.cso）をまるごと読み込む
 static bool LoadShaderFile(const char* filename, std::vector<unsigned char>& binary)
@@ -209,7 +213,13 @@ void Shader_Set2DMatrix()
 	Shader_SetWorldMatrix(XMMatrixIdentity());
 	Shader_SetViewMatrix(XMMatrixIdentity());
 	Shader_SetProjectionMatrix(XMMatrixOrthographicOffCenterLH(0.0f,
-		SCREEN_WIDTH, SCREEN_HEIGHT, 0.0f, 0.0f, 1.0f));
+		g_2DWidth, g_2DHeight, 0.0f, 0.0f, 1.0f));
+}
+
+void Shader_Set2DSize(float width, float height)
+{
+	g_2DWidth = width;
+	g_2DHeight = height;
 }
 
 void Shader_SetMaterial(const MATERIAL& material)

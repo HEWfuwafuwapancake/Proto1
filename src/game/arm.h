@@ -4,8 +4,8 @@
 #include "physics/vec3.h"
 #include <memory>
 
-class Player;
-class DummyManager;
+class Fighter;
+class FighterManager;
 class Camera;
 class Stage;
 
@@ -24,8 +24,8 @@ enum ARM_TYPE
 /// @brief 腕が使うゲームの部品への参照（所有しない）
 struct ARM_LINKS
 {
-	Player* PlayerObject; ///< プレイヤー（引き寄せによる位置・状態の更新にも使う）
-	DummyManager* Dummies; ///< 敵の候補・保持・命中を受け持つダミー管理
+	FighterManager* Fighters; ///< 自分と相手の体・候補・保持・命中を受け持つ管理
+	int Slot; ///< 自分のスロット番号（0〜3。相手の候補から除く）
 	const Camera* CameraObject; ///< 狙いと投げる向きを読むカメラ
 	const Stage* StageObject; ///< 浮島と場外の線を読むステージ
 };
@@ -34,6 +34,8 @@ struct ARM_LINKS
 class Arm
 {
 public:
+	/// @brief すべての腕のモデルに掛ける大きさの倍率（調整用の値。キャラモデルの細い体に合わせて小さくする）
+	static constexpr float MODEL_SIZE = 0.5f;
 	/// @brief 派生クラスの終了処理も呼んで腕を破棄する
 	virtual ~Arm() = default;
 	/// @brief カメラ更新後に片手の腕を更新する
@@ -57,15 +59,20 @@ protected:
 	Arm(int hand, const ARM_LINKS& links) : m_Hand(hand), m_Links(links) {}
 
 	/// @brief プレイヤーへの参照を取得する
-	Player& GetPlayer() const { return *m_Links.PlayerObject; }
-	/// @brief ダミー管理への参照を取得する
-	DummyManager& GetDummies() const { return *m_Links.Dummies; }
+	Fighter& GetPlayer() const;
+	/// @brief 全員の体の管理への参照を取得する
+	FighterManager& GetFighters() const { return *m_Links.Fighters; }
+	/// @brief 自分のスロット番号を取得する
+	int GetSlot() const { return m_Links.Slot; }
 	/// @brief カメラへの参照を取得する
 	const Camera& GetCamera() const { return *m_Links.CameraObject; }
 	/// @brief ステージへの参照を取得する
 	const Stage& GetStage() const { return *m_Links.StageObject; }
-	/// @brief 肩のワールド座標を取得する
+	/// @brief 肩のワールド座標を取得する（共通の取付位置に GetMountOffset のずらしを足す）
 	VEC3 GetShoulder() const;
+	/// @brief この腕だけの取付位置のずらしを取得する（腕のモデルの肩の部分を体の取付口に合わせるため）
+	/// @return X：外向き・Y：上向き・Z：前向きのずらし（m）。基本はずらしなし
+	virtual VEC3 GetMountOffset() const { return {}; }
 	/// @brief キャラの向きについてくる、少し外へ開いた待機方向を取得する
 	/// @param pitchOffset 共通の上下角度への加算（ラジアン）
 	VEC3 GetRestDirection(float pitchOffset = 0.0f) const;
@@ -76,6 +83,8 @@ protected:
 	void DrawPiece(int model, VEC3 start, VEC3 end, float sourceLength, float thickness, const XMFLOAT4& color, float roll = 0.0f) const;
 	/// @brief 片手用の OBJ を読む（右手だけ X を鏡写しにする。失敗は -1）
 	int LoadModel(const char* path) const;
+	/// @brief この腕を使う人のパッドを振動させる（キーボードの人には出力しない）
+	void Rumble(float smallMotor, float largeMotor, float seconds) const;
 
 private:
 	int m_Hand;
@@ -86,8 +95,8 @@ private:
 class ArmManager
 {
 public:
-	/// @brief 腕の処理を初期化し、左右とも触腕を装備する（ダミー初期化後）
-	void Initialize(const Stage& stage, Player& player, DummyManager& dummies, const Camera& camera);
+	/// @brief 自分のスロットと体の管理を受け取り、左右とも触腕を装備する（体の初期化後）
+	void Initialize(const Stage& stage, FighterManager& fighters, int slot, const Camera& camera);
 	/// @brief 腕の処理を終了し、保持している敵を離す
 	void Finalize(void);
 	/// @brief 左右の腕を待機に戻す（装備はそのまま。時間切れ・やり直し用）

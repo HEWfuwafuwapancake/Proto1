@@ -1,10 +1,10 @@
 ﻿#include "core/gametime.h"
 #include "core/shader.h"
 #include "game/camera.h"
-#include "game/player.h"
+#include "game/fighter.h"
 #include "game/match.h"
 #include "game/stage.h"
-#include "game/dummy.h"
+#include "game/fightermanager.h"
 #include "game/arm.h"
 #include <limits>
 #include "input/action.h"
@@ -15,7 +15,7 @@
 //	調整用の値
 //------------------------------------------------------------------------------
 // マウス感度・矢印キー・右スティックで回る速さは action.cpp の「調整用の値」にある
-static constexpr float FOLLOW_DISTANCE = 8.0f;						// 見ている点からカメラまでの距離
+static constexpr float FOLLOW_DISTANCE = 4.5f;					// 見ている点からカメラまでの距離
 static constexpr float TARGET_HEIGHT_RATE = 0.8f;					// 見ている点の高さ（プレイヤーの高さに対する割合。0.8 で頭のあたり）
 static constexpr float YAW_SMOOTH_TIME = 0.12f;						// 左右の角度が目標へ追いつくまでのおよその秒数
 static constexpr float PITCH_SMOOTH_TIME = 0.12f;					// 上下の角度が目標へ追いつくまでのおよその秒数
@@ -28,7 +28,7 @@ static constexpr float MANUAL_PAUSE = 0.5f;							// 自分でカメラを回し
 static constexpr float STAGE_MARGIN = 0.3f;							// 浮島の面から、カメラをこれだけ離す（めり込んで見えないように）
 static constexpr float PITCH_MIN = XMConvertToRadians(-35.0f);		// いちばん下を向いたとき（上から見下ろす）
 static constexpr float PITCH_MAX = XMConvertToRadians(0.0f);		// いちばん上を向いたとき（水平まで）
-static constexpr float START_PITCH = XMConvertToRadians(-20.0f);	// 最初の上下の向き（少し見下ろす）
+static constexpr float START_PITCH = XMConvertToRadians(-12.0f);	// 最初の上下の向き（少し見下ろす）
 static constexpr float SWITCH_SMOOTH_TIME = 0.06f;					// 切り替え直後の角度のバネ
 static constexpr float SWITCH_TIME = 0.3f;							// 角度のバネを速める秒数
 static constexpr float TARGET_POINT_RATE = 0.25f;					// 見ている点を敵へずらす割合
@@ -47,12 +47,12 @@ VEC3 Camera::PlayerHead(void) const
 	return { feet.x, feet.y + m_Player->GetHeight() * TARGET_HEIGHT_RATE, feet.z };
 }
 
-// 生存・浮島より下への落下・保持状態を候補へ反映する。配列の添字とダミー番号は同じ。
+// 生存・浮島より下への落下・保持状態を候補へ反映する。配列の添字とスロット番号は同じ（自分は候補外）。
 // 浮島の上面より下へ落ちた敵は候補から外し、カメラが下まで追いかけないようにする。
 void Camera::CollectTargets(CAMERA_FOCUS_TARGET* targets) const
 {
-	for (int i = 0; i < DUMMY_COUNT; ++i) {
-		const TENTACLE_TARGET dummy = m_Dummies->GetTarget(i);
+	for (int i = 0; i < FIGHTER_COUNT; ++i) {
+		const TENTACLE_TARGET dummy = m_Fighters->GetTarget(i, m_Slot);
 		targets[i].Position = Vec3Scale(Vec3Add(dummy.Body.Start, dummy.Body.End), 0.5f);
 		const float feetY = dummy.Body.Start.Y - dummy.Body.Radius;
 		targets[i].Available = dummy.Available && feetY >= m_Stage->GetStage().TopY - TARGET_FALL_MARGIN;
@@ -61,13 +61,13 @@ void Camera::CollectTargets(CAMERA_FOCUS_TARGET* targets) const
 
 bool Camera::IsTargetAvailable(int target, const CAMERA_FOCUS_TARGET* targets) const
 {
-	return target >= 0 && target < DUMMY_COUNT && targets[target].Available;
+	return target >= 0 && target < FIGHTER_COUNT && targets[target].Available;
 }
 
 // 角度は全周・距離は無制限。現在の敵への優先ボーナスも付けない。
 int Camera::PickFrontTarget(const CAMERA_FOCUS_TARGET* targets) const
 {
-	return CameraCalcPickFocus(m_Yaw, PlayerHead(), targets, DUMMY_COUNT, -1,
+	return CameraCalcPickFocus(m_Yaw, PlayerHead(), targets, FIGHTER_COUNT, -1,
 		XM_PI, (std::numeric_limits<float>::infinity)(), 0.0f);
 }
 
@@ -75,7 +75,7 @@ VEC3 Camera::LockFocusPoint(const VEC3& player, const CAMERA_FOCUS_TARGET* targe
 {
 	// 身長を半径にすれば、頭付近を中心に体全体を安全側で囲める。
 	return CameraCalcFocusPoint(player, targets[m_LockTarget].Position, m_Yaw, m_Pitch,
-		m_Distance, FOV, (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT,
+		m_Distance, FOV, m_ViewWidth / m_ViewHeight,
 		TARGET_SCREEN_MARGIN, m_Player->GetHeight(), TARGET_POINT_RATE);
 }
 
@@ -100,9 +100,9 @@ void Camera::UpdateLockTarget(const CAMERA_FOCUS_TARGET* targets)
 			next = PickFrontTarget(targets);
 		}
 		else {
-			const int direction = (ActionIsTrigger(ACTION_TARGET_RIGHT) ? 1 : 0)
-				- (ActionIsTrigger(ACTION_TARGET_LEFT) ? 1 : 0);
-			next = CameraCalcNextTarget(PlayerHead(), targets, DUMMY_COUNT, next, direction);
+			const int direction = (m_Player->IsTrigger(ACTION_TARGET_RIGHT) ? 1 : 0)
+				- (m_Player->IsTrigger(ACTION_TARGET_LEFT) ? 1 : 0);
+			next = CameraCalcNextTarget(PlayerHead(), targets, FIGHTER_COUNT, next, direction);
 		}
 		if (next != m_LockTarget) {
 			m_LockTarget = next;
@@ -137,7 +137,7 @@ void Camera::SnapToPlayer(void)
 {
 	m_Yaw = m_YawGoal;
 	m_Pitch = m_PitchGoal;
-	CAMERA_FOCUS_TARGET targets[DUMMY_COUNT];
+	CAMERA_FOCUS_TARGET targets[FIGHTER_COUNT];
 	CollectTargets(targets);
 	m_LockTarget = PickFrontTarget(targets);
 	m_SavedTarget = -1;
@@ -175,12 +175,13 @@ void Camera::Update(void)
 		SnapToPlayer();
 		return;
 	}
+	if (!m_Player->IsActive()) return;
 	const float dt = GameTimeGetDeltaTime();
-	CAMERA_FOCUS_TARGET targets[DUMMY_COUNT];
+	CAMERA_FOCUS_TARGET targets[FIGHTER_COUNT];
 	CollectTargets(targets);
 	UpdateLockTarget(targets);
 	// 手動入力も横移動の sway も、現在角ではなく目標角へ足す。
-	const ACTION_AXIS look = ActionGetLook();
+	const ACTION_AXIS look = m_Player->GetLookInput();
 	if (m_LockTarget >= 0) {
 		m_YawGoal = CameraCalcYawTo(PlayerHead(), targets[m_LockTarget].Position, m_YawGoal);
 	}
@@ -197,7 +198,7 @@ void Camera::Update(void)
 		m_ManualPause = fmaxf(0.0f, m_ManualPause - dt);
 	}
 	else if (m_LockTarget < 0 && m_Match->IsPlaying()) {
-		m_YawGoal += ActionGetMove().X * FOLLOW_TURN_SPEED * dt;
+		m_YawGoal += m_Player->GetMoveInput().X * FOLLOW_TURN_SPEED * dt;
 	}
 	// 長く回し続けても、角度が大きくなり続けないようにする。
 	m_YawGoal = atan2f(sinf(m_YawGoal), cosf(m_YawGoal));
@@ -240,7 +241,7 @@ void Camera::MakeMatrices(XMMATRIX* view, XMMATRIX* projection) const
 	*view = XMMatrixLookToLH(eye, dir, up);
 
 	// プロジェクション行列（遠くのものほど小さく見える透視投影）
-	float aspect = (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT;
+	float aspect = m_ViewWidth / m_ViewHeight;
 	*projection = XMMatrixPerspectiveFovLH(FOV, aspect, NEAR_Z, FAR_Z);
 }
 
@@ -264,9 +265,15 @@ bool Camera::WorldToScreen(const XMFLOAT3& world, XMFLOAT2* screen) const
 	// -1〜1（上が +1）を、左上が原点のピクセルに変える
 	const float ndcX = XMVectorGetX(clip) / w;
 	const float ndcY = XMVectorGetY(clip) / w;
-	screen->x = (ndcX + 1.0f) * 0.5f * (float)SCREEN_WIDTH;
-	screen->y = (1.0f - ndcY) * 0.5f * (float)SCREEN_HEIGHT;
+	screen->x = (ndcX + 1.0f) * 0.5f * m_ViewWidth;
+	screen->y = (1.0f - ndcY) * 0.5f * m_ViewHeight;
 	return true;
+}
+
+void Camera::SetViewSize(float width, float height)
+{
+	m_ViewWidth = width;
+	m_ViewHeight = height;
 }
 
 XMFLOAT3 Camera::GetPosition(void) const
@@ -290,11 +297,12 @@ XMFLOAT3 Camera::GetDirection(void) const
 	return { cosf(m_Pitch) * sinf(m_Yaw), sinf(m_Pitch), cosf(m_Pitch) * cosf(m_Yaw) };
 }
 
-void Camera::Initialize(const Stage& stage, const Player& player, const DummyManager& dummies, const ArmManager& arms, const Match& match)
+void Camera::Initialize(const Stage& stage, const FighterManager& fighters, int slot, const ArmManager& arms, const Match& match)
 {
 	m_Stage = &stage;
-	m_Player = &player;
-	m_Dummies = &dummies;
+	m_Player = &fighters.GetFighter(slot);
+	m_Fighters = &fighters;
+	m_Slot = slot;
 	m_Arms = &arms;
 	m_Match = &match;
 	Reset();

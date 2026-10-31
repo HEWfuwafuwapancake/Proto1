@@ -1,61 +1,110 @@
 ﻿#pragma once
 
 #include "input/actioncalc.h"
+#include <string>
+
+/// @brief 通信しないメニュー用の1フレームの入力（試合の PLAYER_INPUT は変えない）
+struct ACTION_MENU_INPUT
+{
+	bool Decide = false; ///< 決定を押した瞬間
+	bool Back = false; ///< 戻るを押した瞬間
+	float MoveY = 0.0f; ///< メニューの上下（上が正）
+	int Horizontal = 0; ///< IP の区切りの移動（左 -1、右 +1）
+	int Vertical = 0; ///< IP の数値の変更（下 -1、上 +1）
+	std::string Text; ///< 数字・ピリオド・削除を押した順の文字列（キーボードだけ）
+};
+
+/// @brief 指定機器のメニュー入力を取得する（パッド0〜3、キーボード4）
+ACTION_MENU_INPUT ActionGetMenuInput(int device);
 
 /// @file action.h
 /// @brief 入力を「行動」に変える（ゲームはキーやボタンではなく、行動を見る）
 /// @details キーボード＋マウスでも、パッド（DUALSHOCK 4）でも、ゲームの側は同じように動く。
 ///          キーの割り当ては action.cpp の「調整用の値」にまとめてある
+///          機器番号ありの関数は機器ごとに独立し、番号なしの行動・移動・カメラは1人プレイ用にパッド0とキーボードをまとめる
 
-/// @brief 行動の種類（ボタン1つで起きるもの）
-enum ACTION
-{
-	ACTION_JUMP,		///< ジャンプ（×／Space）
-	ACTION_ARM_LEFT,	///< 左の触腕：伸ばしてつかむ／つかんでいる間にもう一度で投げる（L1／左クリック）
-	ACTION_ARM_RIGHT,	///< 右の触腕：同上（R1／右クリック）
-	ACTION_RESTART,		///< やり直し（OPTIONS／R）
-	ACTION_RUMBLE_TOGGLE,	///< 振動のオン・オフの切り替え（SHARE／V）
-	ACTION_DECIDE,		///< メニューの決定・時間切れから結果へ（○／Enter）
-	ACTION_TARGET_LEFT,	///< 左の次の敵へ切り替え（←／右スティック・マウスを左へ弾く。1フレームだけ）
-	ACTION_TARGET_RIGHT,	///< 右の次の敵へ切り替え（→／右スティック・マウスを右へ弾く。1フレームだけ）
+/// @brief キーボード＋マウスの機器番号（0〜3は同じ番号のパッド）
+static constexpr int ACTION_DEVICE_KEYBOARD = 4;
+/// @brief 入力機器の数（パッド4台とキーボード＋マウス）
+static constexpr int ACTION_DEVICE_COUNT = 5;
+/// @brief 腕の切り替え先として選べる人数
+static constexpr int ACTION_EQUIP_PLAYER_COUNT = 4;
 
-	ACTION_COUNT		///< 行動の数（配列の大きさに使う。行動ではない）
-};
+/// @brief 機器の今の入力を整数に丸めて取得する（VERSUS_DEVICE_COMBINED は合成入力。範囲外は無入力）
+/// @details 装備はキーボード・合成入力なら現在の選択先の値。ローカルでは Game が F1〜F4 のスロットへ配り直す
+PLAYER_INPUT ActionGetPlayerInput(int device);
 
 /// @brief 行動の状態を最初に戻す（何も押していない状態）
 void ActionInitialize(void);
+
+/// @brief 装備選択をオンライン用に設定する（true：F1〜F4を無視して自分だけ、false：ローカルの選択先を使う）
+void ActionSetOnlineEquip(bool online);
 
 /// @brief キーボード・マウス・パッドの状態から、このフレームの行動を決める
 /// @details 毎フレーム、KeyboardUpdate・MouseUpdate・PadUpdate のあとに1回だけ呼ぶ
 void ActionUpdate(void);
 
-/// @brief 行動のボタンを押しているか
+/// @brief 指定機器の行動のボタンを押しているか（ターゲット切り替えは1フレームだけ）
+/// @param device 機器番号（パッド0〜3、キーボード＋マウス4。範囲外は false）
+/// @param action 行動
+/// @return 押していれば true
+bool ActionIsPress(int device, ACTION action);
+
+/// @brief 指定機器の行動のボタンを押した瞬間か
+/// @param device 機器番号（0〜4。範囲外は false）
+/// @param action 行動
+/// @return 押した瞬間の1フレームだけ true
+bool ActionIsTrigger(int device, ACTION action);
+
+/// @brief 指定機器の行動のボタンを離した瞬間か
+/// @param device 機器番号（0〜4。範囲外は false）
+/// @param action 行動
+/// @return 離した瞬間の1フレームだけ true
+bool ActionIsRelease(int device, ACTION action);
+
+/// @brief 指定機器の移動の向きを取得する
+/// @param device 機器番号（0〜4。範囲外は0）
+/// @return X：右、Y：前がプラス。長さは0〜1
+ACTION_AXIS ActionGetMove(int device);
+
+/// @brief 指定機器のカメラを回す角度を取得する
+/// @param device 機器番号（0〜4。範囲外は0）
+/// @return X：右、Y：上がプラスの角度（ラジアン）
+ACTION_AXIS ActionGetLook(int device);
+
+/// @brief 1人プレイ用にパッド0とキーボードをまとめた行動のボタンを押しているか
 /// @param action 行動
 /// @return 押している間ずっと true（ターゲット切り替えは入力が出た1フレームだけtrue）
 bool ActionIsPress(ACTION action);
 
-/// @brief 行動のボタンを押した瞬間か
+/// @brief 1人プレイ用にパッド0とキーボードをまとめた行動のボタンを押した瞬間か
 /// @param action 行動
 /// @return 押した瞬間の1フレームだけ true
 bool ActionIsTrigger(ACTION action);
 
-/// @brief 行動のボタンを離した瞬間か
+/// @brief 1人プレイ用にパッド0とキーボードをまとめた行動のボタンを離した瞬間か
 /// @param action 行動
 /// @return 離した瞬間の1フレームだけ true
 bool ActionIsRelease(ACTION action);
 
-/// @brief 移動の向きを取得する（W/A/S/D と左スティックの、強く入れているほう）
+/// @brief 1人プレイの移動の向きを取得する（W/A/S/D とパッド0の左スティックの、強く入れているほう）
 /// @return X：左右（右がプラス）、Y：前後（前がプラス）。どちらも -1〜1 で、長さは 1 まで
 ACTION_AXIS ActionGetMove(void);
 
-/// @brief このフレームでカメラを回す角度を取得する（マウスの移動量 ＋ 矢印キー ＋ 右スティック）
+/// @brief 1人プレイのカメラを回す角度を取得する（マウスの移動量 ＋ 矢印キー ＋ パッド0の右スティック）
 /// @return X：左右に回す角度（ラジアン。右がプラス）、Y：上下に回す角度（ラジアン。上がプラス）
 ACTION_AXIS ActionGetLook(void);
 
 /// @brief このフレームで押した数字キー 1〜6 の装備選択を取得する（Q・E の切り替えモード中はその手。モードでなければ Shift 同時押しで右手）
+/// @param player プレイヤーのスロット番号（0〜3）。指定なしは1P。F1〜F4で選んだスロットにだけ入力が出る
 /// @return 手と腕の番号。入力なしは両方 -1。同時に複数押したときは小さい番号を使う
-ACTION_EQUIP_KEY ActionGetEquipKey(void);
+ACTION_EQUIP_KEY ActionGetEquipKey(int player = 0);
 
 /// @brief 腕の切り替えモード（Q：左手、E：右手）を取得する
+/// @param player プレイヤーのスロット番号（0〜3）。指定なしは1P
 /// @return 左 0・右 1・モードなし -1
-int ActionGetEquipMode(void);
+int ActionGetEquipMode(int player = 0);
+
+/// @brief F1〜F4で選んだ、キーボードによる腕の切り替え先を取得する
+/// @return プレイヤーのスロット番号（0〜3。はじめは1P＝0）
+int ActionGetEquipPlayer(void);
