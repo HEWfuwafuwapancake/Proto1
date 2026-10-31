@@ -4,19 +4,21 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）。
 決まったことは [decisions.md](decisions.md)、腕のモデルの原点と長さは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、終わったタスクの記録は [archive/](archive/)（普段は読まない）。
 
-- 最終更新：2026-10-31（Claude。Shota の Proto1、Visual Studio 2022 Community の PC。No.51 のプランは管理者確認済み。Codex が段階2）
+- 最終更新：2026-10-31（Codex。Shota の Proto1-pad-support worktree、Visual Studio 2022 Community の PC。No.51 段階2 済み。段階3 待ち）
 
 ---
 
 ## 1. 今の状態
 
+- **No.51：段階2 済み。段階3 待ち**。XInput・Switch Pro 形式の入力、共有4枠、XInput の振動、Switch の初期化送信、対応外 VID/PID の Debug 出力とテストコードを追加。Debug / x64 のゲーム本体ビルド成功（警告表示なし）。テスト実行・Release・わざと壊す確認・実機確認は未実施。0x3F のYは下がプラスとして反転し、実機で確認する。
+- 作業場所は `C:\Users\shota\source\repos\Proto1-pad-support`、ブランチは `feature/pad-support-plan`。元の `Proto1` は別作業の未コミット変更があったため、管理者の許可で worktree を分けた。段階3 もこの worktree で続ける。
 - **No.26 オンライン対戦は完了**（PR #90・#92・#93。127.0.0.1 の2つ起動で同期・切断・ビルド拒否を確認済み）。2026-10-31 に Tailscale で離れた PC（鈴木さん）と2人で遊べた（`tailscale ping` は直接で往復約11ms、ゲームの ping はふだん30ms以下、待ち 0f）。
 - No.47 の腕の取付と強さは管理者が遊んで調整する。マウス操作は止めたまま。
 - **No.48 ゲーム内のモード選択は完了**。起動の引数なしで、GAME START → モード選択（SOLO・LOCAL VS・ONLINE HOST・ONLINE JOIN）から始められる。2つ起動で HOST・JOIN・試合・ロビーの BACK・ホストを閉じると参加側がモード選択へ、を確認済み。**未確認**：パッドでのメニュー操作（パッドがなかった）、LOCAL VS で試合を始めること・結果の TITLE からモード選択へ戻ること（テストだけ）。
 - **No.49 delay の自動設定は完了**。4人の対戦で delay 3 では入力待ちで止まりラグかったため、ホストが試合の開始時に ping から決める（`--delay` を付けたら固定）。
 - **No.50 完了**：Tailscale の2人対戦で ping 30ms 以下なのに delay 9 になったので、自動の delay に使う ping を「直近2秒の最大」から「人ごとの 90% の値の、いちばん遅い人の値」にし、同じ `Echo` の再送は測らないようにした（`SessionCalc::GetAutoDelayPing`）。テストだけで確かめた。**未確認**：もう一度 Tailscale で遊んで `delay 〇（自動）` が 4 前後・待ち 0f か。4人で「待ち 〇f」が増えないか。それでもカクつくなら、ホストを通さずに直接送る・ロールバックを考える。
 
-## 2. 次にやること：No.51 ほかのコントローラーへの対応（Codex が段階2）
+## 2. 次にやること：No.51 ほかのコントローラーへの対応（段階3 テスト）
 
 管理者の依頼（2026-10-31）。プランは管理者確認済み（2026-10-31）。**Switch 2 Pro コンはいったん保留**（USB でも起動の合図を bulk の口に送る必要があり、WinUSB ドライバーの入れ替えが要るため）。
 対象は次の2つ。今の `src/input/pad.cpp` はソニーの VID（0x054C）だけを Raw Input の HID で読み、ほかの機器は無視している。作業ブランチは `feature/pad-support-plan`（プランを push 済み）。A と B をまとめて1つの PR にする。

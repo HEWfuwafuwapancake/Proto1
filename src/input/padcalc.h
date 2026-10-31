@@ -3,18 +3,20 @@
 #include "input/actioncalc.h"
 
 /// @file padcalc.h
-/// @brief DUALSHOCK 4 / DualSense の USB 入出力レポート、スティックの遊び、振動の重ね合わせと時間の計算
+/// @brief DS4 / DualSense・Switch Pro 形式・XInput の入力変換、出力レポート、スティックと振動の計算
 /// @details DirectX と Windows を使わないので、単体テスト（tests/Proto1Tests）からそのまま使える
 
-/// @brief USB で対応するパッドの機種
+/// @brief 対応するパッドの入力形式
 enum PAD_MODEL
 {
 	PAD_MODEL_NONE,       ///< 対応していない機器
 	PAD_MODEL_DS4,        ///< DUALSHOCK 4（初代・2代目）
 	PAD_MODEL_DUALSENSE,  ///< DualSense（PS5 純正）
+	PAD_MODEL_XINPUT,     ///< Xbox 形式（XInput）
+	PAD_MODEL_SWITCH_PRO, ///< Switch Pro コントローラー形式
 };
 
-/// @brief USB のメーカー番号と製品番号から、対応する機種を調べる
+/// @brief HID のメーカー番号と製品番号から、対応する機種を調べる（XInput は別途検出）
 /// @param vendorId メーカー番号（VID）
 /// @param productId 製品番号（PID）
 /// @return 対応する機種。対応外なら PAD_MODEL_NONE
@@ -130,3 +132,36 @@ bool PadCalcParseDs4UsbReport(const unsigned char* data, int size, PAD_STATE& st
 /// @param[out] state 読んだ状態（読めなかったときは書き換えない）
 /// @return 64バイトで番号0x01なら true。それ以外は false
 bool PadCalcParseDualSenseUsbReport(const unsigned char* data, int size, PAD_STATE& state);
+
+/// @brief XInput のボタン・トリガー・スティックを共通の状態へ変換する（上下は上がプラス）
+/// @param buttons XInput のボタンビット
+/// @param leftTrigger 左トリガー（0〜255）
+/// @param rightTrigger 右トリガー（0〜255）
+/// @param lx 左スティックX（-32768〜32767）
+/// @param ly 左スティックY（同上）
+/// @param rx 右スティックX（同上）
+/// @param ry 右スティックY（同上）
+/// @param[out] state 変換した状態（遊びは別途取り除く）
+void PadCalcParseXInput(unsigned int buttons, unsigned char leftTrigger, unsigned char rightTrigger,
+	short lx, short ly, short rx, short ry, PAD_STATE& state);
+
+/// @brief Switch Pro 形式のフル（0x30）・簡易（0x3F）入力を読む。ボタンは位置で合わせる
+/// @param data レポートのバイト列
+/// @param size バイト数（12以上）
+/// @param[out] state 読んだ状態（失敗時は変更しない。簡易入力のYは下がプラスとして反転する）
+/// @return 対応するレポートを読めたら true
+bool PadCalcParseSwitchProReport(const unsigned char* data, int size, PAD_STATE& state);
+
+/// @brief Switch Pro の USB 用の合図を組み立てる（残りは0）
+/// @param[out] data 出力先
+/// @param size バイト数（2以上）
+/// @param command 合図（0x02：ハンドシェイク、0x04：HIDだけで通信）
+/// @return 組み立てられたら true（失敗時は変更しない）
+bool PadCalcBuildSwitchUsbCommand(unsigned char* data, int size, unsigned char command);
+
+/// @brief Switch Pro のフル入力モード指定を振動なしで組み立てる（残りは0）
+/// @param[out] data 出力先
+/// @param size バイト数（12以上）
+/// @param counter 送信カウンター（下位4ビットを使う）
+/// @return 組み立てられたら true（失敗時は変更しない）
+bool PadCalcBuildSwitchInputMode(unsigned char* data, int size, unsigned char counter);
