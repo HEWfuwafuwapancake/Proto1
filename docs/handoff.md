@@ -10,7 +10,7 @@
 
 ## 1. 今の状態
 
-- **No.53（ほかのコントローラー）：段階2 済み。段階3 中**。XInput・Switch Pro 形式の入力、共有4枠、XInput の振動、Switch の初期化送信、対応外 VID/PID の Debug 出力とテストコードを追加。Debug / x64 のゲーム本体ビルド成功（警告表示なし）。テスト実行・Release・わざと壊す確認・実機確認は未実施。0x3F のYは下がプラスとして反転し、実機で確認する。
+- **No.53（ほかのコントローラー）：段階3 中。管理者の実機確認待ち**（No.51・52 は別の作業で使われていたので No.53 に付け替えた）。Codex が段階2（XInput・Switch Pro 形式の入力、共有4枠、XInput の振動、Switch の初期化送信、対応外 VID/PID の Debug 出力、テスト）。Claude が段階3：Switch Pro 形式の合図を「最初の入力が届いたとき」から「つないだとき」に直した（合図まで入力を送らない機種があるため）。Debug / Release 警告0、`run-tests.ps1`（Debug・Release）255件成功、新しい計算を壊すと足した4つのテストが落ちることを確認。**未確認**：実機（GameSir の XInput モード・茶色のコントローラー）。0x3F の Y の向きも実機で見る。
 - 作業場所は `C:\Users\shota\source\repos\Proto1-pad-support`、ブランチは `feature/pad-support-plan`。元の `Proto1` は別作業の未コミット変更があったため、管理者の許可で worktree を分けた。段階3 もこの worktree で続ける。
 - **No.26 オンライン対戦は完了**（PR #90・#92・#93。127.0.0.1 の2つ起動で同期・切断・ビルド拒否を確認済み）。2026-10-31 に Tailscale で離れた PC（鈴木さん）と2人で遊べた（`tailscale ping` は直接で往復約11ms、ゲームの ping はふだん30ms以下、待ち 0f）。
 - No.47 の腕の取付と強さは管理者が遊んで調整する。マウス操作は止めたまま。

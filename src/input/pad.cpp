@@ -218,6 +218,8 @@ static int AddDevice(HANDLE device)
 		hal::dout << "パッド" << i << "："
 			<< (model == PAD_MODEL_SWITCH_PRO ? "Switch Pro" : model == PAD_MODEL_DUALSENSE ? "DualSense" : "DUALSHOCK 4") << " をつなぎました" << std::endl;
 #endif
+		// Switch Pro 形式は合図を受けるまで入力を送らない機種があるので、つないだ時点で送る
+		if (model == PAD_MODEL_SWITCH_PRO) OpenOutputDevice(g_Pads[i]);
 		return i;
 	}
 	return -1;
