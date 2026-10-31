@@ -4,7 +4,7 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）。
 決まったことは [decisions.md](decisions.md)、腕のモデルの原点と長さは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、終わったタスクの記録は [archive/](archive/)（普段は読まない）。
 
-- 最終更新：2026-10-31（Claude。Shota の Proto1、Visual Studio 2022 Community の PC。No.52 のプランを書いた。次は管理者の確認 → 実装）
+- 最終更新：2026-10-31（Claude。Shota の Proto1、Visual Studio 2022 Community の PC。No.52 のプランが確認済み。次は Codex が実装）
 
 ---
 
@@ -17,9 +17,10 @@
 - **No.50 完了**：Tailscale の2人対戦で ping 30ms 以下なのに delay 9 になったので、自動の delay に使う ping を「直近2秒の最大」から「人ごとの 90% の値の、いちばん遅い人の値」にし、同じ `Echo` の再送は測らないようにした（`SessionCalc::GetAutoDelayPing`）。2人（Tailscale）では delay 5、4人では delay 7（ping 33・66・33ms）になった。4人で `--delay 4` にすると待ちが合計 500f を超えた（「待ち」は試合が始まってからの合計）。
 - **No.51 DESYNC 対策**：4人の Tailscale 対戦でタイトルバーに DESYNC（PC ごとに試合の中身がずれた）が出た。各自が自分でビルドした exe を使っていたこと・sinf などが CPU で FMA3 の計算に切り替わることが原因と考え、起動時に `_set_FMA3_enable(0)`、exe の中身から作った識別番号を接続時に比べて違う exe は断る（`SESSION_FAILURE_PROGRAM`、通信の版 3）、DESYNC をタイトルバーの先頭に出す、を入れた。テスト・127.0.0.1 の2つ起動だけで確かめた。**未確認**：ホストの Release の exe を全員に配って4人で遊び、DESYNC が出ないか（出たら、ずれた値を記録して比べる仕組みを足す）。
 
-## 2. 次にやること：No.52 の段階2（実装。プランは管理者の確認待ち）
+## 2. 次にやること：No.52 の段階2（実装：Codex／確認：Claude）
 
-ブランチ `feature/reduce-delay`。下のプランの確認を取ってから実装する（「確認してほしいこと」の3つも聞く）。
+ブランチ `feature/reduce-delay`。下のプランは管理者が確認済み（2026-10-31。(a) 版 4 にする、(b) 余裕は 2 のまま、(c) Codex が実装）。
+Codex が実装して PR を出したら、Claude が `/code-review <PR番号> --comment` で確かめる。
 
 ### No.52 プラン：オンラインの delay を減らす
 

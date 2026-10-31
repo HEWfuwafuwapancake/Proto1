@@ -1,6 +1,6 @@
 ﻿# Proto1 開発タスク一覧
 
-最終更新：2026-10-31（Claude。Shota の Proto1、Visual Studio 2022 Community の PC）。No.52 のプランを書いた（管理者の確認待ち）。
+最終更新：2026-10-31（Claude。Shota の Proto1、Visual Studio 2022 Community の PC）。No.52 のプランが確認済み（Codex が実装、Claude が確認）。
 
 企画書「腕ダフルアームズ 〜変な腕でぶっ飛ばせ！〜」のプロトタイプを作るためのタスクです。
 上から順に、**プラン → 管理者の確認 → 実装 → テスト → 完了チェック** の流れで1つずつ進めます。
