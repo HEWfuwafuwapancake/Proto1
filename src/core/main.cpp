@@ -46,11 +46,12 @@ static uint64_t g_Progress = 0; // 直近1秒に通信の入力で進んだフ�
 /// 自分の exe の中身から識別番号を作る（オンラインで、違う exe どうしをつながないため。読めなければ 0）
 static uint32_t MakeProgramId()
 {
-	char path[MAX_PATH];
-	const DWORD length = GetModuleFileName(nullptr, path, MAX_PATH);
-	if (length == 0 || length >= MAX_PATH) return 0;
+	// Shift-JIS で表せない文字や長いフォルダ名でも読めるように、ワイド文字のパスで開く（読めないと相手と番号が合わない）。
+	static wchar_t path[32768];
+	const DWORD length = GetModuleFileNameW(nullptr, path, _countof(path));
+	if (length == 0 || length >= _countof(path)) return 0;
 	FILE* file = nullptr;
-	if (fopen_s(&file, path, "rb") != 0 || file == nullptr) return 0;
+	if (_wfopen_s(&file, path, L"rb") != 0 || file == nullptr) return 0;
 	uint32_t hash = 2166136261u;	// FNV-1a
 	unsigned char buffer[4096];
 	size_t read = 0;

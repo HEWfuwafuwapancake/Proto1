@@ -4,13 +4,13 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）、決まったことは [decisions.md](decisions.md)。
 必要なときだけ読むもの：腕のモデルは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、画面を撮る方法は [dev/04_画面確認の方法.md](dev/04_画面確認の方法.md)、腕の仕様は [plan/03_新しいアームの仕様.md](plan/03_新しいアームの仕様.md)。
 
-- 最終更新：2026-11-02（Claude。Shota の Proto1、Visual Studio 2022 Enterprise の PC。ModelLoad で同じ OBJ を使い回すようにし、Debug の起動を 12.5秒 → 3.4秒にした）
+- 最終更新：2026-11-02（Claude。Shota の Proto1、Visual Studio 2022 Enterprise の PC。No.55：Release を `/Brepro` で同じ中身の exe にし、同じソースなら別の PC でビルドしても「exe が違います」で断られないようにした）
 
 ---
 
 ## 1. 今の状態
 
-- 進行中のタスクはない。`ModelLoad` は同じ引数（パス・左右反転・色替え材質）なら読み直さず同じ番号を返す。No.54 Switch 2 Pro コン（USB・振動）は完了（PR #104）。No.19 は優先度：低へ下げた。
+- 進行中のタスクはない。No.55 で Release は同じソース・同じ VS の版なら PC・フォルダによらず同じ exe になる（Debug は対象外）。`ModelLoad` は同じ引数（パス・左右反転・色替え材質）なら読み直さず同じ番号を返す。No.54 Switch 2 Pro コン（USB・振動）は完了（PR #104）。No.19 は優先度：低へ下げた。
 - 実機での確認待ち（詳しくは [archive/handoff_2026-11.md](archive/handoff_2026-11.md)）：
   - No.53 ほかのコントローラー（XInput・Switch Pro 形式）：メンバーの実機確認。動かなければ Debug の出力の「対応外のゲームパッド VID=… PID=…」を見る。
   - No.53・54：DS4 / DualSense / XInput と混ぜてつないだときの番号。
