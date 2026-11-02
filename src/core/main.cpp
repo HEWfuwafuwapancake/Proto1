@@ -8,6 +8,7 @@
 #include <sstream>
 #include "core/debugwindow.h"
 #include "core/dx11.h"
+#include "core/framestats.h"
 #include "core/gametime.h"
 #include "core/main.h"
 #include "core/shader.h"
@@ -45,6 +46,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 static Game g_Game;
 
 static DWORD g_Fps = 0;	// 直近1秒の FPS
+static FRAME_STATS_RESULT g_FrameStats{}; // 直近1秒の最大間隔・平均処理時間・カクつき
 static uint64_t g_Progress = 0; // 直近1秒に通信の入力で進んだフレーム数
 static HWND g_MainWindow = nullptr;
 static bool g_Fullscreen = false;
@@ -89,7 +91,8 @@ static void RefreshTitle(HWND hWnd)
 	const int mode = ActionGetEquipMode(net.IsOnline() ? ActionGetEquipPlayer() : equipPlayer);
 	const ArmManager& arms = g_Game.GetArms(equipPlayer);
 	const std::string progress = net.IsOnline() ? " 進行: " + std::to_string(g_Progress) + "/s" : "";
-	sprintf_s(title, "%s%s  FPS: %lu%s  %dP%s 左：%s 右：%s%s  振動: %s（SHARE / V） %s", TITLE, net.GetDesyncText().c_str(), g_Fps, progress.c_str(),
+	sprintf_s(title, "%s%s  FPS: %lu（最大 %.0fms・処理 %.1fms・カクつき %d）%s  %dP%s 左：%s 右：%s%s  振動: %s（SHARE / V） %s", TITLE, net.GetDesyncText().c_str(),
+		g_Fps, g_FrameStats.MaxIntervalMs, g_FrameStats.AverageWorkMs, g_FrameStats.HitchCount, progress.c_str(),
 		equipPlayer + 1, net.IsOnline() ? "" : "（F1-F4）", ArmGetName(arms.GetType(0)), ArmGetName(arms.GetType(1)),
 		mode == 0 ? "  [左腕を切り替え中：数字キー 1-6]" : (mode == 1 ? "  [右腕を切り替え中：数字キー 1-6]" : ""),
 		PadIsRumbleEnabled() ? "オン" : "オフ", net.GetStatusText().c_str());
@@ -202,6 +205,11 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
 	dwExecLastTime = dwFPSLastTime = timeGetTime();	// システム時刻をミリ秒単位で取得
 	dwCurrentTime = dwFrameCount = 0;
 	uint64_t advancedLast = 0;
+	FRAME_STATS frameStats{};
+	LARGE_INTEGER counterFrequency{}, previousFrameStart{};
+	QueryPerformanceFrequency(&counterFrequency);
+	const double counterToMs = 1000.0 / static_cast<double>(counterFrequency.QuadPart);
+	bool hasPreviousFrame = false;
 
 	// 1フレームの長さ（ミリ秒）。17・17・16 を繰り返すと、3フレームで50ミリ秒＝ちょうど1秒に60回になる
 	const DWORD FRAME_TIME[3] = { 17, 17, 16 };
@@ -230,6 +238,7 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
 			// FPS（1秒間に何回 Update・Draw したか）をタイトルバーに出す
 			DWORD elapsed = dwCurrentTime - dwFPSLastTime;	// 1000ミリ秒ちょうどより少し長いので、四捨五入して表示する
 			g_Fps = (dwFrameCount * 1000 + elapsed / 2) / elapsed;
+			g_FrameStats = FrameStatsTake(frameStats);
 			const uint64_t advanced = g_Game.GetNetSession().GetAdvancedFrames();
 			g_Progress = ((advanced - advancedLast) * 1000 + elapsed / 2) / elapsed;
 			advancedLast = advanced;
@@ -244,7 +253,8 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
 			// 次のフレームの予定時刻（今の時刻ではなく予定時刻から進めるので、Sleep の寝すぎでずれていかない）
 			dwExecLastTime += FRAME_TIME[frameIndex];
 			frameIndex = (frameIndex + 1) % 3;
-			if ((dwCurrentTime - dwExecLastTime) > 100) {
+			const bool restartFrame = (dwCurrentTime - dwExecLastTime) >= 100;
+			if (restartFrame) {
 				dwExecLastTime = dwCurrentTime;	// 大きく遅れたとき（ウィンドウをつかんで動かしていた など）は追いつこうとせず仕切り直す
 			}
 
@@ -252,12 +262,23 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
 			const ARM_TYPE oldLeft = g_Game.GetArms(oldEquipPlayer).GetType(0);
 			const ARM_TYPE oldRight = g_Game.GetArms(oldEquipPlayer).GetType(1);
 			const int oldMode = ActionGetEquipMode(g_Game.GetNetSession().IsOnline() ? ActionGetEquipPlayer() : oldEquipPlayer);
+			LARGE_INTEGER frameStart{};
+			QueryPerformanceCounter(&frameStart);
+			const float intervalMs = hasPreviousFrame && !restartFrame
+				? static_cast<float>((frameStart.QuadPart - previousFrameStart.QuadPart) * counterToMs) : 0.0f;
+			previousFrameStart = frameStart;
+			hasPreviousFrame = true;
 			Update();			// 更新処理
 			const int equipPlayer = GetEquipSlot();
 			if (oldLeft != g_Game.GetArms(equipPlayer).GetType(0) || oldRight != g_Game.GetArms(equipPlayer).GetType(1)
 				|| oldEquipPlayer != equipPlayer
 				|| oldMode != ActionGetEquipMode(g_Game.GetNetSession().IsOnline() ? ActionGetEquipPlayer() : equipPlayer)) RefreshTitle(hWnd);
 			Draw();				// 描画処理
+			LARGE_INTEGER workEnd{};
+			QueryPerformanceCounter(&workEnd);
+			const float workMs = static_cast<float>((workEnd.QuadPart - frameStart.QuadPart) * counterToMs);
+			FrameStatsAdd(frameStats, intervalMs, workMs);
+			Present(); // 垂直同期の待ちは処理時間に含めない（フレーム間隔には含まれる）
 
 			dwFrameCount++;		// 処理回数のカウントを加算
 		}
@@ -469,6 +490,4 @@ void Draw(void)
 	Clear();
 
 	g_Game.Draw();
-
-	Present();
 }

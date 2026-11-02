@@ -78,6 +78,9 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\core\gametime.cpp" />
+    <ClCompile Include="..\..\src\core\framestats.cpp" />
+    <ClInclude Include="..\..\src\core\framestats.h" />
+    <ClCompile Include="framestats_test.cpp" />
     <ClCompile Include="..\..\src\core\timer.cpp" />
     <ClCompile Include="..\..\src\input\actioncalc.cpp" />
     <ClCompile Include="..\..\src\net\lockstepcalc.cpp" />

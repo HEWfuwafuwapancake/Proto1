@@ -134,6 +134,7 @@
     <ClCompile Include="src\core\dx11.cpp" />
     <ClCompile Include="src\game\field.cpp" />
     <ClCompile Include="src\core\gametime.cpp" />
+    <ClCompile Include="src\core\framestats.cpp" />
     <ClCompile Include="src\input\action.cpp" />
     <ClCompile Include="src\input\actioncalc.cpp" />
     <ClCompile Include="src\net\lockstepcalc.cpp" />
@@ -183,6 +184,7 @@
     <ClInclude Include="src\core\dx11.h" />
     <ClInclude Include="src\game\field.h" />
     <ClInclude Include="src\core\gametime.h" />
+    <ClInclude Include="src\core\framestats.h" />
     <ClInclude Include="src\input\action.h" />
     <ClInclude Include="src\input\actioncalc.h" />
     <ClInclude Include="src\net\lockstepcalc.h" />
