@@ -60,7 +60,6 @@ struct PAD_DEVICE
 	std::vector<unsigned char> LastOutput;        ///< 最後に送ったデータ
 	HANDLE Switch2UsbDevice = INVALID_HANDLE_VALUE; ///< Switch 2 Pro の初期化用 USB ハンドル
 	WINUSB_INTERFACE_HANDLE Switch2Interface = NULL; ///< 同じ機器のインターフェース1
-	bool Switch2Ready = false;                    ///< 初期化がすべて成功したら入力を受け取る
 };
 static PAD_DEVICE g_Pads[PAD_COUNT];
 static HWND g_Window = NULL;
@@ -141,7 +140,6 @@ static void CloseOutputDevice(PAD_DEVICE& pad)
 		CloseHandle(pad.Switch2UsbDevice);
 		pad.Switch2UsbDevice = INVALID_HANDLE_VALUE;
 	}
-	pad.Switch2Ready = false;
 }
 
 // HID と WinUSB の両方から USB 複合機器の親までたどり、同じ実機か確かめる。
@@ -237,6 +235,8 @@ static DWORD InitializeSwitch2Usb(PAD_DEVICE& pad, const char* path, int& comman
 }
 
 // 入力開始の合図なので、最初の WM_INPUT を待たず、HID を見つけた時点で送る。
+// Steam などがインターフェース1を開いていると失敗する（Win32=5）が、そのアプリが初期化済みなら入力は届くので、
+// 失敗しても入力は受け取る（初期化されていなければ、そもそも入力が届かない）。
 static void OpenSwitch2Device(PAD_DEVICE& pad)
 {
 	pad.OutputAttempted = true; // ソニー向けの HID 出力は開かない。失敗しても接続中は再送しない。
@@ -268,12 +268,12 @@ static void OpenSwitch2Device(PAD_DEVICE& pad)
 		}
 		else error = GetLastError();
 	}
-	pad.Switch2Ready = error == ERROR_SUCCESS;
-	if (!pad.Switch2Ready) CloseOutputDevice(pad);
+	if (error != ERROR_SUCCESS) CloseOutputDevice(pad);
 #ifdef _DEBUG
-	if (pad.Switch2Ready) hal::dout << "Switch 2 Pro：USB の初期化が終わりました" << std::endl;
+	if (error == ERROR_SUCCESS) hal::dout << "Switch 2 Pro：USB の初期化が終わりました" << std::endl;
 	else hal::dout << "Switch 2 Pro：USB の初期化に失敗（Win32=" << error
-		<< "、コマンド=" << commandIndex + 1 << "。0は送信前）。抜き差ししてやり直してください" << std::endl;
+		<< "、コマンド=" << commandIndex + 1 << "。0は送信前）。Steam などが初期化済みなら入力は届きます。"
+		<< "届かなければ抜き差ししてください" << std::endl;
 #endif
 }
 
@@ -504,7 +504,6 @@ void PadOnRawInput(LPARAM lParam)
 	const int index = AddDevice(raw->header.hDevice);
 	if (index < 0) return; // 対応外・5台目以降
 	PAD_DEVICE& pad = g_Pads[index];
-	if (pad.Model == PAD_MODEL_SWITCH2_PRO && !pad.Switch2Ready) return;
 
 	// 1回の WM_INPUT にレポートが何個か入っていることがあるので、最後の1個を使う
 	const DWORD reportSize = raw->data.hid.dwSizeHid;
