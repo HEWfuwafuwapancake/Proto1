@@ -4,7 +4,7 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）。
 決まったことは [decisions.md](decisions.md)、腕のモデルの原点と長さは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、終わったタスクの記録は [archive/](archive/)（普段は読まない）。
 
-- 最終更新：2026-11-02（Claude。Shota の Proto1、Visual Studio 2022 Enterprise の PC。No.53 の Switch Pro 形式がジョイスティック（Usage 0x04）として見えて読めないおそれがあったので、Raw Input にジョイスティックも登録した）
+- 最終更新：2026-11-02（Claude。Shota の Proto1、Visual Studio 2022 Enterprise の PC。No.53 の Switch Pro 形式をジョイスティック（Usage 0x04）でも読むようにした（PR #101）。No.54 Switch 2 Pro コンのプラン（案）を書いた）
 
 ---
 
@@ -24,6 +24,17 @@
 1. 下の No.19 のプラン（案）を管理者に確認する。
 2. 管理者が全員に同じ Release の exe を配り、Tailscale 4人で ping・自動 delay・待ち・進行を以前（delay 7、ping 33・66・33ms）と比べる（No.52）。No.51 の DESYNC 再発も確認する。
 3. メンバーが No.53 のコントローラーを実機で確かめる（上の「未確認」）。
+4. 下の No.54 Switch 2 Pro コンのプラン（案）を管理者に確認する（確認が取れるまで実装しない）。
+
+### No.54 プラン（案）：Switch 2 Pro コン（057E:2069）を USB で読む
+
+- **わかっていること**（SDL の `SDL_hidapi_switch2.c` などを読んだ。実機ではまだ見ていない）：USB でつないだだけでは入力を送ってこない。インターフェース1（Nintendo 独自）のバルク転送で初期化コマンドを 10 個送ると、インターフェース0（HID）に 64 バイトの入力が届くようになる。Bluetooth は BLE なので Windows の HID には出てこない → **Bluetooth はやらない**。
+- **いちばんの心配**：Windows がインターフェース1に WinUSB ドライバーを自動で付けるか分からない。付けば Windows SDK の WinUSB API（`winusb.h`・`winusb.lib`・`setupapi.lib`。外部ライブラリなし）で送れる。付かなければ、各 PC に Zadig でドライバーを入れることになり、プロトには重い。
+- **段階0（コードなし。実機を持っている人）**：USB でつなぎ、`Get-PnpDevice -PresentOnly | Where-Object InstanceId -match 'VID_057E&PID_2069'` で `MI_01` の行を見て、Class とドライバーが WinUSB か確かめる。あわせて **代案**（Steam に Proto1.exe を「ゲーム以外を追加」して Steam から起動し、Steam Input に XInput へ変換させる。今の XInput 対応のままで動くはず。Steam の起動オプション `-enablepro2` が要るという情報もある）も試す。代案で足りれば実装はしない。
+- **段階1（計算。テストする）**：`padcalc` に `PAD_MODEL_SWITCH2_PRO`、`PadCalcIdentifyModel` に 0x2069、初期化コマンド 10 個の並び、`PadCalcParseSwitch2ProReport`（64 バイト。ボタンは `[5]`〜`[7]`、ZL・ZR は `[7]`・`[5]` の 0x80、スティックは `[11]`〜`[16]` の 12 ビットで上下を反転、中心 2048）。ボタンは位置で合わせる（B→×、A→○）。
+- **段階2（pad.cpp）**：2069 の HID が届いたら、SetupAPI でまだ初期化していない 2069 のインターフェース1を探して `WinUsb_Initialize` し、10 個のコマンドを送って返信を読む（タイムアウト付き。失敗したら Debug に出して入力なしのまま）。入力は今の Raw Input で受ける。**振動・スティックの補正値の読み込みはしない**（遊び 0.12 で済ませる）。
+- **確かめ方**：単体テスト（壊す確認は padcalc の新しい部分だけ）、Debug / Release 警告 0、実機で移動・カメラ・ジャンプ・腕・メニュー、抜き差し、DS4 や XInput と混ぜたときの番号。
+- **管理者に決めてほしいこと**：① 段階0をだれがやるか（Switch 2 Pro コンを持っている人）。② 代案（Steam 経由）で動けば、それで済ませてよいか。③ WinUSB が自動で付かないとき、Zadig を入れる運用にするか、やめるか。
 
 ### No.19 プラン（案）：遊びの強さにかかわる値を `src/game/tuning.h` 1つにまとめる
 
