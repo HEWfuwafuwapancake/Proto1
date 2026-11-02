@@ -36,6 +36,7 @@ static constexpr int DS4_USB_OUTPUT_DEFAULT_SIZE = 32; // HID から出力の長
 static constexpr int DUALSENSE_USB_OUTPUT_DEFAULT_SIZE = 63; // DualSense の USB 出力レポート全体
 static constexpr ULONG SWITCH2_WRITE_TIMEOUT_MS = 1000; // 初期化の送信待ちの上限
 static constexpr ULONG SWITCH2_READ_TIMEOUT_MS = 100;   // 初期化の返信待ちの上限
+static constexpr DWORD SWITCH2_RUMBLE_CLOSE_WAIT_MS = 100; // 閉じるときに振動の書き込みを待つ上限
 
 // No.54 段階0で実機から調べた、WinUSB（MI_01）のデバイスインターフェース。
 static const GUID SWITCH2_USB_INTERFACE_GUID = {
@@ -60,6 +61,10 @@ struct PAD_DEVICE
 	std::vector<unsigned char> LastOutput;        ///< 最後に送ったデータ
 	HANDLE Switch2UsbDevice = INVALID_HANDLE_VALUE; ///< Switch 2 Pro の初期化用 USB ハンドル
 	WINUSB_INTERFACE_HANDLE Switch2Interface = NULL; ///< 同じ機器のインターフェース1
+	unsigned char Switch2RumbleCounter = 0;       ///< Switch 2 Pro の振動の送信カウンター
+	bool Switch2RumbleOn = false;                 ///< Switch 2 Pro に最後に送った振動が 0 でないか
+	OVERLAPPED Switch2Write = {};                 ///< Switch 2 Pro の振動の書き込み（待たずに送る）
+	bool Switch2Writing = false;                  ///< 振動の書き込みがまだ終わっていないか
 };
 static PAD_DEVICE g_Pads[PAD_COUNT];
 static HWND g_Window = NULL;
@@ -85,6 +90,20 @@ static void WarnOutputUnavailable(PAD_DEVICE& pad)
 #endif
 }
 
+// Switch 2 Pro の振動の書き込みが終わったか調べる。waitMs まで待っても終わらなければ取り消す。
+static bool FinishSwitch2Write(PAD_DEVICE& pad, DWORD waitMs)
+{
+	if (!pad.Switch2Writing) return true;
+	if (WaitForSingleObject(pad.Switch2Write.hEvent, waitMs) == WAIT_TIMEOUT) {
+		if (waitMs == 0) return false;
+		CancelIoEx(pad.OutputDevice, &pad.Switch2Write);
+	}
+	DWORD written = 0;
+	if (!GetOverlappedResult(pad.OutputDevice, &pad.Switch2Write, &written, TRUE)) WarnOutputUnavailable(pad);
+	pad.Switch2Writing = false;
+	return true;
+}
+
 // 送信するバイト列が変わったときだけ書く。非選択中は必ず振動 0 にする。
 static void SendOutput(PAD_DEVICE& pad)
 {
@@ -101,8 +120,30 @@ static void SendOutput(PAD_DEVICE& pad)
 		}
 		return;
 	}
-	if (pad.Model == PAD_MODEL_SWITCH_PRO || pad.Model == PAD_MODEL_SWITCH2_PRO
-		|| pad.OutputDevice == INVALID_HANDLE_VALUE) return;
+	if (pad.Model == PAD_MODEL_SWITCH_PRO || pad.OutputDevice == INVALID_HANDLE_VALUE) return;
+	if (pad.Model == PAD_MODEL_SWITCH2_PRO) {
+		// 振動中は毎回送り直す（送らないと止まる）。止めるときは強さ 0 を1回だけ送る。
+		// 機器が受け取るまで書き込みが終わらないことがあり、待つとゲームが固まるので、
+		// 前の書き込みが終わっていなければこの回は送らない（止めるのは次の回に送る）。
+		const float smallMotor = active ? pad.Rumble.SmallMotor : 0.0f;
+		const float largeMotor = active ? pad.Rumble.LargeMotor : 0.0f;
+		const bool on = smallMotor > 0.0f || largeMotor > 0.0f;
+		if (!on && !pad.Switch2RumbleOn) return;
+		if (!FinishSwitch2Write(pad, 0)) return;
+		if (!PadCalcBuildSwitch2ProRumble(pad.OutputReport.data(), (int)pad.OutputReport.size(),
+			smallMotor, largeMotor, pad.Switch2RumbleCounter++)) {
+			WarnOutputUnavailable(pad);
+			return;
+		}
+		ResetEvent(pad.Switch2Write.hEvent);
+		if (WriteFile(pad.OutputDevice, pad.OutputReport.data(), (DWORD)pad.OutputReport.size(), NULL, &pad.Switch2Write)
+			|| GetLastError() == ERROR_IO_PENDING) {
+			pad.Switch2Writing = true;
+		}
+		else WarnOutputUnavailable(pad);
+		pad.Switch2RumbleOn = on;
+		return;
+	}
 	const auto buildOutput = pad.Model == PAD_MODEL_DUALSENSE
 		? PadCalcBuildDualSenseUsbOutput : PadCalcBuildDs4UsbOutput;
 	if (!buildOutput(pad.OutputReport.data(), (int)pad.OutputReport.size(),
@@ -126,9 +167,15 @@ static void CloseOutputDevice(PAD_DEVICE& pad)
 	pad.Rumble = {};
 	if (pad.Model == PAD_MODEL_XINPUT) SendOutput(pad);
 	if (pad.OutputDevice != INVALID_HANDLE_VALUE) {
+		FinishSwitch2Write(pad, SWITCH2_RUMBLE_CLOSE_WAIT_MS);
 		SendOutput(pad); // 外れたときも、閉じる前に停止を送る（外れていれば失敗してよい）
+		FinishSwitch2Write(pad, SWITCH2_RUMBLE_CLOSE_WAIT_MS);
 		CloseHandle(pad.OutputDevice);
 		pad.OutputDevice = INVALID_HANDLE_VALUE;
+	}
+	if (pad.Switch2Write.hEvent != NULL) {
+		CloseHandle(pad.Switch2Write.hEvent);
+		pad.Switch2Write = {};
 	}
 	pad.OutputReport.clear();
 	pad.LastOutput.clear();
@@ -140,6 +187,7 @@ static void CloseOutputDevice(PAD_DEVICE& pad)
 		CloseHandle(pad.Switch2UsbDevice);
 		pad.Switch2UsbDevice = INVALID_HANDLE_VALUE;
 	}
+	pad.Switch2RumbleOn = false;
 }
 
 // HID と WinUSB の両方から USB 複合機器の親までたどり、同じ実機か確かめる。
@@ -234,12 +282,14 @@ static DWORD InitializeSwitch2Usb(PAD_DEVICE& pad, const char* path, int& comman
 	return ERROR_SUCCESS;
 }
 
+static void OpenOutputDevice(PAD_DEVICE& pad);
+
 // 入力開始の合図なので、最初の WM_INPUT を待たず、HID を見つけた時点で送る。
 // Steam などがインターフェース1を開いていると失敗する（Win32=5）が、そのアプリが初期化済みなら入力は届くので、
 // 失敗しても入力は受け取る（初期化されていなければ、そもそも入力が届かない）。
 static void OpenSwitch2Device(PAD_DEVICE& pad)
 {
-	pad.OutputAttempted = true; // ソニー向けの HID 出力は開かない。失敗しても接続中は再送しない。
+	pad.OutputAttempted = true; // 失敗しても接続中は再送しない。
 	DEVINST hidParent = 0;
 	DWORD error = ERROR_NOT_FOUND;
 	int commandIndex = -1;
@@ -275,6 +325,7 @@ static void OpenSwitch2Device(PAD_DEVICE& pad)
 		<< "、コマンド=" << commandIndex + 1 << "。0は送信前）。Steam などが初期化済みなら入力は届きます。"
 		<< "届かなければ抜き差ししてください" << std::endl;
 #endif
+	OpenOutputDevice(pad); // 振動は HID の出力で送るので、初期化の成否にかかわらず開く
 }
 
 // USB の入力レポートを読めた最初の一度だけ、同じ機器を出力用に開く。
@@ -291,8 +342,9 @@ static void OpenOutputDevice(PAD_DEVICE& pad)
 		WarnOutputUnavailable(pad);
 		return;
 	}
+	const bool switch2 = pad.Model == PAD_MODEL_SWITCH2_PRO; // 振動を毎フレーム送るので、待たずに書く
 	pad.OutputDevice = CreateFileA(name.data(), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
-		NULL, OPEN_EXISTING, 0, NULL);
+		NULL, OPEN_EXISTING, switch2 ? FILE_FLAG_OVERLAPPED : 0, NULL);
 	if (pad.OutputDevice == INVALID_HANDLE_VALUE) {
 		WarnOutputUnavailable(pad);
 		return;
@@ -320,6 +372,16 @@ static void OpenOutputDevice(PAD_DEVICE& pad)
 		}
 		if (PadCalcBuildSwitchInputMode(pad.OutputReport.data(), (int)pad.OutputReport.size(), 0)) {
 			WriteFile(pad.OutputDevice, pad.OutputReport.data(), (DWORD)pad.OutputReport.size(), &written, NULL);
+		}
+		return;
+	}
+	if (switch2) {
+		pad.OutputReport.resize(caps.OutputReportByteLength); // 振動のレポートは HID の長さ（64）で送る
+		pad.Switch2Write.hEvent = CreateEventA(NULL, TRUE, FALSE, NULL);
+		if (pad.Switch2Write.hEvent == NULL) {
+			CloseHandle(pad.OutputDevice);
+			pad.OutputDevice = INVALID_HANDLE_VALUE;
+			WarnOutputUnavailable(pad);
 		}
 		return;
 	}
@@ -569,8 +631,7 @@ void PadRumble(int index, float smallMotor, float largeMotor, float seconds)
 	if (!IsValidPad(index)) return;
 	PAD_DEVICE& pad = g_Pads[index];
 	if (!g_RumbleEnabled || (pad.Model != PAD_MODEL_XINPUT && pad.OutputDevice == INVALID_HANDLE_VALUE)
-		|| pad.Model == PAD_MODEL_SWITCH_PRO || pad.Model == PAD_MODEL_SWITCH2_PRO
-		|| g_Window == NULL || GetForegroundWindow() != g_Window) {
+		|| pad.Model == PAD_MODEL_SWITCH_PRO || g_Window == NULL || GetForegroundWindow() != g_Window) {
 		pad.Rumble = {};
 	}
 	else {

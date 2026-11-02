@@ -5,6 +5,9 @@
 // 調整用の値
 static constexpr unsigned char PAD_TRIGGER_THRESHOLD = 30; // これを超えるとトリガーを押した扱い
 static constexpr float SWITCH_STICK_RANGE = 1600.0f; // フル入力の中心から端までの幅
+static constexpr float SWITCH2_RUMBLE_MAX = 29000.0f;      // Switch 2 Pro の振動の強さの上限（SDL と同じ。強すぎると機器に悪い）
+static constexpr unsigned short SWITCH2_RUMBLE_HIGH_FREQ = 0x187; // 高音側の周波数（SDL の初期値）
+static constexpr unsigned short SWITCH2_RUMBLE_LOW_FREQ = 0x112;  // 低音側の周波数（SDL の初期値）
 
 static constexpr unsigned char DS4_USB_REPORT_ID = 0x01;	// USB でつないだときの入力レポートの番号
 static constexpr int DS4_USB_REPORT_MIN_SIZE = 8;			// ボタンまで（[0]〜[7]）読むのに要るバイト数
@@ -292,10 +295,31 @@ bool PadCalcParseSwitch2ProReport(const unsigned char* data, int size, PAD_STATE
 	if (left & 0x08) state.Buttons |= PAD_BUTTON_DPAD_LEFT;
 	if (left & 0x40) state.Buttons |= PAD_BUTTON_L1;
 	if (left & 0x80) state.Buttons |= PAD_BUTTON_L2;
-	// 補正値は読まず、12ビットの全域を -1〜1 にする（Switch Pro 形式の1600幅とは別）。
-	state.LeftStick = { ((float)(data[11] | ((data[12] & 0x0F) << 8)) - 2048.0f) / 2048.0f,
-		-((float)((data[12] >> 4) | (data[13] << 4)) - 2048.0f) / 2048.0f };
-	state.RightStick = { ((float)(data[14] | ((data[15] & 0x0F) << 8)) - 2048.0f) / 2048.0f,
-		-((float)((data[15] >> 4) | (data[16] << 4)) - 2048.0f) / 2048.0f };
+	// 補正値は読まず、Switch Pro 形式と同じ中心2048・幅1600にする（実機は中心が±100ずれ、
+	// 端までが1370〜1680だったので、2048で割ると左にはじいても0.7に届かなかった）。
+	// 上下は生の値が上でプラスなので反転しない（SDL は下をプラスにするため反転している。実機で確認）。
+	state.LeftStick = { SwitchStick(data[11] | ((data[12] & 0x0F) << 8)),
+		SwitchStick((data[12] >> 4) | (data[13] << 4)) };
+	state.RightStick = { SwitchStick(data[14] | ((data[15] & 0x0F) << 8)),
+		SwitchStick((data[15] >> 4) | (data[16] << 4)) };
+	return true;
+}
+
+bool PadCalcBuildSwitch2ProRumble(unsigned char* data, int size, float smallMotor, float largeMotor, unsigned char counter)
+{
+	// SDL の UpdateRumble・EncodeHDRumble を参照（出典：docs/dev/03_Switch2_SDLライセンス.md）
+	if (data == nullptr || size < 64) return false;
+	const unsigned int highAmp = (unsigned int)(Saturate(smallMotor) * SWITCH2_RUMBLE_MAX + 0.5f);
+	const unsigned int lowAmp = (unsigned int)(Saturate(largeMotor) * SWITCH2_RUMBLE_MAX + 0.5f);
+	const unsigned int highFreq = SWITCH2_RUMBLE_HIGH_FREQ, lowFreq = SWITCH2_RUMBLE_LOW_FREQ;
+	for (int i = 0; i < size; ++i) data[i] = 0;
+	data[0] = 0x02;
+	data[1] = (unsigned char)(0x50 | (counter & 0x0F));
+	data[2] = (unsigned char)(highFreq & 0xFF);
+	data[3] = (unsigned char)(((highAmp >> 4) & 0xFC) | ((highFreq >> 8) & 0x03));
+	data[4] = (unsigned char)((highAmp >> 12) | (lowFreq << 4));
+	data[5] = (unsigned char)((lowAmp & 0xC0) | ((lowFreq >> 4) & 0x3F));
+	data[6] = (unsigned char)(lowAmp >> 8);
+	for (int i = 1; i <= 6; ++i) data[0x10 + i] = data[i];
 	return true;
 }

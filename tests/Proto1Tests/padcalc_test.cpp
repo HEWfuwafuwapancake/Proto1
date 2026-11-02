@@ -49,7 +49,7 @@ namespace Proto1Tests
 			}
 		}
 
-		// 両スティックの中立、12ビットの並びと上下反転。遊びは呼び出し側で取り除く。
+		// 両スティックの中立と12ビットの並び。上下は反転しない（実機で確認）。遊びは呼び出し側で取り除く。
 		TEST_METHOD(Switch2Pro_SticksAndNeutral)
 		{
 			unsigned char report[64]{};
@@ -65,10 +65,32 @@ namespace Proto1Tests
 			report[11] = 0x01; report[12] = 0x24; report[13] = 0xC0; // 1025・3074
 			report[14] = 0x03; report[15] = 0x4A; report[16] = 0x60; // 2563・1540
 			Assert::IsTrue(PadCalcParseSwitch2ProReport(report, 64, state));
-			Assert::AreEqual(-1023.0f / 2048.0f, state.LeftStick.X, PAD_EPSILON);
-			Assert::AreEqual(-1026.0f / 2048.0f, state.LeftStick.Y, PAD_EPSILON);
-			Assert::AreEqual(515.0f / 2048.0f, state.RightStick.X, PAD_EPSILON);
-			Assert::AreEqual(508.0f / 2048.0f, state.RightStick.Y, PAD_EPSILON);
+			Assert::AreEqual(-1023.0f / 1600.0f, state.LeftStick.X, PAD_EPSILON);
+			Assert::AreEqual(1026.0f / 1600.0f, state.LeftStick.Y, PAD_EPSILON);
+			Assert::AreEqual(515.0f / 1600.0f, state.RightStick.X, PAD_EPSILON);
+			Assert::AreEqual(-508.0f / 1600.0f, state.RightStick.Y, PAD_EPSILON);
+			// 実機で右スティックを左に倒しきった値（553）が、はじきの判定に届く -0.9 以下になる
+			report[14] = 0x29; report[15] = 0x02;
+			Assert::IsTrue(PadCalcParseSwitch2ProReport(report, 64, state));
+			Assert::IsTrue(state.RightStick.X < -0.9f);
+		}
+
+		// 振動のレポート：強さ最大（上限29000）と停止の並び、[1]〜[6] の写し。
+		TEST_METHOD(Switch2Pro_RumbleReport)
+		{
+			unsigned char data[64];
+			for (unsigned char& byte : data) byte = 0xAA;
+			Assert::IsTrue(PadCalcBuildSwitch2ProRumble(data, 64, 1.0f, 1.0f, 0x13));
+			const unsigned char expected[7] = { 0x02, 0x53, 0x87, 0x15, 0x27, 0x51, 0x71 };
+			for (int i = 0; i < 64; ++i) {
+				const int value = i < 7 ? expected[i] : (i >= 0x11 && i <= 0x16) ? expected[i - 0x10] : 0;
+				Assert::AreEqual(value, (int)data[i]);
+			}
+			Assert::IsTrue(PadCalcBuildSwitch2ProRumble(data, 64, 0.0f, 0.0f, 0));
+			Assert::AreEqual(0x01, (int)data[3]);
+			Assert::AreEqual(0x20, (int)data[4]);
+			Assert::AreEqual(0x11, (int)data[5]);
+			Assert::AreEqual(0x00, (int)data[6]);
 		}
 
 		// 入力開始までに送る10コマンドの順番・長さ・全バイトを確かめる。

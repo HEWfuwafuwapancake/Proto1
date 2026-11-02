@@ -5,7 +5,7 @@
 
 /// @file pad.h
 /// @brief DS4 / DualSense の USB、XInput、Switch Pro 形式、Switch 2 Pro の USB 入力
-/// @details 振動はソニーと XInput、ライトバーはソニーだけに出力する。
+/// @details 振動はソニー・XInput・Switch 2 Pro、ライトバーはソニーだけに出力する。
 ///          最大4台を接続順に0〜3へ割り当てる。外れた番号は空き、ほかの番号は詰めない。
 ///          つないでいないとき・外れたとき・
 ///          ウィンドウが選ばれていないときは「何も押していない」扱いにする

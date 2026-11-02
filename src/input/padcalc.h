@@ -178,10 +178,21 @@ static constexpr int PAD_SWITCH2_INIT_COMMAND_COUNT = 10;
 int PadCalcBuildSwitch2UsbCommand(unsigned char* data, int size, int index);
 
 /// @brief Switch 2 Pro の64バイトの USB 入力を読む（ボタンは位置で合わせ、上下は上がプラス）
-/// @details ボタンは[5]〜[7]、左右の12ビットスティックは[11]〜[16]。中心2048、遊びは別途取り除く。
+/// @details ボタンは[5]〜[7]、左右の12ビットスティックは[11]〜[16]。中心2048・幅1600（-1〜1で切る）、遊びは別途取り除く。
 ///          キャプチャー・C・背面ボタンにはゲームの操作を割り当てない。－は SHARE に対応。
 /// @param data レポートのバイト列
 /// @param size バイト数（64）
 /// @param[out] state 読んだ状態（失敗時は変更しない）
 /// @return 64バイトの入力を読めたら true
 bool PadCalcParseSwitch2ProReport(const unsigned char* data, int size, PAD_STATE& state);
+
+/// @brief Switch 2 Pro の振動の HID 出力レポート（64バイト）を組み立てる（残りは0）
+/// @details [0] は0x02、[1] は0x50＋カウンター、[2]〜[6] に高音・低音の周波数と強さ、[0x11]〜[0x16] に [1]〜[6] の写し。
+///          振動中は止まらないように毎フレーム送り直す。強さ 0 を送ると止まる。
+/// @param[out] data 出力先（失敗時は変更しない）
+/// @param size 出力先のバイト数（64以上）
+/// @param smallMotor 小さいモーター（高音側）の強さ（0〜1。範囲外は切る）
+/// @param largeMotor 大きいモーター（低音側）の強さ（0〜1。範囲外は切る）
+/// @param counter 送信カウンター（下位4ビットを使う）
+/// @return 組み立てられたら true
+bool PadCalcBuildSwitch2ProRumble(unsigned char* data, int size, float smallMotor, float largeMotor, unsigned char counter);
