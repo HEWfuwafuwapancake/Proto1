@@ -5,6 +5,9 @@
 // 調整用の値
 static constexpr unsigned char PAD_TRIGGER_THRESHOLD = 30; // これを超えるとトリガーを押した扱い
 static constexpr float SWITCH_STICK_RANGE = 1600.0f; // フル入力の中心から端までの幅
+static constexpr float SWITCH2_RUMBLE_MAX = 29000.0f;      // Switch 2 Pro の振動の強さの上限（SDL と同じ。強すぎると機器に悪い）
+static constexpr unsigned short SWITCH2_RUMBLE_HIGH_FREQ = 0x187; // 高音側の周波数（SDL の初期値）
+static constexpr unsigned short SWITCH2_RUMBLE_LOW_FREQ = 0x112;  // 低音側の周波数（SDL の初期値）
 
 static constexpr unsigned char DS4_USB_REPORT_ID = 0x01;	// USB でつないだときの入力レポートの番号
 static constexpr int DS4_USB_REPORT_MIN_SIZE = 8;			// ボタンまで（[0]〜[7]）読むのに要るバイト数
@@ -15,6 +18,7 @@ static constexpr int DUALSENSE_USB_OUTPUT_MIN_SIZE = 48;   // ライトバーの
 PAD_MODEL PadCalcIdentifyModel(unsigned int vendorId, unsigned int productId)
 {
 	if (vendorId == 0x057E && productId == 0x2009) return PAD_MODEL_SWITCH_PRO;
+	if (vendorId == 0x057E && productId == 0x2069) return PAD_MODEL_SWITCH2_PRO;
 	if (vendorId != 0x054C) return PAD_MODEL_NONE;
 	if (productId == 0x05C4 || productId == 0x09CC) return PAD_MODEL_DS4;
 	if (productId == 0x0CE6) return PAD_MODEL_DUALSENSE;
@@ -241,5 +245,81 @@ bool PadCalcBuildSwitchInputMode(unsigned char* data, int size, unsigned char co
 	for (int i = 0; i < 8; ++i) data[i + 2] = silent[i];
 	data[10] = 0x03;
 	data[11] = 0x30;
+	return true;
+}
+
+int PadCalcBuildSwitch2UsbCommand(unsigned char* data, int size, int index)
+{
+	// SDL の初期化シーケンスを使用。送信部分を Windows 非依存の関数にした改変版。
+	// 出典とライセンス：docs/dev/03_Switch2_SDLライセンス.md
+	static constexpr unsigned char commands[PAD_SWITCH2_INIT_COMMAND_COUNT][28] = {
+		{ 0x07, 0x91, 0, 0x01, 0, 0, 0, 0 },
+		{ 0x0C, 0x91, 0, 0x02, 0, 0x04, 0, 0, 0x27, 0, 0, 0 },
+		{ 0x11, 0x91, 0, 0x01, 0, 0, 0, 0 },
+		{ 0x0A, 0x91, 0, 0x08, 0, 0x14, 0, 0,
+			0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+			0xFF, 0x35, 0, 0x46, 0, 0, 0, 0, 0, 0, 0, 0 },
+		{ 0x0C, 0x91, 0, 0x04, 0, 0x04, 0, 0, 0x27, 0, 0, 0 },
+		{ 0x01, 0x91, 0, 0x0C, 0, 0, 0, 0 },
+		{ 0x01, 0x91, 0, 0x01, 0, 0, 0, 0 },
+		{ 0x08, 0x91, 0, 0x02, 0, 0x04, 0, 0, 0x01, 0, 0, 0 },
+		{ 0x03, 0x91, 0, 0x0A, 0, 0x04, 0, 0, 0x05, 0, 0, 0 },
+		{ 0x03, 0x91, 0, 0x0D, 0, 0x08, 0, 0, 0x01, 0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF }
+	};
+	if (data == nullptr || index < 0 || index >= PAD_SWITCH2_INIT_COMMAND_COUNT) return 0;
+	const int length = 8 + commands[index][5];
+	if (size < length) return 0;
+	for (int i = 0; i < size; ++i) data[i] = i < length ? commands[index][i] : 0;
+	return length;
+}
+
+bool PadCalcParseSwitch2ProReport(const unsigned char* data, int size, PAD_STATE& state)
+{
+	if (data == nullptr || size != 64) return false;
+	state = {};
+	const unsigned char right = data[5], middle = data[6], left = data[7];
+	if (right & 0x01) state.Buttons |= PAD_BUTTON_SQUARE;
+	if (right & 0x02) state.Buttons |= PAD_BUTTON_TRIANGLE;
+	if (right & 0x04) state.Buttons |= PAD_BUTTON_CROSS;
+	if (right & 0x08) state.Buttons |= PAD_BUTTON_CIRCLE;
+	if (right & 0x40) state.Buttons |= PAD_BUTTON_R1;
+	if (right & 0x80) state.Buttons |= PAD_BUTTON_R2;
+	if (middle & 0x01) state.Buttons |= PAD_BUTTON_SHARE;
+	if (middle & 0x02) state.Buttons |= PAD_BUTTON_OPTIONS;
+	if (middle & 0x04) state.Buttons |= PAD_BUTTON_R3;
+	if (middle & 0x08) state.Buttons |= PAD_BUTTON_L3;
+	if (middle & 0x10) state.Buttons |= PAD_BUTTON_PS;
+	if (left & 0x01) state.Buttons |= PAD_BUTTON_DPAD_DOWN;
+	if (left & 0x02) state.Buttons |= PAD_BUTTON_DPAD_UP;
+	if (left & 0x04) state.Buttons |= PAD_BUTTON_DPAD_RIGHT;
+	if (left & 0x08) state.Buttons |= PAD_BUTTON_DPAD_LEFT;
+	if (left & 0x40) state.Buttons |= PAD_BUTTON_L1;
+	if (left & 0x80) state.Buttons |= PAD_BUTTON_L2;
+	// 補正値は読まず、Switch Pro 形式と同じ中心2048・幅1600にする（実機は中心が±100ずれ、
+	// 端までが1370〜1680だったので、2048で割ると左にはじいても0.7に届かなかった）。
+	// 上下は生の値が上でプラスなので反転しない（SDL は下をプラスにするため反転している。実機で確認）。
+	state.LeftStick = { SwitchStick(data[11] | ((data[12] & 0x0F) << 8)),
+		SwitchStick((data[12] >> 4) | (data[13] << 4)) };
+	state.RightStick = { SwitchStick(data[14] | ((data[15] & 0x0F) << 8)),
+		SwitchStick((data[15] >> 4) | (data[16] << 4)) };
+	return true;
+}
+
+bool PadCalcBuildSwitch2ProRumble(unsigned char* data, int size, float smallMotor, float largeMotor, unsigned char counter)
+{
+	// SDL の UpdateRumble・EncodeHDRumble を参照（出典：docs/dev/03_Switch2_SDLライセンス.md）
+	if (data == nullptr || size < 64) return false;
+	const unsigned int highAmp = (unsigned int)(Saturate(smallMotor) * SWITCH2_RUMBLE_MAX + 0.5f);
+	const unsigned int lowAmp = (unsigned int)(Saturate(largeMotor) * SWITCH2_RUMBLE_MAX + 0.5f);
+	const unsigned int highFreq = SWITCH2_RUMBLE_HIGH_FREQ, lowFreq = SWITCH2_RUMBLE_LOW_FREQ;
+	for (int i = 0; i < size; ++i) data[i] = 0;
+	data[0] = 0x02;
+	data[1] = (unsigned char)(0x50 | (counter & 0x0F));
+	data[2] = (unsigned char)(highFreq & 0xFF);
+	data[3] = (unsigned char)(((highAmp >> 4) & 0xFC) | ((highFreq >> 8) & 0x03));
+	data[4] = (unsigned char)((highAmp >> 12) | (lowFreq << 4));
+	data[5] = (unsigned char)((lowAmp & 0xC0) | ((lowFreq >> 4) & 0x3F));
+	data[6] = (unsigned char)(lowAmp >> 8);
+	for (int i = 1; i <= 6; ++i) data[0x10 + i] = data[i];
 	return true;
 }

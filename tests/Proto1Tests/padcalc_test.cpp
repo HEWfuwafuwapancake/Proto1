@@ -26,6 +26,101 @@ namespace Proto1Tests
 	TEST_CLASS(PadCalcTest)
 	{
 	public:
+		// Switch 2 は従来の Switch と機種を分け、位置ごとのボタンとトリガーを読む。
+		TEST_METHOD(Switch2Pro_ModelAndEachButton)
+		{
+			Assert::AreEqual((int)PAD_MODEL_SWITCH2_PRO, (int)PadCalcIdentifyModel(0x057E, 0x2069));
+			unsigned char report[64]{};
+			const unsigned int expected[3][8] = {
+				{ PAD_BUTTON_SQUARE, PAD_BUTTON_TRIANGLE, PAD_BUTTON_CROSS, PAD_BUTTON_CIRCLE,
+					0, 0, PAD_BUTTON_R1, PAD_BUTTON_R2 },
+				{ PAD_BUTTON_SHARE, PAD_BUTTON_OPTIONS, PAD_BUTTON_R3, PAD_BUTTON_L3, PAD_BUTTON_PS, 0, 0, 0 },
+				{ PAD_BUTTON_DPAD_DOWN, PAD_BUTTON_DPAD_UP, PAD_BUTTON_DPAD_RIGHT, PAD_BUTTON_DPAD_LEFT,
+					0, 0, PAD_BUTTON_L1, PAD_BUTTON_L2 }
+			};
+			PAD_STATE state{};
+			for (int group = 0; group < 3; ++group) {
+				for (int bit = 0; bit < 8; ++bit) {
+					report[5] = report[6] = report[7] = 0;
+					report[5 + group] = (unsigned char)(1 << bit);
+					Assert::IsTrue(PadCalcParseSwitch2ProReport(report, 64, state));
+					Assert::AreEqual(expected[group][bit], state.Buttons);
+				}
+			}
+		}
+
+		// 両スティックの中立と12ビットの並び。上下は反転しない（実機で確認）。遊びは呼び出し側で取り除く。
+		TEST_METHOD(Switch2Pro_SticksAndNeutral)
+		{
+			unsigned char report[64]{};
+			report[12] = report[15] = 0x08;
+			report[13] = report[16] = 0x80;
+			PAD_STATE state{};
+			Assert::IsTrue(PadCalcParseSwitch2ProReport(report, 64, state));
+			Assert::AreEqual(0u, state.Buttons);
+			Assert::AreEqual(0.0f, state.LeftStick.X, PAD_EPSILON);
+			Assert::AreEqual(0.0f, state.LeftStick.Y, PAD_EPSILON);
+			Assert::AreEqual(0.0f, state.RightStick.X, PAD_EPSILON);
+			Assert::AreEqual(0.0f, state.RightStick.Y, PAD_EPSILON);
+			report[11] = 0x01; report[12] = 0x24; report[13] = 0xC0; // 1025・3074
+			report[14] = 0x03; report[15] = 0x4A; report[16] = 0x60; // 2563・1540
+			Assert::IsTrue(PadCalcParseSwitch2ProReport(report, 64, state));
+			Assert::AreEqual(-1023.0f / 1600.0f, state.LeftStick.X, PAD_EPSILON);
+			Assert::AreEqual(1026.0f / 1600.0f, state.LeftStick.Y, PAD_EPSILON);
+			Assert::AreEqual(515.0f / 1600.0f, state.RightStick.X, PAD_EPSILON);
+			Assert::AreEqual(-508.0f / 1600.0f, state.RightStick.Y, PAD_EPSILON);
+			// 実機で右スティックを左に倒しきった値（553）が、はじきの判定に届く -0.9 以下になる
+			report[14] = 0x29; report[15] = 0x02;
+			Assert::IsTrue(PadCalcParseSwitch2ProReport(report, 64, state));
+			Assert::IsTrue(state.RightStick.X < -0.9f);
+		}
+
+		// 振動のレポート：強さ最大（上限29000）と停止の並び、[1]〜[6] の写し。
+		TEST_METHOD(Switch2Pro_RumbleReport)
+		{
+			unsigned char data[64];
+			for (unsigned char& byte : data) byte = 0xAA;
+			Assert::IsTrue(PadCalcBuildSwitch2ProRumble(data, 64, 1.0f, 1.0f, 0x13));
+			const unsigned char expected[7] = { 0x02, 0x53, 0x87, 0x15, 0x27, 0x51, 0x71 };
+			for (int i = 0; i < 64; ++i) {
+				const int value = i < 7 ? expected[i] : (i >= 0x11 && i <= 0x16) ? expected[i - 0x10] : 0;
+				Assert::AreEqual(value, (int)data[i]);
+			}
+			Assert::IsTrue(PadCalcBuildSwitch2ProRumble(data, 64, 0.0f, 0.0f, 0));
+			Assert::AreEqual(0x01, (int)data[3]);
+			Assert::AreEqual(0x20, (int)data[4]);
+			Assert::AreEqual(0x11, (int)data[5]);
+			Assert::AreEqual(0x00, (int)data[6]);
+		}
+
+		// 入力開始までに送る10コマンドの順番・長さ・全バイトを確かめる。
+		TEST_METHOD(Switch2Pro_InitializationSequence)
+		{
+			const int lengths[] = { 8, 12, 8, 28, 12, 8, 8, 12, 12, 16 };
+			const unsigned char expected[10][28] = {
+				{ 7, 0x91, 0, 1 },
+				{ 0x0C, 0x91, 0, 2, 0, 4, 0, 0, 0x27 },
+				{ 0x11, 0x91, 0, 1 },
+				{ 0x0A, 0x91, 0, 8, 0, 20, 0, 0, 1, 255, 255, 255, 255, 255, 255, 255,
+					255, 0x35, 0, 0x46 },
+				{ 0x0C, 0x91, 0, 4, 0, 4, 0, 0, 0x27 },
+				{ 1, 0x91, 0, 0x0C },
+				{ 1, 0x91, 0, 1 },
+				{ 8, 0x91, 0, 2, 0, 4, 0, 0, 1 },
+				{ 3, 0x91, 0, 0x0A, 0, 4, 0, 0, 5 },
+				{ 3, 0x91, 0, 0x0D, 0, 8, 0, 0, 1, 0, 255, 255, 255, 255, 255, 255 }
+			};
+			Assert::AreEqual(10, PAD_SWITCH2_INIT_COMMAND_COUNT);
+			for (int command = 0; command < 10; ++command) {
+				unsigned char data[64];
+				for (unsigned char& byte : data) byte = 0xAA;
+				Assert::AreEqual(lengths[command], PadCalcBuildSwitch2UsbCommand(data, 64, command));
+				for (int i = 0; i < 64; ++i) {
+					Assert::AreEqual(i < lengths[command] ? (int)expected[command][i] : 0, (int)data[i]);
+				}
+			}
+		}
+
 		TEST_METHOD(XInput_PositionButtonsTriggerAndStick)
 		{
 			PAD_STATE state{};
