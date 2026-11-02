@@ -3,7 +3,7 @@
 #include "input/actioncalc.h"
 
 /// @file padcalc.h
-/// @brief DS4 / DualSense・Switch Pro 形式・XInput の入力変換、出力レポート、スティックと振動の計算
+/// @brief DS4 / DualSense・Switch Pro / Switch 2 Pro・XInput の入力変換、出力レポート、スティックと振動の計算
 /// @details DirectX と Windows を使わないので、単体テスト（tests/Proto1Tests）からそのまま使える
 
 /// @brief 対応するパッドの入力形式
@@ -14,6 +14,7 @@ enum PAD_MODEL
 	PAD_MODEL_DUALSENSE,  ///< DualSense（PS5 純正）
 	PAD_MODEL_XINPUT,     ///< Xbox 形式（XInput）
 	PAD_MODEL_SWITCH_PRO, ///< Switch Pro コントローラー形式
+	PAD_MODEL_SWITCH2_PRO, ///< Switch 2 Pro コントローラー（USB）
 };
 
 /// @brief HID のメーカー番号と製品番号から、対応する機種を調べる（XInput は別途検出）
@@ -165,3 +166,22 @@ bool PadCalcBuildSwitchUsbCommand(unsigned char* data, int size, unsigned char c
 /// @param counter 送信カウンター（下位4ビットを使う）
 /// @return 組み立てられたら true（失敗時は変更しない）
 bool PadCalcBuildSwitchInputMode(unsigned char* data, int size, unsigned char counter);
+
+/// @brief Switch 2 Pro の USB 初期化コマンドの個数（この順で送って返信を読む）
+static constexpr int PAD_SWITCH2_INIT_COMMAND_COUNT = 10;
+
+/// @brief Switch 2 Pro の USB 初期化コマンドを組み立てる（残りは0）
+/// @param[out] data 出力先（失敗時は変更しない）
+/// @param size 出力先のバイト数
+/// @param index コマンドの順番（0〜9）
+/// @return 送るバイト数。出力先が不足・null、順番が範囲外なら0
+int PadCalcBuildSwitch2UsbCommand(unsigned char* data, int size, int index);
+
+/// @brief Switch 2 Pro の64バイトの USB 入力を読む（ボタンは位置で合わせ、上下は上がプラス）
+/// @details ボタンは[5]〜[7]、左右の12ビットスティックは[11]〜[16]。中心2048、遊びは別途取り除く。
+///          キャプチャー・C・背面ボタンにはゲームの操作を割り当てない。－は SHARE に対応。
+/// @param data レポートのバイト列
+/// @param size バイト数（64）
+/// @param[out] state 読んだ状態（失敗時は変更しない）
+/// @return 64バイトの入力を読めたら true
+bool PadCalcParseSwitch2ProReport(const unsigned char* data, int size, PAD_STATE& state);

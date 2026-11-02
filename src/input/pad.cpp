@@ -3,6 +3,10 @@
 #include "core/gametime.h"
 #include <vector>
 #include <Xinput.h>
+#include <setupapi.h>
+#include <cfgmgr32.h>
+#include <winusb.h>
+#include <cstring>
 #include "core/mathutil.h"
 extern "C" {
 #include <hidsdi.h>
@@ -10,6 +14,9 @@ extern "C" {
 
 #pragma comment(lib, "hid.lib")
 #pragma comment(lib, "XInput.lib")
+#pragma comment(lib, "winusb.lib")
+#pragma comment(lib, "setupapi.lib")
+#pragma comment(lib, "cfgmgr32.lib")
 
 #ifdef _DEBUG
 #include <iostream>
@@ -27,6 +34,13 @@ static constexpr bool RUMBLE_ENABLED_AT_START = false;	// 起動したときの�
 static constexpr UINT RAW_INPUT_BUFFER_SIZE = 1024;	// WM_INPUT のデータを受け取る大きさ（DS4 の USB は 64 バイト＋ヘッダー）
 static constexpr int DS4_USB_OUTPUT_DEFAULT_SIZE = 32; // HID から出力の長さを取得できなかったとき
 static constexpr int DUALSENSE_USB_OUTPUT_DEFAULT_SIZE = 63; // DualSense の USB 出力レポート全体
+static constexpr ULONG SWITCH2_WRITE_TIMEOUT_MS = 1000; // 初期化の送信待ちの上限
+static constexpr ULONG SWITCH2_READ_TIMEOUT_MS = 100;   // 初期化の返信待ちの上限
+
+// No.54 段階0で実機から調べた、WinUSB（MI_01）のデバイスインターフェース。
+static const GUID SWITCH2_USB_INTERFACE_GUID = {
+	0x6F13725E, 0xEF0E, 0x4FD3, { 0xAE, 0x5F, 0xB2, 0xDE, 0x98, 0x9E, 0xC8, 0x25 }
+};
 
 
 /// @brief 1台の入力・出力・振動の状態（切断した番号だけを空ける）
@@ -44,6 +58,9 @@ struct PAD_DEVICE
 	float LightColor[3] = {};                     ///< 未接続でも色を覚える
 	std::vector<unsigned char> OutputReport;      ///< 送信するデータ
 	std::vector<unsigned char> LastOutput;        ///< 最後に送ったデータ
+	HANDLE Switch2UsbDevice = INVALID_HANDLE_VALUE; ///< Switch 2 Pro の初期化用 USB ハンドル
+	WINUSB_INTERFACE_HANDLE Switch2Interface = NULL; ///< 同じ機器のインターフェース1
+	bool Switch2Ready = false;                    ///< 初期化がすべて成功したら入力を受け取る
 };
 static PAD_DEVICE g_Pads[PAD_COUNT];
 static HWND g_Window = NULL;
@@ -85,7 +102,8 @@ static void SendOutput(PAD_DEVICE& pad)
 		}
 		return;
 	}
-	if (pad.Model == PAD_MODEL_SWITCH_PRO || pad.OutputDevice == INVALID_HANDLE_VALUE) return;
+	if (pad.Model == PAD_MODEL_SWITCH_PRO || pad.Model == PAD_MODEL_SWITCH2_PRO
+		|| pad.OutputDevice == INVALID_HANDLE_VALUE) return;
 	const auto buildOutput = pad.Model == PAD_MODEL_DUALSENSE
 		? PadCalcBuildDualSenseUsbOutput : PadCalcBuildDs4UsbOutput;
 	if (!buildOutput(pad.OutputReport.data(), (int)pad.OutputReport.size(),
@@ -115,6 +133,148 @@ static void CloseOutputDevice(PAD_DEVICE& pad)
 	}
 	pad.OutputReport.clear();
 	pad.LastOutput.clear();
+	if (pad.Switch2Interface != NULL) {
+		WinUsb_Free(pad.Switch2Interface);
+		pad.Switch2Interface = NULL;
+	}
+	if (pad.Switch2UsbDevice != INVALID_HANDLE_VALUE) {
+		CloseHandle(pad.Switch2UsbDevice);
+		pad.Switch2UsbDevice = INVALID_HANDLE_VALUE;
+	}
+	pad.Switch2Ready = false;
+}
+
+// HID と WinUSB の両方から USB 複合機器の親までたどり、同じ実機か確かめる。
+static bool GetSwitch2UsbParent(DEVINST node, DEVINST& usbParent)
+{
+	static constexpr char prefix[] = "USB\\VID_057E&PID_2069\\";
+	for (;;) {
+		char id[MAX_DEVICE_ID_LEN]{};
+		if (CM_Get_Device_IDA(node, id, MAX_DEVICE_ID_LEN, 0) != CR_SUCCESS) return false;
+		if (_strnicmp(id, prefix, sizeof(prefix) - 1) == 0) {
+			usbParent = node;
+			return true;
+		}
+		DEVINST parent = 0;
+		if (CM_Get_Parent(&parent, node, 0) != CR_SUCCESS) return false;
+		node = parent;
+	}
+}
+
+static SP_DEVICE_INTERFACE_DETAIL_DATA_A* GetInterfaceDetail(HDEVINFO devices,
+	SP_DEVICE_INTERFACE_DATA& interfaceData, std::vector<BYTE>& buffer, SP_DEVINFO_DATA& deviceData)
+{
+	DWORD required = 0;
+	SetupDiGetDeviceInterfaceDetailA(devices, &interfaceData, NULL, 0, &required, NULL);
+	if (required < sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA_A)) return nullptr;
+	buffer.resize(required);
+	auto* detail = reinterpret_cast<SP_DEVICE_INTERFACE_DETAIL_DATA_A*>(buffer.data());
+	detail->cbSize = sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA_A);
+	deviceData = {};
+	deviceData.cbSize = sizeof(deviceData);
+	if (!SetupDiGetDeviceInterfaceDetailA(devices, &interfaceData, detail, required, NULL, &deviceData)) return nullptr;
+	return detail;
+}
+
+static bool GetSwitch2HidParent(HANDLE device, DEVINST& usbParent)
+{
+	UINT nameSize = 0;
+	if (GetRawInputDeviceInfoA(device, RIDI_DEVICENAME, NULL, &nameSize) == (UINT)-1 || nameSize == 0) return false;
+	std::vector<char> name((size_t)nameSize + 1, 0);
+	if (GetRawInputDeviceInfoA(device, RIDI_DEVICENAME, name.data(), &nameSize) == (UINT)-1) return false;
+	const HDEVINFO devices = SetupDiCreateDeviceInfoList(NULL, NULL);
+	if (devices == INVALID_HANDLE_VALUE) return false;
+	SP_DEVICE_INTERFACE_DATA interfaceData{};
+	interfaceData.cbSize = sizeof(interfaceData);
+	bool found = false;
+	if (SetupDiOpenDeviceInterfaceA(devices, name.data(), 0, &interfaceData)) {
+		SP_DEVINFO_DATA deviceData{};
+		std::vector<BYTE> buffer;
+		if (GetInterfaceDetail(devices, interfaceData, buffer, deviceData) != nullptr) {
+			found = GetSwitch2UsbParent(deviceData.DevInst, usbParent);
+		}
+	}
+	SetupDiDestroyDeviceInfoList(devices);
+	return found;
+}
+
+// 失敗した場合の Win32 エラーを返す。ハンドルは成功・失敗とも呼び出し側が閉じる。
+static DWORD InitializeSwitch2Usb(PAD_DEVICE& pad, const char* path, int& commandIndex)
+{
+	pad.Switch2UsbDevice = CreateFileA(path, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
+		NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED, NULL);
+	if (pad.Switch2UsbDevice == INVALID_HANDLE_VALUE) return GetLastError();
+	if (!WinUsb_Initialize(pad.Switch2UsbDevice, &pad.Switch2Interface)) return GetLastError();
+	USB_INTERFACE_DESCRIPTOR descriptor{};
+	if (!WinUsb_QueryInterfaceSettings(pad.Switch2Interface, 0, &descriptor)) return GetLastError();
+	if (descriptor.bInterfaceNumber != 1) return ERROR_NOT_SUPPORTED;
+	UCHAR input = 0, output = 0;
+	for (UCHAR i = 0; i < descriptor.bNumEndpoints; ++i) {
+		WINUSB_PIPE_INFORMATION pipe{};
+		if (!WinUsb_QueryPipe(pad.Switch2Interface, 0, i, &pipe)) return GetLastError();
+		if (pipe.PipeType != UsbdPipeTypeBulk) continue;
+		if (USB_ENDPOINT_DIRECTION_IN(pipe.PipeId)) input = pipe.PipeId;
+		else output = pipe.PipeId;
+	}
+	if (input == 0 || output == 0) return ERROR_NOT_FOUND;
+	ULONG readTimeout = SWITCH2_READ_TIMEOUT_MS, writeTimeout = SWITCH2_WRITE_TIMEOUT_MS;
+	if (!WinUsb_SetPipePolicy(pad.Switch2Interface, input, PIPE_TRANSFER_TIMEOUT, sizeof(readTimeout), &readTimeout)
+		|| !WinUsb_SetPipePolicy(pad.Switch2Interface, output, PIPE_TRANSFER_TIMEOUT, sizeof(writeTimeout), &writeTimeout)) {
+		return GetLastError();
+	}
+	for (commandIndex = 0; commandIndex < PAD_SWITCH2_INIT_COMMAND_COUNT; ++commandIndex) {
+		unsigned char command[64]{};
+		const int length = PadCalcBuildSwitch2UsbCommand(command, sizeof(command), commandIndex);
+		if (length == 0) return ERROR_INVALID_DATA;
+		ULONG transferred = 0;
+		if (!WinUsb_WritePipe(pad.Switch2Interface, output, command, (ULONG)length, &transferred, NULL)) return GetLastError();
+		if (transferred != (ULONG)length) return ERROR_WRITE_FAULT;
+		unsigned char reply[64]{};
+		if (!WinUsb_ReadPipe(pad.Switch2Interface, input, reply, sizeof(reply), &transferred, NULL)) return GetLastError();
+		if (transferred == 0) return ERROR_INVALID_DATA;
+	}
+	return ERROR_SUCCESS;
+}
+
+// 入力開始の合図なので、最初の WM_INPUT を待たず、HID を見つけた時点で送る。
+static void OpenSwitch2Device(PAD_DEVICE& pad)
+{
+	pad.OutputAttempted = true; // ソニー向けの HID 出力は開かない。失敗しても接続中は再送しない。
+	DEVINST hidParent = 0;
+	DWORD error = ERROR_NOT_FOUND;
+	int commandIndex = -1;
+	if (GetSwitch2HidParent(pad.Device, hidParent)) {
+		const HDEVINFO devices = SetupDiGetClassDevsA(&SWITCH2_USB_INTERFACE_GUID, NULL, NULL,
+			DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
+		if (devices != INVALID_HANDLE_VALUE) {
+			for (DWORD i = 0;; ++i) {
+				SP_DEVICE_INTERFACE_DATA interfaceData{};
+				interfaceData.cbSize = sizeof(interfaceData);
+				if (!SetupDiEnumDeviceInterfaces(devices, NULL, &SWITCH2_USB_INTERFACE_GUID, i, &interfaceData)) break;
+				std::vector<BYTE> buffer;
+				SP_DEVINFO_DATA deviceData{};
+				const auto* detail = GetInterfaceDetail(devices, interfaceData, buffer, deviceData);
+				if (detail == nullptr) continue;
+				char id[MAX_DEVICE_ID_LEN]{};
+				static constexpr char prefix[] = "USB\\VID_057E&PID_2069&MI_01\\";
+				DEVINST usbParent = 0;
+				if (CM_Get_Device_IDA(deviceData.DevInst, id, MAX_DEVICE_ID_LEN, 0) != CR_SUCCESS
+					|| _strnicmp(id, prefix, sizeof(prefix) - 1) != 0
+					|| !GetSwitch2UsbParent(deviceData.DevInst, usbParent) || usbParent != hidParent) continue;
+				error = InitializeSwitch2Usb(pad, detail->DevicePath, commandIndex);
+				break;
+			}
+			SetupDiDestroyDeviceInfoList(devices);
+		}
+		else error = GetLastError();
+	}
+	pad.Switch2Ready = error == ERROR_SUCCESS;
+	if (!pad.Switch2Ready) CloseOutputDevice(pad);
+#ifdef _DEBUG
+	if (pad.Switch2Ready) hal::dout << "Switch 2 Pro：USB の初期化が終わりました" << std::endl;
+	else hal::dout << "Switch 2 Pro：USB の初期化に失敗（Win32=" << error
+		<< "、コマンド=" << commandIndex + 1 << "。0は送信前）。抜き差ししてやり直してください" << std::endl;
+#endif
 }
 
 // USB の入力レポートを読めた最初の一度だけ、同じ機器を出力用に開く。
@@ -217,10 +377,12 @@ static int AddDevice(HANDLE device)
 		g_Pads[i].Model = model;
 #ifdef _DEBUG
 		hal::dout << "パッド" << i << "："
-			<< (model == PAD_MODEL_SWITCH_PRO ? "Switch Pro" : model == PAD_MODEL_DUALSENSE ? "DualSense" : "DUALSHOCK 4") << " をつなぎました" << std::endl;
+			<< (model == PAD_MODEL_SWITCH2_PRO ? "Switch 2 Pro" : model == PAD_MODEL_SWITCH_PRO ? "Switch Pro"
+				: model == PAD_MODEL_DUALSENSE ? "DualSense" : "DUALSHOCK 4") << " をつなぎました" << std::endl;
 #endif
 		// Switch Pro 形式は合図を受けるまで入力を送らない機種があるので、つないだ時点で送る
 		if (model == PAD_MODEL_SWITCH_PRO) OpenOutputDevice(g_Pads[i]);
+		if (model == PAD_MODEL_SWITCH2_PRO) OpenSwitch2Device(g_Pads[i]);
 		return i;
 	}
 	return -1;
@@ -342,6 +504,7 @@ void PadOnRawInput(LPARAM lParam)
 	const int index = AddDevice(raw->header.hDevice);
 	if (index < 0) return; // 対応外・5台目以降
 	PAD_DEVICE& pad = g_Pads[index];
+	if (pad.Model == PAD_MODEL_SWITCH2_PRO && !pad.Switch2Ready) return;
 
 	// 1回の WM_INPUT にレポートが何個か入っていることがあるので、最後の1個を使う
 	const DWORD reportSize = raw->data.hid.dwSizeHid;
@@ -352,7 +515,8 @@ void PadOnRawInput(LPARAM lParam)
 	const BYTE* last = raw->data.hid.bRawData + reportSize * (count - 1);
 	if (pad.Model == PAD_MODEL_SWITCH_PRO && !pad.OutputAttempted) OpenOutputDevice(pad);
 	const auto parseReport = pad.Model == PAD_MODEL_DUALSENSE
-		? PadCalcParseDualSenseUsbReport : pad.Model == PAD_MODEL_SWITCH_PRO
+		? PadCalcParseDualSenseUsbReport : pad.Model == PAD_MODEL_SWITCH2_PRO
+		? PadCalcParseSwitch2ProReport : pad.Model == PAD_MODEL_SWITCH_PRO
 		? PadCalcParseSwitchProReport : PadCalcParseDs4UsbReport;
 	if (parseReport(last, (int)reportSize, pad.Received) && !pad.OutputAttempted) {
 		OpenOutputDevice(pad); // USB 入力を読めたときだけ出力を開く
@@ -406,7 +570,8 @@ void PadRumble(int index, float smallMotor, float largeMotor, float seconds)
 	if (!IsValidPad(index)) return;
 	PAD_DEVICE& pad = g_Pads[index];
 	if (!g_RumbleEnabled || (pad.Model != PAD_MODEL_XINPUT && pad.OutputDevice == INVALID_HANDLE_VALUE)
-		|| pad.Model == PAD_MODEL_SWITCH_PRO || g_Window == NULL || GetForegroundWindow() != g_Window) {
+		|| pad.Model == PAD_MODEL_SWITCH_PRO || pad.Model == PAD_MODEL_SWITCH2_PRO
+		|| g_Window == NULL || GetForegroundWindow() != g_Window) {
 		pad.Rumble = {};
 	}
 	else {

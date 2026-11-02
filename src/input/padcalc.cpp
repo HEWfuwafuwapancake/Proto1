@@ -15,6 +15,7 @@ static constexpr int DUALSENSE_USB_OUTPUT_MIN_SIZE = 48;   // ライトバーの
 PAD_MODEL PadCalcIdentifyModel(unsigned int vendorId, unsigned int productId)
 {
 	if (vendorId == 0x057E && productId == 0x2009) return PAD_MODEL_SWITCH_PRO;
+	if (vendorId == 0x057E && productId == 0x2069) return PAD_MODEL_SWITCH2_PRO;
 	if (vendorId != 0x054C) return PAD_MODEL_NONE;
 	if (productId == 0x05C4 || productId == 0x09CC) return PAD_MODEL_DS4;
 	if (productId == 0x0CE6) return PAD_MODEL_DUALSENSE;
@@ -241,5 +242,60 @@ bool PadCalcBuildSwitchInputMode(unsigned char* data, int size, unsigned char co
 	for (int i = 0; i < 8; ++i) data[i + 2] = silent[i];
 	data[10] = 0x03;
 	data[11] = 0x30;
+	return true;
+}
+
+int PadCalcBuildSwitch2UsbCommand(unsigned char* data, int size, int index)
+{
+	// SDL の初期化シーケンスを使用。送信部分を Windows 非依存の関数にした改変版。
+	// 出典とライセンス：docs/dev/03_Switch2_SDLライセンス.md
+	static constexpr unsigned char commands[PAD_SWITCH2_INIT_COMMAND_COUNT][28] = {
+		{ 0x07, 0x91, 0, 0x01, 0, 0, 0, 0 },
+		{ 0x0C, 0x91, 0, 0x02, 0, 0x04, 0, 0, 0x27, 0, 0, 0 },
+		{ 0x11, 0x91, 0, 0x01, 0, 0, 0, 0 },
+		{ 0x0A, 0x91, 0, 0x08, 0, 0x14, 0, 0,
+			0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+			0xFF, 0x35, 0, 0x46, 0, 0, 0, 0, 0, 0, 0, 0 },
+		{ 0x0C, 0x91, 0, 0x04, 0, 0x04, 0, 0, 0x27, 0, 0, 0 },
+		{ 0x01, 0x91, 0, 0x0C, 0, 0, 0, 0 },
+		{ 0x01, 0x91, 0, 0x01, 0, 0, 0, 0 },
+		{ 0x08, 0x91, 0, 0x02, 0, 0x04, 0, 0, 0x01, 0, 0, 0 },
+		{ 0x03, 0x91, 0, 0x0A, 0, 0x04, 0, 0, 0x05, 0, 0, 0 },
+		{ 0x03, 0x91, 0, 0x0D, 0, 0x08, 0, 0, 0x01, 0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF }
+	};
+	if (data == nullptr || index < 0 || index >= PAD_SWITCH2_INIT_COMMAND_COUNT) return 0;
+	const int length = 8 + commands[index][5];
+	if (size < length) return 0;
+	for (int i = 0; i < size; ++i) data[i] = i < length ? commands[index][i] : 0;
+	return length;
+}
+
+bool PadCalcParseSwitch2ProReport(const unsigned char* data, int size, PAD_STATE& state)
+{
+	if (data == nullptr || size != 64) return false;
+	state = {};
+	const unsigned char right = data[5], middle = data[6], left = data[7];
+	if (right & 0x01) state.Buttons |= PAD_BUTTON_SQUARE;
+	if (right & 0x02) state.Buttons |= PAD_BUTTON_TRIANGLE;
+	if (right & 0x04) state.Buttons |= PAD_BUTTON_CROSS;
+	if (right & 0x08) state.Buttons |= PAD_BUTTON_CIRCLE;
+	if (right & 0x40) state.Buttons |= PAD_BUTTON_R1;
+	if (right & 0x80) state.Buttons |= PAD_BUTTON_R2;
+	if (middle & 0x01) state.Buttons |= PAD_BUTTON_SHARE;
+	if (middle & 0x02) state.Buttons |= PAD_BUTTON_OPTIONS;
+	if (middle & 0x04) state.Buttons |= PAD_BUTTON_R3;
+	if (middle & 0x08) state.Buttons |= PAD_BUTTON_L3;
+	if (middle & 0x10) state.Buttons |= PAD_BUTTON_PS;
+	if (left & 0x01) state.Buttons |= PAD_BUTTON_DPAD_DOWN;
+	if (left & 0x02) state.Buttons |= PAD_BUTTON_DPAD_UP;
+	if (left & 0x04) state.Buttons |= PAD_BUTTON_DPAD_RIGHT;
+	if (left & 0x08) state.Buttons |= PAD_BUTTON_DPAD_LEFT;
+	if (left & 0x40) state.Buttons |= PAD_BUTTON_L1;
+	if (left & 0x80) state.Buttons |= PAD_BUTTON_L2;
+	// 補正値は読まず、12ビットの全域を -1〜1 にする（Switch Pro 形式の1600幅とは別）。
+	state.LeftStick = { ((float)(data[11] | ((data[12] & 0x0F) << 8)) - 2048.0f) / 2048.0f,
+		-((float)((data[12] >> 4) | (data[13] << 4)) - 2048.0f) / 2048.0f };
+	state.RightStick = { ((float)(data[14] | ((data[15] & 0x0F) << 8)) - 2048.0f) / 2048.0f,
+		-((float)((data[15] >> 4) | (data[16] << 4)) - 2048.0f) / 2048.0f };
 	return true;
 }

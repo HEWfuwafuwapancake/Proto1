@@ -4,7 +4,7 @@
 #include "input/padcalc.h"
 
 /// @file pad.h
-/// @brief DS4 / DualSense の USB、XInput、Switch Pro 形式の入力（Raw Input・HID・XInput）
+/// @brief DS4 / DualSense の USB、XInput、Switch Pro 形式、Switch 2 Pro の USB 入力
 /// @details 振動はソニーと XInput、ライトバーはソニーだけに出力する。
 ///          最大4台を接続順に0〜3へ割り当てる。外れた番号は空き、ほかの番号は詰めない。
 ///          つないでいないとき・外れたとき・
