@@ -177,7 +177,8 @@ static PAD_MODEL GetDeviceModel(HANDLE device)
 	if (GetRawInputDeviceInfoA(device, RIDI_DEVICEINFO, &info, &size) == (UINT)-1 || info.dwType != RIM_TYPEHID) {
 		return PAD_MODEL_NONE;
 	}
-	if (info.hid.usUsagePage != 0x01 || info.hid.usUsage != 0x05) return PAD_MODEL_NONE;
+	// Switch Pro 形式はゲームパッド（0x05）ではなくジョイスティック（0x04）と名乗る
+	if (info.hid.usUsagePage != 0x01 || (info.hid.usUsage != 0x04 && info.hid.usUsage != 0x05)) return PAD_MODEL_NONE;
 	const PAD_MODEL model = PadCalcIdentifyModel(info.hid.dwVendorId, info.hid.dwProductId);
 #ifdef _DEBUG
 	if (model == PAD_MODEL_NONE) {
@@ -245,13 +246,16 @@ void PadInitialize(HWND hWnd)
 	g_RumbleEnabled = RUMBLE_ENABLED_AT_START;
 	g_XInputPollRemaining = 0.0f;
 
-	// Raw Input にゲームパッドを登録する。RIDEV_DEVNOTIFY で、つないだ・外したときに WM_INPUT_DEVICE_CHANGE が届く
-	RAWINPUTDEVICE rid{};
-	rid.usUsagePage = 0x01;	// 汎用デスクトップ
-	rid.usUsage = 0x05;		// ゲームパッド
-	rid.dwFlags = RIDEV_DEVNOTIFY;
-	rid.hwndTarget = hWnd;
-	RegisterRawInputDevices(&rid, 1, sizeof(rid));
+	// Raw Input にゲームパッドとジョイスティックを登録する。RIDEV_DEVNOTIFY で、つないだ・外したときに WM_INPUT_DEVICE_CHANGE が届く
+	// （Switch Pro 形式はジョイスティックとして見える。対応外の機器は GetDeviceModel で捨てる）
+	RAWINPUTDEVICE rid[2]{};
+	rid[0].usUsagePage = 0x01;	// 汎用デスクトップ
+	rid[0].usUsage = 0x05;		// ゲームパッド
+	rid[0].dwFlags = RIDEV_DEVNOTIFY;
+	rid[0].hwndTarget = hWnd;
+	rid[1] = rid[0];
+	rid[1].usUsage = 0x04;		// ジョイスティック
+	RegisterRawInputDevices(rid, 2, sizeof(rid[0]));
 	FindConnectedDevices();
 }
 
