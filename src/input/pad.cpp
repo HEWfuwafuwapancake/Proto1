@@ -37,6 +37,7 @@ static constexpr int DUALSENSE_USB_OUTPUT_DEFAULT_SIZE = 63; // DualSense の US
 static constexpr ULONG SWITCH2_WRITE_TIMEOUT_MS = 1000; // 初期化の送信待ちの上限
 static constexpr ULONG SWITCH2_READ_TIMEOUT_MS = 100;   // 初期化の返信待ちの上限
 static constexpr DWORD SWITCH2_RUMBLE_CLOSE_WAIT_MS = 100; // 閉じるときに振動の書き込みを待つ上限
+static constexpr ULONGLONG SWITCH2_RUMBLE_STUCK_MS = 1000; // 振動の書き込みがこれだけ終わらなければ取り消す
 
 // No.54 段階0で実機から調べた、WinUSB（MI_01）のデバイスインターフェース。
 static const GUID SWITCH2_USB_INTERFACE_GUID = {
@@ -65,6 +66,7 @@ struct PAD_DEVICE
 	bool Switch2RumbleOn = false;                 ///< Switch 2 Pro に最後に送った振動が 0 でないか
 	OVERLAPPED Switch2Write = {};                 ///< Switch 2 Pro の振動の書き込み（待たずに送る）
 	bool Switch2Writing = false;                  ///< 振動の書き込みがまだ終わっていないか
+	ULONGLONG Switch2WriteStartMs = 0;            ///< 振動の書き込みを始めた時刻（終わらないときに取り消す）
 };
 static PAD_DEVICE g_Pads[PAD_COUNT];
 static HWND g_Window = NULL;
@@ -95,7 +97,10 @@ static bool FinishSwitch2Write(PAD_DEVICE& pad, DWORD waitMs)
 {
 	if (!pad.Switch2Writing) return true;
 	if (WaitForSingleObject(pad.Switch2Write.hEvent, waitMs) == WAIT_TIMEOUT) {
-		if (waitMs == 0) return false;
+		if (waitMs == 0 && GetTickCount64() - pad.Switch2WriteStartMs < SWITCH2_RUMBLE_STUCK_MS) return false;
+#ifdef _DEBUG
+		if (waitMs == 0) hal::dout << "Switch 2 Pro：振動の書き込みが終わらないので取り消しました" << std::endl;
+#endif
 		CancelIoEx(pad.OutputDevice, &pad.Switch2Write);
 	}
 	DWORD written = 0;
@@ -139,6 +144,7 @@ static void SendOutput(PAD_DEVICE& pad)
 		if (WriteFile(pad.OutputDevice, pad.OutputReport.data(), (DWORD)pad.OutputReport.size(), NULL, &pad.Switch2Write)
 			|| GetLastError() == ERROR_IO_PENDING) {
 			pad.Switch2Writing = true;
+			pad.Switch2WriteStartMs = GetTickCount64();
 		}
 		else WarnOutputUnavailable(pad);
 		pad.Switch2RumbleOn = on;
@@ -275,9 +281,10 @@ static DWORD InitializeSwitch2Usb(PAD_DEVICE& pad, const char* path, int& comman
 		ULONG transferred = 0;
 		if (!WinUsb_WritePipe(pad.Switch2Interface, output, command, (ULONG)length, &transferred, NULL)) return GetLastError();
 		if (transferred != (ULONG)length) return ERROR_WRITE_FAULT;
+		// 返事は読むだけで、来なくても次へ進む（SDL と同じ。つないだ直後は返事が 100ms に間に合わないことがあり、
+		// そこでやめると「振動を有効にする」などの残りのコマンドが送られない）。
 		unsigned char reply[64]{};
-		if (!WinUsb_ReadPipe(pad.Switch2Interface, input, reply, sizeof(reply), &transferred, NULL)) return GetLastError();
-		if (transferred == 0) return ERROR_INVALID_DATA;
+		WinUsb_ReadPipe(pad.Switch2Interface, input, reply, sizeof(reply), &transferred, NULL);
 	}
 	return ERROR_SUCCESS;
 }
