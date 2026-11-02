@@ -34,13 +34,16 @@ struct NET_OPTIONS
 	int Delay = LOCKSTEP_AUTO_DELAY; ///< ホストが配る入力遅延（LOCKSTEP_AUTO_DELAY なら試合の開始時に ping から決める）
 };
 
-/// @brief この実行ファイルの識別番号を設定する（exe の中身から作る。違う exe どうしはつながない）
+/// @brief この実行ファイルの識別番号を設定する（src のソースの中身から作る。ソースが違う exe どうしはつながない）
 void SessionCalcSetProgram(uint32_t program);
 /// @brief この実行ファイルの識別番号を取得する（未設定は0）
 uint32_t SessionCalcGetProgram();
 
 /// @brief 起動引数を読み取る（不明な引数・重複・値の不足はfalse。失敗時は出力を変えない）
 bool SessionCalcParseOptions(const std::string& commandLine, NET_OPTIONS& result);
+
+/// @brief ビルドしたコンパイラ（Visual Studio）の版（違ってもつなぐが、計算がずれるかもしれないので知らせる）
+static constexpr uint32_t SESSION_COMPILER = _MSC_FULL_VER;
 
 /// @brief いちばん遅い相手との往復時間（ミリ秒）から入力の遅れ（フレーム）を決める（未計測の負の値は下限）
 int SessionCalcAutoDelay(int pingMilliseconds);
@@ -89,7 +92,7 @@ enum SESSION_FAILURE
 	SESSION_FAILURE_NONE, ///< 接続を継続
 	SESSION_FAILURE_VERSION, ///< 通信の版が異なる
 	SESSION_FAILURE_BUILD, ///< DebugとReleaseが異なる
-	SESSION_FAILURE_PROGRAM, ///< 実行ファイル（exe）が異なる（計算の結果がずれるため）
+	SESSION_FAILURE_PROGRAM, ///< ソースが異なる（計算の結果がずれるため）
 	SESSION_FAILURE_TIMEOUT ///< ホストから3秒受信していない
 };
 
@@ -99,7 +102,8 @@ struct SESSION_MESSAGE
 	SESSION_MESSAGE_TYPE Type = SESSION_JOIN; ///< メッセージの種類
 	uint16_t Version = LOCKSTEP_VERSION; ///< 接続時に比較する版
 	LOCKSTEP_BUILD Build = LOCKSTEP_CURRENT_BUILD; ///< 接続時に比較するビルド
-	uint32_t Program = SessionCalcGetProgram(); ///< 接続時に比較する実行ファイルの識別番号
+	uint32_t Program = SessionCalcGetProgram(); ///< 接続時に比較するソースの識別番号
+	uint32_t Compiler = SESSION_COMPILER; ///< ビルドしたコンパイラの版（違っても断らず、知らせるだけ）
 	uint32_t Session = 0; ///< ホストの起動ごとに変わる番号
 	uint32_t Nonce = 0; ///< 送信元、またはホストからの宛先の起動番号
 	uint32_t Round = 0; ///< TITLEから開始するたびに増える試合番号（RETRYは同じ）
@@ -126,7 +130,7 @@ public:
 	/// @brief ホストが参加を受け付け、スロットを返す（満員・開始後の新規参加は-1）
 	int Join(uint32_t nonce, uint16_t version = LOCKSTEP_VERSION, LOCKSTEP_BUILD build = LOCKSTEP_CURRENT_BUILD,
 		uint32_t program = SessionCalcGetProgram());
-	/// @brief 同じ版・ビルド・実行ファイルか調べ、違うときの理由を返す
+	/// @brief 同じ版・ビルド・ソースか調べ、違うときの理由を返す
 	static SESSION_FAILURE CheckCompatibility(const SESSION_MESSAGE& message);
 	/// @brief 単調時計のミリ秒を設定する（受信の直前に呼ぶ。Windowsの時計は呼び出し元で読む）
 	void SetTime(uint64_t milliseconds) { m_Now = milliseconds; }
@@ -146,6 +150,8 @@ public:
 	int32_t GetDesyncFrame() const { return m_DesyncFrame; }
 	/// @brief 最初にずれを見つけた相手のスロットを取得する
 	int GetDesyncPeer() const { return m_DesyncPeer; }
+	/// @brief つないだ相手に、コンパイラ（Visual Studio）の版が違う人がいるかを取得する（true：いる、false：いない）
+	bool HasCompilerDifference() const { return m_CompilerDiffers; }
 	/// @brief 選択済みにする、または全員選択済みならホストの再決定で開始する
 	void Decide();
 	/// @brief 送信元のスロットとメッセージを受け取る（参加側にとってホストは0）
@@ -227,6 +233,7 @@ private:
 	uint64_t m_WaitFrames = 0;
 	int32_t m_DesyncFrame = -1;
 	int m_DesyncPeer = -1;
+	bool m_CompilerDiffers = false; // コンパイラの版が違う相手から受け取った。
 	std::map<int32_t, uint32_t> m_Checksums;
 	std::map<int32_t, uint32_t> m_RemoteChecksums[FIGHTER_COUNT];
 	int32_t m_CheckAcknowledged[FIGHTER_COUNT] = { -1, -1, -1, -1 };

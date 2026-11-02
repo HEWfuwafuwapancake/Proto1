@@ -17,6 +17,7 @@
 #include "render/number2d.h"
 #include "render/shape.h"
 #include "render/model.h"
+#include "generated/sourceid.h" // ビルドの前に tools/make-sourceid.ps1 が中間フォルダに作る（SOURCE_ID）
 
 #pragma comment (lib, "winmm.lib")
 #pragma comment (lib, "imm32.lib")
@@ -42,25 +43,6 @@ static Game g_Game;
 
 static DWORD g_Fps = 0;	// 直近1秒の FPS
 static uint64_t g_Progress = 0; // 直近1秒に通信の入力で進んだフレーム数
-
-/// 自分の exe の中身から識別番号を作る（オンラインで、違う exe どうしをつながないため。読めなければ 0）
-static uint32_t MakeProgramId()
-{
-	// Shift-JIS で表せない文字や長いフォルダ名でも読めるように、ワイド文字のパスで開く（読めないと相手と番号が合わない）。
-	static wchar_t path[32768];
-	const DWORD length = GetModuleFileNameW(nullptr, path, _countof(path));
-	if (length == 0 || length >= _countof(path)) return 0;
-	FILE* file = nullptr;
-	if (_wfopen_s(&file, path, L"rb") != 0 || file == nullptr) return 0;
-	uint32_t hash = 2166136261u;	// FNV-1a
-	unsigned char buffer[4096];
-	size_t read = 0;
-	while ((read = fread(buffer, 1, sizeof(buffer), file)) > 0) {
-		for (size_t i = 0; i < read; ++i) hash = (hash ^ buffer[i]) * 16777619u;
-	}
-	fclose(file);
-	return hash == 0 ? 1 : hash;
-}
 
 static int GetEquipSlot()
 {
@@ -100,7 +82,7 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
 	// どの CPU でも同じ計算にそろえる。
 	_set_FMA3_enable(0);
 #endif
-	SessionCalcSetProgram(MakeProgramId());
+	SessionCalcSetProgram(SOURCE_ID);
 	NET_OPTIONS options;
 	if (!SessionCalcParseOptions(lpCmdLine, options)) {
 		MessageBox(nullptr, "起動引数を確認してください。\n--host [--delay 0-120]\n--join <IPv4>\n指定なし：ローカル対戦", TITLE, MB_OK | MB_ICONERROR);
