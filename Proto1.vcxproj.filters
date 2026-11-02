@@ -45,6 +45,9 @@
     <ClCompile Include="src\core\gametime.cpp">
       <Filter>src\core</Filter>
     </ClCompile>
+    <ClCompile Include="src\core\framestats.cpp">
+      <Filter>src\core</Filter>
+    </ClCompile>
     <ClCompile Include="src\core\main.cpp">
       <Filter>src\core</Filter>
     </ClCompile>
@@ -138,6 +141,9 @@
       <Filter>src\core</Filter>
     </ClInclude>
     <ClInclude Include="src\core\gametime.h">
+      <Filter>src\core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\core\framestats.h">
       <Filter>src\core</Filter>
     </ClInclude>
     <ClInclude Include="src\core\main.h">
