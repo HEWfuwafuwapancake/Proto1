@@ -93,6 +93,8 @@ bool DebugWindowInitialize(HWND gameWindow)
 		return false;
 	}
 	ShowWindow(g_Window, SW_SHOWNOACTIVATE);
+	// ゲームのすぐ後ろへ回す（1枚のモニターで全画面のゲームの上にかぶらないように）。
+	SetWindowPos(g_Window, gameWindow, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 	return true;
 }
 
