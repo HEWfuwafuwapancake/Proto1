@@ -4,7 +4,8 @@
 [SDL の SDL_hidapi_switch2.c](https://github.com/libsdl-org/SDL/blob/main/src/joystick/hidapi/SDL_hidapi_switch2.c)
 の USB 初期化シーケンスを使っています（2026-11-02 参照）。
 Windows に依存しないコマンド生成関数に変更し、転送は独自の WinUSB 処理にしました。
-ボタンとスティックの配置も同じファイルを参照しています。SDL 自体のリンクはしません。
+ボタンとスティックの配置、`PadCalcBuildSwitch2ProRumble` の振動のレポート（`UpdateRumble`・`EncodeHDRumble`）も同じファイルを参照しています。
+スティックの上下は SDL と逆（このゲームは上がプラス）、幅は実機で測って 1600 にしました。SDL 自体のリンクはしません。
 
 以下は参照元のライセンス表示です。
 
