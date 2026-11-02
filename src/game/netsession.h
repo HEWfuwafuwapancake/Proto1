@@ -44,6 +44,8 @@ public:
 	std::string GetStatusText() const;
 	/// @brief VS の版の違い・ずれ（DESYNC）の表示を取得する（タイトルバーの先頭に出す。どちらもなしは空）
 	std::string GetDesyncText() const;
+	/// @brief 画面左上用の英字の警告を取得する（ずれ・VS の版を改行で区切る。オフライン・警告なしは空）
+	std::string GetCornerWarningText() const;
 	/// @brief 起動失敗の説明を取得する
 	const std::string& GetError() const { return m_Error; }
 

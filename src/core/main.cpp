@@ -5,6 +5,8 @@
 #include <imm.h>
 #include <stdio.h>
 #include <math.h>
+#include <sstream>
+#include "core/debugwindow.h"
 #include "core/dx11.h"
 #include "core/gametime.h"
 #include "core/main.h"
@@ -28,6 +30,7 @@
 ------------------------------------------------------------------------------*/
 static constexpr char WINDOW_CLASS[] = "Proto1"; // メインウィンドウクラス名
 static constexpr char TITLE[] = "Proto1";        // タイトルバーのテキスト
+static constexpr DWORD WINDOW_STYLE = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
 
 // 振動をオンにしたときに知らせる短い振動（強さ 0〜1・秒）
 static constexpr float RUMBLE_ON_NOTICE_STRENGTH = 0.5f;
@@ -43,6 +46,33 @@ static Game g_Game;
 
 static DWORD g_Fps = 0;	// 直近1秒の FPS
 static uint64_t g_Progress = 0; // 直近1秒に通信の入力で進んだフレーム数
+static HWND g_MainWindow = nullptr;
+static bool g_Fullscreen = false;
+static bool g_FullscreenEnterDown = false; // Alt+Enter の Enter を決定操作へ渡さない
+static RECT g_WindowRect{}; // 全画面にする直前の枠ありウィンドウの位置と大きさ
+
+/// @brief 全画面を設定する（true：今いるモニター全体、false：保存した枠ありの位置と大きさ）
+static void SetFullscreen(HWND hWnd, bool fullscreen)
+{
+	if (g_Fullscreen == fullscreen) return;
+	if (fullscreen) {
+		MONITORINFO monitor{};
+		monitor.cbSize = sizeof(monitor);
+		if (!GetMonitorInfo(MonitorFromWindow(hWnd, MONITOR_DEFAULTTONEAREST), &monitor)
+			|| !GetWindowRect(hWnd, &g_WindowRect)) return;
+		g_Fullscreen = true;
+		SetWindowLongPtr(hWnd, GWL_STYLE, WS_POPUP | WS_VISIBLE);
+		const RECT& rect = monitor.rcMonitor;
+		SetWindowPos(hWnd, HWND_TOP, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, SWP_FRAMECHANGED);
+	}
+	else {
+		g_Fullscreen = false;
+		SetWindowLongPtr(hWnd, GWL_STYLE, WINDOW_STYLE | WS_VISIBLE);
+		SetWindowPos(hWnd, HWND_TOP, g_WindowRect.left, g_WindowRect.top,
+			g_WindowRect.right - g_WindowRect.left, g_WindowRect.bottom - g_WindowRect.top, SWP_FRAMECHANGED);
+	}
+	g_Game.SetFullscreen(g_Fullscreen);
+}
 
 static int GetEquipSlot()
 {
@@ -64,6 +94,7 @@ static void RefreshTitle(HWND hWnd)
 		mode == 0 ? "  [左腕を切り替え中：数字キー 1-6]" : (mode == 1 ? "  [右腕を切り替え中：数字キー 1-6]" : ""),
 		PadIsRumbleEnabled() ? "オン" : "オフ", net.GetStatusText().c_str());
 	SetWindowText(hWnd, title);
+	DebugWindowSetText(title);
 }
 
 bool Initialize(HWND hWnd, const NET_OPTIONS& options);
@@ -83,9 +114,22 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
 	_set_FMA3_enable(0);
 #endif
 	SessionCalcSetProgram(SOURCE_ID);
+	bool windowed = false;
+	bool debugWindow = false;
+#if defined(_DEBUG)
+	debugWindow = true;
+#endif
+	// 表示だけの引数はここで取りのぞき、通信の設定へ混ぜない。
+	std::istringstream arguments(lpCmdLine);
+	std::string word, netArguments;
+	while (arguments >> word) {
+		if (word == "--windowed") windowed = true;
+		else if (word == "--debugwindow") debugWindow = true;
+		else netArguments += word + " ";
+	}
 	NET_OPTIONS options;
-	if (!SessionCalcParseOptions(lpCmdLine, options)) {
-		MessageBox(nullptr, "起動引数を確認してください。\n--host [--delay 0-120]\n--join <IPv4>\n指定なし：ローカル対戦", TITLE, MB_OK | MB_ICONERROR);
+	if (!SessionCalcParseOptions(netArguments, options)) {
+		MessageBox(nullptr, "起動引数を確認してください。\n--host [--delay 0-120]\n--join <IPv4>\n--windowed：ウィンドウで起動\n--debugwindow：デバッグ情報を別ウィンドウに表示\n通信の指定なし：モード選択（表示の引数は併用できます）", TITLE, MB_OK | MB_ICONERROR);
 		return -1;
 	}
 
@@ -112,7 +156,7 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
 	// クライアント領域のサイズを持った矩形 (左からleft, top, right, bottom)
 	RECT windowRect = { 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT };
 	// ウィンドウのスタイル
-	DWORD windowStyle = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
+	const DWORD windowStyle = WINDOW_STYLE;
 	// 指定したクライアント領域を確保するために新たな矩形座標を計算
 	AdjustWindowRect(&windowRect, windowStyle, FALSE);
 
@@ -123,6 +167,8 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
 	/* メインウィンドウの作成 */
 	HWND hWnd = CreateWindow(WINDOW_CLASS, TITLE, windowStyle,
 		CW_USEDEFAULT, CW_USEDEFAULT, windowWidth, windowHeight, nullptr, nullptr, hInstance, nullptr);
+	if (hWnd == nullptr) return -1;
+	g_MainWindow = hWnd;
 	// 文字入力をしないゲームでは IME を外し、Q / E や数字を通常のキーとして受け取る。
 	ImmAssociateContext(hWnd, nullptr);
 
@@ -134,6 +180,13 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
 	}
 
 
+	SetFullscreen(hWnd, !windowed);
+	if (debugWindow && !DebugWindowInitialize(hWnd)) {
+		MessageBox(hWnd, "デバッグ用ウィンドウの作成に失敗しました", TITLE, MB_OK | MB_ICONERROR);
+		Finalize();
+		DestroyWindow(hWnd);
+		return -1;
+	}
 	RefreshTitle(hWnd);
 	ShowWindow(hWnd, nCmdShow);
 	UpdateWindow(hWnd);
@@ -254,12 +307,31 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		return DefWindowProc(hWnd, uMsg, wParam, lParam);
 
 	case WM_KEYDOWN:
+		if (wParam == VK_F11) {
+			if ((lParam & (1LL << 30)) == 0) SetFullscreen(hWnd, !g_Fullscreen);
+			break;
+		}
 		KeyboardOnKeyDown((int)wParam, (lParam & (1LL << 30)) != 0);
 		if (wParam == VK_ESCAPE)
 		{
 			SendMessage(hWnd, WM_CLOSE, 0, 0);
 		}
 		break;
+
+	case WM_SYSKEYDOWN:
+		if (wParam == VK_RETURN && (lParam & (1LL << 29)) != 0) {
+			g_FullscreenEnterDown = true;
+			if ((lParam & (1LL << 30)) == 0) SetFullscreen(hWnd, !g_Fullscreen);
+			return 0;
+		}
+		return DefWindowProc(hWnd, uMsg, wParam, lParam);
+
+	case WM_SETCURSOR:
+		if (g_Fullscreen && LOWORD(lParam) == HTCLIENT) {
+			SetCursor(nullptr);
+			return TRUE;
+		}
+		return DefWindowProc(hWnd, uMsg, wParam, lParam);
 
 	case WM_CLOSE:
 	{
@@ -324,6 +396,7 @@ bool Initialize(HWND hWnd, const NET_OPTIONS& options)
 void Finalize(void)
 {
 	//初期化と逆の順番で終了処理をする
+	DebugWindowFinalize();
 	g_Game.Finalize();
 	Number2DFinalize();
 
@@ -352,7 +425,10 @@ void Update(void)
 	GameTimeUpdate();
 
 	//入力は時間の次に更新する
-	KeyboardUpdate();
+	// 同じスレッドのデバッグ用ウィンドウを選んだときも、ゲームへキーを渡さない。
+	if ((GetKeyState(VK_RETURN) & 0x8000) == 0) g_FullscreenEnterDown = false;
+	if (GetActiveWindow() == g_MainWindow && !g_FullscreenEnterDown) KeyboardUpdate();
+	else KeyboardReset();
 	MouseUpdate();
 	PadUpdate();
 

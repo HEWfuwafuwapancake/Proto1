@@ -203,6 +203,20 @@ std::string NetSession::GetDesyncText() const
 	return text.str();
 }
 
+std::string NetSession::GetCornerWarningText() const
+{
+	if (!IsOnline()) return {};
+	std::ostringstream text;
+	if (m_Calc.GetDesyncFrame() >= 0) {
+		text << "DESYNC " << m_Calc.GetDesyncPeer() + 1 << "P FRAME " << m_Calc.GetDesyncFrame();
+	}
+	if (m_Calc.HasCompilerDifference()) {
+		if (m_Calc.GetDesyncFrame() >= 0) text << '\n';
+		text << "VS VERSION DIFFERS";
+	}
+	return text.str();
+}
+
 const char* NetSession::FailureText(SESSION_FAILURE failure)
 {
 	switch (failure) {

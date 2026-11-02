@@ -327,4 +327,5 @@ void Game::Draw() const
 		Number2DDrawBox({ empty.X, empty.Y, empty.Width, empty.Height }, EMPTY_VIEW_COLOR);
 	}
 	m_Huds[0].DrawScene(m_Participants, m_Net, m_JoinAddress);
+	if (m_Fullscreen) m_Huds[0].DrawCornerWarning(m_Net);
 }

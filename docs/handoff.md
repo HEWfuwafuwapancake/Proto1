@@ -4,13 +4,13 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）、決まったことは [decisions.md](decisions.md)。
 必要なときだけ読むもの：腕のモデルは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、画面を撮る方法は [dev/04_画面確認の方法.md](dev/04_画面確認の方法.md)、腕の仕様は [plan/03_新しいアームの仕様.md](plan/03_新しいアームの仕様.md)。
 
-- 最終更新：2026-11-02（Claude。Shota の Proto1、Visual Studio 2022 Enterprise の PC。No.57 全画面のプランを書いた。Codex の実装待ち）
+- 最終更新：2026-11-02（Codex。Shota の Proto1、Visual Studio 2022 Enterprise の PC。No.57 段階2の実装・Debug ビルド済み。段階3待ち）
 
 ---
 
 ## 1. 今の状態
 
-- **No.57 全画面**：プランは管理者の確認済み（2026-11-02。下の「次にやること」）。ブランチ `feature/fullscreen`。**Codex の実装（段階2）待ち**。
+- **No.57 全画面**：ブランチ `feature/fullscreen`。**Codex が実装。Claude の確認待ち（段階2 済み。段階3 待ち）**。枠なし全画面・F11 / Alt+Enter・表示用の引数・デバッグ用ウィンドウ・オンラインの左上警告・関連ドキュメントを実装。Debug（x64）のビルド成功、警告の出力なし。Release・単体テスト・画面確認・PR は未実施。段階3は AGENTS.md の当面の分担に従い Codex が担当する。
 - No.56 でオンラインは「同じ develop の版を各自でビルド」でつなげる（VS の版が違うとタイトルバーに警告。ずれたら版をそろえる）。`ModelLoad` は同じ引数（パス・左右反転・色替え材質）なら読み直さず同じ番号を返す。No.54 Switch 2 Pro コン（USB・振動）は完了（PR #104）。No.19 は優先度：低へ下げた。
 - 実機での確認待ち（詳しくは [archive/handoff_2026-11.md](archive/handoff_2026-11.md)）：
   - No.53 ほかのコントローラー（XInput・Switch Pro 形式）：メンバーの実機確認。動かなければ Debug の出力の「対応外のゲームパッド VID=… PID=…」を見る。
@@ -19,7 +19,7 @@
   - No.48：パッドでのメニュー操作、LOCAL VS で試合を始めて結果の TITLE からモード選択へ戻ること。
 - No.47 の腕の取付と強さは管理者が遊んで調整する。マウス操作は止めたまま。
 
-## 2. 次にやること：No.57 全画面（Codex が実装 → Claude が確認）
+## 2. 次にやること：No.57 全画面の段階3（テスト）
 
 ### プラン（管理者の確認済み）
 
@@ -48,24 +48,18 @@
 
 **確かめ方**：計算は増えないのでテストは足さない（`run-tests.ps1` が今のまま通ること）。Debug / Release で警告 0。見た目が変わるので画面を撮る：起動して全画面 → F11・Alt+Enter でウィンドウと行き来（ウィンドウは元の 1280×720 に戻る）・1人・LOCAL VS の4分割・オンライン（2つ起動。片方 `--windowed`）・デバッグ用のウィンドウ（Debug で出る・Release は `--debugwindow` のときだけ・日本語が読める・閉じてもゲームは続く・クリックしてもパッドで遊べるか）・左上の警告（DESYNC は確かめにくいので、一時的に条件を真にして見た目だけ見てよい）・Esc の終了確認・Alt+Tab で別のアプリへ行って戻る・カーソルが消えること。
 
-### 段階2：Codex に渡すプロンプト
+### 段階3：Codex に渡すプロンプト
 
 ```text
-Proto1 の No.57 全画面を実装してください（段階2 コーディング）。
-AGENTS.md の「作業を始める前に必ず読むもの」を読んでから、ブランチ feature/fullscreen で作業してください（git status を先に見る）。
-プランは docs/handoff.md の「2. 次にやること」です。プランのとおりに dx11.cpp・main.cpp・新しい debugwindow・game・hud・netsession とドキュメントを直してください。
-AGENTS.md の「Codex はコードを書くだけにする」に従い、Debug のビルドが通ることだけを確かめ、
-save-work.ps1 で保存し、handoff.md の「今の状態」に「Codex が実装。Claude の確認待ち」と書いてください。
-プランと違うことをしたくなったら、実装する前に理由を書いて管理者に聞いてください。
-```
-
-### 段階3：Claude に渡すプロンプト（Claude Code、Opus）
-
-```text
-Proto1 の No.57 全画面を、Codex の実装（ブランチ feature/fullscreen）から確かめてください（段階3）。
+Proto1 の No.57 全画面を、ブランチ feature/fullscreen で確かめてください（段階3 テスト）。
+AGENTS.md の「作業を始める前に必ず読むもの」を読み、git status を先に確認してください。
+段階2は Codex が実装し、Debug のビルドだけ確認済みです。AGENTS.md の当面の分担に従い、段階3も Codex が担当します。
 docs/handoff.md のプランとコードを照らし合わせ、Debug / Release 警告 0・run-tests.ps1（Debug・Release）、
 プランの「確かめ方」のとおりに画面を撮って確かめ、問題があれば直してください。
-終わったら tasks.md を ✅・Notion を「完了」と PR のリンクにし、submit-pr.ps1 で PR を出してマージし、handoff.md を書き直してください。
+新しい計算ファイル・テストは増えていないので、わざと計算を壊す確認は不要です。
+終わったら tasks.md を ✅ にし、submit-pr.ps1 で PR を出し、Notion を「完了」と PR のリンクにしてください。
+テスト・Debug / Release 警告0が通っていれば、AGENTS.md の手順でマージし、handoff.md を書き直してください。
+No.57 のあとは優先度：低の未完了タスクだけなので、次に何をするかは管理者に聞いてください。
 ```
 
 ### そのほか

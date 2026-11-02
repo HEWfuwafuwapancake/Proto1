@@ -90,6 +90,32 @@ static constexpr float HOST_ADDRESS_DOT = 5.0f;
 static constexpr float HOST_PLAYER_Y = 275.0f;
 static constexpr float HOST_PLAYER_LINE = 32.0f;
 
+static constexpr float WARNING_X = 12.0f; // 全画面の通信警告の左端
+static constexpr float WARNING_Y = 12.0f;
+static constexpr float WARNING_DOT = 3.0f;
+static constexpr float WARNING_LINE = 30.0f;
+static constexpr float WARNING_PADDING = 6.0f;
+static constexpr XMFLOAT4 WARNING_COLOR = { 1.0f, 0.2f, 0.2f, 1.0f };
+static constexpr XMFLOAT4 WARNING_BACKGROUND = { 0.0f, 0.0f, 0.0f, 0.85f };
+
+void Hud::DrawCornerWarning(const NetSession& net) const
+{
+	const std::string warning = net.GetCornerWarningText();
+	float y = WARNING_Y;
+	size_t begin = 0;
+	while (begin < warning.size()) {
+		const size_t end = warning.find('\n', begin);
+		const std::string line = warning.substr(begin, end == std::string::npos ? end : end - begin);
+		Number2DDrawBox({ WARNING_X - WARNING_PADDING, y - WARNING_PADDING,
+			GlyphCalcTextWidth(line.c_str(), WARNING_DOT) + WARNING_PADDING * 2.0f,
+			WARNING_DOT * 7.0f + WARNING_PADDING * 2.0f }, WARNING_BACKGROUND);
+		Number2DDrawText(line.c_str(), WARNING_X, y, WARNING_DOT, GLYPH_ALIGN_LEFT, WARNING_COLOR);
+		if (end == std::string::npos) break;
+		begin = end + 1;
+		y += WARNING_LINE;
+	}
+}
+
 
 // 人の番号は7セグの数字とPを組み合わせる（文字の2〜4を新しく作らない）。
 void Hud::DrawPlayerTag(int slot, float centerX, float y, float digitWidth) const

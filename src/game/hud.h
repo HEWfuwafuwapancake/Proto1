@@ -44,6 +44,9 @@ public:
 	/// @brief 起動・モード・IP・ロビー・結果を画面全体に描く（全画面のビューポートに戻してから呼ぶ）
 	void DrawScene(const VersusCalc& participants, const NetSession& net, const SessionAddressCalc& address) const;
 
+	/// @brief オンラインのずれ・VS の版の警告を画面左上に描く（画面全体のビューポートで最後に呼ぶ）
+	void DrawCornerWarning(const NetSession& net) const;
+
 private:
 	void DrawPlayerTag(int slot, float centerX, float y, float digitWidth) const;
 	void DrawPercent(float percent, float centerX, float y, float digitWidth, const XMFLOAT4& color) const;
