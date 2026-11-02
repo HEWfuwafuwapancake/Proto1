@@ -4,9 +4,9 @@
 
 // 調整用の値（入力のP1N1と区別するP1S1）
 static constexpr uint32_t SESSION_MAGIC = 0x31533150;
-static constexpr size_t SESSION_HEADER_BYTES = 54;
+static constexpr size_t SESSION_HEADER_BYTES = 58;
 
-static uint32_t s_Program = 0; // この実行ファイルの識別番号（NetSession が exe の中身から作る）。
+static uint32_t s_Program = 0; // この実行ファイルの識別番号（main.cpp がソースの中身から作った SOURCE_ID を設定する）。
 
 void SessionCalcSetProgram(uint32_t program)
 {
@@ -224,6 +224,7 @@ void SessionCalc::Receive(int peer, const SESSION_MESSAGE& message)
 			|| !IsActivePeer(peer) || message.Nonce != m_PeerNonces[peer] || message.Round != m_Round
 			|| CheckCompatibility(message) != SESSION_FAILURE_NONE
 			|| (message.Type != SESSION_JOIN && message.Type != SESSION_READY && message.Type != SESSION_INPUTS)) return;
+		if (message.Compiler != SESSION_COMPILER) m_CompilerDiffers = true;
 		ReceiveMonitor(peer, message);
 		if (message.Type == SESSION_READY && !m_Running) m_Ready |= static_cast<uint8_t>(1u << peer);
 		if (message.Type != SESSION_INPUTS || !m_HasRound || message.Packet.Mask != (1u << peer)
@@ -246,6 +247,7 @@ void SessionCalc::Receive(int peer, const SESSION_MESSAGE& message)
 			return;
 		}
 		if (message.Type == SESSION_REJECT) return;
+		if (message.Compiler != SESSION_COMPILER) m_CompilerDiffers = true;
 		// 同じ接続からの状態通知は、ロックステップ中やロビーへ戻った直後も生存確認に使う。
 		m_LastReceived[0] = m_Now;
 		if (message.Round == m_Round) ReceiveMonitor(0, message);
@@ -548,6 +550,7 @@ bool SessionCalc::Encode(const SESSION_MESSAGE& message, std::vector<uint8_t>& b
 	WriteWord(bytes, static_cast<uint32_t>(message.CheckAck), 4);
 	WriteWord(bytes, message.Program, 4);
 	WriteWord(bytes, message.Hold, 4);
+	WriteWord(bytes, message.Compiler, 4);
 	bytes.insert(bytes.end(), payload.begin(), payload.end());
 	return true;
 }
@@ -577,6 +580,7 @@ bool SessionCalc::Decode(const uint8_t* bytes, size_t size, SESSION_MESSAGE& res
 	const uint32_t checkAck = ReadWord(bytes, 4);
 	message.Program = ReadWord(bytes, 4);
 	message.Hold = ReadWord(bytes, 4);
+	message.Compiler = ReadWord(bytes, 4);
 	if ((checkFrame > INT32_MAX && checkFrame != UINT32_MAX) || (checkAck > INT32_MAX && checkAck != UINT32_MAX)) return false;
 	message.CheckFrame = checkFrame == UINT32_MAX ? -1 : static_cast<int32_t>(checkFrame);
 	message.CheckAck = checkAck == UINT32_MAX ? -1 : static_cast<int32_t>(checkAck);

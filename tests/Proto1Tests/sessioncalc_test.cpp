@@ -407,7 +407,7 @@ namespace Proto1Tests
 				auto request = client.MakeControl();
 				if (expected == SESSION_FAILURE_VERSION) ++request.Version;
 				else if (expected == SESSION_FAILURE_BUILD) request.Build = LOCKSTEP_CURRENT_BUILD == LOCKSTEP_BUILD_DEBUG ? LOCKSTEP_BUILD_RELEASE : LOCKSTEP_BUILD_DEBUG;
-				else request.Program = SessionCalcGetProgram() + 1; // 別の PC でビルドした exe
+				else request.Program = SessionCalcGetProgram() + 1; // ソースが違う exe
 				Assert::AreEqual(-1, host.Join(request.Nonce, request.Version, request.Build, request.Program));
 				Assert::AreEqual(1, static_cast<int>(host.GetMask()));
 				// 版が違う制御通知も読めるので、タイムアウトを待たず理由を返せる。
@@ -426,6 +426,24 @@ namespace Proto1Tests
 				Assert::AreEqual(static_cast<int>(expected), static_cast<int>(client.GetFailure()));
 				Assert::AreEqual(-1, client.GetLocalSlot());
 			}
+		}
+
+		TEST_METHOD(Compatibility_AcceptsDifferentCompilerAndReportsIt)
+		{
+			// VS の版が違う exe は断らずにつなぎ、両方に知らせる。
+			SessionNetwork network(2, 0);
+			auto& host = network.Nodes[0];
+			auto& client = network.Nodes[1];
+			auto request = client.MakeControl();
+			request.Compiler = SESSION_COMPILER + 1;
+			Assert::AreEqual(static_cast<int>(SESSION_FAILURE_NONE), static_cast<int>(SessionCalc::CheckCompatibility(request)));
+			Deliver(host, 1, request);
+			Assert::IsTrue(host.HasCompilerDifference());
+			auto state = host.MakeControl(1);
+			state.Compiler = SESSION_COMPILER + 1;
+			Deliver(client, 0, state);
+			Assert::IsTrue(client.HasCompilerDifference());
+			Assert::AreEqual(1, client.GetLocalSlot());
 		}
 
 		TEST_METHOD(Monitor_SubtractsReplyHoldFromPing)

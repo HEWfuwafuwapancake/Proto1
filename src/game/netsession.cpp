@@ -195,8 +195,10 @@ std::string NetSession::GetStatusText() const
 
 std::string NetSession::GetDesyncText() const
 {
-	if (!IsOnline() || m_Calc.GetDesyncFrame() < 0) return {};
+	if (!IsOnline()) return {};
 	std::ostringstream text;
+	if (m_Calc.HasCompilerDifference()) text << " [VSの版が違う人がいます：ずれたら版をそろえる]";
+	if (m_Calc.GetDesyncFrame() < 0) return text.str();
 	text << " [DESYNC " << m_Calc.GetDesyncPeer() + 1 << "P frame " << m_Calc.GetDesyncFrame() << "]";
 	return text.str();
 }
@@ -206,7 +208,7 @@ const char* NetSession::FailureText(SESSION_FAILURE failure)
 	switch (failure) {
 	case SESSION_FAILURE_VERSION: return "参加拒否：通信の版が違います。同じ版を使ってください。";
 	case SESSION_FAILURE_BUILD: return "参加拒否：Debug / Release が違います。同じビルドを使ってください。";
-	case SESSION_FAILURE_PROGRAM: return "参加拒否：exe が違います。ホストと同じ exe を使ってください。";
+	case SESSION_FAILURE_PROGRAM: return "参加拒否：ソースが違います。全員で develop の最新を取ってきて、ビルドし直してください。";
 	case SESSION_FAILURE_TIMEOUT: return "ホストから3秒届かなかったため、モード選択へ戻りました。";
 	default: return "";
 	}
