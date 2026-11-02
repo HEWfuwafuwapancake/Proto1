@@ -26,6 +26,8 @@ public:
 	void PollNetwork() { m_Net.Poll(); }
 	/// @brief 人ごとの画面に 3D と HUD を描き、最後に画面全体のおおいを重ねる
 	void Draw() const;
+	/// @brief 全画面の表示を設定する（true：オンラインの警告を画面左上にも出す、false：タイトルバーだけ）
+	void SetFullscreen(bool fullscreen) { m_Fullscreen = fullscreen; }
 	/// @brief タイトルバーに表示する左右の装備を読む（ダミーのスロットは装備を変えられない）
 	/// @param slot スロット番号（0〜3）
 	const ArmManager& GetArms(int slot) const { return m_Arms[slot]; }
@@ -56,4 +58,5 @@ private:
 	NetSession m_Net;
 	SessionAddressCalc m_JoinAddress;
 	int m_MenuDevice = ACTION_DEVICE_KEYBOARD; // SOLO の決定を押した機器
+	bool m_Fullscreen = false;
 };

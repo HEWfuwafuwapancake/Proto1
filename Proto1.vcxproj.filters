@@ -30,6 +30,9 @@
     <ClCompile Include="src\core\debug_ostream.cpp">
       <Filter>src\core</Filter>
     </ClCompile>
+    <ClCompile Include="src\core\debugwindow.cpp">
+      <Filter>src\core</Filter>
+    </ClCompile>
     <ClCompile Include="src\net\lockstepcalc.cpp">
       <Filter>src\net</Filter>
     </ClCompile>
@@ -126,6 +129,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\core\debug_ostream.h">
+      <Filter>src\core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\core\debugwindow.h">
       <Filter>src\core</Filter>
     </ClInclude>
     <ClInclude Include="src\core\dx11.h">

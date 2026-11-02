@@ -72,6 +72,22 @@ bool DirectXInitialize(HWND hWnd)
 		return false;
 	}
 
+	// Alt+Enter は main.cpp の枠なし全画面だけで扱い、DXGI の排他全画面を止める。
+	IDXGIDevice* dxgiDevice = nullptr;
+	IDXGIAdapter* adapter = nullptr;
+	IDXGIFactory* factory = nullptr;
+	hr = g_Device->QueryInterface(__uuidof(IDXGIDevice), (void**)&dxgiDevice);
+	if (SUCCEEDED(hr)) hr = dxgiDevice->GetAdapter(&adapter);
+	if (SUCCEEDED(hr)) hr = adapter->GetParent(__uuidof(IDXGIFactory), (void**)&factory);
+	if (SUCCEEDED(hr)) hr = factory->MakeWindowAssociation(hWnd, DXGI_MWA_NO_ALT_ENTER);
+	SAFE_RELEASE(factory);
+	SAFE_RELEASE(adapter);
+	SAFE_RELEASE(dxgiDevice);
+	if (FAILED(hr)) {
+		MessageBox(hWnd, "全画面の切り替えの設定に失敗しました", "エラー", MB_OK);
+		return false;
+	}
+
 	// レンダーターゲットビュー生成
 	ID3D11Texture2D* backBuffer = NULL;
 	g_SwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&backBuffer);
