@@ -13,6 +13,9 @@ struct MODEL
 	ID3D11Buffer* VertexBuffer;
 	UINT VertexCount;
 	UINT TintStart; // ここから後ろが色替えする三角形（なければ VertexCount）
+	std::string Path; // 読み込んだときの引数（同じ引数で呼ばれたら、このモデルを使い回す）
+	bool MirrorX;
+	std::string TintMaterial;
 };
 
 static std::string ReadFile(const std::string& path, bool& ok)
@@ -51,6 +54,12 @@ int ModelLoad(const char* path, bool mirrorX, const char* tintMaterial)
 	};
 	if (!path) return fail("ファイルが開けない（パスなし）");
 	if (!DirectXGetDevice()) return fail("バッファが作れない（デバイスなし）");
+	// 同じ引数で読み込み済みなら、読み直さずに同じ番号を返す（腕は人数 × 左右 × 種類の数だけ同じファイルを読むため）
+	const std::string tintName = tintMaterial ? tintMaterial : "";
+	for (size_t i = 0; i < g_Models.size(); ++i) {
+		const MODEL& loaded = g_Models[i];
+		if (loaded.Path == path && loaded.MirrorX == mirrorX && loaded.TintMaterial == tintName) return static_cast<int>(i);
+	}
 	bool ok = false;
 	const std::string source = ReadFile(path, ok);
 	if (!ok) return fail("ファイルが開けない");
@@ -84,6 +93,9 @@ int ModelLoad(const char* path, bool mirrorX, const char* tintMaterial)
 			{ v.Normal.X, v.Normal.Y, v.Normal.Z }, { kd.X, kd.Y, kd.Z, 1 }, { 0, 0 } });
 	}
 	MODEL model{};
+	model.Path = path;
+	model.MirrorX = mirrorX;
+	model.TintMaterial = tintName;
 	model.TintStart = static_cast<UINT>(vertices.size());
 	vertices.insert(vertices.end(), tinted.begin(), tinted.end());
 	model.VertexCount = static_cast<UINT>(vertices.size());
