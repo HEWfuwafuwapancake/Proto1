@@ -315,6 +315,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	switch (uMsg)
 	{
+	case WM_SIZE: // 最大化・引っぱり・全画面の切り替え：大きさを読み直して黒い帯を付け直す（No.84）
+		if (wParam != SIZE_MINIMIZED) DirectXResize(hWnd, LOWORD(lParam), HIWORD(lParam));
+		break;
+
 	case WM_DESTROY: // ウィンドウの破棄メッセージ
 		PostQuitMessage(0); // WM_QUITメッセージの送信
 		break;
