@@ -20,6 +20,7 @@
 #include "game/arm_gatling.h"
 #include "game/arm_missile.h"
 #include "game/arm_flame.h"
+#include "game/arm_freeze.h"
 #include "game/tentacle.h"
 #include "input/pad.h"
 #include "game/camera.h"
@@ -82,7 +83,7 @@ static const ArmFactory ARM_FACTORIES[ARM_TYPE_COUNT] = {
 	CreateArm<GatlingArm>, // ガトリング（No.73）
 	CreateArm<MissileArm>, // ミサイル（No.74）
 	CreateArm<FlameArm>, // 火炎放射（No.76）
-	nullptr, // フリーズ（No.77）
+	CreateArm<FreezeArm>, // フリーズ（No.77）
 	nullptr, // サンダー（No.78）
 	nullptr, // スモーク（No.79）
 	nullptr, // バリア（No.81）

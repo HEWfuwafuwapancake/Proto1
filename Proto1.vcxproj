@@ -162,6 +162,7 @@
     <ClCompile Include="src\game\arm_magnet.cpp" />
     <ClCompile Include="src\game\arm_shield.cpp" />
     <ClCompile Include="src\physics\shieldcalc.cpp" />
+    <ClCompile Include="src\game\arm_freeze.cpp" />
     <ClCompile Include="src\game\arm_flame.cpp" />
     <ClCompile Include="src\physics\statuscalc.cpp" />
     <ClCompile Include="src\game\arm_missile.cpp" />
@@ -237,6 +238,7 @@
     <ClInclude Include="src\game\arm_magnet.h" />
     <ClInclude Include="src\game\arm_shield.h" />
     <ClInclude Include="src\physics\shieldcalc.h" />
+    <ClInclude Include="src\game\arm_freeze.h" />
     <ClInclude Include="src\game\arm_flame.h" />
     <ClInclude Include="src\physics\statuscalc.h" />
     <ClInclude Include="src\game\arm_missile.h" />
