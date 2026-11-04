@@ -272,6 +272,9 @@
     <ClCompile Include="src\physics\shieldcalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
+    <ClCompile Include="src\game\arm_cannon.cpp">
+      <Filter>src\game</Filter>
+    </ClCompile>
     <ClCompile Include="src\physics\rocketpunchcalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
@@ -376,6 +379,9 @@
     </ClInclude>
     <ClInclude Include="src\physics\shieldcalc.h">
       <Filter>src\physics</Filter>
+    </ClInclude>
+    <ClInclude Include="src\game\arm_cannon.h">
+      <Filter>src\game</Filter>
     </ClInclude>
     <ClInclude Include="src\physics\rocketpunchcalc.h">
       <Filter>src\physics</Filter>
