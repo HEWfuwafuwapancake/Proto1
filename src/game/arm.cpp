@@ -7,6 +7,7 @@
 #include "game/arm_shield.h"
 #include "game/arm_knuckle.h"
 #include "game/arm_blade.h"
+#include "game/arm_spear.h"
 #include "game/tentacle.h"
 #include "input/pad.h"
 #include "game/camera.h"
@@ -55,7 +56,7 @@ static const ArmFactory ARM_FACTORIES[ARM_TYPE_COUNT] = {
 	nullptr, // ハサミ（No.40）
 	CreateArm<KnuckleArm>, // ナックル（No.60）
 	CreateArm<BladeArm>, // ブレード（No.61）
-	nullptr, // スピア（No.62）
+	CreateArm<SpearArm>, // スピア（No.62）
 	nullptr, // ハンマー（No.63）
 	nullptr, // ウィップ（No.64）
 	nullptr, // レーザー（No.65）

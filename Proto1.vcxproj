@@ -162,6 +162,7 @@
     <ClCompile Include="src\game\arm_magnet.cpp" />
     <ClCompile Include="src\game\arm_shield.cpp" />
     <ClCompile Include="src\physics\shieldcalc.cpp" />
+    <ClCompile Include="src\game\arm_spear.cpp" />
     <ClCompile Include="src\physics\bladecalc.cpp" />
     <ClCompile Include="src\game\arm_blade.cpp" />
     <ClCompile Include="src\physics\knucklecalc.cpp" />
@@ -220,6 +221,7 @@
     <ClInclude Include="src\game\arm_magnet.h" />
     <ClInclude Include="src\game\arm_shield.h" />
     <ClInclude Include="src\physics\shieldcalc.h" />
+    <ClInclude Include="src\game\arm_spear.h" />
     <ClInclude Include="src\physics\bladecalc.h" />
     <ClInclude Include="src\game\arm_blade.h" />
     <ClInclude Include="src\physics\knucklecalc.h" />
