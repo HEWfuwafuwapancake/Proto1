@@ -5,6 +5,7 @@
 #include "physics/playercalc.h"
 #include "physics/dummycalc.h"
 #include "physics/knockbackcalc.h"
+#include "physics/statuscalc.h"
 #include "physics/tentaclecalc.h"
 #include "physics/versuscalc.h"
 
@@ -81,6 +82,16 @@ public:
 	void Launch(const VEC3& direction, float damage, float power);
 	/// @brief %を変えず、指定速度で吹っ飛ばす
 	void Push(const VEC3& velocity);
+	/// @brief 状態異常をかける（生存中だけ。残り時間は長い方、値は上書き）
+	/// @param type 種類
+	/// @param seconds 続く秒数
+	/// @param value 遅いなら歩く速さの倍率、燃えるなら1秒あたりの %
+	/// @param attacker かけた人のスロット番号（なしは -1）
+	void ApplyStatus(STATUS_TYPE type, float seconds, float value, int attacker);
+	/// @brief 状態異常を1フレーム進め、燃えた分を返す（復活待ちは何もしない）
+	STATUS_STEP StepStatus(float dt);
+	/// @brief その状態異常がかかっているか取得する
+	bool IsStatus(STATUS_TYPE type) const { return IsActive() && m_Status.IsActive(type); }
 	/// @brief Game が決めた今と前のフレームの入力を渡す
 	void SetInput(const PLAYER_INPUT& current, const PLAYER_INPUT& previous);
 	/// @brief このフレームの装備の直接選択を取得する
@@ -97,6 +108,7 @@ private:
 	void SetLaunchVelocity(const VEC3& velocity);
 	KNOCKBACK_PARAMS KnockbackParams() const;
 	PlayerBodyCalc m_Body;
+	StatusCalc m_Status;
 	DummyLifeCalc m_Life;
 	VEC3 m_Spawn = {};
 	float m_Percent = 0.0f;

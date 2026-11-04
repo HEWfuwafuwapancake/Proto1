@@ -141,7 +141,8 @@ void ArmManager::Update(bool playing)
 	}
 	if (!playing) return;
 	const Fighter& player = m_Links.Fighters->GetFighter(m_Links.Slot);
-	if (!player.CanUseArms() || player.DidRespawn()) {
+	// しびれている間は腕を使えない（構え・ガードも解ける）。
+	if (!player.CanUseArms() || player.DidRespawn() || player.IsStatus(STATUS_STUN)) {
 		Reset();
 		return;
 	}
