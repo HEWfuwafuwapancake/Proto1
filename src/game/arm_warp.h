@@ -25,6 +25,8 @@ public:
 	bool IsActive() const override;
 	/// @brief 敵をつかまないので、常に false を返す
 	bool IsHolding() const override;
+	/// @brief ワープした直後の少しの間だけ、全方向をガードする（よける。No.80）
+	GUARD GetGuard() const override;
 
 private:
 	ArmPhaseCalc m_Phase;

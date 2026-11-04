@@ -187,6 +187,11 @@ float ArmManager::GetMoveScale() const
 	return fminf(m_Arms[0][m_Types[0]]->GetMoveScale(), m_Arms[1][m_Types[1]]->GetMoveScale());
 }
 
+GUARD ArmManager::GetGuard() const
+{
+	return GuardCalcStronger(m_Arms[0][m_Types[0]]->GetGuard(), m_Arms[1][m_Types[1]]->GetGuard());
+}
+
 const char* ArmGetName(ARM_TYPE type)
 {
 	return type >= 0 && type < ARM_TYPE_COUNT ? ARM_NAMES[type] : "不明";

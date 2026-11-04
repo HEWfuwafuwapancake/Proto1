@@ -9,6 +9,7 @@
 // 調整用の値
 static constexpr float GUARD_SECONDS = 2.0f;
 static constexpr float GUARD_MOVE_SCALE = 0.4f;
+static constexpr float GUARD_HALF_ANGLE = XMConvertToRadians(60.0f); // 前のガードの左右それぞれの角度。
 static constexpr float GUARD_RAISE_SECONDS = 0.1f;
 static constexpr float BASH_SECONDS = 0.15f;
 static constexpr float BASH_REACH = 0.3f;
@@ -98,4 +99,14 @@ bool ShieldArm::IsHolding() const
 float ShieldArm::GetMoveScale() const
 {
 	return m_Arm.GetState() == SHIELD_GUARDING || m_Arm.GetState() == SHIELD_BASHING ? GUARD_MOVE_SCALE : 1.0f;
+}
+
+GUARD ShieldArm::GetGuard() const
+{
+	GUARD guard;
+	if (m_Arm.GetState() != SHIELD_GUARDING && m_Arm.GetState() != SHIELD_BASHING) return guard;
+	guard.Kind = GUARD_FRONT;
+	guard.Forward = GetForward();
+	guard.HalfAngle = GUARD_HALF_ANGLE;
+	return guard;
 }

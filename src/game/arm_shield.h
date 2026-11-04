@@ -27,6 +27,8 @@ public:
 	bool IsHolding() const override;
 	/// @brief 構え・押し出し中だけ歩く速さの倍率を下げる
 	float GetMoveScale() const override;
+	/// @brief 構え・押し出し中は前だけをガードする（No.80）
+	GUARD GetGuard() const override;
 
 private:
 	ShieldCalc m_Arm;

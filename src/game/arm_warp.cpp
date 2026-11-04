@@ -9,6 +9,7 @@
 
 // 調整用の値
 static constexpr float PHASE_SECONDS[] = { 0.15f, 1.5f }; // ため・休み
+static constexpr float DODGE_SECONDS = 0.3f; // ワープしたあと全方向をガードする秒数。
 static constexpr float TARGET_GAP = 1.2f; // 相手の手前に残す距離。
 static constexpr float FORWARD_DISTANCE = 5.0f; // 相手がいないときに進む距離。
 static constexpr float STRAIGHTEN_SECONDS = 0.1f;
@@ -74,4 +75,11 @@ bool WarpArm::IsActive() const
 bool WarpArm::IsHolding() const
 {
 	return false;
+}
+
+GUARD WarpArm::GetGuard() const
+{
+	GUARD guard;
+	if (m_Phase.GetPhase() == WARP_COOLDOWN && m_Phase.GetTime() < DODGE_SECONDS) guard.Kind = GUARD_ALL;
+	return guard;
 }
