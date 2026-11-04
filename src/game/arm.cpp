@@ -17,6 +17,7 @@
 #include "game/arm_repair.h"
 #include "game/arm_rocket.h"
 #include "game/arm_cannon.h"
+#include "game/arm_gatling.h"
 #include "game/tentacle.h"
 #include "input/pad.h"
 #include "game/camera.h"
@@ -76,7 +77,7 @@ static const ArmFactory ARM_FACTORIES[ARM_TYPE_COUNT] = {
 	CreateArm<RepairArm>, // リペア（No.69）
 	CreateArm<RocketArm>, // ロケットパンチ（No.71）
 	CreateArm<CannonArm>, // キャノン（No.72）
-	nullptr, // ガトリング（No.73）
+	CreateArm<GatlingArm>, // ガトリング（No.73）
 	nullptr, // ミサイル（No.74）
 	nullptr, // 火炎放射（No.76）
 	nullptr, // フリーズ（No.77）
