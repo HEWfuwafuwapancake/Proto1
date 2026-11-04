@@ -12,6 +12,7 @@
 #include "game/arm_whip.h"
 #include "game/arm_laser.h"
 #include "game/arm_shotgun.h"
+#include "game/arm_sniper.h"
 #include "game/tentacle.h"
 #include "input/pad.h"
 #include "game/camera.h"
@@ -65,7 +66,7 @@ static const ArmFactory ARM_FACTORIES[ARM_TYPE_COUNT] = {
 	CreateArm<WhipArm>, // ウィップ（No.64）
 	CreateArm<LaserArm>, // レーザー（No.65）
 	CreateArm<ShotgunArm>, // ショットガン（No.66）
-	nullptr, // スナイパー（No.67）
+	CreateArm<SniperArm>, // スナイパー（No.67）
 	nullptr, // ワープ（No.68）
 	nullptr, // リペア（No.69）
 	nullptr, // ロケットパンチ（No.71）
