@@ -31,7 +31,8 @@
 ------------------------------------------------------------------------------*/
 static constexpr char WINDOW_CLASS[] = "Proto1"; // メインウィンドウクラス名
 static constexpr char TITLE[] = "Proto1";        // タイトルバーのテキスト
-static constexpr DWORD WINDOW_STYLE = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
+// 最大化できる枠ありのウィンドウ（No.83。描くのは 1280×720 のまま、Present がウィンドウいっぱいに引き伸ばす）。
+static constexpr DWORD WINDOW_STYLE = WS_OVERLAPPEDWINDOW;
 
 // 振動をオンにしたときに知らせる短い振動（強さ 0〜1・秒）
 static constexpr float RUMBLE_ON_NOTICE_STRENGTH = 0.5f;
@@ -122,7 +123,9 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
 	_set_FMA3_enable(0);
 #endif
 	SessionCalcSetProgram(SOURCE_ID);
+	// 起動は最大化したウィンドウ。--windowed は 1280×720 のウィンドウ、--fullscreen は枠なし全画面（No.83）。
 	bool windowed = false;
+	bool fullscreen = false;
 	bool debugWindow = false;
 #if defined(_DEBUG)
 	debugWindow = true;
@@ -132,12 +135,13 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
 	std::string word, netArguments;
 	while (arguments >> word) {
 		if (word == "--windowed") windowed = true;
+		else if (word == "--fullscreen") fullscreen = true;
 		else if (word == "--debugwindow") debugWindow = true;
 		else netArguments += word + " ";
 	}
 	NET_OPTIONS options;
 	if (!SessionCalcParseOptions(netArguments, options)) {
-		MessageBox(nullptr, "起動引数を確認してください。\n--host [--delay 0-120]\n--join <IPv4>\n--windowed：ウィンドウで起動\n--debugwindow：デバッグ情報を別ウィンドウに表示\n通信の指定なし：モード選択（表示の引数は併用できます）", TITLE, MB_OK | MB_ICONERROR);
+		MessageBox(nullptr, "起動引数を確認してください。\n--host [--delay 0-120]\n--join <IPv4>\n--windowed：1280x720 のウィンドウで起動\n--fullscreen：枠なし全画面で起動\n--debugwindow：デバッグ情報を別ウィンドウに表示\n通信の指定なし：モード選択（表示の引数は併用できます）", TITLE, MB_OK | MB_ICONERROR);
 		return -1;
 	}
 
@@ -188,7 +192,7 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
 	}
 
 
-	SetFullscreen(hWnd, !windowed);
+	SetFullscreen(hWnd, fullscreen);
 	if (debugWindow && !DebugWindowInitialize(hWnd)) {
 		MessageBox(hWnd, "デバッグ用ウィンドウの作成に失敗しました", TITLE, MB_OK | MB_ICONERROR);
 		Finalize();
@@ -196,7 +200,7 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
 		return -1;
 	}
 	RefreshTitle(hWnd);
-	ShowWindow(hWnd, nCmdShow);
+	ShowWindow(hWnd, fullscreen || windowed ? nCmdShow : SW_SHOWMAXIMIZED);
 	UpdateWindow(hWnd);
 
 	// 時間計測用
