@@ -1,4 +1,5 @@
 ﻿#include "game/fightermanager.h"
+#include "core/gametime.h"
 #include "game/stage.h"
 #include "game/camera.h"
 #include "game/arm.h"
@@ -51,6 +52,13 @@ void FighterManager::Update()
 			hal::dout << "体" << i + 1 << (event == DUMMY_EVENT_OUT ? "：場外" : "：復活（0%）") << std::endl;
 		}
 #endif
+	}
+	// 燃えた分の % は、燃やした人の攻撃として記録する（場外にしたらその人の得点）。
+	for (int i = 0; i < FIGHTER_COUNT; ++i) {
+		const STATUS_STEP status = m_Fighters[i].StepStatus(GameTimeGetDeltaTime());
+		if (status.Damage <= 0.0f) continue;
+		m_Fighters[i].AddDamage(status.Damage);
+		if (status.Attacker >= 0 && m_Versus.IsOpponent(status.Attacker, i)) m_Versus.RecordAttack(status.Attacker, i);
 	}
 	PushBodies();
 }
@@ -131,6 +139,24 @@ void FighterManager::Release(int index, int holder, bool throwTarget, const VEC3
 	if (!IsHeldBy(index, holder)) return;
 	m_Fighters[index].Release(holder);
 	if (throwTarget) Launch(index, holder, direction, damage, power);
+}
+
+bool FighterManager::ApplyStatus(int index, int attacker, STATUS_TYPE type, float seconds, float value)
+{
+	if (type == STATUS_HIDDEN) {
+		if (!IsActive(index)) return false;
+		m_Fighters[index].ApplyStatus(type, seconds, value, -1);
+		return true;
+	}
+	if (!CanAttack(index, attacker)) return false;
+	m_Fighters[index].ApplyStatus(type, seconds, value, attacker);
+	m_Versus.RecordAttack(attacker, index);
+	return true;
+}
+
+bool FighterManager::IsHidden(int index) const
+{
+	return IsActive(index) && m_Fighters[index].IsStatus(STATUS_HIDDEN);
 }
 
 void FighterManager::Heal(int index, float amount)

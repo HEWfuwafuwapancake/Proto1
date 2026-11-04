@@ -28,6 +28,12 @@ static constexpr float TARGET_MARKER_HEIGHT = 0.2f;
 static constexpr XMFLOAT4 DUMMY_COLOR{ 0.35f, 0.55f, 0.95f, 1.0f };
 static constexpr XMFLOAT4 TARGET_COLOR{ 1.0f, 0.55f, 0.15f, 1.0f };
 static constexpr XMFLOAT4 LAUNCHED_COLOR{ 0.95f, 0.85f, 0.3f, 1.0f };
+static constexpr float STATUS_MARKER_RADIUS = 0.1f; // 頭の上の状態異常の球
+static constexpr float STATUS_MARKER_HEIGHT = 0.5f;
+static constexpr float STATUS_MARKER_GAP = 0.22f;
+static constexpr XMFLOAT4 STATUS_COLORS[STATUS_COUNT] = {
+	{ 1.0f, 0.95f, 0.2f, 1.0f }, { 0.5f, 0.85f, 1.0f, 1.0f }, { 1.0f, 0.45f, 0.1f, 1.0f }, { 0.6f, 0.6f, 0.6f, 1.0f }
+}; // しびれ・遅い・燃える・隠れる（隠れるは描かない）
 static constexpr float KNOCKBACK_BASE_SPEED = 4.0f;
 static constexpr float KNOCKBACK_GROWTH = 0.12f;
 static constexpr float KNOCKBACK_ANGLE = XMConvertToRadians(30.0f);
@@ -69,6 +75,7 @@ void Fighter::PlaceAtSpawn()
 	m_Launched = false;
 	m_HeldBy = -1;
 	m_Pulled = false;
+	m_Status.Reset();
 }
 
 void Fighter::Reset()
@@ -118,9 +125,9 @@ DUMMY_EVENT Fighter::Update(const Camera* camera, const ArmManager* arms)
 				const float yaw = camera->GetYaw();
 				moveX = cosf(yaw) * move.X + sinf(yaw) * move.Y;
 				moveZ = -sinf(yaw) * move.X + cosf(yaw) * move.Y;
-				params.MoveSpeed = MOVE_SPEED * arms->GetMoveScale();
+				params.MoveSpeed = MOVE_SPEED * arms->GetMoveScale() * m_Status.GetMoveScale();
 				params.JumpSpeed = JUMP_SPEED;
-				jump = IsTrigger(ACTION_JUMP);
+				jump = IsTrigger(ACTION_JUMP) && !m_Status.IsActive(STATUS_STUN);
 			}
 			m_Body.Step(moveX, moveZ, jump, dt, params, stage);
 		}
@@ -139,7 +146,7 @@ DUMMY_EVENT Fighter::Update(const Camera* camera, const ArmManager* arms)
 
 void Fighter::UpdateFacing(const Camera& camera, const ArmManager& arms, const FighterManager& fighters, int slot)
 {
-	if (!CanUseArms()) return;
+	if (!CanUseArms() || m_Status.IsActive(STATUS_STUN)) return;
 	if (m_Respawned) {
 		m_Yaw = camera.GetYaw();
 		return;
@@ -169,6 +176,12 @@ void Fighter::Draw(bool highlighted) const
 		ModelDrawTinted(m_Model, GetPosition(), { -c, 0.0f, s }, { 0.0f, scale, 0.0f }, { -s, 0.0f, -c }, color);
 	} else {
 		ShapeDrawCapsule(GetPosition(), BODY_RADIUS, BODY_HEIGHT, color);
+	}
+	int marker = 0;
+	for (int type = 0; type < STATUS_HIDDEN; ++type) {
+		if (!m_Status.IsActive((STATUS_TYPE)type)) continue;
+		const XMFLOAT3 p = GetPosition();
+		ShapeDrawSphere({ p.x + STATUS_MARKER_GAP * marker++, p.y + BODY_HEIGHT + STATUS_MARKER_HEIGHT, p.z }, STATUS_MARKER_RADIUS, STATUS_COLORS[type]);
 	}
 	if (IsHuman() && highlighted) {
 		const XMFLOAT3 p = GetPosition();
@@ -242,6 +255,16 @@ void Fighter::AddDamage(float damage)
 void Fighter::Heal(float amount)
 {
 	if (IsActive()) m_Percent = KnockbackCalcHeal(m_Percent, amount);
+}
+
+void Fighter::ApplyStatus(STATUS_TYPE type, float seconds, float value, int attacker)
+{
+	if (IsActive()) m_Status.Apply(type, seconds, value, attacker);
+}
+
+STATUS_STEP Fighter::StepStatus(float dt)
+{
+	return IsActive() ? m_Status.Step(dt) : STATUS_STEP{ 0.0f, -1 };
 }
 
 void Fighter::SetLaunchVelocity(const VEC3& velocity)

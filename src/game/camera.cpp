@@ -55,7 +55,8 @@ void Camera::CollectTargets(CAMERA_FOCUS_TARGET* targets) const
 		const TENTACLE_TARGET dummy = m_Fighters->GetTarget(i, m_Slot);
 		targets[i].Position = Vec3Scale(Vec3Add(dummy.Body.Start, dummy.Body.End), 0.5f);
 		const float feetY = dummy.Body.Start.Y - dummy.Body.Radius;
-		targets[i].Available = dummy.Available && feetY >= m_Stage->GetStage().TopY - TARGET_FALL_MARGIN;
+		// スモークの中で隠れている相手もロックオンしない（No.75）。
+		targets[i].Available = dummy.Available && feetY >= m_Stage->GetStage().TopY - TARGET_FALL_MARGIN && !m_Fighters->IsHidden(i);
 	}
 }
 

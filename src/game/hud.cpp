@@ -143,7 +143,7 @@ void Hud::DrawPercent(float percent, float centerX, float y, float digitWidth, c
 // 相手の頭の上に%を出す。人には1P〜4Pも表示する。
 void Hud::DrawFighterPercent(int index) const
 {
-	if (index == m_Slot || !m_Fighters->IsActive(index)) return;
+	if (index == m_Slot || !m_Fighters->IsActive(index) || m_Fighters->IsHidden(index)) return;
 
 	// 頭のてっぺん（縦のカプセルの上の端 ＋ 半径）の少し上
 	const CAPSULE body = m_Fighters->GetTarget(index, m_Slot).Body;
