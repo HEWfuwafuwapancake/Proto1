@@ -186,6 +186,12 @@ void Fighter::SetPosition(const XMFLOAT3& position)
 	m_Body.SetPosition({ position.x, position.y, position.z });
 }
 
+void Fighter::Teleport(const VEC3& position)
+{
+	m_Body.SetPosition(position);
+	m_Body.SetVelocity({ 0.0f, m_Body.GetVelocityY(), 0.0f });
+}
+
 void Fighter::SetPulled(bool pulled)
 {
 	m_Pulled = pulled;
