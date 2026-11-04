@@ -22,6 +22,7 @@
 #include "game/arm_flame.h"
 #include "game/arm_freeze.h"
 #include "game/arm_thunder.h"
+#include "game/arm_smoke.h"
 #include "game/tentacle.h"
 #include "input/pad.h"
 #include "game/camera.h"
@@ -86,7 +87,7 @@ static const ArmFactory ARM_FACTORIES[ARM_TYPE_COUNT] = {
 	CreateArm<FlameArm>, // 火炎放射（No.76）
 	CreateArm<FreezeArm>, // フリーズ（No.77）
 	CreateArm<ThunderArm>, // サンダー（No.78）
-	nullptr, // スモーク（No.79）
+	CreateArm<SmokeArm>, // スモーク（No.79）
 	nullptr, // バリア（No.81）
 	nullptr, // アックス（No.82）
 };
