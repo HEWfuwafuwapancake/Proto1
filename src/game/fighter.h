@@ -73,6 +73,8 @@ public:
 	bool Release(int holder);
 	/// @brief ダメージ%を足す（負のダメージは0）
 	void AddDamage(float damage);
+	/// @brief ダメージ%を減らす（0より下にしない。リペア）
+	void Heal(float amount);
 	/// @brief ダメージを足し、固定の上向き角度で吹っ飛ばす
 	void Hit(const VEC3& direction, float damage, float power);
 	/// @brief ダメージを足し、上下を含む指定方向へ吹っ飛ばす

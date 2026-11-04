@@ -133,6 +133,11 @@ void FighterManager::Release(int index, int holder, bool throwTarget, const VEC3
 	if (throwTarget) Launch(index, holder, direction, damage, power);
 }
 
+void FighterManager::Heal(int index, float amount)
+{
+	if (IsActive(index)) m_Fighters[index].Heal(amount);
+}
+
 void FighterManager::AddDamage(int index, int attacker, float damage)
 {
 	if (!CanAttack(index, attacker)) return;

@@ -45,6 +45,8 @@ public:
 	void Release(int index, int holder, bool throwTarget, const VEC3& direction, float damage, float power);
 	/// @brief 攻撃者を記録し、ダメージを足して固定角で吹っ飛ばす（自分・無効・復活待ちは無視）
 	void Hit(int index, int attacker, const XMFLOAT3& direction, float damage, float power);
+	/// @brief 自分のダメージ%を減らす（無効な番号・復活待ちは無視。リペア）
+	void Heal(int index, float amount);
 	/// @brief 攻撃者を記録し、ダメージ%だけを足す（速度はそのまま）
 	void AddDamage(int index, int attacker, float damage);
 	/// @brief 攻撃者を記録し、ダメージを足して指定した3D方向へ吹っ飛ばす

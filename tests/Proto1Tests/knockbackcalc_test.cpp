@@ -62,6 +62,13 @@ namespace Proto1Tests
 	{
 	public:
 		// ダメージ%は足していく。負のダメージは 0
+		// リペアで減らし、0 より下にはしない。
+		TEST_METHOD(Heal_ReducesButNotBelowZero)
+		{
+			Assert::AreEqual(15.0f, KnockbackCalcHeal(40.0f, 25.0f));
+			Assert::AreEqual(0.0f, KnockbackCalcHeal(10.0f, 25.0f));
+		}
+
 		TEST_METHOD(AddDamage_Accumulates)
 		{
 			float percent = 0.0f;

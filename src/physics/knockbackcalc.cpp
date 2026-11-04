@@ -10,6 +10,12 @@ float KnockbackCalcAddDamage(float percent, float damage)
 	return percent + (damage > 0.0f ? damage : 0.0f);
 }
 
+float KnockbackCalcHeal(float percent, float amount)
+{
+	const float healed = percent - (amount > 0.0f ? amount : 0.0f);
+	return healed > 0.0f ? healed : 0.0f;
+}
+
 float KnockbackCalcSpeed(float percent, float power, const KNOCKBACK_PARAMS& params)
 {
 	return (params.BaseSpeed + percent * params.Growth) * power;
