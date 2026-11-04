@@ -113,7 +113,25 @@ TENTACLE_TARGET FighterManager::GetTarget(int index, int self) const
 
 bool FighterManager::CanAttack(int index, int attacker) const
 {
-	return m_Versus.IsOpponent(attacker, index) && IsActive(attacker) && IsActive(index);
+	// ガードされた攻撃は効かない（No.80）。燃える % と投げ（Release）はここを通らない。
+	return m_Versus.IsOpponent(attacker, index) && IsActive(attacker) && IsActive(index) && !IsGuarded(index, attacker);
+}
+
+bool FighterManager::IsGuarded(int index, int attacker) const
+{
+	if (index < 0 || index >= FIGHTER_COUNT || attacker < 0 || attacker >= FIGHTER_COUNT || m_Arms[index] == nullptr) return false;
+	const CAPSULE body = m_Fighters[index].GetBody();
+	const CAPSULE from = m_Fighters[attacker].GetBody();
+	return GuardCalcBlocks(m_Arms[index]->GetGuard(), Vec3Scale(Vec3Add(body.Start, body.End), 0.5f),
+		Vec3Scale(Vec3Add(from.Start, from.End), 0.5f));
+}
+
+bool FighterManager::BreakGuard(int index, int attacker, float seconds)
+{
+	if (!m_Versus.IsOpponent(attacker, index) || !IsActive(attacker) || !IsActive(index)) return false;
+	m_Fighters[index].ApplyStatus(STATUS_STUN, seconds, 0.0f, attacker);
+	m_Versus.RecordAttack(attacker, index);
+	return true;
 }
 
 bool FighterManager::Grab(int index, int attacker)
