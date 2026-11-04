@@ -18,6 +18,7 @@
 #include "game/tentacle.h"
 #include "input/pad.h"
 #include "game/camera.h"
+#include "physics/areacalc.h"
 #include "physics/armcalc.h"
 #include "physics/grapplecalc.h"
 #include "physics/tentaclecalc.h"
@@ -235,6 +236,18 @@ VEC3 Arm::DrawStubArm(const VEC3& direction, float length, const XMFLOAT4& color
 	const VEC3 hand = Vec3Add(shoulder, Vec3Scale(direction, length));
 	ShapeDrawCylinder({ shoulder.X, shoulder.Y, shoulder.Z }, { hand.X, hand.Y, hand.Z }, STUB_RADIUS, color);
 	return hand;
+}
+
+int Arm::Explode(const VEC3& center, float radius, float damage, float power, float up) const
+{
+	int hits = 0;
+	for (int i = 0; i < FIGHTER_COUNT; ++i) {
+		const TENTACLE_TARGET target = GetFighters().GetTarget(i, GetSlot());
+		if (!target.Available || !CollisionSphereCapsule({ center, radius }, target.Body).Hit) continue;
+		GetFighters().Launch(i, GetSlot(), AreaCalcRadialDirection(center, target.Body, up, GetForward()), damage, power);
+		++hits;
+	}
+	return hits;
 }
 
 XMFLOAT4 Arm::GetColor(bool active) const

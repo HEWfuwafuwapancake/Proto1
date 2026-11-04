@@ -162,6 +162,7 @@
     <ClCompile Include="src\game\arm_magnet.cpp" />
     <ClCompile Include="src\game\arm_shield.cpp" />
     <ClCompile Include="src\physics\shieldcalc.cpp" />
+    <ClCompile Include="src\physics\projectilecalc.cpp" />
     <ClCompile Include="src\game\arm_repair.cpp" />
     <ClCompile Include="src\physics\warpcalc.cpp" />
     <ClCompile Include="src\game\arm_warp.cpp" />
@@ -229,6 +230,7 @@
     <ClInclude Include="src\game\arm_magnet.h" />
     <ClInclude Include="src\game\arm_shield.h" />
     <ClInclude Include="src\physics\shieldcalc.h" />
+    <ClInclude Include="src\physics\projectilecalc.h" />
     <ClInclude Include="src\game\arm_repair.h" />
     <ClInclude Include="src\physics\warpcalc.h" />
     <ClInclude Include="src\game\arm_warp.h" />

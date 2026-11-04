@@ -25,6 +25,7 @@
   - No.67 スナイパー完了（遠くのダミーに ＋14% を画面で確認）。
   - No.68 ワープ完了（ロックオンしたダミーの手前へ移動するのを画面で確認）。よけ（ワープ後 0.3 秒の無敵）は No.80 で入れる。
   - No.69 リペア完了（修理中の緑の球を画面で確認。% が減るのは KnockbackCalcHeal のテストだけで確認。自分の % を上げる相手がいるときに LOCAL VS で確かめる）。
+  - No.70 飛び道具の土台完了（ProjectileCalc・ProjectileCalcLobVelocity・ProjectileCalcMoveToward・Arm::Explode。テストあり、見た目は変わらない）。
 
 ## 2. 次にやること：tasks.md の「追加のアーム」で ⬜ のいちばん上の No. を実装する
 

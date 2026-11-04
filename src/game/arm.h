@@ -109,6 +109,14 @@ protected:
 	/// @param color 色（RGBA）
 	/// @return 手の位置（円柱の終わり）
 	VEC3 DrawStubArm(const VEC3& direction, float length, const XMFLOAT4& color) const;
+	/// @brief 爆心から半径の中の相手を全部、外へ吹っ飛ばす（自分には当たらない）
+	/// @param center 爆心
+	/// @param radius 爆発の半径
+	/// @param damage 足すダメージ%
+	/// @param power 吹っ飛ばす強さ
+	/// @param up 外への水平の単位方向に足す上向きの量
+	/// @return 当てた相手の数
+	int Explode(const VEC3& center, float radius, float damage, float power, float up) const;
 	/// @brief 色の選択を設定する（true：効いている色、false：左右の基本色）
 	/// @return 選んだ色（RGBA）
 	XMFLOAT4 GetColor(bool active) const;
