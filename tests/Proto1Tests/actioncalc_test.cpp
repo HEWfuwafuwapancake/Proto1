@@ -77,6 +77,25 @@ namespace Proto1Tests
 			Assert::AreEqual(1, key.Hand);
 		}
 
+		// Q を2回押すと左手の2段目、3回目で3段目、4回目で抜ける。数字は「段×10＋番号」。
+		TEST_METHOD(EquipKey_ModeKeyCyclesPages)
+		{
+			int mode = -1;
+			ActionCalcEquipKey(mode, true, false, -1, false);
+			ActionCalcEquipKey(mode, true, false, -1, false);
+			const auto second = ActionCalcEquipKey(mode, false, false, 2, false);
+			Assert::AreEqual(0, second.Hand);
+			Assert::AreEqual(12, second.Number);
+			for (int i = 0; i < 3; ++i) ActionCalcEquipKey(mode, false, i == 2, -1, false);
+			Assert::AreEqual(1, ActionCalcEquipModeHand(mode));
+			Assert::AreEqual(0, ActionCalcEquipModePage(mode));
+			ActionCalcEquipKey(mode, false, true, -1, false);
+			ActionCalcEquipKey(mode, false, true, -1, false);
+			Assert::AreEqual(2, ActionCalcEquipModePage(mode));
+			ActionCalcEquipKey(mode, false, true, -1, false);
+			Assert::AreEqual(-1, mode);
+		}
+
 		// 長押しでモードを連続反転させず、非選択中の押下も復帰時に持ち越さない。
 		TEST_METHOD(EquipKey_RepeatAndFocusLossDoNotLeaveTriggers)
 		{
@@ -182,10 +201,10 @@ namespace Proto1Tests
 			Assert::AreEqual(-1, mode);
 		}
 
-		// 同じモードキーをもう一度押すと抜け、別のキーなら乗りかえる。両方押したら右手
+		// 同じモードキーは最後の段の次で抜け、別のキーなら乗りかえる。両方押したら右手
 		TEST_METHOD(EquipKey_ModeKeysToggleAndSwitch)
 		{
-			int mode = 0;
+			int mode = (ACTION_EQUIP_PAGE_COUNT - 1) * 2;
 			ActionCalcEquipKey(mode, true, false, -1, false);
 			Assert::AreEqual(-1, mode);
 			mode = 0;

@@ -162,6 +162,8 @@
     <ClCompile Include="src\game\arm_magnet.cpp" />
     <ClCompile Include="src\game\arm_shield.cpp" />
     <ClCompile Include="src\physics\shieldcalc.cpp" />
+    <ClCompile Include="src\physics\areacalc.cpp" />
+    <ClCompile Include="src\physics\armphasecalc.cpp" />
     <ClCompile Include="src\physics\magnetcalc.cpp" />
     <ClCompile Include="src\physics\drillcalc.cpp" />
     <ClCompile Include="src\physics\grapplecalc.cpp" />
@@ -214,6 +216,8 @@
     <ClInclude Include="src\game\arm_magnet.h" />
     <ClInclude Include="src\game\arm_shield.h" />
     <ClInclude Include="src\physics\shieldcalc.h" />
+    <ClInclude Include="src\physics\areacalc.h" />
+    <ClInclude Include="src\physics\armphasecalc.h" />
     <ClInclude Include="src\physics\magnetcalc.h" />
     <ClInclude Include="src\physics\grapplecalc.h" />
     <ClInclude Include="src\physics\drillcalc.h" />

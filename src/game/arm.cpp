@@ -7,9 +7,12 @@
 #include "game/arm_shield.h"
 #include "game/tentacle.h"
 #include "input/pad.h"
+#include "game/camera.h"
 #include "physics/armcalc.h"
+#include "physics/grapplecalc.h"
 #include "physics/tentaclecalc.h"
 #include "render/model.h"
+#include "render/shape.h"
 #include <memory>
 
 #ifdef _DEBUG
@@ -28,6 +31,9 @@ static constexpr float HAND_HEIGHT = 1.26f;
 static constexpr XMFLOAT4 LEFT_COLOR{ 0.8f, 0.3f, 0.65f, 1.0f };
 static constexpr XMFLOAT4 RIGHT_COLOR{ 0.35f, 0.8f, 0.6f, 1.0f };
 static constexpr XMFLOAT4 HOLD_COLOR{ 1.0f, 0.7f, 0.2f, 1.0f };
+static constexpr float STUB_RADIUS = 0.06f; // モデルのない腕の円柱の半径。
+
+static_assert(ARM_TYPE_COUNT <= ACTION_EQUIP_NUMBER_COUNT, "腕の番号は通信で送れる数までにする");
 
 template<class T>
 static std::unique_ptr<Arm> CreateArm(int hand, const ARM_LINKS& links)
@@ -45,9 +51,32 @@ static const ArmFactory ARM_FACTORIES[ARM_TYPE_COUNT] = {
 	CreateArm<MagnetArm>, // 磁石（No.38）
 	CreateArm<ShieldArm>, // デカ盾（No.39）
 	nullptr, // ハサミ（No.40）
+	nullptr, // ナックル（No.60）
+	nullptr, // ブレード（No.61）
+	nullptr, // スピア（No.62）
+	nullptr, // ハンマー（No.63）
+	nullptr, // ウィップ（No.64）
+	nullptr, // レーザー（No.65）
+	nullptr, // ショットガン（No.66）
+	nullptr, // スナイパー（No.67）
+	nullptr, // ワープ（No.68）
+	nullptr, // リペア（No.69）
+	nullptr, // ロケットパンチ（No.71）
+	nullptr, // キャノン（No.72）
+	nullptr, // ガトリング（No.73）
+	nullptr, // ミサイル（No.74）
+	nullptr, // 火炎放射（No.76）
+	nullptr, // フリーズ（No.77）
+	nullptr, // サンダー（No.78）
+	nullptr, // スモーク（No.79）
+	nullptr, // バリア（No.81）
+	nullptr, // アックス（No.82）
 };
 static const char* const ARM_NAMES[ARM_TYPE_COUNT] = {
-	"触腕", "グラップリング", "ドリル", "磁石", "デカ盾", "ハサミ"
+	"触腕", "グラップリング", "ドリル", "磁石", "デカ盾", "ハサミ",
+	"ナックル", "ブレード", "スピア", "ハンマー", "ウィップ", "レーザー", "ショットガン", "スナイパー",
+	"ワープ", "リペア", "ロケットパンチ", "キャノン", "ガトリング", "ミサイル",
+	"火炎放射", "フリーズ", "サンダー", "スモーク", "バリア", "アックス"
 };
 
 void ArmManager::ChangeType(int hand, int next)
@@ -160,6 +189,42 @@ VEC3 Arm::GetShoulder() const
 VEC3 Arm::GetRestDirection(float pitchOffset) const
 {
 	return ArmCalcRestDirection(GetPlayer().GetYaw(), GetHand(), ARM_REST_PITCH + pitchOffset, ARM_REST_SPREAD);
+}
+
+VEC3 Arm::GetForward() const
+{
+	const float yaw = GetPlayer().GetYaw();
+	return { sinf(yaw), 0.0f, cosf(yaw) };
+}
+
+int Arm::GetAimTarget() const
+{
+	const int target = GetCamera().GetTarget();
+	if (target < 0 || !GetFighters().GetTarget(target, GetSlot()).Available) return -1;
+	return target;
+}
+
+VEC3 Arm::GetAim(bool keepHeight) const
+{
+	const float yaw = GetCamera().GetYaw();
+	const VEC3 fallback{ sinf(yaw), 0.0f, cosf(yaw) };
+	const int target = GetAimTarget();
+	VEC3 center{};
+	if (target >= 0) {
+		const CAPSULE body = GetFighters().GetTarget(target, GetSlot()).Body;
+		center = Vec3Scale(Vec3Add(body.Start, body.End), 0.5f);
+	}
+	// TentacleCalcAim は高さを捨てて水平にし、GrappleCalcAim は上下も含める。
+	return keepHeight ? GrappleCalcAim(GetShoulder(), center, target >= 0, fallback)
+		: TentacleCalcAim(GetShoulder(), center, target >= 0, fallback);
+}
+
+VEC3 Arm::DrawStubArm(const VEC3& direction, float length, const XMFLOAT4& color) const
+{
+	const VEC3 shoulder = GetShoulder();
+	const VEC3 hand = Vec3Add(shoulder, Vec3Scale(direction, length));
+	ShapeDrawCylinder({ shoulder.X, shoulder.Y, shoulder.Z }, { hand.X, hand.Y, hand.Z }, STUB_RADIUS, color);
+	return hand;
 }
 
 XMFLOAT4 Arm::GetColor(bool active) const
