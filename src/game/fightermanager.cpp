@@ -126,10 +126,11 @@ bool FighterManager::IsGuarded(int index, int attacker) const
 		Vec3Scale(Vec3Add(from.Start, from.End), 0.5f));
 }
 
-bool FighterManager::BreakGuard(int index, int attacker, float seconds)
+bool FighterManager::BreakGuard(int index, int attacker, float seconds, float damage)
 {
 	if (!m_Versus.IsOpponent(attacker, index) || !IsActive(attacker) || !IsActive(index)) return false;
 	m_Fighters[index].ApplyStatus(STATUS_STUN, seconds, 0.0f, attacker);
+	m_Fighters[index].AddDamage(damage);
 	m_Versus.RecordAttack(attacker, index);
 	return true;
 }

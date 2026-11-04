@@ -24,6 +24,7 @@
 #include "game/arm_thunder.h"
 #include "game/arm_smoke.h"
 #include "game/arm_barrier.h"
+#include "game/arm_axe.h"
 #include "game/tentacle.h"
 #include "input/pad.h"
 #include "game/camera.h"
@@ -90,7 +91,7 @@ static const ArmFactory ARM_FACTORIES[ARM_TYPE_COUNT] = {
 	CreateArm<ThunderArm>, // サンダー（No.78）
 	CreateArm<SmokeArm>, // スモーク（No.79）
 	CreateArm<BarrierArm>, // バリア（No.81）
-	nullptr, // アックス（No.82）
+	CreateArm<AxeArm>, // アックス（No.82）
 };
 static const char* const ARM_NAMES[ARM_TYPE_COUNT] = {
 	"触腕", "グラップリング", "ドリル", "磁石", "デカ盾", "ハサミ",

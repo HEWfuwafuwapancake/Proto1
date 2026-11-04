@@ -56,9 +56,9 @@ public:
 	bool ApplyStatus(int index, int attacker, STATUS_TYPE type, float seconds, float value);
 	/// @brief 相手が攻撃した人の側をガードしているか取得する（攻撃が来た位置は攻撃した人の体の中心とみなす）
 	bool IsGuarded(int index, int attacker) const;
-	/// @brief ガードを無視してしびれをかけ、攻撃者を記録する（しびれで腕が戻り、ガードが解ける。アックス）
-	/// @return かけられたら true
-	bool BreakGuard(int index, int attacker, float seconds);
+	/// @brief ガードを無視してしびれとダメージ%を与え、攻撃者を記録する（しびれで腕が戻り、ガードが解ける。アックス）
+	/// @return 与えられたら true
+	bool BreakGuard(int index, int attacker, float seconds, float damage);
 	/// @brief ほかの人からロックオンされない（隠れている）か取得する（無効な番号はfalse）
 	bool IsHidden(int index) const;
 	/// @brief 保持されていない体を指定速度で押し出し、攻撃者を記録する（%は変えない）
