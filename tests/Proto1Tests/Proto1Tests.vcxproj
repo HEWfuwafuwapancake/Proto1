@@ -100,12 +100,14 @@
     <ClCompile Include="drillcalc_test.cpp" />
     <ClCompile Include="magnetcalc_test.cpp" />
     <ClCompile Include="shieldcalc_test.cpp" />
+    <ClCompile Include="projectilecalc_test.cpp" />
     <ClCompile Include="warpcalc_test.cpp" />
     <ClCompile Include="bladecalc_test.cpp" />
     <ClCompile Include="knucklecalc_test.cpp" />
     <ClCompile Include="areacalc_test.cpp" />
     <ClCompile Include="armphasecalc_test.cpp" />
     <ClCompile Include="..\..\src\physics\shieldcalc.cpp" />
+    <ClCompile Include="..\..\src\physics\projectilecalc.cpp" />
     <ClCompile Include="..\..\src\physics\warpcalc.cpp" />
     <ClCompile Include="..\..\src\physics\bladecalc.cpp" />
     <ClCompile Include="..\..\src\physics\knucklecalc.cpp" />
