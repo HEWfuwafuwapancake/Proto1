@@ -25,6 +25,12 @@ struct KNOCKBACK_PARAMS
 /// @return 足したあとのダメージ%（上限はない）
 float KnockbackCalcAddDamage(float percent, float damage);
 
+/// @brief ダメージ%を減らす（リペア）
+/// @param percent 今のダメージ%
+/// @param amount 減らす量（負の値は 0 にする）
+/// @return 減らしたあとのダメージ%（0 より下にしない）
+float KnockbackCalcHeal(float percent, float amount);
+
 /// @brief 吹っ飛ぶ速さを求める
 /// @param percent ダメージ%（攻撃のダメージを足したあとの値）
 /// @param power 攻撃の強さ（1 でふつう。大きいほど速い）

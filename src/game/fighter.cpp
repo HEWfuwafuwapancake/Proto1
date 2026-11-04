@@ -239,6 +239,11 @@ void Fighter::AddDamage(float damage)
 	if (IsActive()) m_Percent = KnockbackCalcAddDamage(m_Percent, damage);
 }
 
+void Fighter::Heal(float amount)
+{
+	if (IsActive()) m_Percent = KnockbackCalcHeal(m_Percent, amount);
+}
+
 void Fighter::SetLaunchVelocity(const VEC3& velocity)
 {
 	m_Body.SetVelocity(velocity);
