@@ -162,6 +162,8 @@
     <ClCompile Include="src\game\arm_magnet.cpp" />
     <ClCompile Include="src\game\arm_shield.cpp" />
     <ClCompile Include="src\physics\shieldcalc.cpp" />
+    <ClCompile Include="src\physics\thundercalc.cpp" />
+    <ClCompile Include="src\game\arm_thunder.cpp" />
     <ClCompile Include="src\game\arm_freeze.cpp" />
     <ClCompile Include="src\game\arm_flame.cpp" />
     <ClCompile Include="src\physics\statuscalc.cpp" />
@@ -238,6 +240,8 @@
     <ClInclude Include="src\game\arm_magnet.h" />
     <ClInclude Include="src\game\arm_shield.h" />
     <ClInclude Include="src\physics\shieldcalc.h" />
+    <ClInclude Include="src\physics\thundercalc.h" />
+    <ClInclude Include="src\game\arm_thunder.h" />
     <ClInclude Include="src\game\arm_freeze.h" />
     <ClInclude Include="src\game\arm_flame.h" />
     <ClInclude Include="src\physics\statuscalc.h" />

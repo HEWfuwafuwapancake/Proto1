@@ -16,6 +16,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="shieldcalc_test.cpp" />
+    <ClCompile Include="thundercalc_test.cpp" />
     <ClCompile Include="statuscalc_test.cpp" />
     <ClCompile Include="rocketpunchcalc_test.cpp" />
     <ClCompile Include="projectilecalc_test.cpp" />
@@ -43,6 +44,9 @@
       <Filter>src\physics</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\physics\shieldcalc.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\physics\thundercalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\physics\statuscalc.cpp">
