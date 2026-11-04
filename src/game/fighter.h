@@ -35,6 +35,8 @@ public:
 	XMFLOAT3 GetPosition() const;
 	/// @brief 足元の位置を設定する（速度はそのまま）
 	void SetPosition(const XMFLOAT3& position);
+	/// @brief 足元の位置を置きかえ、水平の速さを 0 にする（ワープ。接地と上下の速さはそのまま）
+	void Teleport(const VEC3& position);
 	/// @brief 引っぱられ中を設定する（true：通常物理を止めて速度0・空中にする、false：通常物理に戻す）
 	void SetPulled(bool pulled);
 	/// @brief 体の高さを取得する
