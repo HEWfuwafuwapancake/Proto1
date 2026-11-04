@@ -272,6 +272,12 @@
     <ClCompile Include="src\physics\shieldcalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
+    <ClCompile Include="src\physics\knucklecalc.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\game\arm_knuckle.cpp">
+      <Filter>src\game</Filter>
+    </ClCompile>
     <ClCompile Include="src\physics\areacalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
@@ -328,6 +334,12 @@
     </ClInclude>
     <ClInclude Include="src\physics\shieldcalc.h">
       <Filter>src\physics</Filter>
+    </ClInclude>
+    <ClInclude Include="src\physics\knucklecalc.h">
+      <Filter>src\physics</Filter>
+    </ClInclude>
+    <ClInclude Include="src\game\arm_knuckle.h">
+      <Filter>src\game</Filter>
     </ClInclude>
     <ClInclude Include="src\physics\areacalc.h">
       <Filter>src\physics</Filter>

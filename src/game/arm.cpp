@@ -5,6 +5,7 @@
 #include "game/arm_drill.h"
 #include "game/arm_magnet.h"
 #include "game/arm_shield.h"
+#include "game/arm_knuckle.h"
 #include "game/tentacle.h"
 #include "input/pad.h"
 #include "game/camera.h"
@@ -51,7 +52,7 @@ static const ArmFactory ARM_FACTORIES[ARM_TYPE_COUNT] = {
 	CreateArm<MagnetArm>, // 磁石（No.38）
 	CreateArm<ShieldArm>, // デカ盾（No.39）
 	nullptr, // ハサミ（No.40）
-	nullptr, // ナックル（No.60）
+	CreateArm<KnuckleArm>, // ナックル（No.60）
 	nullptr, // ブレード（No.61）
 	nullptr, // スピア（No.62）
 	nullptr, // ハンマー（No.63）
