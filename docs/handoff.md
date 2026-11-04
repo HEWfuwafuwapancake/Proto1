@@ -27,6 +27,7 @@
   - No.69 リペア完了（修理中の緑の球を画面で確認。% が減るのは KnockbackCalcHeal のテストだけで確認。自分の % を上げる相手がいるときに LOCAL VS で確かめる）。
   - No.70 飛び道具の土台完了（ProjectileCalc・ProjectileCalcLobVelocity・ProjectileCalcMoveToward・Arm::Explode。テストあり、見た目は変わらない）。
   - No.71 ロケットパンチ完了（遠くのダミーに ＋9% と、拳が戻るのを画面で確認）。
+  - No.72 キャノン完了（遠くのダミーに爆発で ＋11% を画面で確認）。
 
 ## 2. 次にやること：tasks.md の「追加のアーム」で ⬜ のいちばん上の No. を実装する
 
