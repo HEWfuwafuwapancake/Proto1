@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -81,6 +81,8 @@
     <ClCompile Include="..\..\src\core\framestats.cpp" />
     <ClInclude Include="..\..\src\core\framestats.h" />
     <ClCompile Include="framestats_test.cpp" />
+    <ClCompile Include="..\..\src\core\letterboxcalc.cpp" />
+    <ClCompile Include="letterboxcalc_test.cpp" />
     <ClCompile Include="..\..\src\core\timer.cpp" />
     <ClCompile Include="..\..\src\input\actioncalc.cpp" />
     <ClCompile Include="..\..\src\net\lockstepcalc.cpp" />

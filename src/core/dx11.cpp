@@ -1,5 +1,7 @@
 ﻿
 #include "core/dx11.h"
+#include "core/letterboxcalc.h"
+#include <d3d11_1.h>
 
 //スタティックリンクライブラリのリンク
 #pragma comment (lib, "d3d11.lib")
@@ -10,6 +12,15 @@ static IDXGISwapChain* g_SwapChain = NULL;
 static ID3D11Texture2D* g_DepthStencilTexture = NULL;
 static ID3D11RenderTargetView* g_RenderTargetView = NULL;
 static ID3D11DepthStencilView* g_DepthStencilView = NULL;
+static ID3D11DeviceContext1* g_DeviceContext1 = NULL; // 黒い帯の内側だけを空の色で消す ClearView に使う
+
+// バックバッファはウィンドウと同じ大きさにし、ゲームの 1280×720 は比率を保って真ん中に描く（No.84）。
+static UINT g_BufferWidth = SCREEN_WIDTH;
+static UINT g_BufferHeight = SCREEN_HEIGHT;
+static LETTERBOX g_Letterbox = { 0.0f, 0.0f, 1.0f };
+static HWND g_PendingWindow = NULL; // 次のフレームで大きさを合わせるウィンドウ
+static UINT g_PendingWidth = 0; // 次のフレームで合わせる大きさ（0 なら変更なし）
+static UINT g_PendingHeight = 0;
 
 static ID3D11RasterizerState* g_RasterizerState = NULL;
 static ID3D11BlendState* g_BlendState = NULL;
@@ -22,13 +33,68 @@ static ID3D11DepthStencilState* g_DepthStencilStateDepthDisable = NULL;	// 2D用
 static constexpr bool VSYNC = true;
 
 
+// バックバッファのレンダーターゲットと深度バッファを作り、黒い帯の置き方を決め直す（大きさが 0 なら 1280×720）
+static bool CreateTargets(HWND hWnd, UINT width, UINT height)
+{
+	if (width == 0 || height == 0) {
+		width = SCREEN_WIDTH;
+		height = SCREEN_HEIGHT;
+	}
+	ID3D11Texture2D* backBuffer = NULL;
+	HRESULT hr = g_SwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&backBuffer);
+	if (SUCCEEDED(hr)) hr = g_Device->CreateRenderTargetView(backBuffer, NULL, &g_RenderTargetView);
+	SAFE_RELEASE(backBuffer);
+	if (FAILED(hr)) {
+		MessageBox(hWnd, "レンダーターゲットビューの作成に失敗しました", "エラー", MB_OK);
+		return false;
+	}
+
+	// デプスステンシル用テクスチャー作成（バックバッファと同じ大きさ）
+	D3D11_TEXTURE2D_DESC td = {};
+	td.Width = width;
+	td.Height = height;
+	td.MipLevels = 1;
+	td.ArraySize = 1;
+	td.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	td.SampleDesc.Count = 1;
+	td.Usage = D3D11_USAGE_DEFAULT;
+	td.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+	hr = g_Device->CreateTexture2D(&td, NULL, &g_DepthStencilTexture);
+	if (FAILED(hr)) {
+		MessageBox(hWnd, "デプスステンシル用テクスチャーの作成に失敗しました", "エラー", MB_OK);
+		return false;
+	}
+
+	// デプスステンシルターゲット作成
+	D3D11_DEPTH_STENCIL_VIEW_DESC dsvd = {};
+	dsvd.Format = td.Format;
+	dsvd.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+	hr = g_Device->CreateDepthStencilView(g_DepthStencilTexture, &dsvd, &g_DepthStencilView);
+	if (FAILED(hr)) {
+		MessageBox(hWnd, "デプスステンシルビューの作成に失敗しました", "エラー", MB_OK);
+		return false;
+	}
+
+	g_BufferWidth = width;
+	g_BufferHeight = height;
+	g_Letterbox = LetterboxCalc((float)width, (float)height, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT);
+	g_DeviceContext->OMSetRenderTargets(1, &g_RenderTargetView, g_DepthStencilView);
+	return true;
+}
+
+
 bool DirectXInitialize(HWND hWnd)
 {
 	// デバイス、スワップチェイン、コンテキスト生成
 	DXGI_SWAP_CHAIN_DESC sd = {};
 	sd.BufferCount = 1;
-	sd.BufferDesc.Width = SCREEN_WIDTH;
-	sd.BufferDesc.Height = SCREEN_HEIGHT;
+	// バックバッファは今のクライアント領域と同じ大きさ（あとは WM_SIZE の DirectXResize で合わせる）。
+	RECT client{};
+	GetClientRect(hWnd, &client);
+	const UINT clientWidth = client.right > client.left ? (UINT)(client.right - client.left) : SCREEN_WIDTH;
+	const UINT clientHeight = client.bottom > client.top ? (UINT)(client.bottom - client.top) : SCREEN_HEIGHT;
+	sd.BufferDesc.Width = clientWidth;
+	sd.BufferDesc.Height = clientHeight;
 	sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	sd.BufferDesc.RefreshRate.Numerator = 60;
 	sd.BufferDesc.RefreshRate.Denominator = 1;
@@ -88,58 +154,9 @@ bool DirectXInitialize(HWND hWnd)
 		return false;
 	}
 
-	// レンダーターゲットビュー生成
-	ID3D11Texture2D* backBuffer = NULL;
-	g_SwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&backBuffer);
-	hr = g_Device->CreateRenderTargetView(backBuffer, NULL, &g_RenderTargetView);
-	backBuffer->Release();
-	if (FAILED(hr)) {
-		MessageBox(hWnd, "レンダーターゲットビューの作成に失敗しました", "エラー", MB_OK);
-		return false;
-	}
-
-	// デプスステンシル用テクスチャー作成
-	D3D11_TEXTURE2D_DESC td = {};
-	td.Width = sd.BufferDesc.Width;
-	td.Height = sd.BufferDesc.Height;
-	td.MipLevels = 1;
-	td.ArraySize = 1;
-	td.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-	td.SampleDesc = sd.SampleDesc;
-	td.Usage = D3D11_USAGE_DEFAULT;
-	td.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-	td.CPUAccessFlags = 0;
-	td.MiscFlags = 0;
-	hr = g_Device->CreateTexture2D(&td, NULL, &g_DepthStencilTexture);
-	if (FAILED(hr)) {
-		MessageBox(hWnd, "デプスステンシル用テクスチャーの作成に失敗しました", "エラー", MB_OK);
-		return false;
-	}
-
-	// デプスステンシルターゲット作成
-	D3D11_DEPTH_STENCIL_VIEW_DESC dsvd = {};
-	dsvd.Format = td.Format;
-	dsvd.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
-	dsvd.Flags = 0;
-	hr = g_Device->CreateDepthStencilView(g_DepthStencilTexture,
-		&dsvd, &g_DepthStencilView);
-	if (FAILED(hr)) {
-		MessageBox(hWnd, "デプスステンシルビューの作成に失敗しました", "エラー", MB_OK);
-		return false;
-	}
-
-	// デバイスコンテキストへレンダーターゲットビューとデプスステンシルビューを設定
-	g_DeviceContext->OMSetRenderTargets(1, &g_RenderTargetView, g_DepthStencilView);
-
-	// ビューポート設定
-	D3D11_VIEWPORT vp;
-	vp.Width = (FLOAT)SCREEN_WIDTH;
-	vp.Height = (FLOAT)SCREEN_HEIGHT;
-	vp.MinDepth = 0.0f;
-	vp.MaxDepth = 1.0f;
-	vp.TopLeftX = 0;
-	vp.TopLeftY = 0;
-	g_DeviceContext->RSSetViewports(1, &vp);
+	g_DeviceContext->QueryInterface(__uuidof(ID3D11DeviceContext1), (void**)&g_DeviceContext1);
+	if (!CreateTargets(hWnd, clientWidth, clientHeight)) return false;
+	SetViewport(0.0f, 0.0f, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT);
 
 	// ラスタライザステートの作成
 	D3D11_RASTERIZER_DESC rd = {};
@@ -202,9 +219,42 @@ void DirectXFinalize(void)
 	SAFE_RELEASE(g_DepthStencilView);
 	SAFE_RELEASE(g_DepthStencilTexture);
 	SAFE_RELEASE(g_RenderTargetView);
+	SAFE_RELEASE(g_DeviceContext1);
 	SAFE_RELEASE(g_SwapChain);
 	SAFE_RELEASE(g_DeviceContext);
 	SAFE_RELEASE(g_Device);
+}
+
+void DirectXResize(HWND hWnd, UINT width, UINT height)
+{
+	// その場では作り直さず、次のフレームの描き始め（Clear）でまとめて行う。
+	if (width == 0 || height == 0) return;
+	g_PendingWindow = hWnd;
+	g_PendingWidth = width;
+	g_PendingHeight = height;
+}
+
+// 待っている大きさの変更があれば、バックバッファと深度バッファを作り直す（失敗したら次のフレームでもう一度）。
+static void ApplyPendingResize(void)
+{
+	if (g_SwapChain == NULL || g_PendingWidth == 0 || g_PendingHeight == 0) return;
+	if (g_PendingWidth == g_BufferWidth && g_PendingHeight == g_BufferHeight) {
+		g_PendingWidth = g_PendingHeight = 0;
+		return;
+	}
+	// バックバッファを持っているビューをすべて外して放し、GPU に残った命令を流してから作り直す。
+	g_DeviceContext->OMSetRenderTargets(0, NULL, NULL);
+	SAFE_RELEASE(g_DepthStencilView);
+	SAFE_RELEASE(g_DepthStencilTexture);
+	SAFE_RELEASE(g_RenderTargetView);
+	g_DeviceContext->Flush();
+	if (SUCCEEDED(g_SwapChain->ResizeBuffers(0, g_PendingWidth, g_PendingHeight, DXGI_FORMAT_UNKNOWN, 0))) {
+		CreateTargets(g_PendingWindow, g_PendingWidth, g_PendingHeight);
+		g_PendingWidth = g_PendingHeight = 0;
+	}
+	else {
+		CreateTargets(g_PendingWindow, g_BufferWidth, g_BufferHeight);
+	}
 }
 
 ID3D11Device* DirectXGetDevice(void)
@@ -229,12 +279,13 @@ void SetRenderTarget()
 void SetViewport(float x, float y, float width, float height)
 {
 	D3D11_VIEWPORT vp;
-	vp.Width = width;
-	vp.Height = height;
+	// ゲームの 1280×720 の座標を、黒い帯の内側のバックバッファの座標に直す。
+	vp.Width = width * g_Letterbox.Scale;
+	vp.Height = height * g_Letterbox.Scale;
 	vp.MinDepth = 0.0f;
 	vp.MaxDepth = 1.0f;
-	vp.TopLeftX = x;
-	vp.TopLeftY = y;
+	vp.TopLeftX = g_Letterbox.OffsetX + x * g_Letterbox.Scale;
+	vp.TopLeftY = g_Letterbox.OffsetY + y * g_Letterbox.Scale;
 	g_DeviceContext->RSSetViewports(1, &vp);
 }
 
@@ -257,8 +308,19 @@ void SetDepthEnable(bool enable)
 void Clear(void)
 {
 	// バックバッファクリア（空の色）
+	ApplyPendingResize();
+	// 全体を黒（帯）で消してから、ゲームの範囲だけを空の色で消す。
+	const float black[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
 	float clearColor[4] = { 0.4f, 0.6f, 0.9f, 1.0f };
-	g_DeviceContext->ClearRenderTargetView(g_RenderTargetView, clearColor);
+	if (g_DeviceContext1 != NULL) {
+		const D3D11_RECT game = { (LONG)g_Letterbox.OffsetX, (LONG)g_Letterbox.OffsetY,
+			(LONG)(g_Letterbox.OffsetX + SCREEN_WIDTH * g_Letterbox.Scale + 0.5f), (LONG)(g_Letterbox.OffsetY + SCREEN_HEIGHT * g_Letterbox.Scale + 0.5f) };
+		g_DeviceContext->ClearRenderTargetView(g_RenderTargetView, black);
+		g_DeviceContext1->ClearView(g_RenderTargetView, clearColor, &game, 1);
+	}
+	else {
+		g_DeviceContext->ClearRenderTargetView(g_RenderTargetView, clearColor);
+	}
 	g_DeviceContext->ClearDepthStencilView(g_DepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
 }
 

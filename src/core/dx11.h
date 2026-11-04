@@ -17,6 +17,13 @@ using namespace DirectX;
 /// @return 成功したら true（失敗したときはメッセージボックスを出す）
 bool DirectXInitialize(HWND hWnd);
 
+/// @brief ウィンドウの大きさが変わったことを知らせる（次のフレームの Clear でバックバッファと深度バッファを作り直し、黒い帯の置き方を決め直す）
+/// @details ゲームは 1280×720 の座標のまま描き、SetViewport が比率を保ってウィンドウの真ん中に置く（No.84）
+/// @param hWnd 描画するウィンドウ
+/// @param width 新しいクライアント領域の幅（0 なら何もしない。最小化）
+/// @param height 新しいクライアント領域の高さ（0 なら何もしない）
+void DirectXResize(HWND hWnd, UINT width, UINT height);
+
 /// @brief DirectX のオブジェクトをすべて解放する
 void DirectXFinalize(void);
 
@@ -35,7 +42,7 @@ void SetRenderTarget(void);
 /// @param enable 3D描画は true、2D（UI）描画は false
 void SetDepthEnable(bool enable);
 
-/// @brief 描く範囲（ビューポート）を設定する（ピクセル。左上が原点）
+/// @brief 描く範囲（ビューポート）を設定する（ゲームの 1280×720 の座標。左上が原点。黒い帯の内側へ自動で直す）
 /// @param x 左端
 /// @param y 上端
 /// @param width 幅
