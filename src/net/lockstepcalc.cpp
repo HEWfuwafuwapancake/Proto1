@@ -20,7 +20,7 @@ static bool ValidMask(uint8_t mask)
 static bool ValidInput(const PLAYER_INPUT& input)
 {
 	const bool noEquip = input.Equip.Hand == -1 && input.Equip.Number == -1;
-	const bool equip = input.Equip.Hand >= 0 && input.Equip.Hand < 2 && input.Equip.Number >= 0 && input.Equip.Number < 6;
+	const bool equip = input.Equip.Hand >= 0 && input.Equip.Hand < 2 && input.Equip.Number >= 0 && input.Equip.Number < ACTION_EQUIP_NUMBER_COUNT;
 	return (input.Buttons & ~BUTTON_MASK) == 0 && (noEquip || equip)
 		&& input.MoveX != INT16_MIN && input.MoveY != INT16_MIN && input.LookX != INT16_MIN && input.LookY != INT16_MIN;
 }

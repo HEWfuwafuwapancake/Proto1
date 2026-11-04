@@ -91,10 +91,15 @@ static void RefreshTitle(HWND hWnd)
 	const int mode = ActionGetEquipMode(net.IsOnline() ? ActionGetEquipPlayer() : equipPlayer);
 	const ArmManager& arms = g_Game.GetArms(equipPlayer);
 	const std::string progress = net.IsOnline() ? " 進行: " + std::to_string(g_Progress) + "/s" : "";
+	char modeText[96] = "";
+	if (mode >= 0) {
+		sprintf_s(modeText, "  [%s腕を切り替え中：%d段目 数字キー 1-9,0（Q / E で次の段）]",
+			ActionCalcEquipModeHand(mode) == 0 ? "左" : "右", ActionCalcEquipModePage(mode) + 1);
+	}
 	sprintf_s(title, "%s%s  FPS: %lu（最大 %.0fms・処理 %.1fms・カクつき %d）%s  %dP%s 左：%s 右：%s%s  振動: %s（SHARE / V） %s", TITLE, net.GetDesyncText().c_str(),
 		g_Fps, g_FrameStats.MaxIntervalMs, g_FrameStats.AverageWorkMs, g_FrameStats.HitchCount, progress.c_str(),
 		equipPlayer + 1, net.IsOnline() ? "" : "（F1-F4）", ArmGetName(arms.GetType(0)), ArmGetName(arms.GetType(1)),
-		mode == 0 ? "  [左腕を切り替え中：数字キー 1-6]" : (mode == 1 ? "  [右腕を切り替え中：数字キー 1-6]" : ""),
+		modeText,
 		PadIsRumbleEnabled() ? "オン" : "オフ", net.GetStatusText().c_str());
 	SetWindowText(hWnd, title);
 	DebugWindowSetText(title);

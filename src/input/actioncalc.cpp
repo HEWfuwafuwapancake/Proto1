@@ -78,10 +78,15 @@ ACTION_AXIS ActionCalcCombineAxis(ACTION_AXIS a, ACTION_AXIS b)
 
 ACTION_EQUIP_KEY ActionCalcEquipKey(int& mode, bool leftMode, bool rightMode, int number, bool shift)
 {
-	if (leftMode) mode = mode == 0 ? -1 : 0;
-	if (rightMode) mode = mode == 1 ? -1 : 1;
+	for (int hand = 0; hand < 2; ++hand) {
+		if (!(hand == 0 ? leftMode : rightMode)) continue;
+		// 同じ手のモード中なら次の段へ、最後の段の次で抜ける。別の手やモードなしからは1段目。
+		const int page = ActionCalcEquipModeHand(mode) == hand ? ActionCalcEquipModePage(mode) + 1 : 0;
+		mode = page < ACTION_EQUIP_PAGE_COUNT ? page * 2 + hand : -1;
+	}
 	if (number < 0) return { -1, -1 };
-	const int hand = mode >= 0 ? mode : (shift ? 1 : 0);
+	const int hand = mode >= 0 ? ActionCalcEquipModeHand(mode) : (shift ? 1 : 0);
+	const int page = mode >= 0 ? ActionCalcEquipModePage(mode) : 0;
 	mode = -1;
-	return { hand, number };
+	return { hand, page * ACTION_EQUIP_PAGE_SIZE + number };
 }

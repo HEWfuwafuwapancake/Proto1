@@ -9,15 +9,35 @@ class FighterManager;
 class Camera;
 class Stage;
 
-/// @brief 腕の種類（数字キー 1〜6 と同じ順）
+/// @brief 腕の種類（10個ずつが1段。段の中は数字キー 1〜9・0 と同じ順）
 enum ARM_TYPE
 {
-	ARM_TYPE_TENTACLE, ///< 触腕
-	ARM_TYPE_GRAPPLE, ///< グラップリング
-	ARM_TYPE_DRILL, ///< ドリル
-	ARM_TYPE_MAGNET, ///< 磁石
-	ARM_TYPE_SHIELD, ///< デカ盾
-	ARM_TYPE_HASAMI, ///< ハサミ
+	ARM_TYPE_TENTACLE, ///< 触腕（1段目 1）
+	ARM_TYPE_GRAPPLE, ///< グラップリング（1段目 2）
+	ARM_TYPE_DRILL, ///< ドリル（1段目 3）
+	ARM_TYPE_MAGNET, ///< 磁石（1段目 4）
+	ARM_TYPE_SHIELD, ///< デカ盾（1段目 5）
+	ARM_TYPE_HASAMI, ///< ハサミ（1段目 6）
+	ARM_TYPE_KNUCKLE, ///< ナックル（1段目 7）
+	ARM_TYPE_BLADE, ///< ブレード（1段目 8）
+	ARM_TYPE_SPEAR, ///< スピア（1段目 9）
+	ARM_TYPE_HAMMER, ///< ハンマー（1段目 0）
+	ARM_TYPE_WHIP, ///< ウィップ（2段目 1）
+	ARM_TYPE_LASER, ///< レーザー（2段目 2）
+	ARM_TYPE_SHOTGUN, ///< ショットガン（2段目 3）
+	ARM_TYPE_SNIPER, ///< スナイパー（2段目 4）
+	ARM_TYPE_WARP, ///< ワープ（2段目 5）
+	ARM_TYPE_REPAIR, ///< リペア（2段目 6）
+	ARM_TYPE_ROCKET, ///< ロケットパンチ（2段目 7）
+	ARM_TYPE_CANNON, ///< キャノン（2段目 8）
+	ARM_TYPE_GATLING, ///< ガトリング（2段目 9）
+	ARM_TYPE_MISSILE, ///< ミサイル（2段目 0）
+	ARM_TYPE_FLAME, ///< 火炎放射（3段目 1）
+	ARM_TYPE_FREEZE, ///< フリーズ（3段目 2）
+	ARM_TYPE_THUNDER, ///< サンダー（3段目 3）
+	ARM_TYPE_SMOKE, ///< スモーク（3段目 4）
+	ARM_TYPE_BARRIER, ///< バリア（3段目 5）
+	ARM_TYPE_AXE, ///< アックス（3段目 6）
 	ARM_TYPE_COUNT ///< 腕の種類の数（装備ではない）
 };
 
@@ -76,6 +96,19 @@ protected:
 	/// @brief キャラの向きについてくる、少し外へ開いた待機方向を取得する
 	/// @param pitchOffset 共通の上下角度への加算（ラジアン）
 	VEC3 GetRestDirection(float pitchOffset = 0.0f) const;
+	/// @brief キャラの向きの水平の単位方向を取得する
+	VEC3 GetForward() const;
+	/// @brief 肩からの狙いの単位方向を取得する（ロックオン中は相手の体の中心へ、いなければ画面の正面へ水平）
+	/// @param keepHeight 上下の扱いを設定する（true：相手への上下も含める、false：水平だけ）
+	VEC3 GetAim(bool keepHeight) const;
+	/// @brief ロックオン中の相手のスロット番号を取得する（なし・つかめない相手は -1）
+	int GetAimTarget() const;
+	/// @brief モデルのない腕の仮の形として、肩から円柱を描く
+	/// @param direction 腕の単位方向
+	/// @param length 腕の長さ
+	/// @param color 色（RGBA）
+	/// @return 手の位置（円柱の終わり）
+	VEC3 DrawStubArm(const VEC3& direction, float length, const XMFLOAT4& color) const;
 	/// @brief 色の選択を設定する（true：効いている色、false：左右の基本色）
 	/// @return 選んだ色（RGBA）
 	XMFLOAT4 GetColor(bool active) const;

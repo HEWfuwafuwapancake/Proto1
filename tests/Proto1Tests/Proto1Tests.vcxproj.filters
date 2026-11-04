@@ -16,6 +16,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="shieldcalc_test.cpp" />
+    <ClCompile Include="areacalc_test.cpp" />
+    <ClCompile Include="armphasecalc_test.cpp" />
     <ClCompile Include="framestats_test.cpp" />
     <ClCompile Include="..\..\src\core\framestats.cpp">
       <Filter>src\core</Filter>
@@ -35,6 +37,12 @@
       <Filter>src\physics</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\physics\shieldcalc.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\physics\areacalc.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\physics\armphasecalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
   </ItemGroup>

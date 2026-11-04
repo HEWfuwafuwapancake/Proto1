@@ -75,7 +75,8 @@ namespace Proto1Tests
 			for (int frame = 0; frame < 8; ++frame) {
 				for (int slot = 0; slot < FIGHTER_COUNT; ++slot) {
 					auto input = ActionCalcPlayerInput({ -0.6f, 0.8f }, { -0.02f, 0.04f }, 1u << ACTION_JUMP);
-					if (slot != 0) input.Equip = { slot % 2, frame % 6 };
+					// 3段目の腕（25 まで）の番号も送れる。
+					if (slot != 0) input.Equip = { slot % 2, (frame * 3 + slot) % ACTION_EQUIP_NUMBER_COUNT };
 					Assert::IsTrue(sender.StoreInput(frame, slot, input));
 				}
 			}

@@ -40,7 +40,7 @@ static constexpr int MOVE_KEY_BACK = 'S';
 static constexpr int MOVE_KEY_LEFT = 'A';
 static constexpr int MOVE_KEY_RIGHT = 'D';
 
-// 腕の切り替えモードのキー（押したあと数字キー 1〜6 で、その手の腕を選ぶ）
+// 腕の切り替えモードのキー（押す回数で段を選び、数字キー 1〜9・0 で、その手の腕を選ぶ）
 static constexpr int EQUIP_MODE_KEY_LEFT = 'Q';
 static constexpr int EQUIP_MODE_KEY_RIGHT = 'E';
 
@@ -171,9 +171,10 @@ static void UpdateEquipInput(void)
 	}
 	int pressed = -1;
 	bool equipShift = false;
-	for (int number = 0; number < 6; ++number) {
-		const int topKey = '1' + number;
-		const int padKey = VK_NUMPAD1 + number;
+	// 1〜9・0 のキーが段の中の番号 0〜9。
+	for (int number = 0; number < ACTION_EQUIP_PAGE_SIZE; ++number) {
+		const int topKey = number < 9 ? '1' + number : '0';
+		const int padKey = number < 9 ? VK_NUMPAD1 + number : VK_NUMPAD0;
 		const int key = KeyboardIsTrigger(topKey) ? topKey : padKey;
 		if (KeyboardIsTrigger(key)) {
 			pressed = number;

@@ -31,8 +31,24 @@ struct ACTION_AXIS
 struct ACTION_EQUIP_KEY
 {
 	int Hand; ///< 選ぶ手（左 0・右 1。入力なしは -1）
-	int Number; ///< 選ぶ腕の番号（0〜5。入力なしは -1）
+	int Number; ///< 選ぶ腕の番号（0〜ACTION_EQUIP_NUMBER_COUNT-1。入力なしは -1）
 };
+
+/// @brief 腕の選択の1段に並ぶ数（数字キー 1〜9・0）
+static constexpr int ACTION_EQUIP_PAGE_SIZE = 10;
+/// @brief 腕の選択の段の数（Q / E を押す回数で 1段目〜3段目）
+static constexpr int ACTION_EQUIP_PAGE_COUNT = 3;
+/// @brief 通信で送れる腕の番号の数（0〜29）
+static constexpr int ACTION_EQUIP_NUMBER_COUNT = ACTION_EQUIP_PAGE_SIZE * ACTION_EQUIP_PAGE_COUNT;
+
+/// @brief 選択モードの値から手を取得する
+/// @param mode 選択モード（モードなし -1、ほかは 段×2＋手）
+/// @return 左 0・右 1。モードなしは -1
+inline int ActionCalcEquipModeHand(int mode) { return mode < 0 ? -1 : mode % 2; }
+/// @brief 選択モードの値から段を取得する
+/// @param mode 選択モード（モードなし -1、ほかは 段×2＋手）
+/// @return 段（0〜ACTION_EQUIP_PAGE_COUNT-1）。モードなしは -1
+inline int ActionCalcEquipModePage(int mode) { return mode < 0 ? -1 : mode / 2; }
 
 /// @brief ローカルと通信で共用する1人・1フレーム分の入力（メモリーを直接送らず項目ごとに符号化する）
 struct PLAYER_INPUT
@@ -55,12 +71,13 @@ ACTION_AXIS ActionCalcPlayerLook(const PLAYER_INPUT& input);
 bool ActionCalcPlayerTrigger(const PLAYER_INPUT& current, const PLAYER_INPUT& previous, ACTION action);
 
 /// @brief 切り替えモードのキーと数字キーから、装備の直接選択を作る
-/// @details 左のモードキーで左手、右のモードキーで右手の選択モードに入る（同じキーをもう一度押すと抜ける。両方押したら右手）。
-///          モード中に数字キーを押すとその手を選んでモードを抜ける。モードでないときの数字キーは、Shift なしで左手・ありで右手
-/// @param mode 今の選択モード（左 0・右 1・モードなし -1）。このフレームの結果に書き換える
+/// @details 左のモードキーで左手、右のモードキーで右手の選択モードの1段目に入る。同じキーを押すたびに次の段へ進み、
+///          最後の段の次で抜ける（両方押したら右手）。モード中に数字キーを押すと、その手の「段×10＋数字」の腕を選んでモードを抜ける。
+///          モードでないときの数字キーは1段目で、Shift なしで左手・ありで右手
+/// @param mode 今の選択モード（モードなし -1、ほかは 段×2＋手）。このフレームの結果に書き換える
 /// @param leftMode 左手のモードキーを押した瞬間か（true：押した、false：押していない）
 /// @param rightMode 右手のモードキーを押した瞬間か（true：押した、false：押していない）
-/// @param number 押した瞬間の数字キーの腕の番号（0〜5。押していなければ -1）
+/// @param number 押した瞬間の数字キーの段の中の番号（1〜9・0 のキーが 0〜9。押していなければ -1）
 /// @param shift Shift を押しているか（true：押している、false：押していない）
 /// @return 選んだ手と腕の番号。数字キーを押していなければ両方 -1
 ACTION_EQUIP_KEY ActionCalcEquipKey(int& mode, bool leftMode, bool rightMode, int number, bool shift);
