@@ -140,6 +140,12 @@ void ArmManager::Reset(void)
 	for (int hand = 0; hand < 2; ++hand) m_Arms[hand][m_Types[hand]]->Reset();
 }
 
+void ArmManager::ResetEquip(void)
+{
+	for (int hand = 0; hand < 2; ++hand) ChangeType(hand, ARM_TYPE_TENTACLE);
+	m_SelectedHand = 0;
+}
+
 void ArmManager::Update(bool playing)
 {
 	bool available[ARM_TYPE_COUNT];

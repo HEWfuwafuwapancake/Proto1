@@ -145,6 +145,8 @@ public:
 	void Finalize(void);
 	/// @brief 左右の腕を待機に戻す（装備はそのまま。時間切れ・やり直し用）
 	void Reset(void);
+	/// @brief 両手を触腕に戻し、十字キーの手の選択も左手に戻す（オンラインを始めるとき。相手と装備をそろえる）
+	void ResetEquip(void);
 	/// @brief 装備を切り替え、試合中だけ左手・右手の順に更新する（カメラとキャラの向きの更新後）
 	/// @param playing 腕の更新を設定する（true：試合中として更新、false：装備切り替えだけ）
 	void Update(bool playing);
