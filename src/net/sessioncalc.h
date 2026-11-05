@@ -10,7 +10,7 @@ static constexpr int LOCKSTEP_AUTO_DELAY = -1;
 /// @brief 自動の入力の遅れで、ping の分に足す余裕（フレーム。通信のゆれの分）
 static constexpr int AUTO_DELAY_MARGIN = 2;
 /// @brief 自動の入力の遅れの下限（フレーム）
-static constexpr int AUTO_DELAY_MIN = 3;
+static constexpr int AUTO_DELAY_MIN = 4;
 /// @brief 自動の入力の遅れの上限（フレーム）
 static constexpr int AUTO_DELAY_MAX = 20;
 /// @brief 自動の入力の遅れに使う ping の期間（ミリ秒。この間の AUTO_DELAY_PING_PERCENTILE の値を使う）

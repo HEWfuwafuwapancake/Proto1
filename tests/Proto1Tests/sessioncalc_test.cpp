@@ -516,8 +516,8 @@ namespace Proto1Tests
 
 		TEST_METHOD(AutoDelay_HostUsesPingOfLastTwoSecondsAtRoundStart)
 		{
-			Assert::AreEqual(3, SessionCalcAutoDelay(-1));
-			Assert::AreEqual(3, SessionCalcAutoDelay(5));
+			Assert::AreEqual(4, SessionCalcAutoDelay(-1));
+			Assert::AreEqual(4, SessionCalcAutoDelay(5));
 			Assert::AreEqual(6, SessionCalcAutoDelay(60));
 			Assert::AreEqual(8, SessionCalcAutoDelay(100));
 			Assert::AreEqual(AUTO_DELAY_MAX, SessionCalcAutoDelay(1000));
