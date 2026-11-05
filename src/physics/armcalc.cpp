@@ -6,6 +6,19 @@ int ArmCalcSelect(int number, const bool* available, int count)
 	return available[number] ? number : -1;
 }
 
+int ArmCalcCycle(int current, int direction, const bool* available, int count)
+{
+	if (available == nullptr || current < 0 || current >= count || (direction != 1 && direction != -1)) return -1;
+	int next = current;
+	for (int i = 0; i < count; ++i) {
+		next += direction;
+		if (next == count) next = 0;
+		if (next < 0) next = count - 1;
+		if (available[next]) return next;
+	}
+	return -1;
+}
+
 VEC3 ArmCalcShoulder(const VEC3& position, float yaw, int hand, float sideOffset, float height, float forwardOffset)
 {
 	const float side = (hand == 0 ? -1.0f : 1.0f) * sideOffset;

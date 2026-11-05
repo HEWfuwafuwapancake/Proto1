@@ -144,6 +144,8 @@
     <ClCompile Include="..\..\src\physics\tentaclecalc.cpp" />
     <ClCompile Include="..\..\src\render\glyphcalc.cpp" />
     <ClCompile Include="glyphcalc_test.cpp" />
+    <ClCompile Include="..\..\src\render\cubeflipcalc.cpp" />
+    <ClCompile Include="cubeflipcalc_test.cpp" />
     <ClCompile Include="objcalc_test.cpp" />
     <ClCompile Include="..\..\src\render\objcalc.cpp" />
   </ItemGroup>
@@ -159,5 +161,8 @@
     <ClCompile Include="versuscalc_test.cpp" />
     <ClCompile Include="..\..\src\physics\versuscalc.cpp" />
     <ClInclude Include="..\..\src\physics\versuscalc.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\src\render\cubeflipcalc.h" />
   </ItemGroup>
 </Project>

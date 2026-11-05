@@ -9,6 +9,17 @@ namespace Proto1Tests
 	TEST_CLASS(ArmCalcTest)
 	{
 	public:
+		TEST_METHOD(Cycle_MovesBothWaysSkipsUnavailableAndWraps)
+		{
+			const bool available[] = { true, true, false, true };
+			Assert::AreEqual(1, ArmCalcCycle(0, 1, available, 4));
+			Assert::AreEqual(0, ArmCalcCycle(1, -1, available, 4));
+			Assert::AreEqual(3, ArmCalcCycle(1, 1, available, 4));
+			Assert::AreEqual(1, ArmCalcCycle(3, -1, available, 4));
+			Assert::AreEqual(0, ArmCalcCycle(3, 1, available, 4));
+			Assert::AreEqual(3, ArmCalcCycle(0, -1, available, 4));
+		}
+
 		TEST_METHOD(Shoulder_BothHandsAreBehindAndSymmetricAtSameHeight)
 		{
 			const VEC3 position{ 3, 4, 5 };

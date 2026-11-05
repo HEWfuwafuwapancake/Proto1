@@ -10,11 +10,21 @@
     <Filter Include="src\core">
       <UniqueIdentifier>{1BAC275A-DF2C-5754-BF8A-C37F87AA3AE4}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\render">
+      <UniqueIdentifier>{DB287C37-CB4C-4F18-884C-0A747D1A1C24}</UniqueIdentifier>
+    </Filter>
     <Filter Include="src\net">
       <UniqueIdentifier>{92FE875A-7C6C-42F1-A966-5F118976C7B2}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="cubeflipcalc_test.cpp" />
+    <ClCompile Include="..\..\src\render\cubeflipcalc.cpp">
+      <Filter>src\render</Filter>
+    </ClCompile>
+    <ClInclude Include="..\..\src\render\cubeflipcalc.h">
+      <Filter>src\render</Filter>
+    </ClInclude>
     <ClCompile Include="shieldcalc_test.cpp" />
     <ClCompile Include="guardcalc_test.cpp" />
     <ClCompile Include="thundercalc_test.cpp" />

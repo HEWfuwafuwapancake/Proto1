@@ -3,6 +3,7 @@
 #include "input/action.h"
 #include "input/pad.h"
 #include "render/number2d.h"
+#include "render/text2d.h"
 #include <cmath>
 
 #ifdef _DEBUG
@@ -34,7 +35,7 @@ bool Game::Initialize(const NET_OPTIONS& options)
 	}
 	m_Match.Initialize(m_Fighters, m_Arms);
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
-		m_Huds[i].Initialize(m_Cameras[i], m_Fighters, i, m_Match, m_Scene);
+		m_Huds[i].Initialize(m_Cameras[i], m_Fighters, i, m_Match, m_Scene, m_Arms[i]);
 	}
 	ConfigurePlayers();
 	const bool connected = m_Net.Initialize(options);
@@ -50,7 +51,7 @@ bool Game::Initialize(const NET_OPTIONS& options)
 void Game::Finalize()
 {
 	m_Net.Finalize();
-	for (int i = 0; i < FIGHTER_COUNT; ++i) m_Huds[i].Finalize();
+	Text2DFinalize();
 	m_Match.Finalize();
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		m_Arms[i].Finalize();

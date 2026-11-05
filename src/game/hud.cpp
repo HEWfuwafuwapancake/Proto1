@@ -1,5 +1,6 @@
 ﻿#include "game/hud.h"
 #include "core/dx11.h"
+#include "core/gametime.h"
 #include "core/shader.h"
 #include "game/camera.h"
 #include "game/fightermanager.h"
@@ -7,7 +8,9 @@
 #include "game/netsession.h"
 #include "input/action.h"
 #include "physics/scenecalc.h"
+#include "render/cubeflipcalc.h"
 #include "render/number2d.h"
+#include "render/text2d.h"
 #include <cmath>
 
 
@@ -25,12 +28,21 @@ static constexpr float SCORE_X = 30.0f;				// 左上のスコアの左端
 static constexpr float SCORE_Y = 56.0f;				// KOの文字の下に置く
 static constexpr float HUD_LABEL_Y = 20.0f;
 static constexpr float SELF_PERCENT_WIDTH = 22.0f;
-static constexpr float SELF_PERCENT_BOTTOM = 80.0f;
+static constexpr float SELF_PERCENT_BOTTOM = 130.0f;
 static constexpr float SELF_PERCENT_X = 110.0f;
 static constexpr float SELF_TAG_RIGHT = 75.0f;
 static constexpr float PLAYER_TAG_WIDTH = 14.0f;
 static constexpr float PLAYER_TAG_GAP = 4.0f;
 static constexpr float PLAYER_TAG_LINE = 34.0f;
+static constexpr float ARM_LABEL_MARGIN = 30.0f;
+static constexpr float ARM_LABEL_WIDTH = 290.0f;
+static constexpr float ARM_LABEL_HEIGHT = 38.0f;
+static constexpr float ARM_LABEL_PADDING = 12.0f;
+static constexpr float ARM_LABEL_BORDER = 2.0f;
+static constexpr float ARM_HAND_DOT = 4.0f;
+static constexpr float ARM_NAME_OFFSET = 46.0f;
+static constexpr float ARM_FLIP_SECONDS = 0.2f;
+static constexpr float ARM_EDGE_BRIGHTNESS = 0.65f;
 
 static constexpr float PERCENT_DIGIT_WIDTH = 14.0f;	// 頭の上の % の桁の幅
 static constexpr float PERCENT_HEAD_OFFSET = 0.4f;	// 頭のてっぺんから、% を出す点までの高さ（ワールド）
@@ -52,6 +64,9 @@ static constexpr float TITLE_DEVICE_X = 540.0f;
 static constexpr float TITLE_DEVICE_NUMBER_X = 640.0f;
 static constexpr float TITLE_JOIN_Y = 420.0f;
 static constexpr float TITLE_START_Y = 465.0f;
+static constexpr float TITLE_EQUIP_Y = 500.0f;
+static constexpr float MODE_EQUIP_Y = 548.0f;
+static constexpr char TITLE_EQUIP_HELP[] = "EQUIP  DPAD LEFT RIGHT HAND / UP DOWN ARM";
 static constexpr float TITLE_MOVE_Y = 540.0f;
 static constexpr float TITLE_ARMS_Y = 580.0f;
 static constexpr float TITLE_JUMP_Y = 620.0f;
@@ -164,17 +179,55 @@ void Hud::DrawFighterPercent(int index) const
 
 void Hud::Reset(void)
 {
-
-}
-
-void Hud::Finalize(void)
-{
-
+	for (int hand = 0; hand < 2; ++hand) {
+		const ARM_TYPE type = m_Arms->GetType(hand);
+		m_ArmFlips[hand] = { type, type, ARM_FLIP_SECONDS, 1 };
+	}
 }
 
 void Hud::Update(void)
 {
+	const float dt = GameTimeGetDeltaTime();
+	for (int hand = 0; hand < 2; ++hand) {
+		ARM_FLIP& flip = m_ArmFlips[hand];
+		const ARM_TYPE type = m_Arms->GetType(hand);
+		if (type != flip.Current) {
+			// 途中でも、最後に装備していた腕から次の回転を始める。
+			flip = { flip.Current, type, 0.0f, m_Arms->GetChangeDirection(hand) };
+		}
+		else {
+			flip.Elapsed = fminf(ARM_FLIP_SECONDS, flip.Elapsed + dt);
+		}
+	}
+}
 
+void Hud::DrawArmName(int hand) const
+{
+	const bool selected = m_Arms->GetSelectedHand() == hand;
+	const float x = hand == 0 ? ARM_LABEL_MARGIN : m_Width - ARM_LABEL_MARGIN - ARM_LABEL_WIDTH;
+	const float y = m_Height - ARM_LABEL_MARGIN - ARM_LABEL_PADDING - ARM_LABEL_HEIGHT;
+	const XMFLOAT4 color = selected ? MENU_SELECTED_COLOR : TEXT_COLOR;
+	if (selected) {
+		const float top = y - ARM_LABEL_PADDING;
+		const float height = ARM_LABEL_HEIGHT + ARM_LABEL_PADDING * 2.0f;
+		Number2DDrawBox({ x, top, ARM_LABEL_WIDTH, ARM_LABEL_BORDER }, MENU_HOVER_COLOR);
+		Number2DDrawBox({ x, top + height - ARM_LABEL_BORDER, ARM_LABEL_WIDTH, ARM_LABEL_BORDER }, MENU_HOVER_COLOR);
+		Number2DDrawBox({ x, top + ARM_LABEL_BORDER, ARM_LABEL_BORDER, height - ARM_LABEL_BORDER * 2.0f }, MENU_HOVER_COLOR);
+		Number2DDrawBox({ x + ARM_LABEL_WIDTH - ARM_LABEL_BORDER, top + ARM_LABEL_BORDER,
+			ARM_LABEL_BORDER, height - ARM_LABEL_BORDER * 2.0f }, MENU_HOVER_COLOR);
+	}
+
+	Number2DDrawText(hand == 0 ? "L" : "R", x + ARM_LABEL_PADDING, y + (ARM_LABEL_HEIGHT - ARM_HAND_DOT * 7.0f) * 0.5f,
+		ARM_HAND_DOT, GLYPH_ALIGN_LEFT, color);
+	const ARM_FLIP& flip = m_ArmFlips[hand];
+	const CUBE_FLIP faces = CubeFlipCalc(flip.Elapsed / ARM_FLIP_SECONDS, ARM_LABEL_HEIGHT, flip.Direction);
+	const auto drawFace = [&](ARM_TYPE type, const CUBE_FLIP_FACE& face) {
+		const float brightness = ARM_EDGE_BRIGHTNESS + (1.0f - ARM_EDGE_BRIGHTNESS) * face.Facing;
+		Text2DDraw(m_ArmNames[type], x + ARM_NAME_OFFSET, y + face.Y, face.Height, GLYPH_ALIGN_LEFT,
+			{ color.x * brightness, color.y * brightness, color.z * brightness, color.w }, ARM_LABEL_HEIGHT);
+	};
+	drawFace(flip.Previous, faces.Previous);
+	drawFace(flip.Current, faces.Next);
 }
 
 void Hud::DrawMenuItem(const char* text, float y, bool selected) const
@@ -221,6 +274,7 @@ void Hud::DrawScene(const VersusCalc& participants, const NetSession& net, const
 				DrawMenuItem(items[item], MODE_FIRST_Y + item * MODE_LINE, m_Scene->GetCursor() == item);
 			}
 			// 下の「BACK」と重ならないよう、タイトルの説明と同じ高さに置く。
+			Number2DDrawText(TITLE_EQUIP_HELP, centerX, MODE_EQUIP_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
 			Number2DDrawText("SELECT  UP DOWN / W S / DPAD", centerX, TITLE_ARMS_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
 			Number2DDrawText("OK  O / ENTER", centerX, TITLE_JUMP_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
 		}
@@ -285,6 +339,7 @@ void Hud::DrawScene(const VersusCalc& participants, const NetSession& net, const
 		if (participants.GetHumanCount() > 0) {
 			Number2DDrawText("1P START  O / ENTER", centerX, TITLE_START_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
 		}
+		Number2DDrawText(TITLE_EQUIP_HELP, centerX, TITLE_EQUIP_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
 		Number2DDrawText("MOVE  WASD / L STICK", centerX, TITLE_MOVE_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
 		Number2DDrawText("ARMS  L1 R1 / CLICK", centerX, TITLE_ARMS_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
 		Number2DDrawText("JUMP  SPACE / X", centerX, TITLE_JUMP_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
@@ -339,17 +394,24 @@ void Hud::Draw(void) const
 	DrawPercent(m_Fighters->GetPercent(m_Slot), SELF_PERCENT_X, m_Height - SELF_PERCENT_BOTTOM,
 		SELF_PERCENT_WIDTH, Fighter::GetPlayerColor(m_Slot));
 
+	DrawArmName(0);
+	DrawArmName(1);
+
 	// 残り秒数（時間切れでも 0 のまま、おおいの上に出す）
 	Number2DDrawNumber(m_Match->GetRemainingSeconds(), 1, centerX, SECONDS_Y, SECONDS_DIGIT_WIDTH, GLYPH_ALIGN_CENTER, TEXT_COLOR);
 	Shader_Set2DSize((float)SCREEN_WIDTH, (float)SCREEN_HEIGHT);
 }
 
-void Hud::Initialize(const Camera& camera, const FighterManager& fighters, int slot, const Match& match, const SceneCalc& scene)
+void Hud::Initialize(const Camera& camera, const FighterManager& fighters, int slot, const Match& match, const SceneCalc& scene, const ArmManager& arms)
 {
 	m_Camera = &camera;
 	m_Fighters = &fighters;
 	m_Slot = slot;
 	m_Match = &match;
 	m_Scene = &scene;
+	m_Arms = &arms;
+	for (int type = 0; type < ARM_TYPE_COUNT; ++type) {
+		m_ArmNames[type] = Text2DCreate(ArmGetName(static_cast<ARM_TYPE>(type)));
+	}
 	Reset();
 }

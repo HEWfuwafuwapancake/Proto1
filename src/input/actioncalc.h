@@ -13,6 +13,10 @@ enum ACTION
 	ACTION_DECIDE, ///< 決定
 	ACTION_TARGET_LEFT, ///< 左の敵への切り替え（1フレームのイベント）
 	ACTION_TARGET_RIGHT, ///< 右の敵への切り替え（1フレームのイベント）
+	ACTION_EQUIP_HAND_LEFT, ///< 装備を切り替える手に左手を選ぶ
+	ACTION_EQUIP_HAND_RIGHT, ///< 装備を切り替える手に右手を選ぶ
+	ACTION_EQUIP_NEXT, ///< 選んだ手を次の腕に切り替える
+	ACTION_EQUIP_PREV, ///< 選んだ手を前の腕に切り替える
 	ACTION_COUNT ///< 行動の数
 };
 

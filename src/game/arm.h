@@ -163,13 +163,20 @@ public:
 	/// @return 装備している種類。手が範囲外なら ARM_TYPE_COUNT
 	ARM_TYPE GetType(int hand) const;
 
+	/// @brief 十字キーで選んでいる手を取得する（左 0・右 1）
+	int GetSelectedHand() const { return m_SelectedHand; }
+	/// @brief 片手の最後の装備変更の向きを取得する（左 0・右 1、次・直接選択 +1、前 -1）
+	int GetChangeDirection(int hand) const;
+
 private:
-	void ChangeType(int hand, int next);
+	void ChangeType(int hand, int next, int direction = 1);
 	ARM_LINKS m_Links = {};
+	int m_SelectedHand = 0;
+	int m_ChangeDirections[2] = { 1, 1 };
 	ARM_TYPE m_Types[2] = { ARM_TYPE_TENTACLE, ARM_TYPE_TENTACLE };
 	// 左右それぞれ全種類を起動時に作る。装備切り替えでは作り直さない。
 	std::unique_ptr<Arm> m_Arms[2][ARM_TYPE_COUNT];
 };
 
-/// @brief タイトルバー用の日本語名を取得する（範囲外は「不明」）
+/// @brief 腕の日本語名を取得する（範囲外は「不明」）
 const char* ArmGetName(ARM_TYPE type);

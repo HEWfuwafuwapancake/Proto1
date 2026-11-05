@@ -146,6 +146,8 @@
     <ClCompile Include="src\input\padcalc.cpp" />
     <ClCompile Include="src\render\glyphcalc.cpp" />
     <ClCompile Include="src\render\number2d.cpp" />
+    <ClCompile Include="src\render\text2d.cpp" />
+    <ClCompile Include="src\render\cubeflipcalc.cpp" />
     <ClCompile Include="src\game\hud.cpp" />
     <ClCompile Include="src\core\shader.cpp" />
     <ClCompile Include="src\game\stage.cpp" />
@@ -229,6 +231,8 @@
     <ClInclude Include="src\input\padcalc.h" />
     <ClInclude Include="src\render\glyphcalc.h" />
     <ClInclude Include="src\render\number2d.h" />
+    <ClInclude Include="src\render\text2d.h" />
+    <ClInclude Include="src\render\cubeflipcalc.h" />
     <ClInclude Include="src\game\hud.h" />
     <ClInclude Include="src\core\shader.h" />
     <ClInclude Include="src\game\stage.h" />
