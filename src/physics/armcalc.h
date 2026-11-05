@@ -12,6 +12,14 @@
 /// @return 使えるなら number。使えない腕・範囲外・不正な引数は -1
 int ArmCalcSelect(int number, const bool* available, int count);
 
+/// @brief 並びを一周しながら、指定方向で次に使える腕を探す
+/// @param current 今の腕の番号
+/// @param direction 次へ +1・前へ -1
+/// @param available 腕ごとの使用可否（true：使える、false：使えない）の並び
+/// @param count 腕の数
+/// @return 次に使える腕の番号。使える腕がないか引数が不正なら -1
+int ArmCalcCycle(int current, int direction, const bool* available, int count);
+
 /// @brief キャラの足元と水平の向きから、全種類に共通の肩の位置を求める
 /// @param position キャラの足元のワールド座標
 /// @param yaw キャラの水平の向き（ラジアン。0 は +Z）

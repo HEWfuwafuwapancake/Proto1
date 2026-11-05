@@ -145,6 +145,8 @@ public:
 	void Finalize(void);
 	/// @brief 左右の腕を待機に戻す（装備はそのまま。時間切れ・やり直し用）
 	void Reset(void);
+	/// @brief 両手を触腕に戻し、十字キーの手の選択も左手に戻す（オンラインを始めるとき。相手と装備をそろえる）
+	void ResetEquip(void);
 	/// @brief 装備を切り替え、試合中だけ左手・右手の順に更新する（カメラとキャラの向きの更新後）
 	/// @param playing 腕の更新を設定する（true：試合中として更新、false：装備切り替えだけ）
 	void Update(bool playing);
@@ -163,13 +165,20 @@ public:
 	/// @return 装備している種類。手が範囲外なら ARM_TYPE_COUNT
 	ARM_TYPE GetType(int hand) const;
 
+	/// @brief 十字キーで選んでいる手を取得する（左 0・右 1）
+	int GetSelectedHand() const { return m_SelectedHand; }
+	/// @brief 片手の最後の装備変更の向きを取得する（左 0・右 1、次・直接選択 +1、前 -1）
+	int GetChangeDirection(int hand) const;
+
 private:
-	void ChangeType(int hand, int next);
+	void ChangeType(int hand, int next, int direction = 1);
 	ARM_LINKS m_Links = {};
+	int m_SelectedHand = 0;
+	int m_ChangeDirections[2] = { 1, 1 };
 	ARM_TYPE m_Types[2] = { ARM_TYPE_TENTACLE, ARM_TYPE_TENTACLE };
 	// 左右それぞれ全種類を起動時に作る。装備切り替えでは作り直さない。
 	std::unique_ptr<Arm> m_Arms[2][ARM_TYPE_COUNT];
 };
 
-/// @brief タイトルバー用の日本語名を取得する（範囲外は「不明」）
+/// @brief 腕の日本語名を取得する（範囲外は「不明」）
 const char* ArmGetName(ARM_TYPE type);

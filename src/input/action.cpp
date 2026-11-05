@@ -25,13 +25,19 @@ static constexpr int ACTION_KEYS[ACTION_COUNT] = {
 };
 
 // 行動ごとのパッドのボタン（ACTION の並びと同じ順番。企画書の「5. 操作方法」のとおり）
-static constexpr PAD_BUTTON ACTION_PAD_BUTTONS[ACTION_TARGET_LEFT] = {
+static constexpr PAD_BUTTON ACTION_PAD_BUTTONS[ACTION_COUNT] = {
 	PAD_BUTTON_CROSS,	// ACTION_JUMP（×）
 	PAD_BUTTON_L1,		// ACTION_ARM_LEFT（L1）
 	PAD_BUTTON_R1,		// ACTION_ARM_RIGHT（R1）
 	PAD_BUTTON_OPTIONS,	// ACTION_RESTART（OPTIONS）
 	PAD_BUTTON_SHARE,	// ACTION_RUMBLE_TOGGLE（SHARE）
 	PAD_BUTTON_CIRCLE,	// ACTION_DECIDE（○）
+	{},					// ACTION_TARGET_LEFT（右スティックで別に処理）
+	{},					// ACTION_TARGET_RIGHT（同上）
+	PAD_BUTTON_DPAD_LEFT,	// ACTION_EQUIP_HAND_LEFT（←）
+	PAD_BUTTON_DPAD_RIGHT,	// ACTION_EQUIP_HAND_RIGHT（→）
+	PAD_BUTTON_DPAD_DOWN,	// ACTION_EQUIP_NEXT（↓）
+	PAD_BUTTON_DPAD_UP,		// ACTION_EQUIP_PREV（↑）
 };
 
 // 移動のキー
@@ -150,9 +156,11 @@ static void UpdatePadInput(int device, float dt)
 		PAD_BUTTON_DPAD_LEFT, PAD_BUTTON_DPAD_RIGHT }) {
 		if (PadIsPress(device, button)) state.MenuButtons |= button;
 	}
-	for (int i = 0; i < ACTION_TARGET_LEFT; ++i) {
+	for (int i = 0; i < ACTION_COUNT; ++i) {
+		const PAD_BUTTON button = ACTION_PAD_BUTTONS[i];
+		if (button == 0) continue;
 		state.OldPress[i] = state.Press[i];
-		state.Press[i] = PadIsPress(device, ACTION_PAD_BUTTONS[i]);
+		state.Press[i] = PadIsPress(device, button);
 	}
 	state.Move = PadGetLeftStick(device);
 	const ACTION_AXIS stick = PadGetRightStick(device);
@@ -220,7 +228,8 @@ void ActionUpdate(void)
 
 	const ACTION_STATE& pad = g_Devices[0];
 	const ACTION_STATE& keyboard = g_Devices[ACTION_DEVICE_KEYBOARD];
-	for (int i = 0; i < ACTION_TARGET_LEFT; ++i) {
+	for (int i = 0; i < ACTION_COUNT; ++i) {
+		if (i == ACTION_TARGET_LEFT || i == ACTION_TARGET_RIGHT) continue;
 		// 既存の1人プレイでは、まとめた後に押下・解放の変化を判定する。
 		g_SinglePlayer.OldPress[i] = g_SinglePlayer.Press[i];
 		g_SinglePlayer.Press[i] = pad.Press[i] || keyboard.Press[i];

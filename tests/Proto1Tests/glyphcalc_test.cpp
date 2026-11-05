@@ -96,6 +96,7 @@ namespace Proto1Tests
 			Assert::AreEqual(0x17, (int)GlyphCalcLetterRow('G', 3));
 			Assert::AreEqual(0x1F, (int)GlyphCalcLetterRow('H', 3));
 			Assert::AreEqual(0x10, (int)GlyphCalcLetterRow('F', 6)); // IP 入力の「LEFT」
+			Assert::AreEqual(0x15, (int)GlyphCalcLetterRow('Q', 4)); // 操作説明の「EQUIP」
 			const unsigned char firstRows[10] = { 0x0E, 0x04, 0x0E, 0x1E, 0x02, 0x1F, 0x0E, 0x1F, 0x0E, 0x0E };
 			for (int digit = 0; digit < 10; ++digit) {
 				Assert::AreEqual((int)firstRows[digit], (int)GlyphCalcLetterRow(static_cast<char>('0' + digit), 0));

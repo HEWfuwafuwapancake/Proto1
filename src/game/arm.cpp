@@ -100,11 +100,12 @@ static const char* const ARM_NAMES[ARM_TYPE_COUNT] = {
 	"火炎放射", "フリーズ", "サンダー", "スモーク", "バリア", "アックス"
 };
 
-void ArmManager::ChangeType(int hand, int next)
+void ArmManager::ChangeType(int hand, int next, int direction)
 {
 	if (next < 0 || next >= ARM_TYPE_COUNT || ARM_FACTORIES[next] == nullptr || next == m_Types[hand]) return;
 	m_Arms[hand][m_Types[hand]]->Reset();
 	m_Types[hand] = (ARM_TYPE)next;
+	m_ChangeDirections[hand] = direction;
 #ifdef _DEBUG
 	hal::dout << "腕：" << (hand == 0 ? "左" : "右") << " → " << ArmGetName(m_Types[hand]) << std::endl;
 #endif
@@ -114,6 +115,8 @@ void ArmManager::Initialize(const Stage& stage, FighterManager& fighters, int sl
 {
 	m_Links = { &fighters, slot, &camera, &stage };
 	m_Types[0] = m_Types[1] = ARM_TYPE_TENTACLE;
+	m_SelectedHand = 0;
+	m_ChangeDirections[0] = m_ChangeDirections[1] = 1;
 	for (int type = 0; type < ARM_TYPE_COUNT; ++type) {
 		if (ARM_FACTORIES[type] == nullptr) continue;
 		for (int hand = 0; hand < 2; ++hand) m_Arms[hand][type] = ARM_FACTORIES[type](hand, m_Links);
@@ -137,16 +140,29 @@ void ArmManager::Reset(void)
 	for (int hand = 0; hand < 2; ++hand) m_Arms[hand][m_Types[hand]]->Reset();
 }
 
+void ArmManager::ResetEquip(void)
+{
+	for (int hand = 0; hand < 2; ++hand) ChangeType(hand, ARM_TYPE_TENTACLE);
+	m_SelectedHand = 0;
+}
+
 void ArmManager::Update(bool playing)
 {
 	bool available[ARM_TYPE_COUNT];
 	for (int type = 0; type < ARM_TYPE_COUNT; ++type) available[type] = ARM_FACTORIES[type] != nullptr;
-	const ACTION_EQUIP_KEY key = m_Links.Fighters->GetFighter(m_Links.Slot).GetEquipInput();
+	const Fighter& player = m_Links.Fighters->GetFighter(m_Links.Slot);
+	if (player.IsTrigger(ACTION_EQUIP_HAND_LEFT)) m_SelectedHand = 0;
+	if (player.IsTrigger(ACTION_EQUIP_HAND_RIGHT)) m_SelectedHand = 1;
+	const int direction = int(player.IsTrigger(ACTION_EQUIP_NEXT)) - int(player.IsTrigger(ACTION_EQUIP_PREV));
+	const ACTION_EQUIP_KEY key = player.GetEquipInput();
+	const int direct = ArmCalcSelect(key.Number, available, ARM_TYPE_COUNT);
+	if (direction != 0 && (key.Hand != m_SelectedHand || direct < 0)) {
+		ChangeType(m_SelectedHand, ArmCalcCycle(m_Types[m_SelectedHand], direction, available, ARM_TYPE_COUNT), direction);
+	}
 	for (int hand = 0; hand < 2; ++hand) {
-		if (key.Hand == hand) ChangeType(hand, ArmCalcSelect(key.Number, available, ARM_TYPE_COUNT));
+		if (key.Hand == hand) ChangeType(hand, direct);
 	}
 	if (!playing) return;
-	const Fighter& player = m_Links.Fighters->GetFighter(m_Links.Slot);
 	// しびれている間は腕を使えない（構え・ガードも解ける）。
 	if (!player.CanUseArms() || player.DidRespawn() || player.IsStatus(STATUS_STUN)) {
 		Reset();
@@ -182,6 +198,11 @@ bool ArmManager::IsHolding(void) const
 ARM_TYPE ArmManager::GetType(int hand) const
 {
 	return hand >= 0 && hand < 2 ? m_Types[hand] : ARM_TYPE_COUNT;
+}
+
+int ArmManager::GetChangeDirection(int hand) const
+{
+	return hand == 0 || hand == 1 ? m_ChangeDirections[hand] : 1;
 }
 
 float ArmManager::GetMoveScale() const

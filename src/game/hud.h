@@ -2,6 +2,7 @@
 
 
 #include "core/dx11.h"
+#include "game/arm.h"
 
 class Camera;
 class FighterManager;
@@ -21,16 +22,13 @@ class Hud
 {
 public:
 
-	/// @brief カメラ・ダミー・試合・シーンへの参照を受け取る（Number2DInitialize のあとに呼ぶ）
-	void Initialize(const Camera& camera, const FighterManager& fighters, int slot, const Match& match, const SceneCalc& scene);
+	/// @brief 自分の腕・カメラと試合への参照を受け取り、腕名の画像を用意する（DX11 の初期化後）
+	void Initialize(const Camera& camera, const FighterManager& fighters, int slot, const Match& match, const SceneCalc& scene, const ArmManager& arms);
 
 	/// @brief 状態を最初に戻す（参照はそのまま）
 	void Reset(void);
 
-	/// @brief 画面表示の終了処理（今は何もしない）
-	void Finalize(void);
-
-	/// @brief 画面表示の更新（今は何もしない。値は描くときに読む）
+	/// @brief 両手の装備の変更を読み、腕名の回転を進める
 	void Update(void);
 
 	/// @brief 自分の画面の大きさを設定する（HUD は 1280×720 を縦横同じ倍率で縮めて当てはめる）
@@ -51,12 +49,23 @@ private:
 	void DrawPlayerTag(int slot, float centerX, float y, float digitWidth) const;
 	void DrawPercent(float percent, float centerX, float y, float digitWidth, const XMFLOAT4& color) const;
 	void DrawFighterPercent(int index) const;
+	void DrawArmName(int hand) const;
 	void DrawMenuItem(const char* text, float y, bool selected) const;
 	void DrawMenuHelp(float selectY, float decideY) const;
 	const Camera* m_Camera = nullptr;
 	const FighterManager* m_Fighters = nullptr;
 	const Match* m_Match = nullptr;
 	const SceneCalc* m_Scene = nullptr;
+	const ArmManager* m_Arms = nullptr;
+	int m_ArmNames[ARM_TYPE_COUNT] = {};
+	struct ARM_FLIP
+	{
+		ARM_TYPE Previous = ARM_TYPE_TENTACLE;
+		ARM_TYPE Current = ARM_TYPE_TENTACLE;
+		float Elapsed = 0.0f;
+		int Direction = 1;
+	};
+	ARM_FLIP m_ArmFlips[2];
 	int m_Slot = 0;
 	float m_Width = 1280.0f;	// HUD の座標での画面の幅
 	float m_Height = 720.0f;	// HUD の座標での画面の高さ

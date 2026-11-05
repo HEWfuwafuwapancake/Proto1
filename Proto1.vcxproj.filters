@@ -120,6 +120,12 @@
     <ClCompile Include="src\render\number2d.cpp">
       <Filter>src\render</Filter>
     </ClCompile>
+    <ClCompile Include="src\render\text2d.cpp">
+      <Filter>src\render</Filter>
+    </ClCompile>
+    <ClCompile Include="src\render\cubeflipcalc.cpp">
+      <Filter>src\render</Filter>
+    </ClCompile>
     <ClCompile Include="src\game\hud.cpp">
       <Filter>src\game</Filter>
     </ClCompile>
@@ -228,6 +234,12 @@
       <Filter>src\render</Filter>
     </ClInclude>
     <ClInclude Include="src\render\number2d.h">
+      <Filter>src\render</Filter>
+    </ClInclude>
+    <ClInclude Include="src\render\text2d.h">
+      <Filter>src\render</Filter>
+    </ClInclude>
+    <ClInclude Include="src\render\cubeflipcalc.h">
       <Filter>src\render</Filter>
     </ClInclude>
     <ClInclude Include="src\game\hud.h">
