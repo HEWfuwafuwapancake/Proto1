@@ -48,12 +48,15 @@
 │                                                                           │
 │  25%      ← 自分の % は少し上へ（下の 80 → 130）                           │
 │ ┌─────────────┐                                         ┌─────────────┐  │
-│ │ L  TENTACLE │ ← 選んでいる手は黄色の文字＋うすい枠      │ R  DRILL    │  │
+│ │ L  触腕     │ ← 選んでいる手は黄色の文字＋うすい枠      │ R  ドリル   │  │
 │ └─────────────┘                                         └─────────────┘  │
 └───────────────────────────────────────────────────────────────────────────┘
 ```
 
-- 左下に「L 腕の名前」、右下に「R 腕の名前」。文字は今の 5×7 ドットの英字なので、腕の名前は英語の短い名前にする（TENTACLE・GRAPPLE・DRILL・MAGNET・SHIELD・KNUCKLE・BLADE・SPEAR・HAMMER・WHIP・LASER・SHOTGUN・SNIPER・WARP・REPAIR・ROCKET・CANNON・GATLING・MISSILE・FLAME・FREEZE・THUNDER・SMOKE・BARRIER・AXE）。
+- 左下に「L 腕の名前」、右下に「R 腕の名前」。腕の名前は**日本語**（`arm.cpp` の `ARM_NAMES` の「触腕」「グラップリング」…をそのまま使う）。「L」「R」は今の 5×7 ドットの英字。
+- 日本語の描き方：起動のときに1回だけ、Windows 標準の GDI（`CreateDIBSection`＋`TextOutA`、フォントは Windows に入っている「メイリオ」）で腕の名前を1つずつ白い文字の画像に描き、DX11 のテクスチャにする。試合中は、その画像を四角に貼って描くだけ（毎フレーム文字を作らない）。
+  - 3D のピクセルシェーダーはもうテクスチャを使える（`Material.TextureEnable`・サンプラーも設定済み）ので、シェーダーは変えない。
+  - 文字の色（白・黄色）は、貼るときの色を掛けて変える。外部ライブラリ・フォントのファイルは使わない。
 - 選んでいる手は黄色（`MENU_SELECTED_COLOR`）の文字と半透明の白い枠、もう片方は白の文字だけ。
 - 位置・大きさ・色は `hud.cpp` の「調整用の値」に足す。
 
@@ -62,9 +65,10 @@
 1. **入力**（`input/actioncalc.h`・`input/action.cpp`）：`ACTION` に `ACTION_EQUIP_HAND_LEFT / RIGHT`・`ACTION_EQUIP_NEXT / PREV` を足し、パッドの十字キー ← → ↓ ↑ を割り当てる（キーボードには割り当てない）。
    ボタンのビットとして今の `PLAYER_INPUT.Buttons` に入るので、**通信の形は変えずに**オンラインでも同じように効く（`lockstepcalc.cpp` の `BUTTON_MASK` は `ACTION_COUNT` から作るので自動で広がる。12 ビットで `uint16_t` に収まる）。
 2. **計算**（`physics/armcalc.h/.cpp`）：`ArmCalcCycle(今の番号, 向き ±1, 使えるかの並び, 数)` で、使える次 / 前の腕を求める（端で一周・使えない腕を飛ばす）。テストを `armcalc_test.cpp` に足す（主な動き：次へ・前へ・一周・ハサミを飛ばす）。
-3. **腕**（`game/arm.h/.cpp`）：`ArmManager` に選んでいる手 `m_SelectedHand` を持たせ、`Update` で十字キーの押した瞬間を見て手を変える・`ChangeType` する。HUD 用に `GetSelectedHand()` と、英語の名前を返す `ArmGetLabel(ARM_TYPE)` を足す。
-4. **表示**（`game/hud.h/.cpp`・`game/game.cpp`）：`Hud::Initialize` で自分の `ArmManager` を受け取り、`Draw` で左下・右下に描く。自分の % を少し上へずらす。
-5. **ドキュメント**：`docs/decisions.md` の「腕の切り替え」の行（2026-10-29 にパッドの切り替えはなくした）を今回の決まりに書き直す。`docs/plan/03_新しいアームの仕様.md` の装備の行と、タイトルの操作の案内（`SELECT ... DPAD` の行のあたり）も直す。
+3. **腕**（`game/arm.h/.cpp`）：`ArmManager` に選んでいる手 `m_SelectedHand` を持たせ、`Update` で十字キーの押した瞬間を見て手を変える・`ChangeType` する。HUD 用に `GetSelectedHand()` を足す（名前は今の `ArmGetName`）。
+4. **日本語の文字**（新しく `render/text2d.h/.cpp`）：`Text2DCreate(文字列)` で GDI で描いた画像のテクスチャを作って番号を返し、`Text2DDraw(番号, x, y, 高さ, 揃え, 色)` で四角に貼って描く。`Text2DFinalize` で全部解放する。`render` の部品なので `game` は使わない（腕の名前は `Hud` が起動時に渡す）。
+5. **表示**（`game/hud.h/.cpp`・`game/game.cpp`）：`Hud::Initialize` で自分の `ArmManager` を受け取り、`Draw` で左下・右下に描く。自分の % を少し上へずらす。
+6. **ドキュメント**：`docs/dev/01_DX11基盤の構成.md` に `text2d` を足す。`docs/decisions.md` の「腕の切り替え」の行（2026-10-29 にパッドの切り替えはなくした）を今回の決まりに書き直す。`docs/plan/03_新しいアームの仕様.md` の装備の行と、タイトルの操作の案内（`SELECT ... DPAD` の行のあたり）も直す。
 
 ### 2.4 確かめ方
 
@@ -76,5 +80,5 @@
 
 1. ↓ で「次」・↑ で「前」でよいか（逆でもよい）。
 2. 自分の % を上へずらして、腕の表示をいちばん下の角に置く配置でよいか。
-3. 腕の名前は英語の短い名前でよいか（日本語の文字はまだ描けない）。
+3. ~~腕の名前は英語か~~ → **日本語にする**（2026-11-05、管理者）。GDI で起動時に画像にして描く案でよいか。
 4. キーボードには今回、十字キーの代わりを付けない（今の Q / E → 数字キーのまま）でよいか。
