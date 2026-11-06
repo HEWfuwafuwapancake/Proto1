@@ -1,7 +1,5 @@
-﻿#include "CppUnitTest.h"
+﻿#include <gtest/gtest.h>
 #include "physics/bladecalc.h"
-
-using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
 namespace Proto1Tests
 {
@@ -20,32 +18,28 @@ namespace Proto1Tests
 		return count;
 	}
 
-	TEST_CLASS(BladeCalcTest)
+	// 押し続けると 1・2・3 振り目が当たり、そのあと休んで待機に戻る。
+	TEST(BladeCalcTest, Step_ThreePressesGiveThreeSlashes)
 	{
-	public:
-		// 押し続けると 1・2・3 振り目が当たり、そのあと休んで待機に戻る。
-		TEST_METHOD(Step_ThreePressesGiveThreeSlashes)
-		{
-			BladeCalc blade;
-			int hits[8] = {};
-			const int count = RunBlade(blade, 40, 6, hits, 8); // 3振り目のあとの休みの間に押しても始まらない
-			Assert::AreEqual(3, count);
-			Assert::AreEqual(1, hits[0]);
-			Assert::AreEqual(3, hits[2]);
-			RunBlade(blade, 60, 0, hits, 8);
-			Assert::AreEqual((int)BLADE_IDLE, (int)blade.GetState());
-		}
+		BladeCalc blade;
+		int hits[8] = {};
+		const int count = RunBlade(blade, 40, 6, hits, 8); // 3振り目のあとの休みの間に押しても始まらない
+		EXPECT_EQ(3, count);
+		EXPECT_EQ(1, hits[0]);
+		EXPECT_EQ(3, hits[2]);
+		RunBlade(blade, 60, 0, hits, 8);
+		EXPECT_EQ((int)BLADE_IDLE, (int)blade.GetState());
+	}
 
-		// 受け付ける間に押さなければ休みに入り、次の入力は1振り目から。
-		TEST_METHOD(Step_WindowExpiresAndRestartsAtFirst)
-		{
-			BladeCalc blade;
-			int hits[4] = {};
-			blade.Step(true, false, BLADE_DT, BLADE_TEST_PARAMS);
-			Assert::AreEqual(1, RunBlade(blade, 60, 0, hits, 4));
-			Assert::AreEqual((int)BLADE_IDLE, (int)blade.GetState());
-			blade.Step(true, false, BLADE_DT, BLADE_TEST_PARAMS);
-			Assert::AreEqual(1, blade.GetSlash());
-		}
-	};
+	// 受け付ける間に押さなければ休みに入り、次の入力は1振り目から。
+	TEST(BladeCalcTest, Step_WindowExpiresAndRestartsAtFirst)
+	{
+		BladeCalc blade;
+		int hits[4] = {};
+		blade.Step(true, false, BLADE_DT, BLADE_TEST_PARAMS);
+		EXPECT_EQ(1, RunBlade(blade, 60, 0, hits, 4));
+		EXPECT_EQ((int)BLADE_IDLE, (int)blade.GetState());
+		blade.Step(true, false, BLADE_DT, BLADE_TEST_PARAMS);
+		EXPECT_EQ(1, blade.GetSlash());
+	}
 }

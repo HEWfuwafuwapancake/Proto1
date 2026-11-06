@@ -43,6 +43,7 @@ DX11 の土台は `HEW2026GitTest` から持ってきた（水のレイトレー
 | `src/net/` | 通信のための入力保管・パケット変換（計算は Windows・DirectX を使わず単体テストする） |
 | `shaders/` | `.hlsl` / `.hlsli` |
 | `tests/` | 単体テストのプロジェクト |
+| `third_party/` | 外から持ってきたライブラリ（今は Google Test だけ。中身は書き換えない） |
 
 - `#include` は **`src` からのパス**で書く（例：`#include "core/dx11.h"`、`#include "game/player.h"`）。同じフォルダのファイルでも省略しない。
 - 新しいフォルダを作るときは、この表と `docs/dev/01_DX11基盤の構成.md` に追記し、`.vcxproj.filters` にも同じ名前のフィルターを作る。
@@ -66,7 +67,8 @@ DX11 の土台は `HEW2026GitTest` から持ってきた（水のレイトレー
   scratchpad など **一時フォルダ（%TEMP%）の中でビルドするときは `/t:Rebuild`** を付ける（一時フォルダではヘッダーの変更が追跡されず、古いままのビルドになることがある。警告 MSB8029）。
 
 ## 単体テスト
-- テストのプロジェクトは `tests/Proto1Tests/`（Visual Studio 標準の C++ 単体テスト）。テストのファイルは `〇〇_test.cpp`。
+- テストのプロジェクトは `tests/Proto1Tests/`（**Google Test**。`third_party/googletest` を一緒にコンパイルする exe）。テストのファイルは `〇〇_test.cpp`。
+  書き方は `TEST(〇〇Test, 名前)`（準備を共有するときはクラスを作って `TEST_F`）、確かめるのは `EXPECT_EQ` / `EXPECT_NEAR`（float は許す誤差つき）/ `EXPECT_TRUE` / `EXPECT_FALSE`。テストの名前は英語（C++ の名前になるので日本語は使えない）、説明は上のコメントに日本語で書く。
 - 実行：`.\tools\run-tests.ps1`（Debug）／`.\tools\run-tests.ps1 -Release`。毎回作り直してから実行する。Visual Studio のテスト エクスプローラーからも実行できる。
 - **テストするのは DirectX を使わないファイル**（`src/physics/`、`src/core/mathutil.h` など）。テストのプロジェクトからは、そのファイルの `.cpp` だけを「既存の項目」で追加してコンパイルする（ゲーム本体の `.cpp` をまるごと入れない）。
 - 計算（当たり判定・吹っ飛び・スコア）を足したり変えたりしたら、テストも足す。PR の前に `run-tests.ps1` が全部通ること。
