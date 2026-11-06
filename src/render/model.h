@@ -5,11 +5,13 @@
 void ModelInitialize(void);
 /// @brief 読み込んだすべてのモデルのバッファを解放する
 void ModelFinalize(void);
-/// @brief 作業フォルダからの相対パスで OBJ を読み込み、頂点バッファを作る
-/// @param path OBJ のパス。mtllib があれば同じフォルダの MTL を読み、頂点色を材質の Kd にする（MTL がなければ白）
+/// @brief 作業フォルダからの相対パスでモデル（OBJ・FBX など）を読み込み、頂点バッファを作る
+/// @details .obj は自作の読み込み、それ以外（.fbx など）は Assimp で読む。FBX の材質の色のテクスチャは、
+///          ファイルに埋め込まれたものか、同じフォルダの画像を貼る（テクスチャのない材質は材質の色）
+/// @param path モデルのパス。OBJ は mtllib があれば同じフォルダの MTL を読み、頂点色を材質の Kd にする（MTL がなければ白）
 /// @param mirrorX X について鏡写しにするかを設定する（true：鏡写しにする（片手用のモデルから反対の手用を作る）、false：そのまま）
 /// @param tintMaterial ModelDrawTinted で色替えする材質の名前（nullptr なら色替えなし）。この材質の頂点色は白にする
-/// @return モデル番号（同じ引数で読み込み済みなら、読み直さずに同じ番号）。ファイル・OBJ・バッファ作成の失敗時は -1
+/// @return モデル番号（同じ引数で読み込み済みなら、読み直さずに同じ番号）。ファイル・モデル・バッファ作成の失敗時は -1
 int ModelLoad(const char* path, bool mirrorX = false, const char* tintMaterial = nullptr);
 /// @brief モデルを原点と大きさ込みの直交する3軸で配置し、指定色で描く
 /// @param model ModelLoad が返した番号（無効な番号は描かない）
