@@ -43,7 +43,7 @@ DX11 の土台は `HEW2026GitTest` から持ってきた（水のレイトレー
 | `src/net/` | 通信のための入力保管・パケット変換（計算は Windows・DirectX を使わず単体テストする） |
 | `shaders/` | `.hlsl` / `.hlsli` |
 | `tests/` | 単体テストのプロジェクト |
-| `third_party/` | 外から持ってきたライブラリ（今は Google Test だけ。中身は書き換えない） |
+| `third_party/` | 外から持ってきたライブラリ（Google Test と、FBX を読む Assimp。中身は書き換えない） |
 
 - `#include` は **`src` からのパス**で書く（例：`#include "core/dx11.h"`、`#include "game/player.h"`）。同じフォルダのファイルでも省略しない。
 - 新しいフォルダを作るときは、この表と `docs/dev/01_DX11基盤の構成.md` に追記し、`.vcxproj.filters` にも同じ名前のフィルターを作る。

@@ -104,11 +104,13 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)src;$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(IntDir);$(ProjectDir)third_party\assimp\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(ProjectDir)third_party\assimp\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>assimp-vc143-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -119,11 +121,13 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)src;$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(IntDir);$(ProjectDir)third_party\assimp\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(ProjectDir)third_party\assimp\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>assimp-vc143-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -206,6 +210,7 @@
     <ClCompile Include="src\game\fighter.cpp" />
     <ClCompile Include="src\render\shape.cpp" />
     <ClCompile Include="src\render\model.cpp" />
+    <ClCompile Include="src\render\texture.cpp" />
     <ClCompile Include="src\render\objcalc.cpp" />
     <ClCompile Include="src\core\timer.cpp" />
   </ItemGroup>
@@ -292,6 +297,7 @@
     <ClInclude Include="src\game\fighter.h" />
     <ClInclude Include="src\render\shape.h" />
     <ClInclude Include="src\render\model.h" />
+    <ClInclude Include="src\render\texture.h" />
     <ClInclude Include="src\render\objcalc.h" />
     <ClInclude Include="src\core\timer.h" />
   </ItemGroup>
@@ -330,5 +336,9 @@
   <!-- src のソースの中身から、オンラインで比べる識別番号（SOURCE_ID）を作る。tools/make-sourceid.ps1 -->
   <Target Name="MakeSourceId" BeforeTargets="ClCompile">
     <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)tools\make-sourceid.ps1&quot; -Root &quot;$(ProjectDir).&quot; -OutFile &quot;$(ProjectDir)$(IntDir)generated\sourceid.h&quot;" />
+  </Target>
+  <!-- FBX などを読む Assimp の DLL を exe の隣に置く（third_party/assimp。x64 だけ） -->
+  <Target Name="CopyAssimpDll" AfterTargets="Build" Condition="'$(Platform)'=='x64'">
+    <Copy SourceFiles="$(ProjectDir)third_party\assimp\bin\assimp-vc143-mt.dll" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
   </Target>
 </Project>

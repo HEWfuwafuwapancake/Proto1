@@ -4,12 +4,13 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）、決まったことは [decisions.md](decisions.md)。
 必要なときだけ読むもの：腕の書き方と共通の部品は [dev/01_DX11基盤の構成.md](dev/01_DX11基盤の構成.md) の「腕の共通の仕組み・腕の足し方」と「腕の書き方」、腕の操作と効き方は [plan/03_新しいアームの仕様.md](plan/03_新しいアームの仕様.md)、腕のモデルは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、画面を撮る方法は [dev/04_画面確認の方法.md](dev/04_画面確認の方法.md)。
 
-- 最終更新：2026-11-06（Claude。Shota の Proto1、Visual Studio Community の PC。No.86 単体テストを Google Test に移した）
+- 最終更新：2026-11-06（Claude。Shota の Proto1、Visual Studio Community の PC。No.87 FBX の読み込み（Assimp）とテクスチャを足した）
 
 ---
 
 ## 1. 今の状態
 
+- **No.87 完了**：`ModelLoad` に `.fbx` などを渡すと Assimp 5.2.4（`third_party/assimp`）で読み、材質のテクスチャ（埋め込み・同じフォルダの画像）も貼る（No.21 のテクスチャ読み込みも一緒に完了）。`.obj` は自作のまま。Debug / Release 警告 0、テスト 290 件成功、`ball.fbx` を一時ビルドで描いて画面で確認。ゲームの中で FBX を使うモデルはまだない。説明は [dev/01_DX11基盤の構成.md](dev/01_DX11基盤の構成.md) の「FBX モデルとテクスチャ」。
 - **No.86 完了**：単体テストを Google Test（`third_party/googletest` v1.15.2）に移した。290 件すべて Debug / Release で成功、警告 0。書き方は [dev/01_DX11基盤の構成.md](dev/01_DX11基盤の構成.md) の「単体テスト」。Visual Studio のテスト エクスプローラーで見えるかは、まだ実機で見ていない。
 - **No.85 完了**（PR #141）：パッドの十字キー ← → で手を選び、↓ ↑ で腕を一周（ハサミは飛ばす）。今の腕は左下・右下に日本語で出て、替えるとキューブのように回る。オンラインを始めると全員の装備を触腕に戻す。キーをパッドの代わりにした一時ビルドで確認し、オンライン2つ起動で DESYNC なし。
 - **追加のアーム No.59〜82 はすべて完了**（PR #114〜#137。管理者の指示で Codex に渡さず Claude が実装・確認・マージした）。腕は 25 種類（触腕・グラップリング・ドリル・磁石・デカ盾 ＋ 新しい 20 本。ハサミ No.40 は最後）。
@@ -29,4 +30,5 @@
 
 - Claude の画面確認はキーをパッドの代わりにした一時ビルドなので、実機のパッドで一度だけ触る。まだ見ていないのは、やり直し後も手の選択が残ることと、時間切れ後も切り替えられること。
 - No.86 のついでに、Visual Studio で **テスト → テスト エクスプローラー** を開き、Proto1Tests の 290 件が出て「すべて実行」で通るかを一度見る（出ないときは、Visual Studio Installer の「C++ によるデスクトップ開発」で「Google Test の Test Adapter」に印があるか確かめる）。
+- No.87 のあと、メンバーは `git lfs pull` で `third_party/assimp` の lib・dll を取ってからビルドする（LFS の中身がないとリンクで止まる）。FBX のモデルを使うときは、`assets/models/` に置いて `ModelLoad("assets/models/〇〇.fbx")` で読む。
 - そのあとは [tasks.md](tasks.md) の上から、次の未着手のタスクを選ぶ（管理者に聞く）。
