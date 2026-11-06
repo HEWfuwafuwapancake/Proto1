@@ -36,6 +36,7 @@ if (-not $NoProjectCheck) {
     $missing = @()
     foreach ($f in (git -c core.quotePath=false diff --cached --name-only --diff-filter=A)) {
         if ($f -notmatch '\.(c|cc|cpp|cxx|h|hh|hpp|hxx|inl|hlsl|hlsli|fx)$') { continue }
+        if ($f -like 'third_party/*') { continue }	# 外から持ってきたライブラリは、必要なファイルだけをプロジェクトに入れる
         $full = Join-Path $RepoRoot ($f -replace '/', '\')
         $registered = $false
         foreach ($p in $projects) {

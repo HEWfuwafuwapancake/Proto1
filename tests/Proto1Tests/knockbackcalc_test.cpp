@@ -1,9 +1,7 @@
 ﻿// physics/knockbackcalc.h（ダメージ%と吹っ飛び）の単体テスト
 #include <math.h>
-#include "CppUnitTest.h"
+#include <gtest/gtest.h>
 #include "physics/knockbackcalc.h"
-
-using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
 namespace Proto1Tests
 {
@@ -58,112 +56,108 @@ namespace Proto1Tests
 		return -2.0f;	// 10 秒たっても終わらない（おかしい）
 	}
 
-	TEST_CLASS(KnockbackCalcTest)
+	// ダメージ%は足していく。負のダメージは 0
+	// リペアで減らし、0 より下にはしない。
+	TEST(KnockbackCalcTest, Heal_ReducesButNotBelowZero)
 	{
-	public:
-		// ダメージ%は足していく。負のダメージは 0
-		// リペアで減らし、0 より下にはしない。
-		TEST_METHOD(Heal_ReducesButNotBelowZero)
-		{
-			Assert::AreEqual(15.0f, KnockbackCalcHeal(40.0f, 25.0f));
-			Assert::AreEqual(0.0f, KnockbackCalcHeal(10.0f, 25.0f));
+		EXPECT_EQ(15.0f, KnockbackCalcHeal(40.0f, 25.0f));
+		EXPECT_EQ(0.0f, KnockbackCalcHeal(10.0f, 25.0f));
+	}
+
+	TEST(KnockbackCalcTest, AddDamage_Accumulates)
+	{
+		float percent = 0.0f;
+		percent = KnockbackCalcAddDamage(percent, 12.0f);
+		percent = KnockbackCalcAddDamage(percent, 8.5f);
+		EXPECT_NEAR(20.5f, percent, KB_EPSILON);
+		EXPECT_NEAR(20.5f, KnockbackCalcAddDamage(percent, -5.0f), KB_EPSILON);
+	}
+
+	// 吹っ飛ぶ速さ：% が高いほど速く、攻撃の強さを掛ける
+	TEST(KnockbackCalcTest, Speed_GrowsWithPercentAndPower)
+	{
+		const KNOCKBACK_PARAMS params = MakeKnockbackParams();
+		EXPECT_NEAR(4.0f, KnockbackCalcSpeed(0.0f, 1.0f, params), KB_EPSILON);
+		EXPECT_NEAR(16.0f, KnockbackCalcSpeed(100.0f, 1.0f, params), KB_EPSILON);
+		EXPECT_NEAR(32.0f, KnockbackCalcSpeed(100.0f, 2.0f, params), KB_EPSILON);
+		EXPECT_TRUE(KnockbackCalcSpeed(51.0f, 1.0f, params) > KnockbackCalcSpeed(50.0f, 1.0f, params));
+	}
+
+	// 速度：攻撃の向き（横）に 30° 上向き。長さは速さと同じ。攻撃の向きの上下と長さは使わない
+	TEST(KnockbackCalcTest, Velocity_AngleUpFromAttackDirection)
+	{
+		const KNOCKBACK_PARAMS params = MakeKnockbackParams();
+		const VEC3 v = KnockbackCalcVelocity({ 0.0f, -3.0f, 5.0f }, 10.0f, params);
+		EXPECT_NEAR(0.0f, v.X, KB_EPSILON);
+		EXPECT_NEAR(5.0f, v.Y, KB_EPSILON);				// 10 × sin30°
+		EXPECT_NEAR(10.0f * cosf(KB_PI / 6.0f), v.Z, KB_EPSILON);
+		EXPECT_NEAR(10.0f, Vec3Length(v), KB_EPSILON);
+	}
+
+	// 攻撃の向きが横に向いていない（真上・0）なら、真上に飛ぶ
+	TEST(KnockbackCalcTest, Velocity_NoHorizontalGoesStraightUp)
+	{
+		const VEC3 v = KnockbackCalcVelocity({ 0.0f, 0.0f, 0.0f }, 7.0f, MakeKnockbackParams());
+		EXPECT_NEAR(0.0f, v.X, KB_EPSILON);
+		EXPECT_NEAR(7.0f, v.Y, KB_EPSILON);
+		EXPECT_NEAR(0.0f, v.Z, KB_EPSILON);
+	}
+
+	// 空中では、重力で下向きになり、空気の抵抗で横が遅くなる
+	TEST(KnockbackCalcTest, Step_AirGravityAndDrag)
+	{
+		PlayerBodyCalc body{};
+		body.SetPosition({ body.GetX(), 5.0f, body.GetZ() });
+		body.SetVelocity({ 10.0f, body.GetVelocityY(), body.GetVelocityZ() });
+		EXPECT_TRUE(KnockbackCalcStep(body, KB_DT, MakeKnockbackParams(), MakeKnockbackStage()));
+		EXPECT_TRUE(body.GetVelocityY() < 0.0f);
+		EXPECT_TRUE(body.GetVelocityX() < 10.0f && body.GetVelocityX() > 9.9f);
+	}
+
+	// 浮島の上に落ちてきたら着地して、すべって止まる
+	TEST(KnockbackCalcTest, Step_LandSlideAndStop)
+	{
+		PlayerBodyCalc body{};
+		body.SetPosition({ body.GetX(), 1.0f, body.GetZ() });
+		body.SetVelocity({ 6.0f, body.GetVelocityY(), body.GetVelocityZ() });
+		const KNOCKBACK_PARAMS params = MakeKnockbackParams();
+		bool flying = true;
+		bool landed = false;
+		for (int i = 0; i < 300 && flying; i++) {
+			flying = KnockbackCalcStep(body, KB_DT, params, MakeKnockbackStage());
+			if (body.GetOnGround()) landed = true;
 		}
+		EXPECT_TRUE(landed);
+		EXPECT_FALSE(flying);
+		EXPECT_NEAR(0.0f, body.GetY(), KB_EPSILON);
+		EXPECT_NEAR(0.0f, body.GetVelocityX(), KB_EPSILON);
+		EXPECT_TRUE(body.GetX() > 0.0f && body.GetX() < 15.0f);
+	}
 
-		TEST_METHOD(AddDamage_Accumulates)
-		{
-			float percent = 0.0f;
-			percent = KnockbackCalcAddDamage(percent, 12.0f);
-			percent = KnockbackCalcAddDamage(percent, 8.5f);
-			Assert::AreEqual(20.5f, percent, KB_EPSILON);
-			Assert::AreEqual(20.5f, KnockbackCalcAddDamage(percent, -5.0f), KB_EPSILON);
+	// % が低いと浮島の上で止まり、高いと場外まで飛ぶ（真ん中から +X へ）
+	TEST(KnockbackCalcTest, Launch_LowStaysHighFliesOut)
+	{
+		const float low = LaunchAndRun(0.0f);
+		EXPECT_TRUE(low > 0.0f && low < 15.0f);	// 浮島の上で止まる
+
+		const float middle = LaunchAndRun(50.0f);
+		EXPECT_TRUE(middle > low);				// % が高いほど遠くで止まる
+
+		EXPECT_NEAR(-1.0f, LaunchAndRun(200.0f), KB_EPSILON);	// 場外まで飛ぶ
+	}
+
+	// すべっている途中で浮島の端から出たら、止まらずに落ちる
+	TEST(KnockbackCalcTest, Step_SlideOffEdgeFalls)
+	{
+		PlayerBodyCalc body{};
+		body.SetPosition({ 14.0f, body.GetY(), body.GetZ() });
+		body.SetOnGround(true);
+		body.SetVelocity({ 10.0f, body.GetVelocityY(), body.GetVelocityZ() });
+		const KNOCKBACK_PARAMS params = MakeKnockbackParams();
+		for (int i = 0; i < 30; i++) {
+			EXPECT_TRUE(KnockbackCalcStep(body, KB_DT, params, MakeKnockbackStage()));
 		}
-
-		// 吹っ飛ぶ速さ：% が高いほど速く、攻撃の強さを掛ける
-		TEST_METHOD(Speed_GrowsWithPercentAndPower)
-		{
-			const KNOCKBACK_PARAMS params = MakeKnockbackParams();
-			Assert::AreEqual(4.0f, KnockbackCalcSpeed(0.0f, 1.0f, params), KB_EPSILON);
-			Assert::AreEqual(16.0f, KnockbackCalcSpeed(100.0f, 1.0f, params), KB_EPSILON);
-			Assert::AreEqual(32.0f, KnockbackCalcSpeed(100.0f, 2.0f, params), KB_EPSILON);
-			Assert::IsTrue(KnockbackCalcSpeed(51.0f, 1.0f, params) > KnockbackCalcSpeed(50.0f, 1.0f, params));
-		}
-
-		// 速度：攻撃の向き（横）に 30° 上向き。長さは速さと同じ。攻撃の向きの上下と長さは使わない
-		TEST_METHOD(Velocity_AngleUpFromAttackDirection)
-		{
-			const KNOCKBACK_PARAMS params = MakeKnockbackParams();
-			const VEC3 v = KnockbackCalcVelocity({ 0.0f, -3.0f, 5.0f }, 10.0f, params);
-			Assert::AreEqual(0.0f, v.X, KB_EPSILON);
-			Assert::AreEqual(5.0f, v.Y, KB_EPSILON);				// 10 × sin30°
-			Assert::AreEqual(10.0f * cosf(KB_PI / 6.0f), v.Z, KB_EPSILON);
-			Assert::AreEqual(10.0f, Vec3Length(v), KB_EPSILON);
-		}
-
-		// 攻撃の向きが横に向いていない（真上・0）なら、真上に飛ぶ
-		TEST_METHOD(Velocity_NoHorizontalGoesStraightUp)
-		{
-			const VEC3 v = KnockbackCalcVelocity({ 0.0f, 0.0f, 0.0f }, 7.0f, MakeKnockbackParams());
-			Assert::AreEqual(0.0f, v.X, KB_EPSILON);
-			Assert::AreEqual(7.0f, v.Y, KB_EPSILON);
-			Assert::AreEqual(0.0f, v.Z, KB_EPSILON);
-		}
-
-		// 空中では、重力で下向きになり、空気の抵抗で横が遅くなる
-		TEST_METHOD(Step_AirGravityAndDrag)
-		{
-			PlayerBodyCalc body{};
-			body.SetPosition({ body.GetX(), 5.0f, body.GetZ() });
-			body.SetVelocity({ 10.0f, body.GetVelocityY(), body.GetVelocityZ() });
-			Assert::IsTrue(KnockbackCalcStep(body, KB_DT, MakeKnockbackParams(), MakeKnockbackStage()));
-			Assert::IsTrue(body.GetVelocityY() < 0.0f);
-			Assert::IsTrue(body.GetVelocityX() < 10.0f && body.GetVelocityX() > 9.9f);
-		}
-
-		// 浮島の上に落ちてきたら着地して、すべって止まる
-		TEST_METHOD(Step_LandSlideAndStop)
-		{
-			PlayerBodyCalc body{};
-			body.SetPosition({ body.GetX(), 1.0f, body.GetZ() });
-			body.SetVelocity({ 6.0f, body.GetVelocityY(), body.GetVelocityZ() });
-			const KNOCKBACK_PARAMS params = MakeKnockbackParams();
-			bool flying = true;
-			bool landed = false;
-			for (int i = 0; i < 300 && flying; i++) {
-				flying = KnockbackCalcStep(body, KB_DT, params, MakeKnockbackStage());
-				if (body.GetOnGround()) landed = true;
-			}
-			Assert::IsTrue(landed);
-			Assert::IsFalse(flying);
-			Assert::AreEqual(0.0f, body.GetY(), KB_EPSILON);
-			Assert::AreEqual(0.0f, body.GetVelocityX(), KB_EPSILON);
-			Assert::IsTrue(body.GetX() > 0.0f && body.GetX() < 15.0f);
-		}
-
-		// % が低いと浮島の上で止まり、高いと場外まで飛ぶ（真ん中から +X へ）
-		TEST_METHOD(Launch_LowStaysHighFliesOut)
-		{
-			const float low = LaunchAndRun(0.0f);
-			Assert::IsTrue(low > 0.0f && low < 15.0f);	// 浮島の上で止まる
-
-			const float middle = LaunchAndRun(50.0f);
-			Assert::IsTrue(middle > low);				// % が高いほど遠くで止まる
-
-			Assert::AreEqual(-1.0f, LaunchAndRun(200.0f), KB_EPSILON);	// 場外まで飛ぶ
-		}
-
-		// すべっている途中で浮島の端から出たら、止まらずに落ちる
-		TEST_METHOD(Step_SlideOffEdgeFalls)
-		{
-			PlayerBodyCalc body{};
-			body.SetPosition({ 14.0f, body.GetY(), body.GetZ() });
-			body.SetOnGround(true);
-			body.SetVelocity({ 10.0f, body.GetVelocityY(), body.GetVelocityZ() });
-			const KNOCKBACK_PARAMS params = MakeKnockbackParams();
-			for (int i = 0; i < 30; i++) {
-				Assert::IsTrue(KnockbackCalcStep(body, KB_DT, params, MakeKnockbackStage()));
-			}
-			Assert::IsFalse(body.GetOnGround());
-			Assert::IsTrue(body.GetY() < 0.0f);
-		}
-	};
+		EXPECT_FALSE(body.GetOnGround());
+		EXPECT_TRUE(body.GetY() < 0.0f);
+	}
 }

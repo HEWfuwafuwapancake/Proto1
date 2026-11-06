@@ -16,6 +16,17 @@
     <Filter Include="src\net">
       <UniqueIdentifier>{92FE875A-7C6C-42F1-A966-5F118976C7B2}</UniqueIdentifier>
     </Filter>
+    <Filter Include="third_party">
+      <UniqueIdentifier>{5C2E8A41-9B7D-4F63-A1E0-7D3B6C9F2A18}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\third_party\googletest\src\gtest-all.cc">
+      <Filter>third_party</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\third_party\googletest\src\gtest_main.cc">
+      <Filter>third_party</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cubeflipcalc_test.cpp" />

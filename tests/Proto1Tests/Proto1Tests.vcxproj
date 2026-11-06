@@ -16,17 +16,16 @@
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>Proto1Tests</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
-    <ProjectSubType>NativeUnitTestProject</ProjectSubType>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
@@ -48,12 +47,11 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <UseFullPaths>true</UseFullPaths>
-      <!-- ゲーム本体と同じく src からのパスで #include する -->
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\src;$(VCInstallDir)Auxiliary\VS\UnitTest\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <!-- ゲーム本体と同じく src からのパスで #include する。Google Test は third_party/googletest -->
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\src;$(ProjectDir)..\..\third_party\googletest\include;$(ProjectDir)..\..\third_party\googletest;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <SubSystem>Windows</SubSystem>
-      <AdditionalLibraryDirectories>$(VCInstallDir)Auxiliary\VS\UnitTest\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <SubSystem>Console</SubSystem>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -148,6 +146,11 @@
     <ClCompile Include="cubeflipcalc_test.cpp" />
     <ClCompile Include="objcalc_test.cpp" />
     <ClCompile Include="..\..\src\render\objcalc.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Google Test 本体（gtest_main.cc が main を持つ） -->
+    <ClCompile Include="..\..\third_party\googletest\src\gtest-all.cc" />
+    <ClCompile Include="..\..\third_party\googletest\src\gtest_main.cc" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\net\sessioncalc.cpp" />

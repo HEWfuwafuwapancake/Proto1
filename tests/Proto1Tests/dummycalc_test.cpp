@@ -1,8 +1,6 @@
 ﻿// physics/dummycalc.h（ダミーの復活の流れ・プレイヤーに押される）の単体テスト
-#include "CppUnitTest.h"
+#include <gtest/gtest.h>
 #include "physics/dummycalc.h"
-
-using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
 namespace Proto1Tests
 {
@@ -19,106 +17,110 @@ namespace Proto1Tests
 			DummyCalcBodyCapsule(b, BODY_RADIUS, BODY_HEIGHT)).Hit;
 	}
 
-	TEST_CLASS(DummyCalcTest)
+	// ---- 復活の流れ ----
+	
+	
+	
+	
+	
+	
+	
+	// ---- 体の形 ----
+	
+	
+	
+	// ---- プレイヤーに押される ----
+
+	// 場外でなければ、何も起きない
+	TEST(DummyCalcTest, Life_StaysActive)
 	{
-	public:
-		// ---- 復活の流れ ----
+		DummyLifeCalc life;
+		life.Reset();
+		EXPECT_EQ((int)DUMMY_EVENT_NONE, (int)life.Update(false, 2.0f, DUMMY_DT));
+		EXPECT_EQ((int)DUMMY_STATE_ACTIVE, (int)life.GetState());
+		EXPECT_EQ(0, life.GetOutCount());
+	}
 
-		// 場外でなければ、何も起きない
-		TEST_METHOD(Life_StaysActive)
-		{
-			DummyLifeCalc life;
-			life.Reset();
-			Assert::AreEqual((int)DUMMY_EVENT_NONE, (int)life.Update(false, 2.0f, DUMMY_DT));
-			Assert::AreEqual((int)DUMMY_STATE_ACTIVE, (int)life.GetState());
-			Assert::AreEqual(0, life.GetOutCount());
+	// 場外に落ちる → 2 秒待つ → 復活する。落ちた回数が 1 増える
+	TEST(DummyCalcTest, Life_OutWaitRespawn)
+	{
+		DummyLifeCalc life;
+		life.Reset();
+		EXPECT_EQ((int)DUMMY_EVENT_OUT, (int)life.Update(true, 2.0f, DUMMY_DT));
+		EXPECT_EQ((int)DUMMY_STATE_WAITING, (int)life.GetState());
+		EXPECT_EQ(1, life.GetOutCount());
+
+		// 1.9 秒（114 フレーム）たっても、まだ待っている
+		for (int i = 0; i < 114; i++) {
+			EXPECT_EQ((int)DUMMY_EVENT_NONE, (int)life.Update(true, 2.0f, DUMMY_DT));
 		}
+		EXPECT_EQ((int)DUMMY_STATE_WAITING, (int)life.GetState());
 
-		// 場外に落ちる → 2 秒待つ → 復活する。落ちた回数が 1 増える
-		TEST_METHOD(Life_OutWaitRespawn)
-		{
-			DummyLifeCalc life;
-			life.Reset();
-			Assert::AreEqual((int)DUMMY_EVENT_OUT, (int)life.Update(true, 2.0f, DUMMY_DT));
-			Assert::AreEqual((int)DUMMY_STATE_WAITING, (int)life.GetState());
-			Assert::AreEqual(1, life.GetOutCount());
+		// 2 秒をすぎたところで復活する
+		DUMMY_EVENT event = DUMMY_EVENT_NONE;
+		for (int i = 0; i < 10 && event == DUMMY_EVENT_NONE; i++) {
+			event = life.Update(true, 2.0f, DUMMY_DT);
+		}
+		EXPECT_EQ((int)DUMMY_EVENT_RESPAWN, (int)event);
+		EXPECT_EQ((int)DUMMY_STATE_ACTIVE, (int)life.GetState());
+		EXPECT_EQ(1, life.GetOutCount());	// 待っている間は数えない
+	}
 
-			// 1.9 秒（114 フレーム）たっても、まだ待っている
-			for (int i = 0; i < 114; i++) {
-				Assert::AreEqual((int)DUMMY_EVENT_NONE, (int)life.Update(true, 2.0f, DUMMY_DT));
+	// 2回落ちると、落ちた回数は 2
+	TEST(DummyCalcTest, Life_CountsEachFall)
+	{
+		DummyLifeCalc life;
+		life.Reset();
+		for (int fall = 0; fall < 2; fall++) {
+			life.Update(true, 0.5f, DUMMY_DT);
+			for (int i = 0; i < 60 && life.GetState() == DUMMY_STATE_WAITING; i++) {
+				life.Update(false, 0.5f, DUMMY_DT);
 			}
-			Assert::AreEqual((int)DUMMY_STATE_WAITING, (int)life.GetState());
-
-			// 2 秒をすぎたところで復活する
-			DUMMY_EVENT event = DUMMY_EVENT_NONE;
-			for (int i = 0; i < 10 && event == DUMMY_EVENT_NONE; i++) {
-				event = life.Update(true, 2.0f, DUMMY_DT);
-			}
-			Assert::AreEqual((int)DUMMY_EVENT_RESPAWN, (int)event);
-			Assert::AreEqual((int)DUMMY_STATE_ACTIVE, (int)life.GetState());
-			Assert::AreEqual(1, life.GetOutCount());	// 待っている間は数えない
 		}
+		EXPECT_EQ(2, life.GetOutCount());
+	}
 
-		// 2回落ちると、落ちた回数は 2
-		TEST_METHOD(Life_CountsEachFall)
-		{
-			DummyLifeCalc life;
-			life.Reset();
-			for (int fall = 0; fall < 2; fall++) {
-				life.Update(true, 0.5f, DUMMY_DT);
-				for (int i = 0; i < 60 && life.GetState() == DUMMY_STATE_WAITING; i++) {
-					life.Update(false, 0.5f, DUMMY_DT);
-				}
-			}
-			Assert::AreEqual(2, life.GetOutCount());
-		}
+	TEST(DummyCalcTest, BodyCapsule_FromFeet)
+	{
+		CAPSULE capsule = DummyCalcBodyCapsule({ 1.0f, 2.0f, 3.0f }, BODY_RADIUS, BODY_HEIGHT);
+		EXPECT_NEAR(2.5f, capsule.Start.Y, DUMMY_EPSILON);
+		EXPECT_NEAR(3.3f, capsule.End.Y, DUMMY_EPSILON);
+		EXPECT_NEAR(1.0f, capsule.Start.X, DUMMY_EPSILON);
+		EXPECT_NEAR(BODY_RADIUS, capsule.Radius, DUMMY_EPSILON);
+	}
 
-		// ---- 体の形 ----
+	// 横から重なると、ダミーだけが押されて、重ならなくなる（プレイヤーは動かない）
+	TEST(DummyCalcTest, Push_FromSideMovesDummyOnly)
+	{
+		VEC3 player = { 0.0f, 0.0f, 0.0f };
+		VEC3 dummy = { 0.0f, 0.0f, 0.7f };
+		EXPECT_TRUE(DummyCalcPushByPlayer(player, dummy, BODY_RADIUS, BODY_HEIGHT));
+		EXPECT_NEAR(1.0f, dummy.Z, PUSH_EPSILON);	// 半径の合計（1.0）まで離れる
+		EXPECT_NEAR(0.0f, dummy.Y, DUMMY_EPSILON);	// 上下には動かない
+		EXPECT_NEAR(0.0f, player.X, DUMMY_EPSILON);
+		EXPECT_NEAR(0.0f, player.Z, DUMMY_EPSILON);
+		EXPECT_FALSE(BodiesOverlap(player, dummy));
+	}
 
-		TEST_METHOD(BodyCapsule_FromFeet)
-		{
-			CAPSULE capsule = DummyCalcBodyCapsule({ 1.0f, 2.0f, 3.0f }, BODY_RADIUS, BODY_HEIGHT);
-			Assert::AreEqual(2.5f, capsule.Start.Y, DUMMY_EPSILON);
-			Assert::AreEqual(3.3f, capsule.End.Y, DUMMY_EPSILON);
-			Assert::AreEqual(1.0f, capsule.Start.X, DUMMY_EPSILON);
-			Assert::AreEqual(BODY_RADIUS, capsule.Radius, DUMMY_EPSILON);
-		}
+	// 少し高さがずれていても（ジャンプ中にぶつかる）、ダミーは横に押されて重ならなくなる
+	TEST(DummyCalcTest, Push_SlightlyAboveStillPushesSideways)
+	{
+		VEC3 player = { 0.0f, 1.0f, 0.0f };
+		VEC3 dummy = { 0.6f, 0.0f, 0.0f };
+		EXPECT_TRUE(DummyCalcPushByPlayer(player, dummy, BODY_RADIUS, BODY_HEIGHT));
+		EXPECT_NEAR(0.0f, dummy.Y, DUMMY_EPSILON);
+		EXPECT_TRUE(dummy.X > 0.6f);
+		EXPECT_FALSE(BodiesOverlap(player, dummy));
+	}
 
-		// ---- プレイヤーに押される ----
-
-		// 横から重なると、ダミーだけが押されて、重ならなくなる（プレイヤーは動かない）
-		TEST_METHOD(Push_FromSideMovesDummyOnly)
-		{
-			VEC3 player = { 0.0f, 0.0f, 0.0f };
-			VEC3 dummy = { 0.0f, 0.0f, 0.7f };
-			Assert::IsTrue(DummyCalcPushByPlayer(player, dummy, BODY_RADIUS, BODY_HEIGHT));
-			Assert::AreEqual(1.0f, dummy.Z, PUSH_EPSILON);	// 半径の合計（1.0）まで離れる
-			Assert::AreEqual(0.0f, dummy.Y, DUMMY_EPSILON);	// 上下には動かない
-			Assert::AreEqual(0.0f, player.X, DUMMY_EPSILON);
-			Assert::AreEqual(0.0f, player.Z, DUMMY_EPSILON);
-			Assert::IsFalse(BodiesOverlap(player, dummy));
-		}
-
-		// 少し高さがずれていても（ジャンプ中にぶつかる）、ダミーは横に押されて重ならなくなる
-		TEST_METHOD(Push_SlightlyAboveStillPushesSideways)
-		{
-			VEC3 player = { 0.0f, 1.0f, 0.0f };
-			VEC3 dummy = { 0.6f, 0.0f, 0.0f };
-			Assert::IsTrue(DummyCalcPushByPlayer(player, dummy, BODY_RADIUS, BODY_HEIGHT));
-			Assert::AreEqual(0.0f, dummy.Y, DUMMY_EPSILON);
-			Assert::IsTrue(dummy.X > 0.6f);
-			Assert::IsFalse(BodiesOverlap(player, dummy));
-		}
-
-		// 真上から重なった（ダミーの頭に乗った）ときは、プレイヤーが上に押し出される
-		TEST_METHOD(Push_FromAbovePushesPlayerUp)
-		{
-			VEC3 player = { 0.0f, 1.5f, 0.0f };
-			VEC3 dummy = { 0.0f, 0.0f, 0.0f };
-			Assert::IsTrue(DummyCalcPushByPlayer(player, dummy, BODY_RADIUS, BODY_HEIGHT));
-			Assert::AreEqual(0.0f, dummy.X, DUMMY_EPSILON);
-			Assert::AreEqual(0.0f, dummy.Y, DUMMY_EPSILON);
-			Assert::AreEqual(1.8f, player.Y, PUSH_EPSILON);	// 頭（1.3）＋半径の合計（1.0）− 足元からの半径（0.5）
-		}
-	};
+	// 真上から重なった（ダミーの頭に乗った）ときは、プレイヤーが上に押し出される
+	TEST(DummyCalcTest, Push_FromAbovePushesPlayerUp)
+	{
+		VEC3 player = { 0.0f, 1.5f, 0.0f };
+		VEC3 dummy = { 0.0f, 0.0f, 0.0f };
+		EXPECT_TRUE(DummyCalcPushByPlayer(player, dummy, BODY_RADIUS, BODY_HEIGHT));
+		EXPECT_NEAR(0.0f, dummy.X, DUMMY_EPSILON);
+		EXPECT_NEAR(0.0f, dummy.Y, DUMMY_EPSILON);
+		EXPECT_NEAR(1.8f, player.Y, PUSH_EPSILON);	// 頭（1.3）＋半径の合計（1.0）− 足元からの半径（0.5）
+	}
 }
