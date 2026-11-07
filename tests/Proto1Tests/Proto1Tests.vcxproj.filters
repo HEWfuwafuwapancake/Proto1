@@ -31,6 +31,10 @@
   <ItemGroup>
     <ClCompile Include="cubeflipcalc_test.cpp" />
     <ClCompile Include="animcalc_test.cpp" />
+    <ClCompile Include="tentacleropecalc_test.cpp" />
+    <ClCompile Include="..\..\src\physics\tentacleropecalc.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
     <ClCompile Include="motioncalc_test.cpp" />
     <ClCompile Include="..\..\src\render\motioncalc.cpp">
       <Filter>src\render</Filter>

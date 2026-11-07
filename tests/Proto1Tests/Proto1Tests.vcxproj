@@ -93,6 +93,8 @@
     <ClCompile Include="..\..\src\physics\dummycalc.cpp" />
     <ClCompile Include="..\..\src\physics\knockbackcalc.cpp" />
     <ClCompile Include="..\..\src\physics\playercalc.cpp" />
+    <ClCompile Include="..\..\src\physics\tentacleropecalc.cpp" />
+    <ClCompile Include="tentacleropecalc_test.cpp" />
     <ClCompile Include="..\..\src\physics\stagecalc.cpp" />
     <ClCompile Include="actioncalc_test.cpp" />
     <ClCompile Include="armcalc_test.cpp" />

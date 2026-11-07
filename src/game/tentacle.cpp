@@ -9,6 +9,7 @@
 #include "input/pad.h"
 #include "physics/armcalc.h"
 #include "render/shape.h"
+#include <algorithm>
 
 // 調整用の値
 static constexpr TENTACLE_PARAMS PARAMS{ 8.0f, 24.0f, 30.0f, 3.0f, 0.18f };
@@ -34,18 +35,14 @@ static constexpr float TIP_LENGTH = 4.434f;
 static constexpr float MIN_STRETCH = 0.2f;
 static constexpr float IDLE_LENGTH = 1.2f; // 待機中・短い伸縮中に描く長さ（判定には使わない）
 static constexpr int BONE_IDLE_SEGMENTS = 5; // 腕の骨に付くキャラの待機中の節の数（元モデルの TAKO1〜5 と同じ1本分）
-// 待機中は垂れ下がり、走ると後ろへなびく形（描画だけ）
-static constexpr float DROOP_BEND = 0.3f; // 肩から最初に外へ出る割合（残りは下へ垂れる）
-static constexpr float DROOP_OUT_DOWN = 0.8f; // 最初に出る向きの下向きの量（外向き 1 に対して）
-static constexpr float TRAIL_ANGLE = XMConvertToRadians(65.0f); // 全速で走ったとき、垂れる向きを後ろへ倒す角度
-static constexpr float TRAIL_FULL_SPEED = 6.0f; // なびきが最大になる横の速さ
-static constexpr float TRAIL_RATE = 5.0f; // なびきが目標へ近づく速さ（1秒あたりの割合）
-static constexpr float SWAY_IDLE_SPEED = 1.8f; // 待機中のゆっくりした揺れの速さ（ラジアン／秒）
-static constexpr float SWAY_RUN_SPEED = 11.0f; // 走っているときの揺れの速さ
-static constexpr float SWAY_IDLE_AMPLITUDE = 0.04f; // 待機中の先の横揺れ（m）
-static constexpr float SWAY_RUN_AMPLITUDE = 0.12f; // 走っているときの先の横揺れ（m）
-static constexpr float SWAY_IDLE_WAVES = 0.4f; // 待機中に触腕全体へ入れる波の数
-static constexpr float SWAY_RUN_WAVES = 1.2f; // 走っているときの波の数
+// 待機中の節の鎖の物理（描画だけ）。付け根の箱は体に固定し、その下に鎖がぶら下がる
+static constexpr float ROPE_GRAVITY = 9.8f; // 鎖にかかる重力
+static constexpr float ROPE_DRAG = 2.5f; // 空気抵抗（大きいほど走ったとき後ろへなびく）
+static constexpr float ROPE_STIFFNESS = 0.12f; // 曲がりにくさ（0：ひも、1：棒）
+static constexpr float ROPE_BODY_RATE = 0.8f; // 体の半径＝肩の横の距離 × これ（鎖が体にめり込まない）
+static constexpr float ROPE_RESET_DISTANCE = 1.5f; // 1フレームでこれ以上動いたら（ワープ・復活）並べ直す
+static constexpr float ROPE_RESET_OUTWARD = 0.3f; // 並べ直すとき、真下に対して外へ開く量
+static constexpr float PIECE_DOWN_MIN = 0.3f; // 吸盤側の向きを横の軸から決められる最小の長さ
 static constexpr float MODEL_MIN_LENGTH = 0.00001f;
 static constexpr float WIGGLE_AMPLITUDE = 0.25f;
 static constexpr float WIGGLE_WAVES = 1.5f;
@@ -130,6 +127,51 @@ void TentacleArm::Update(bool trigger)
 	}
 }
 
+// 節の向き：モデルの X をキャラの左右の軸に合わせる（付け根の平たい面が体に付く）。
+// 吸盤側（-Z）は「右 × 腕の向き」（前へ出した腕なら下、垂れた腕なら後ろ）へ向ける。
+static VEC3 PieceDown(const VEC3& start, const VEC3& end, const VEC3& right)
+{
+	const VEC3 d = Vec3Sub(end, start);
+	const float length = Vec3Length(d);
+	if (length < MODEL_MIN_LENGTH) return { 0.0f, -1.0f, 0.0f };
+	const VEC3 dir = Vec3Scale(d, 1.0f / length);
+	const VEC3 down{ right.Y * dir.Z - right.Z * dir.Y, right.Z * dir.X - right.X * dir.Z, right.X * dir.Y - right.Y * dir.X };
+	return Vec3Length(down) < PIECE_DOWN_MIN ? VEC3{ 0.0f, -1.0f, 0.0f } : down;
+}
+
+void TentacleArm::StepRope(const VEC3& origin, float idleLength, float modelScale)
+{
+	// 画面分割で何度描いても、1フレームに1回だけ進める。
+	const float now = GameTimeGetElapsed();
+	if (now == m_RopeTime && m_Rope.GetPointCount() > 0) return;
+	const float dt = now - m_RopeTime;
+	m_RopeTime = now;
+	const VEC3 anchor = Vec3Add(origin, { 0.0f, -BASE_LENGTH * modelScale, 0.0f });
+	const int segments = std::max(0, std::min(TentacleRopeCalc::MAX_POINTS - 2,
+		(int)floorf((idleLength / modelScale - BASE_LENGTH - TIP_LENGTH) / SEGMENT_LENGTH + 0.5f)));
+	float lengths[TentacleRopeCalc::MAX_POINTS] = {};
+	for (int i = 0; i < segments; ++i) lengths[i] = SEGMENT_LENGTH * modelScale;
+	lengths[segments] = TIP_LENGTH * modelScale;
+	const bool changed = m_Rope.GetPointCount() != segments + 2 || m_RopeScale != modelScale;
+	if (changed || dt <= 0.0f || Vec3Length(Vec3Sub(anchor, m_Rope.GetPoint(0))) > ROPE_RESET_DISTANCE) {
+		const float yaw = GetPlayer().GetYaw();
+		const float side = GetHand() == 0 ? -1.0f : 1.0f;
+		const VEC3 outward{ cosf(yaw) * side * ROPE_RESET_OUTWARD, -1.0f, -sinf(yaw) * side * ROPE_RESET_OUTWARD };
+		m_Rope.Reset(anchor, Vec3Scale(outward, 1.0f / Vec3Length(outward)), lengths, segments + 1);
+		m_RopeScale = modelScale;
+		return;
+	}
+	TENTACLE_ROPE_PARAMS params;
+	params.Gravity = ROPE_GRAVITY;
+	params.Drag = ROPE_DRAG;
+	params.Stiffness = ROPE_STIFFNESS;
+	const XMFLOAT3 p = GetPlayer().GetPosition();
+	params.BodyBottom = { p.x, p.y, p.z };
+	params.BodyTop = { p.x, origin.Y, p.z };
+	params.BodyRadius = sqrtf((origin.X - p.x) * (origin.X - p.x) + (origin.Z - p.z) * (origin.Z - p.z)) * ROPE_BODY_RATE;
+	m_Rope.Step(anchor, params, dt);
+}
+
 void TentacleArm::Draw()
 {
 	const int hand = GetHand();
@@ -138,6 +180,8 @@ void TentacleArm::Draw()
 	const VEC3 physicalOrigin = GetShoulder();
 	VEC3 tip = arm.GetState() == TENTACLE_IDLE ? physicalOrigin : arm.GetTip();
 	const float modelScale = MODEL_SCALE * GetDrawScale();
+	const float yaw = GetPlayer().GetYaw();
+	const VEC3 right{ cosf(yaw), 0.0f, -sinf(yaw) };
 	// 腕の骨があるキャラは、待機の長さを元モデル1本分（付け根・節5つ・先っぽ）を今の大きさで描いた長さにする。
 	const VEC3 rest = GetRestDirection();
 	float idleLength = IDLE_LENGTH;
@@ -146,29 +190,12 @@ void TentacleArm::Draw()
 	if (GetPlayer().GetArmBone(hand, boneShoulder, boneDirection, boneLength)) {
 		idleLength = (BASE_LENGTH + SEGMENT_LENGTH * BONE_IDLE_SEGMENTS + TIP_LENGTH) * modelScale;
 	}
-
-	// 待機中の形：肩から外へ少し出て下へ垂れ、走ると進む向きの反対へなびく（人の腕のようには振らない）。
-	const float dt = GameTimeGetDeltaTime();
-	const VEC3 velocity = GetPlayer().GetVelocity();
-	const float speed = sqrtf(velocity.X * velocity.X + velocity.Z * velocity.Z);
-	if (speed > MODEL_MIN_LENGTH) m_TrailDirection = { -velocity.X / speed, 0.0f, -velocity.Z / speed };
-	const float trailGoal = fminf(1.0f, speed / TRAIL_FULL_SPEED);
-	m_Trail += (trailGoal - m_Trail) * fminf(1.0f, TRAIL_RATE * dt);
-	m_SwayPhase += (SWAY_IDLE_SPEED + (SWAY_RUN_SPEED - SWAY_IDLE_SPEED) * m_Trail) * dt;
-	const float yaw = GetPlayer().GetYaw();
-	const VEC3 side = Vec3Scale(VEC3{ cosf(yaw), 0.0f, -sinf(yaw) }, hand == 0 ? -1.0f : 1.0f);
-	const VEC3 outwardRaw = Vec3Add(side, VEC3{ 0.0f, -DROOP_OUT_DOWN, 0.0f });
-	const VEC3 outward = Vec3Scale(outwardRaw, 1.0f / Vec3Length(outwardRaw));
-	const float trailAngle = TRAIL_ANGLE * m_Trail;
-	const VEC3 hang = Vec3Add(VEC3{ 0.0f, -cosf(trailAngle), 0.0f }, Vec3Scale(m_TrailDirection, sinf(trailAngle)));
-	const float swayAmplitude = SWAY_IDLE_AMPLITUDE + (SWAY_RUN_AMPLITUDE - SWAY_IDLE_AMPLITUDE) * m_Trail;
-	const float swayWaves = SWAY_IDLE_WAVES + (SWAY_RUN_WAVES - SWAY_IDLE_WAVES) * m_Trail;
-	const float swayPhase = m_SwayPhase + hand * WIGGLE_ARM_PHASE;
-	// 伸ばし始めは垂れた形から少しずつまっすぐにする（つかんでいる間は使わない）。
-	float droop = 0.0f;
-	if (arm.GetState() == TENTACLE_IDLE) droop = 1.0f;
+	// 待機中は物理の鎖の形。伸ばし始めは鎖の形から少しずつまっすぐにする（つかんでいる間は使わない）。
+	StepRope(origin, idleLength, modelScale);
+	float hanging = 0.0f;
+	if (arm.GetState() == TENTACLE_IDLE) hanging = 1.0f;
 	else if (arm.GetState() != TENTACLE_HOLDING) {
-		droop = fmaxf(0.0f, 1.0f - Vec3Length(Vec3Sub(arm.GetTip(), physicalOrigin)) / idleLength);
+		hanging = fmaxf(0.0f, 1.0f - Vec3Length(Vec3Sub(arm.GetTip(), physicalOrigin)) / idleLength);
 	}
 	if (arm.GetState() != TENTACLE_HOLDING) {
 		// 描画する先端だけを変える。計算上の arm.GetTip()・長さ・判定はそのまま。
@@ -192,10 +219,11 @@ void TentacleArm::Draw()
 			: Vec3Scale(delta, 1.0f / length);
 		const VEC3 drawTip = Vec3Add(origin, Vec3Scale(direction, drawLength));
 		const float phase = GameTimeGetElapsed() * WIGGLE_SPEED + hand * WIGGLE_ARM_PHASE;
-		// 待機中は揺らさない（ブルブルして見えるため）。伸ばしている間とつかんでいる間だけ揺らす。
+		// 待機中は揺らさない（揺れは鎖の物理に任せる）。伸ばしている間とつかんでいる間だけ揺らす。
 		const float amplitude = arm.GetState() == TENTACLE_IDLE ? 0.0f
 			: WIGGLE_AMPLITUDE * fminf(1.0f, length / WIGGLE_FULL_LENGTH)
 			* (arm.GetState() == TENTACLE_HOLDING ? WIGGLE_HOLD_SCALE : 1.0f);
+		const float baseRatio = BASE_LENGTH / total;
 		float distance = 0.0f;
 		VEC3 start = origin;
 		for (int piece = 0; piece < segments + 2; ++piece) {
@@ -205,13 +233,13 @@ void TentacleArm::Draw()
 			distance += sourceLength;
 			const float s = last ? 1.0f : distance / total;
 			VEC3 end = TentacleCalcWigglePoint(origin, drawTip, s, phase, amplitude, WIGGLE_WAVES);
-			if (droop > 0.0f) {
-				const VEC3 hanging = TentacleCalcDroopPoint(origin, outward, hang, drawLength, DROOP_BEND,
-					s, side, swayPhase, swayAmplitude, swayWaves);
-				end = Vec3Add(Vec3Scale(end, 1.0f - droop), Vec3Scale(hanging, droop));
+			if (hanging > 0.0f) {
+				// 付け根の箱は体に固定して真下へ、その先は鎖の上の同じ割合の位置。
+				const VEC3 rope = base ? m_Rope.GetPoint(0) : m_Rope.GetPointAt((s - baseRatio) / (1.0f - baseRatio));
+				end = Vec3Add(Vec3Scale(end, 1.0f - hanging), Vec3Scale(rope, hanging));
 			}
 			DrawPiece(base ? m_BaseModel : (last ? m_TipModel : m_SegmentModel),
-				start, end, sourceLength, modelScale, color);
+				start, end, sourceLength, modelScale, color, 0.0f, PieceDown(start, end, right));
 			start = end;
 		}
 		return;

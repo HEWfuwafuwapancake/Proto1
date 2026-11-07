@@ -51,8 +51,6 @@ public:
 	bool GetArmBone(int hand, VEC3& shoulder, VEC3& direction, float& length) const;
 	/// @brief 足元のワールド座標を取得する
 	XMFLOAT3 GetPosition() const;
-	/// @brief 体の速度（1秒に進む距離）を取得する
-	VEC3 GetVelocity() const { return { m_Body.GetVelocityX(), m_Body.GetVelocityY(), m_Body.GetVelocityZ() }; }
 	/// @brief 足元の位置を設定する（速度はそのまま）
 	void SetPosition(const XMFLOAT3& position);
 	/// @brief 足元の位置を置きかえ、水平の速さを 0 にする（ワープ。接地と上下の速さはそのまま）

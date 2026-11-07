@@ -53,21 +53,6 @@ struct TENTACLE_PIECE_AXES
 /// @param waves 腕全体に入れる波の数
 VEC3 TentacleCalcWigglePoint(const VEC3& origin, const VEC3& tip, float s,
 	float phase, float amplitude, float waves);
-/// @brief 待機中・走っている間の触腕の形として、肩から外へ出て垂れ下がる曲線の上の点を求める
-/// @details 肩 → 肩から outward へ length × bend 進んだ点 → そこから hang へ残りを進んだ先、の2次ベジェ曲線。
-///          横揺れは先へ行くほど大きく、根元から先へ波が伝わる（なびく）
-/// @param origin 肩
-/// @param outward 肩から最初に出る単位方向
-/// @param hang 先が垂れていく単位方向（下。走ると後ろが混ざる）
-/// @param length 触腕の長さ
-/// @param bend 最初に outward へ進む割合（0〜1）
-/// @param s 肩から先までの割合（0〜1 に制限する）
-/// @param sway 横揺れの単位方向
-/// @param phase 揺れの位相（ラジアン）
-/// @param amplitude 先での横揺れの大きさ
-/// @param waves 触腕全体に入れる波の数
-VEC3 TentacleCalcDroopPoint(const VEC3& origin, const VEC3& outward, const VEC3& hang, float length, float bend,
-	float s, const VEC3& sway, float phase, float amplitude, float waves);
 /// @brief -Y を始点から終点へ、-Z を指定方向へなるべく向ける直交単位軸を求める
 /// @param start 始点
 /// @param end 終点（始点と同じなら +Z へ向ける）
