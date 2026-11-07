@@ -9,6 +9,7 @@ static constexpr float MENU_STICK_DEADZONE = 0.3f; // 次の弾きの前に戻�
 
 void SceneCalc::Start(bool online)
 {
+	m_Character = CHARACTER_MEKA;
 	m_Scene = online ? SCENE_TITLE : SCENE_GAME_START;
 	m_Cursor = RESULT_ITEM_RETRY;
 	m_MenuReady = true;
@@ -39,10 +40,23 @@ void SceneCalc::MoveCursor(float moveY, int count)
 	}
 }
 
+CHARACTER_TYPE SceneCalc::CycleCharacter(CHARACTER_TYPE character, int direction)
+{
+	return static_cast<CHARACTER_TYPE>((character + direction + CHARACTER_COUNT) % CHARACTER_COUNT);
+}
+
 SCENE_EVENT SceneCalc::Step(const SCENE_INPUT& input, bool matchFinished)
 {
 	if (m_Scene == SCENE_GAME_START) {
-		if (input.Decide) ShowModes();
+		if (input.Decide) m_Scene = SCENE_CHARACTER_SELECT;
+		return SCENE_EVENT_NONE;
+	}
+	if (m_Scene == SCENE_CHARACTER_SELECT) {
+		if (input.Back) m_Scene = SCENE_GAME_START;
+		else {
+			m_Character = CycleCharacter(m_Character, input.CharacterDirection);
+			if (input.Decide) ShowModes();
+		}
 		return SCENE_EVENT_NONE;
 	}
 	if (m_Scene == SCENE_MODE_SELECT) {
@@ -90,7 +104,7 @@ SCENE_EVENT SceneCalc::Step(const SCENE_INPUT& input, bool matchFinished)
 	}
 	if (input.Decide) {
 		if (m_Online) m_Scene = SCENE_TITLE;
-		else ShowModes();
+		else m_Scene = SCENE_GAME_START;
 		return SCENE_EVENT_BACK_TITLE;
 	}
 	return SCENE_EVENT_NONE;

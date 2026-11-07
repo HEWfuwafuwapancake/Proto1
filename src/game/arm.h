@@ -91,8 +91,10 @@ protected:
 	const Camera& GetCamera() const { return *m_Links.CameraObject; }
 	/// @brief ステージへの参照を取得する
 	const Stage& GetStage() const { return *m_Links.StageObject; }
-	/// @brief 肩のワールド座標を取得する（共通の取付位置に GetMountOffset のずらしを足す）
+	/// @brief 当たり判定に使う肩のワールド座標を取得する（共通の取付位置に GetMountOffset のずらしを足す）
 	VEC3 GetShoulder() const;
+	/// @brief 描画するキャラの肩のワールド座標を取得する
+	VEC3 GetDrawShoulder() const;
 	/// @brief この腕だけの取付位置のずらしを取得する（腕のモデルの肩の部分を体の取付口に合わせるため）
 	/// @return X：外向き・Y：上向き・Z：前向きのずらし（m）。基本はずらしなし
 	virtual VEC3 GetMountOffset() const { return {}; }
@@ -131,6 +133,7 @@ protected:
 	void Rumble(float smallMotor, float largeMotor, float seconds) const;
 
 private:
+	VEC3 GetShoulderAt(const VEC3& offset) const;
 	int m_Hand;
 	ARM_LINKS m_Links;
 };

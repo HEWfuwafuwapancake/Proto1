@@ -132,10 +132,11 @@ int SessionCalcAutoDelay(int pingMilliseconds)
 	return (std::max)(AUTO_DELAY_MIN, (std::min)(AUTO_DELAY_MAX, frames));
 }
 
-void SessionCalc::Initialize(const NET_OPTIONS& options, uint32_t nonce)
+void SessionCalc::Initialize(const NET_OPTIONS& options, uint32_t nonce, CHARACTER_TYPE character)
 {
 	*this = SessionCalc{};
 	m_Host = options.Mode == NET_MODE_HOST;
+	m_LocalCharacter = character;
 	m_Nonce = nonce == 0 ? 1 : nonce;
 	m_AutoDelay = options.Delay < 0;
 	m_Delay = m_AutoDelay ? LOCKSTEP_DEFAULT_DELAY : options.Delay;
@@ -143,6 +144,7 @@ void SessionCalc::Initialize(const NET_OPTIONS& options, uint32_t nonce)
 		m_Session = m_Nonce;
 		m_Slot = 0;
 		m_Mask = 1;
+		m_Characters[0] = static_cast<uint8_t>(m_LocalCharacter);
 	}
 }
 
@@ -154,7 +156,7 @@ SESSION_FAILURE SessionCalc::CheckCompatibility(const SESSION_MESSAGE& message)
 	return SESSION_FAILURE_NONE;
 }
 
-int SessionCalc::Join(uint32_t nonce, uint16_t version, LOCKSTEP_BUILD build, uint32_t program)
+int SessionCalc::Join(uint32_t nonce, uint16_t version, LOCKSTEP_BUILD build, uint32_t program, CHARACTER_TYPE character)
 {
 	if (!m_Host || nonce == 0 || version != LOCKSTEP_VERSION || build != LOCKSTEP_CURRENT_BUILD || program != s_Program) return -1;
 	for (int slot = 1; slot < FIGHTER_COUNT; ++slot) {
@@ -164,6 +166,7 @@ int SessionCalc::Join(uint32_t nonce, uint16_t version, LOCKSTEP_BUILD build, ui
 	for (int slot = 1; slot < FIGHTER_COUNT; ++slot) {
 		if (m_PeerNonces[slot] != 0) continue;
 		m_PeerNonces[slot] = nonce;
+		m_Characters[slot] = static_cast<uint8_t>(character);
 		m_LastReceived[slot] = m_Now;
 		m_Echo[slot] = 0; // 前にこの枠にいた人の時刻は、新しい人の時刻と比べない。
 		m_Mask |= static_cast<uint8_t>(1u << slot);
@@ -226,7 +229,10 @@ void SessionCalc::Receive(int peer, const SESSION_MESSAGE& message)
 			|| (message.Type != SESSION_JOIN && message.Type != SESSION_READY && message.Type != SESSION_INPUTS)) return;
 		if (message.Compiler != SESSION_COMPILER) m_CompilerDiffers = true;
 		ReceiveMonitor(peer, message);
-		if (message.Type == SESSION_READY && !m_Running) m_Ready |= static_cast<uint8_t>(1u << peer);
+		if (!m_Running && message.Slot == peer && (message.Type == SESSION_JOIN || message.Type == SESSION_READY)) {
+			m_Characters[peer] = message.Characters[peer];
+			if (message.Type == SESSION_READY) m_Ready |= static_cast<uint8_t>(1u << peer);
+		}
 		if (message.Type != SESSION_INPUTS || !m_HasRound || message.Packet.Mask != (1u << peer)
 			|| message.Packet.Delay != m_Delay) return;
 		for (int i = 0; i < message.Packet.Count; ++i) {
@@ -260,6 +266,7 @@ void SessionCalc::Receive(int peer, const SESSION_MESSAGE& message)
 			m_Slot = message.Slot;
 			m_Mask = message.Mask;
 			m_Ready = message.Ready;
+			m_Characters = message.Characters;
 			m_Delay = message.Delay;
 			if (message.Running && m_Ready == m_Mask) BeginRound(message.Round);
 			return;
@@ -293,6 +300,8 @@ SESSION_MESSAGE SessionCalc::MakeControl(int peer) const
 	message.Ready = m_Ready;
 	message.Delay = m_Delay;
 	message.Running = m_Running;
+	if (m_Host) message.Characters = m_Characters;
+	else message.Characters[message.Slot] = static_cast<uint8_t>(m_LocalCharacter);
 	if (peer >= 0 && peer < FIGHTER_COUNT) {
 		message.Stamp = static_cast<uint32_t>(m_Now);
 		message.Echo = m_Echo[peer];
@@ -311,6 +320,7 @@ SESSION_MESSAGE SessionCalc::MakeInputs(int peer) const
 {
 	SESSION_MESSAGE message = MakeControl(peer);
 	message.Type = SESSION_INPUTS;
+	message.Characters = {};
 	if (!m_HasRound || peer < 0 || peer >= FIGHTER_COUNT) return message;
 	if (m_Host) {
 		message.Packet = m_Shared.SelectUnacknowledged(m_Acknowledged[peer], m_Mask);
@@ -414,6 +424,7 @@ void SessionCalc::CheckTimeouts()
 			m_Mask &= static_cast<uint8_t>(~(1u << peer));
 			m_Ready &= m_Mask;
 			m_PeerNonces[peer] = 0;
+			m_Characters[peer] = CHARACTER_MEKA;
 			m_LastEcho[peer] = 0;
 		}
 		m_RemoteChecksums[peer].clear();
@@ -514,8 +525,18 @@ static uint32_t ReadWord(const uint8_t*& bytes, int count)
 	return word;
 }
 
+static bool HasCharacters(SESSION_MESSAGE_TYPE type)
+{
+	return type == SESSION_JOIN || type == SESSION_READY || type == SESSION_STATE;
+}
+
 static bool ValidMessage(const SESSION_MESSAGE& message)
 {
+	if (HasCharacters(message.Type)) {
+		for (uint8_t character : message.Characters) {
+			if (character >= CHARACTER_COUNT) return false;
+		}
+	}
 	return message.Type <= SESSION_REJECT && message.Build <= LOCKSTEP_BUILD_RELEASE
 		&& message.CheckFrame >= -1 && message.CheckAck >= -1
 		&& (message.CheckFrame == -1 || (message.CheckFrame < INT32_MAX && (message.CheckFrame + 1) % LOCKSTEP_CHECKSUM_INTERVAL == 0))
@@ -551,6 +572,7 @@ bool SessionCalc::Encode(const SESSION_MESSAGE& message, std::vector<uint8_t>& b
 	WriteWord(bytes, message.Program, 4);
 	WriteWord(bytes, message.Hold, 4);
 	WriteWord(bytes, message.Compiler, 4);
+	if (HasCharacters(message.Type)) bytes.insert(bytes.end(), message.Characters.begin(), message.Characters.end());
 	bytes.insert(bytes.end(), payload.begin(), payload.end());
 	return true;
 }
@@ -584,6 +606,12 @@ bool SessionCalc::Decode(const uint8_t* bytes, size_t size, SESSION_MESSAGE& res
 	if ((checkFrame > INT32_MAX && checkFrame != UINT32_MAX) || (checkAck > INT32_MAX && checkAck != UINT32_MAX)) return false;
 	message.CheckFrame = checkFrame == UINT32_MAX ? -1 : static_cast<int32_t>(checkFrame);
 	message.CheckAck = checkAck == UINT32_MAX ? -1 : static_cast<int32_t>(checkAck);
+	// 旧版の制御通知も、ヘッダーが読めれば版の不一致として扱える。
+	if (HasCharacters(message.Type) && (message.Version == LOCKSTEP_VERSION || size != SESSION_HEADER_BYTES)) {
+		if (size != SESSION_HEADER_BYTES + FIGHTER_COUNT) return false;
+		for (auto& character : message.Characters) character = *bytes++;
+		size -= FIGHTER_COUNT;
+	}
 	if (!ValidMessage(message)) return false;
 	if (message.Type == SESSION_INPUTS) {
 		if (!LockstepCalc::DecodePacket(bytes, size - SESSION_HEADER_BYTES, message.Packet)) return false;

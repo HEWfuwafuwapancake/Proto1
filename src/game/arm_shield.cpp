@@ -74,7 +74,7 @@ void ShieldArm::Draw()
 	const float yaw = GetPlayer().GetYaw();
 	const VEC3 forward{ sinf(yaw), 0.0f, cosf(yaw) };
 	const VEC3 direction = ArmCalcBlendDirection(GetRestDirection(), forward, m_Straighten);
-	VEC3 origin = GetShoulder();
+	VEC3 origin = GetDrawShoulder();
 	// 押し出し中は2部品を一緒に前へ出し、モデル自体は伸縮させない。
 	if (m_Arm.GetState() == SHIELD_BASHING) origin = Vec3Add(origin, Vec3Scale(forward, BASH_REACH));
 	const VEC3 end = Vec3Add(origin, Vec3Scale(direction, BASE_LENGTH * MODEL_SCALE));

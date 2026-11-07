@@ -1,6 +1,6 @@
 ﻿# Proto1 開発タスク一覧
 
-最終更新：2026-11-07（Claude。Shota の Proto1、Visual Studio Community の PC）。No.89 のプランが確定し、Codex の実装待ち。No.53 の実機確認待ちは継続。
+最終更新：2026-11-07（Codex。Shota の Proto1、Visual Studio Community の PC）。No.89 は段階2の実装が済み、Claude の確認待ち。No.53 の実機確認待ちは継続。
 
 企画書「腕ダフルアームズ 〜変な腕でぶっ飛ばせ！〜」のプロトタイプを作るためのタスクです。
 上から順に、**プラン → 管理者の確認 → 実装 → テスト → 完了チェック** の流れで1つずつ進めます。

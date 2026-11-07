@@ -15,13 +15,6 @@ static constexpr float GRAVITY = 25.0f;
 static constexpr float BODY_RADIUS = 0.5f;
 static constexpr float BODY_HEIGHT = 1.8f;
 static constexpr float RESPAWN_SECONDS = 2.0f;
-static constexpr std::array<const char*, 4> MODEL_PATHS = {
-	"assets/models/meka_idle.fbx", "assets/models/meka_run.fbx",
-	"assets/models/meka_armL_forward.fbx", "assets/models/meka_armR_forward.fbx"
-};
-static constexpr float MODEL_HEIGHT = 54.7f;
-static constexpr float MODEL_FOOT_Y = -2.9f;
-static constexpr float MODEL_YAW = XM_PI; // FBX の正面（-Z）を Fighter の前（+Z）へ向ける
 static constexpr float RUN_SPEED_THRESHOLD = 0.25f;
 static constexpr float ANIMATION_BLEND_SECONDS = 0.15f;
 static constexpr XMFLOAT4 PLAYER_COLORS[FIGHTER_COUNT] = {
@@ -57,17 +50,23 @@ XMFLOAT4 Fighter::GetPlayerColor(int slot)
 	return slot >= 0 && slot < FIGHTER_COUNT ? PLAYER_COLORS[slot] : XMFLOAT4{ 1.0f, 1.0f, 1.0f, 1.0f };
 }
 
-void Fighter::Initialize(const Stage& stage, int slot, int device, const VEC3& spawn)
+void Fighter::Initialize(const Stage& stage, int slot, int device, const VEC3& spawn, const SkinnedModel* models)
 {
 	m_Stage = &stage;
 	m_Slot = slot;
 	m_Device = device;
 	m_Spawn = spawn;
-	// 試合を始めるたびに呼ばれるので、読み込みは最初の1回だけ。
-	m_HasModel = SkinnedModelLoad(MODEL_PATHS);
+	m_Models = models;
 	m_Input = {};
 	m_PreviousInput = {};
 	Reset();
+}
+
+void Fighter::SetCharacter(CHARACTER_TYPE character)
+{
+	if (m_Character == character) return;
+	m_Character = character;
+	if (m_Models) m_Models[m_Character].Reset(m_Pose);
 }
 
 void Fighter::PlaceAtSpawn()
@@ -81,7 +80,7 @@ void Fighter::PlaceAtSpawn()
 	m_HeldBy = -1;
 	m_Pulled = false;
 	m_Status.Reset();
-	SkinnedModelReset(m_Pose);
+	m_Models[m_Character].Reset(m_Pose);
 }
 
 void Fighter::Reset()
@@ -171,7 +170,7 @@ void Fighter::UpdateFacing(const Camera& camera, const ArmManager& arms, const F
 
 void Fighter::UpdateAnimation(const ArmManager* arms, float dt)
 {
-	if (!IsActive() || !m_HasModel) return;
+	if (!IsActive() || !m_Models[m_Character].IsLoaded()) return;
 	SKINNED_CLIP clip = SKINNED_CLIP::Idle;
 	if (IsHuman() && !m_Launched) {
 		const int hand = arms ? arms->GetActiveHand() : -1;
@@ -179,7 +178,7 @@ void Fighter::UpdateAnimation(const ArmManager* arms, float dt)
 		if (hand >= 0) clip = hand == 0 ? SKINNED_CLIP::Left : SKINNED_CLIP::Right;
 		else if (vx * vx + vz * vz > RUN_SPEED_THRESHOLD * RUN_SPEED_THRESHOLD) clip = SKINNED_CLIP::Run;
 	}
-	SkinnedModelUpdate(m_Pose, clip, dt, ANIMATION_BLEND_SECONDS);
+	m_Models[m_Character].Update(m_Pose, clip, dt, ANIMATION_BLEND_SECONDS);
 }
 
 void Fighter::Draw(bool highlighted) const
@@ -188,12 +187,13 @@ void Fighter::Draw(bool highlighted) const
 	// 人の体は吹っ飛び中・ターゲット中も本人の色を保つ。
 	const XMFLOAT4 color = IsHuman() ? GetPlayerColor(m_Slot)
 		: (m_Launched ? LAUNCHED_COLOR : (highlighted ? TARGET_COLOR : DUMMY_COLOR));
-	if (m_HasModel) {
-		const float scale = BODY_HEIGHT / MODEL_HEIGHT;
+	if (m_Models[m_Character].IsLoaded()) {
+		const CHARACTER_DATA& character = CHARACTER_DATA::Get(m_Character);
+		const float scale = BODY_HEIGHT / character.ModelHeight;
 		const XMFLOAT3 p = GetPosition();
-		const XMMATRIX world = XMMatrixScaling(scale, scale, scale) * XMMatrixRotationY(m_Yaw + MODEL_YAW)
-			* XMMatrixTranslation(p.x, p.y - MODEL_FOOT_Y * scale, p.z);
-		SkinnedModelDraw(m_Pose, world, color);
+		const XMMATRIX world = XMMatrixScaling(scale, scale, scale) * XMMatrixRotationY(m_Yaw + character.ModelYaw)
+			* XMMatrixTranslation(p.x, p.y - character.ModelFootY * scale, p.z);
+		m_Models[m_Character].Draw(m_Pose, world, color);
 	} else {
 		ShapeDrawCapsule(GetPosition(), BODY_RADIUS, BODY_HEIGHT, color);
 	}

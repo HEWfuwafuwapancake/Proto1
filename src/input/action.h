@@ -10,6 +10,7 @@ struct ACTION_MENU_INPUT
 	bool Back = false; ///< 戻るを押した瞬間
 	float MoveY = 0.0f; ///< メニューの上下（上が正）
 	int Horizontal = 0; ///< IP の区切りの移動（左 -1、右 +1）
+	int CharacterDirection = 0; ///< キャラを切り替えた方向（左 -1、右 +1）
 	int Vertical = 0; ///< IP の数値の変更（下 -1、上 +1）
 	std::string Text; ///< 数字・ピリオド・削除を押した順の文字列（キーボードだけ）
 };

@@ -4,13 +4,13 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）、決まったことは [decisions.md](decisions.md)。
 必要なときだけ読むもの：腕の書き方と共通の部品は [dev/01_DX11基盤の構成.md](dev/01_DX11基盤の構成.md) の「腕の共通の仕組み・腕の足し方」と「腕の書き方」、腕の操作と効き方は [plan/03_新しいアームの仕様.md](plan/03_新しいアームの仕様.md)、腕のモデルは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、画面を撮る方法は [dev/04_画面確認の方法.md](dev/04_画面確認の方法.md)。
 
-- 最終更新：2026-11-07（Claude。Shota の Proto1、Visual Studio Community の PC。No.89 のプランを確定し、Codex へのプロンプトを書いた）
+- 最終更新：2026-11-07（Codex。Shota の Proto1、Visual Studio Community の PC。No.89 段階2の実装と Debug x64 ビルドが済んだ）
 
 ---
 
 ## 1. 今の状態
 
-- **No.89 プラン確定・Codex の実装待ち**（ブランチ `feature/character-select`。MekaGirl の FBX はコピー済み）。
+- **No.89 段階2 済み（Codex が実装）。Claude の確認待ち**（ブランチ `feature/character-select`。Debug x64 で本体・テストプロジェクトをビルド済み）。
 - **No.88 完了**（[PR #147](https://github.com/HEWfuwafuwapancake/Proto1/pull/147)。実装 Codex・レビュー Claude）。キャラは骨つきのメカ（`render/skinnedmodel`）で、待機・走り・左右の腕のポーズを切り替える。アニメは試合中だけ進む（時間切れ後は止まる）。肩の位置は `arm.cpp` の固定値で、アニメの肩には追従しない。
 - **No.87 完了**。静止モデルの `ModelLoad` は Assimp 5.2.4 で FBX とテクスチャを読み込む（No.21 も完了）。説明は [dev/01_DX11基盤の構成.md](dev/01_DX11基盤の構成.md) の「FBX モデルとテクスチャ」。
 - **No.86 完了**：単体テストを Google Test（`third_party/googletest` v1.15.2）に移した。290 件すべて Debug / Release で成功、警告 0。書き方は [dev/01_DX11基盤の構成.md](dev/01_DX11基盤の構成.md) の「単体テスト」。Visual Studio のテスト エクスプローラーで見えるかは、まだ実機で見ていない。
@@ -30,7 +30,7 @@
 
 ## 2. 次にやること
 
-- **No.89 を Codex が実装する**（下のプロンプトを Codex に渡す）。終わったら Claude が確認・PR・マージ。
+- **No.89 の段階3を Claude が担当する**。下のプランと実装を照合し、確認が通ったら PR・マージへ進む。
 
 ### No.89 キャラ選択と MekaGirl（プラン確定・管理者確認済み 2026-11-07。実装 Codex → 確認 Claude）
 
@@ -56,24 +56,13 @@
 
 **確認（Claude）**：Debug / Release 警告0・`run-tests.ps1`（Debug・Release）・新しい計算を壊してテストが落ちる確認・画面確認（MekaGirl の大きさ・向き・足・肩の位置、待機／走り／左右の腕、キャラ選択画面とロビーの表示）・オンライン（127.0.0.1 の2つ起動）で相手のキャラが見えて DESYNC なし。
 
-**Codex へのプロンプト（段階2 コーディング）**
+**段階3への申し送り**
 
-```
-AGENTS.md と CLAUDE.md の手順でセッションを始めてください（handoff.md・tasks.md・Notion の開発ログ）。
-今回は No.89「キャラ選択と MekaGirl」の段階2（コーディング）です。プランは docs/handoff.md の
-「次にやること」の No.89 にあり、管理者の確認は取れています。ブランチ feature/character-select
-（作成済み・素材の FBX もコピー済み）で、プランどおりにコードとテストのコードを書いてください。
-
-- 先に docs/dev/01_DX11基盤の構成.md、src/render/skinnedmodel.*、src/game/fighter.*・fightermanager.*・
-  arm.cpp・game.cpp・hud.cpp、src/physics/scenecalc.*、src/net/sessioncalc.* を読んでから書く。
-- MekaGirl の FBX は1ファイルにアニメが2本（Take 001 と名前つき）。Take 001 以外を使う。
-- 当たり判定は2キャラ共通。キャラはロックステップの計算・チェックサムに入れない。
-- 調整する値（モデルの高さ・足・肩の位置）は character.cpp の表に static constexpr でまとめる。
-- 新しいファイルは .vcxproj / .filters に入れ、C++ は BOM付きUTF-8・CRLF。
-- 確かめるのは Debug のビルドが通ることだけ（run-tests・Release・画面確認は Claude がする）。
-- 終わったら save-work.ps1 で保存し、handoff.md の「今の状態」に
-  「No.89 段階2 済み（Codex が実装）。Claude の確認待ち」と書く。迷ったところ・仮の値は「次にやること」に書く。
-```
+- MekaGirl は FBX 高さ 110.76・足元 0、ゲーム内の描画用の肩は胸の横を想定して X=0.22 / Y=1.28 / Z=0.0、向きの補正は π を仮設定した。正面・足元・肩のつながりと、4つの名前つきアニメが再生されるかを画面で確かめる。
+- 腕は描画の付け根だけキャラ別。攻撃の起点は従来のメカの値を全キャラで使う。触腕が敵を保持したときは、描画用の肩から計算済みの先端へつなぐ。
+- LOCAL VS の決定を押した機器を 1P に割り当てる。ロビーで変えたキャラは RETRY に残り、オフラインの結果から TITLE を選ぶと GAME START に戻る。2P 以降はメカへ戻り、1P の初期値はキャラ選択画面で選んだ値に戻る。オンラインの TITLE はロビーに戻って全員の選択を保つ。
+- キャラ番号は DirectX を使わない scenecalc.h に置き、game/character.h から参照する。通信では JOIN・READY・STATE にだけ番号を含める。版は 7。旧版クライアントの JOIN は新版ホストで版不一致を返せるが、新版クライアントから旧版ホストへ送ると旧版側が新しい長さの JOIN を破棄するため、接続待ちになる。
+- Debug x64 の本体とテストプロジェクトをビルド済み。段階3では上の「確認」を行い、特に LOCAL VS で機器別にキャラを変更できることと、オンラインで両端末のキャラが一致することを確かめる。
 
 ### 管理者の実機確認
 

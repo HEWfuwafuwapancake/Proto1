@@ -9,7 +9,7 @@ class NetSession
 {
 public:
 	/// @brief 前の接続を閉じて設定から準備する（何度でも呼べる。失敗時はオフラインで false）
-	bool Initialize(const NET_OPTIONS& options);
+	bool Initialize(const NET_OPTIONS& options, CHARACTER_TYPE character = CHARACTER_MEKA);
 	/// @brief UDP接続・機器選択を閉じてオフラインへ戻す（エラーの説明は残す）
 	void Finalize();
 	/// @brief 受信・ロビーの機器選択・未採取の入力の固定・再送を行う（待たない）
@@ -40,6 +40,8 @@ public:
 	uint8_t GetMask() const { return m_Calc.GetMask(); }
 	/// @brief 機器選択済みスロットのビットを取得する
 	uint8_t GetReadyMask() const { return m_Calc.GetReadyMask(); }
+	/// @brief ロビーで共有したキャラを取得する（スロットは 0〜3）
+	CHARACTER_TYPE GetCharacter(int slot) const { return m_Calc.GetCharacter(slot); }
 	/// @brief タイトルバーに表示する接続状態を取得する
 	std::string GetStatusText() const;
 	/// @brief VS の版の違い・ずれ（DESYNC）の表示を取得する（タイトルバーの先頭に出す。どちらもなしは空）

@@ -3,6 +3,14 @@
 /// @file scenecalc.h
 /// @brief 起動・モード選択・IP 入力・ロビー・試合・結果の流れ（DirectX・Windows 不使用）
 
+/// @brief キャラ選択・ロビーで使うキャラ番号
+enum CHARACTER_TYPE
+{
+	CHARACTER_MEKA, ///< メカ
+	CHARACTER_MEKAGIRL, ///< MekaGirl
+	CHARACTER_COUNT ///< キャラの数
+};
+
 /// @brief ゲームのシーン
 enum SCENE
 {
@@ -10,6 +18,7 @@ enum SCENE
 	SCENE_MATCH, ///< 試合（時間切れの画面も含む）
 	SCENE_RESULT, ///< 結果
 	SCENE_GAME_START, ///< 起動時の GAME START
+	SCENE_CHARACTER_SELECT, ///< キャラの選択
 	SCENE_MODE_SELECT, ///< 対戦方法の選択
 	SCENE_JOIN_ADDRESS, ///< 参加先の IPv4 入力
 };
@@ -53,6 +62,7 @@ struct SCENE_INPUT
 	float MoveY; ///< 左スティック・W / S の上下（上がプラス）
 	bool Back = false; ///< 戻るを押した瞬間なら true
 	bool AddressValid = false; ///< IP の全区切りが入力済みで 0〜255 なら true
+	int CharacterDirection = 0; ///< キャラの切り替え（左 -1、右 +1、なし 0）
 };
 
 /// @brief シーンの遷移と、弾くたびに1つ動くメニューを管理する
@@ -74,9 +84,14 @@ public:
 	SCENE GetScene() const { return m_Scene; }
 	/// @brief モード選択・結果画面で選んでいる項目の番号を取得する
 	int GetCursor() const { return m_Cursor; }
+	/// @brief GAME START のあとに選んだキャラを取得する
+	CHARACTER_TYPE GetCharacter() const { return m_Character; }
+	/// @brief 左右の入力でキャラを一周させる（左 -1、右 +1、なし 0）
+	static CHARACTER_TYPE CycleCharacter(CHARACTER_TYPE character, int direction);
 
 private:
 	void MoveCursor(float moveY, int count);
+	CHARACTER_TYPE m_Character = CHARACTER_MEKA;
 	SCENE m_Scene = SCENE_GAME_START;
 	int m_Cursor = RESULT_ITEM_RETRY;
 	bool m_MenuReady = true;

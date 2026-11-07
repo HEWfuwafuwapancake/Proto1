@@ -257,6 +257,9 @@ ACTION_MENU_INPUT ActionGetMenuInput(int device)
 		if (KeyboardIsPress(VK_UP)) input.MoveY = 1.0f;
 		if (KeyboardIsPress(VK_DOWN)) input.MoveY = -1.0f;
 		input.Horizontal = (KeyboardIsTrigger(VK_RIGHT) ? 1 : 0) - (KeyboardIsTrigger(VK_LEFT) ? 1 : 0);
+		const bool left = KeyboardIsTrigger(VK_LEFT) || KeyboardIsTrigger(MOVE_KEY_LEFT);
+		const bool right = KeyboardIsTrigger(VK_RIGHT) || KeyboardIsTrigger(MOVE_KEY_RIGHT);
+		input.CharacterDirection = (right ? 1 : 0) - (left ? 1 : 0);
 		input.Text = KeyboardGetAddressText();
 	}
 	else {
@@ -266,6 +269,7 @@ ACTION_MENU_INPUT ActionGetMenuInput(int device)
 		if (state.MenuButtons & PAD_BUTTON_DPAD_UP) input.MoveY = 1.0f;
 		if (state.MenuButtons & PAD_BUTTON_DPAD_DOWN) input.MoveY = -1.0f;
 		input.Horizontal = ((trigger & PAD_BUTTON_DPAD_RIGHT) ? 1 : 0) - ((trigger & PAD_BUTTON_DPAD_LEFT) ? 1 : 0);
+		input.CharacterDirection = input.Horizontal;
 		input.Vertical = ((trigger & PAD_BUTTON_DPAD_UP) ? 1 : 0) - ((trigger & PAD_BUTTON_DPAD_DOWN) ? 1 : 0);
 	}
 	return input;

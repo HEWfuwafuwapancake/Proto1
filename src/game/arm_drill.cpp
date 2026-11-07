@@ -105,7 +105,7 @@ void DrillArm::Draw()
 {
 	const int hand = GetHand();
 	const DrillCalc& arm = m_Arm;
-	const VEC3 origin = GetShoulder();
+	const VEC3 origin = GetDrawShoulder();
 	const VEC3 direction = ArmCalcBlendDirection(
 		GetRestDirection(),
 		DrillCalcThrustArmDirection(arm.GetDirection(), PARAMS.Grip), m_Straighten);
