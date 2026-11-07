@@ -9,6 +9,7 @@
 #include "physics/tentaclecalc.h"
 #include "physics/versuscalc.h"
 #include "game/character.h"
+#include "render/motioncalc.h"
 
 class Stage;
 class Camera;
@@ -127,8 +128,9 @@ private:
 	int m_Device = VERSUS_DEVICE_DUMMY;
 	int m_Slot = 0;
 	const SkinnedModel* m_Models = nullptr;
-	CHARACTER_TYPE m_Character = CHARACTER_MEKA;
+	CHARACTER_TYPE m_Character = CHARACTER_DEFAULT;
 	SKINNED_POSE m_Pose;
+	MotionCalc m_Motion; // 描画だけの脚の向き・ねじれ・傾き
 	PLAYER_INPUT m_Input;
 	PLAYER_INPUT m_PreviousInput;
 	const Stage* m_Stage = nullptr;

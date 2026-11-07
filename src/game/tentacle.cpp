@@ -148,7 +148,9 @@ void TentacleArm::Draw()
 			: Vec3Scale(delta, 1.0f / length);
 		const VEC3 drawTip = Vec3Add(origin, Vec3Scale(direction, drawLength));
 		const float phase = GameTimeGetElapsed() * WIGGLE_SPEED + hand * WIGGLE_ARM_PHASE;
-		const float amplitude = WIGGLE_AMPLITUDE * fminf(1.0f, length / WIGGLE_FULL_LENGTH)
+		// 待機中は揺らさない（ブルブルして見えるため）。伸ばしている間とつかんでいる間だけ揺らす。
+		const float amplitude = arm.GetState() == TENTACLE_IDLE ? 0.0f
+			: WIGGLE_AMPLITUDE * fminf(1.0f, length / WIGGLE_FULL_LENGTH)
 			* (arm.GetState() == TENTACLE_HOLDING ? WIGGLE_HOLD_SCALE : 1.0f);
 		float distance = 0.0f;
 		VEC3 start = origin;

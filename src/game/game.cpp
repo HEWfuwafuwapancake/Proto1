@@ -27,7 +27,7 @@ bool Game::Initialize(const NET_OPTIONS& options)
 	for (auto& input : m_Inputs) input = {};
 	for (auto& input : m_PreviousInputs) input = {};
 	for (auto& input : m_DeviceInputs) input = {};
-	m_LobbyCharacters.fill(CHARACTER_MEKA);
+	m_LobbyCharacters.fill(CHARACTER_DEFAULT);
 	m_Fighters.LoadModels();
 	m_Fighters.Initialize(m_Stage, m_Participants);
 	// 腕のモデルは起動時に4枠分だけ読む。参加やTITLE・RETRYでは作り直さない。
@@ -71,7 +71,7 @@ void Game::ConfigurePlayers()
 	m_HumanCount = 0;
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		Fighter& fighter = m_Fighters.GetFighter(i);
-		fighter.SetCharacter(fighter.IsHuman() ? m_LobbyCharacters[i] : CHARACTER_MEKA);
+		fighter.SetCharacter(fighter.IsHuman() ? m_LobbyCharacters[i] : CHARACTER_DEFAULT);
 		fighter.SetInput(m_Inputs[i], m_PreviousInputs[i]);
 		if (fighter.IsHuman()) m_Humans[m_HumanCount++] = i;
 	}
@@ -117,7 +117,7 @@ void Game::Restart()
 void Game::ResetParticipants()
 {
 	m_Participants.Reset();
-	m_LobbyCharacters.fill(CHARACTER_MEKA);
+	m_LobbyCharacters.fill(CHARACTER_DEFAULT);
 	m_LobbyCharacters[0] = m_Scene.GetCharacter();
 	for (auto& value : m_Inputs) value = {};
 	for (auto& value : m_PreviousInputs) value = {};

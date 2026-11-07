@@ -146,6 +146,8 @@
     <ClCompile Include="cubeflipcalc_test.cpp" />
     <ClCompile Include="..\..\src\render\animcalc.cpp" />
     <ClCompile Include="animcalc_test.cpp" />
+    <ClCompile Include="..\..\src\render\motioncalc.cpp" />
+    <ClCompile Include="motioncalc_test.cpp" />
     <ClCompile Include="objcalc_test.cpp" />
     <ClCompile Include="..\..\src\render\objcalc.cpp" />
   </ItemGroup>
@@ -170,5 +172,6 @@
   <ItemGroup>
     <ClInclude Include="..\..\src\render\cubeflipcalc.h" />
     <ClInclude Include="..\..\src\render\animcalc.h" />
+    <ClInclude Include="..\..\src\render\motioncalc.h" />
   </ItemGroup>
 </Project>

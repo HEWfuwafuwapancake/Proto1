@@ -8,7 +8,8 @@
 struct CHARACTER_DATA
 {
 	const char* Name; ///< 選択画面とロビーに出す表示名
-	std::array<const char*, static_cast<size_t>(SKINNED_CLIP::Count)> Paths; ///< 待機・走り・左腕・右腕の FBX
+	std::array<const char*, static_cast<size_t>(SKINNED_CLIP::Count)> Paths; ///< 待機・走り・左腕・右腕・後ろ走り・ジャンプ・落下・着地の FBX（後ろの4つは nullptr なら代わりのクリップ）
+	SKINNED_BONES_DESC Bones; ///< 腕のクリップを重ねる上半身の根元と、ねじる背骨の名前
 	float ModelHeight; ///< FBX の元の高さ
 	float ModelFootY; ///< FBX の元の足元の高さ
 	float ModelYaw; ///< FBX の正面をゲームの +Z に合わせる角度（ラジアン）
