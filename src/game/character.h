@@ -13,7 +13,9 @@ struct CHARACTER_DATA
 	float ModelHeight; ///< FBX の元の高さ
 	float ModelFootY; ///< FBX の元の足元の高さ
 	float ModelYaw; ///< FBX の正面をゲームの +Z に合わせる角度（ラジアン）
-	VEC3 Shoulder; ///< 描画用の肩位置（X は左右の幅、Y は足元からの高さ、Z は前方）
+	VEC3 Shoulder; ///< 描画用の肩位置（X は左右の幅、Y は足元からの高さ、Z は前方）。腕の骨がないキャラだけ使う
+	std::array<std::array<const char*, 4>, 2> ArmChains; ///< 左手・右手の腕の骨（肩・肘・手首・手先）。腕の付け根・待機の向き・長さをアニメに合わせる（nullptr なら Shoulder の固定位置）
+	float ArmScale; ///< 腕のモデルを描く大きさの倍率（メカを 1 とする。触腕の太さ・節の大きさ・取付のずらし）
 
 	/// @brief キャラの調整値を取得する
 	static const CHARACTER_DATA& Get(CHARACTER_TYPE character);

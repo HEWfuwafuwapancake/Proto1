@@ -65,6 +65,15 @@ public:
 	/// @param dt ゲームの経過秒
 	/// @param blendSeconds クリップを切り替えるときと、上半身のクリップを出し入れするときにつなぐ秒数
 	void Update(SKINNED_POSE& pose, const SKINNED_REQUEST& request, float dt, float blendSeconds) const;
+	/// @brief 骨（ノード）の番号を名前で探す
+	/// @return ノード番号（見つからなければ -1）
+	int FindNode(const char* name) const;
+	/// @brief 姿勢の中の、ノードの原点のモデル空間の位置を取得する
+	/// @param pose この Fighter の姿勢
+	/// @param node FindNode で探したノード番号
+	/// @param position 位置を入れる先
+	/// @return 取得できたら true（番号が範囲外・姿勢が未計算なら false）
+	bool GetNodePosition(const SKINNED_POSE& pose, int node, ANIM_VEC3& position) const;
 	/// @brief 姿勢とワールド行列を使い、全体を指定色で描く
 	void Draw(const SKINNED_POSE& pose, const XMMATRIX& world, const XMFLOAT4& color) const;
 
@@ -108,6 +117,7 @@ private:
 	void SamplePose(SKINNED_POSE& pose, float blend) const;
 
 	std::vector<Node> m_Nodes;
+	NodeNames m_NodeNames; // 骨の名前 → ノード番号
 	std::vector<Mesh> m_Meshes;
 	std::array<Clip, static_cast<size_t>(SKINNED_CLIP::Count)> m_Clips;
 	std::vector<bool> m_UpperMask; // 上半身の骨か（ノードの番号順）

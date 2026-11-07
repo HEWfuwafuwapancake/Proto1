@@ -93,8 +93,10 @@ protected:
 	const Stage& GetStage() const { return *m_Links.StageObject; }
 	/// @brief 当たり判定に使う肩のワールド座標を取得する（共通の取付位置に GetMountOffset のずらしを足す）
 	VEC3 GetShoulder() const;
-	/// @brief 描画するキャラの肩のワールド座標を取得する
+	/// @brief 描画するキャラの肩のワールド座標を取得する（腕の骨があるキャラはアニメの肩の骨に付ける）
 	VEC3 GetDrawShoulder() const;
+	/// @brief 描画するキャラの腕のモデルの大きさの倍率を取得する（メカを 1 とする）
+	float GetDrawScale() const;
 	/// @brief この腕だけの取付位置のずらしを取得する（腕のモデルの肩の部分を体の取付口に合わせるため）
 	/// @return X：外向き・Y：上向き・Z：前向きのずらし（m）。基本はずらしなし
 	virtual VEC3 GetMountOffset() const { return {}; }

@@ -242,7 +242,19 @@ VEC3 Arm::GetShoulder() const
 
 VEC3 Arm::GetDrawShoulder() const
 {
-	return GetShoulderAt(CHARACTER_DATA::Get(GetPlayer().GetCharacter()).Shoulder);
+	VEC3 shoulder, direction;
+	float length = 0.0f;
+	if (!GetPlayer().GetArmBone(GetHand(), shoulder, direction, length)) {
+		return GetShoulderAt(CHARACTER_DATA::Get(GetPlayer().GetCharacter()).Shoulder);
+	}
+	// アニメの肩の骨に、腕ごとの取付のずらしをキャラの腕の大きさに合わせて足す（描画だけ）。
+	const VEC3 mount = Vec3Scale(GetMountOffset(), GetDrawScale());
+	return ArmCalcShoulder(shoulder, GetPlayer().GetYaw(), GetHand(), mount.X, mount.Y, mount.Z);
+}
+
+float Arm::GetDrawScale() const
+{
+	return CHARACTER_DATA::Get(GetPlayer().GetCharacter()).ArmScale;
 }
 
 VEC3 Arm::GetShoulderAt(const VEC3& offset) const

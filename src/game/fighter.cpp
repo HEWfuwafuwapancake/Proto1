@@ -25,7 +25,7 @@ static constexpr float BACK_RUN_ANGLE = XMConvertToRadians(110.0f); // 進む向
 static constexpr float BACK_RUN_HYSTERESIS = XMConvertToRadians(10.0f);
 static constexpr float LAND_SECONDS = 0.2f; // 着地の動きを見せる秒数
 static constexpr float MIN_RUN_PLAY_SPEED = 0.5f; // 走りの再生速度の下限
-static constexpr float LEAN_FORWARD = XMConvertToRadians(7.0f); // 全速で走ったときの前傾
+static constexpr float LEAN_FORWARD = XMConvertToRadians(10.0f); // 全速で走ったときの前傾
 static constexpr float LEAN_TURN = 0.06f; // 脚が 1 ラジアン／秒で回るときの内側への傾き（ラジアン）
 static constexpr float LEAN_SIDE_MAX = XMConvertToRadians(10.0f); // 内側への傾きの上限
 static constexpr float LEAN_RATE = 8.0f; // 傾きが目標へ近づく速さ（1秒あたりの割合）
@@ -226,16 +226,7 @@ void Fighter::Draw(bool highlighted) const
 	const XMFLOAT4 color = IsHuman() ? GetPlayerColor(m_Slot)
 		: (m_Launched ? LAUNCHED_COLOR : (highlighted ? TARGET_COLOR : DUMMY_COLOR));
 	if (m_Models[m_Character].IsLoaded()) {
-		const CHARACTER_DATA& character = CHARACTER_DATA::Get(m_Character);
-		const float scale = BODY_HEIGHT / character.ModelHeight;
-		const XMFLOAT3 p = GetPosition();
-		// 足元を中心に、前後・左右へ傾けてから脚の向きへ回す（上半身は骨のねじれで狙いの向きになる）。
-		// RotationZ はプラスで左へ傾くので、右へ傾く値の符号を変えて渡す。
-		const XMMATRIX world = XMMatrixScaling(scale, scale, scale) * XMMatrixRotationY(character.ModelYaw)
-			* XMMatrixTranslation(0.0f, -character.ModelFootY * scale, 0.0f)
-			* XMMatrixRotationX(m_Motion.GetLeanPitch()) * XMMatrixRotationZ(-m_Motion.GetLeanRoll())
-			* XMMatrixRotationY(m_Motion.GetLegYaw()) * XMMatrixTranslation(p.x, p.y, p.z);
-		m_Models[m_Character].Draw(m_Pose, world, color);
+		m_Models[m_Character].Draw(m_Pose, GetModelWorld(), color);
 	} else {
 		ShapeDrawCapsule(GetPosition(), BODY_RADIUS, BODY_HEIGHT, color);
 	}
@@ -249,6 +240,44 @@ void Fighter::Draw(bool highlighted) const
 		const XMFLOAT3 p = GetPosition();
 		ShapeDrawSphere({ p.x, p.y + BODY_HEIGHT + TARGET_MARKER_HEIGHT, p.z }, TARGET_MARKER_RADIUS, TARGET_COLOR);
 	}
+}
+
+XMMATRIX Fighter::GetModelWorld() const
+{
+	const CHARACTER_DATA& character = CHARACTER_DATA::Get(m_Character);
+	const float scale = BODY_HEIGHT / character.ModelHeight;
+	const XMFLOAT3 p = GetPosition();
+	// 足元を中心に、前後・左右へ傾けてから脚の向きへ回す（上半身は骨のねじれで狙いの向きになる）。
+	// RotationZ はプラスで左へ傾くので、右へ傾く値の符号を変えて渡す。
+	return XMMatrixScaling(scale, scale, scale) * XMMatrixRotationY(character.ModelYaw)
+		* XMMatrixTranslation(0.0f, -character.ModelFootY * scale, 0.0f)
+		* XMMatrixRotationX(m_Motion.GetLeanPitch()) * XMMatrixRotationZ(-m_Motion.GetLeanRoll())
+		* XMMatrixRotationY(m_Motion.GetLegYaw()) * XMMatrixTranslation(p.x, p.y, p.z);
+}
+
+bool Fighter::GetArmBone(int hand, VEC3& shoulder, VEC3& direction, float& length) const
+{
+	if (hand < 0 || hand > 1 || !m_Models || !m_Models[m_Character].IsLoaded()) return false;
+	const SkinnedModel& model = m_Models[m_Character];
+	const auto& chain = CHARACTER_DATA::Get(m_Character).ArmChains[hand];
+	const XMMATRIX world = GetModelWorld();
+	XMVECTOR points[4];
+	for (size_t i = 0; i < chain.size(); ++i) {
+		ANIM_VEC3 p{};
+		if (!model.GetNodePosition(m_Pose, model.FindNode(chain[i]), p)) return false;
+		points[i] = XMVector3TransformCoord(XMVectorSet(p.X, p.Y, p.Z, 1.0f), world);
+	}
+	// 触腕は肘のない1本の腕なので、向きは上腕（肩→肘）、長さは手先までの骨の合計にする。
+	length = 0.0f;
+	for (size_t i = 1; i < chain.size(); ++i) length += XMVectorGetX(XMVector3Length(XMVectorSubtract(points[i], points[i - 1])));
+	const XMVECTOR upper = XMVectorSubtract(points[1], points[0]);
+	if (length <= 0.0f || XMVectorGetX(XMVector3LengthSq(upper)) <= 0.0f) return false;
+	XMFLOAT3 s, d;
+	XMStoreFloat3(&s, points[0]);
+	XMStoreFloat3(&d, XMVector3Normalize(upper));
+	shoulder = { s.x, s.y, s.z };
+	direction = { d.x, d.y, d.z };
+	return true;
 }
 
 XMFLOAT3 Fighter::GetPosition() const

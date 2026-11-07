@@ -124,25 +124,34 @@ void TentacleArm::Draw()
 	const VEC3 origin = GetDrawShoulder();
 	const VEC3 physicalOrigin = GetShoulder();
 	VEC3 tip = arm.GetState() == TENTACLE_IDLE ? physicalOrigin : arm.GetTip();
+	const float modelScale = MODEL_SCALE * GetDrawScale();
+	// 腕の骨があるキャラは、待機の向き・長さをアニメの腕に合わせる（走ると腕と一緒に振れる）。
+	VEC3 rest = GetRestDirection();
+	float idleLength = IDLE_LENGTH;
+	VEC3 boneShoulder, boneDirection;
+	float boneLength = 0.0f;
+	if (GetPlayer().GetArmBone(hand, boneShoulder, boneDirection, boneLength)) {
+		rest = boneDirection;
+		idleLength = boneLength;
+	}
 	if (arm.GetState() != TENTACLE_HOLDING) {
 		// 描画する先端だけを変える。計算上の arm.GetTip()・長さ・判定はそのまま。
 		const VEC3 extended = Vec3Sub(tip, physicalOrigin);
 		const float length = Vec3Length(extended);
-		const VEC3 rest = GetRestDirection();
 		const VEC3 aim = length < MODEL_MIN_LENGTH ? rest : Vec3Scale(extended, 1.0f / length);
-		const VEC3 direction = ArmCalcBlendDirection(rest, aim, length / IDLE_LENGTH);
-		tip = Vec3Add(length < IDLE_LENGTH ? origin : physicalOrigin, Vec3Scale(direction, fmaxf(length, IDLE_LENGTH)));
+		const VEC3 direction = ArmCalcBlendDirection(rest, aim, length / idleLength);
+		tip = Vec3Add(length < idleLength ? origin : physicalOrigin, Vec3Scale(direction, fmaxf(length, idleLength)));
 	}
 	const VEC3 delta = Vec3Sub(tip, origin);
 	const int steps = (int)ceilf(Vec3Length(delta) / SPHERE_SPACING) + 1;
 	const XMFLOAT4 color = GetColor(arm.GetTarget() >= 0);
 	if (m_BaseModel >= 0 && m_SegmentModel >= 0 && m_TipModel >= 0) {
 		const float length = Vec3Length(delta);
-		const float remaining = length / MODEL_SCALE - BASE_LENGTH - TIP_LENGTH;
+		const float remaining = length / modelScale - BASE_LENGTH - TIP_LENGTH;
 		const int segments = remaining > 0.0f ? (int)floorf(remaining / SEGMENT_LENGTH + 0.5f) : 0;
 		const float total = BASE_LENGTH + segments * SEGMENT_LENGTH + TIP_LENGTH;
 		// 短すぎる腕は見た目だけ最低長まで伸ばす。判定や arm.GetTip() は変えない。
-		const float drawLength = fmaxf(length, total * MODEL_SCALE * MIN_STRETCH);
+		const float drawLength = fmaxf(length, total * modelScale * MIN_STRETCH);
 		const float yaw = GetPlayer().GetYaw();
 		const VEC3 direction = length < MODEL_MIN_LENGTH ? VEC3{ sinf(yaw), 0, cosf(yaw) }
 			: Vec3Scale(delta, 1.0f / length);
@@ -162,7 +171,7 @@ void TentacleArm::Draw()
 			const VEC3 end = TentacleCalcWigglePoint(origin, drawTip, last ? 1.0f : distance / total,
 				phase, amplitude, WIGGLE_WAVES);
 			DrawPiece(base ? m_BaseModel : (last ? m_TipModel : m_SegmentModel),
-				start, end, sourceLength, MODEL_SCALE, color);
+				start, end, sourceLength, modelScale, color);
 			start = end;
 		}
 		return;

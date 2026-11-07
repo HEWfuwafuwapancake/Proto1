@@ -5,13 +5,15 @@ static constexpr CHARACTER_DATA CHARACTERS[CHARACTER_COUNT] = {
 	{ "MEKA", { "assets/models/meka_idle.fbx", "assets/models/meka_run.fbx",
 		"assets/models/meka_armL_forward.fbx", "assets/models/meka_armR_forward.fbx", nullptr, nullptr, nullptr, nullptr },
 		{ "joint2", { "joint2", "joint3", "joint4" } }, // joint1 が腰、joint2〜4 が背骨
-		54.7f, -2.9f, XM_PI, { 0.29f, 1.30f, 0.0f } },
+		54.7f, -2.9f, XM_PI, { 0.29f, 1.30f, 0.0f }, {}, 1.0f }, // 腕の骨はないので肩は固定
 	{ "MEKAGIRL", { "assets/models/mekagirl_idle.fbx", "assets/models/mekagirl_run.fbx",
 		"assets/models/mekagirl_armL_forward.fbx", "assets/models/mekagirl_armR_forward.fbx",
 		"assets/models/mekagirl_run_back.fbx", "assets/models/mekagirl_jump.fbx",
 		"assets/models/mekagirl_fall.fbx", "assets/models/mekagirl_land.fbx" },
 		{ "spine_01", { "spine_01", "spine_02", "chest" } },
-		110.76f, 0.0f, XM_PI, { 0.22f, 1.28f, 0.0f } }, // 正面と胸の横の肩位置は画面確認で合わせる
+		110.76f, 0.0f, XM_PI, { 0.22f, 1.28f, 0.0f },
+		{ { { "upperarm_l", "lowerarm_l", "hand_l", "hand_end_l" }, { "upperarm_r", "lowerarm_r", "hand_r", "hand_end_r" } } },
+		0.355f }, // 触腕の元モデル（全長 30.5）が腕の長さ（約 50）にそろう大きさ
 };
 
 const CHARACTER_DATA& CHARACTER_DATA::Get(CHARACTER_TYPE character)

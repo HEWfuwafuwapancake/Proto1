@@ -205,6 +205,7 @@ bool SkinnedModel::LoadFiles(const std::array<const char*, static_cast<size_t>(S
 		if (!ReadMesh(*scene->mMeshes[i], meshNodes[i], names, m_Meshes[i])) return false;
 	}
 	ReadBones(names, bones);
+	m_NodeNames = names;
 	if (!ReadClip(*scene, names, m_Clips[0])) return false;
 	for (size_t i = 1; i < paths.size(); ++i) {
 		if (paths[i]) {
@@ -241,6 +242,22 @@ void SkinnedModel::Finalize()
 	m_Clips = {};
 	m_UpperMask.clear();
 	m_TwistNodes.clear();
+	m_NodeNames.clear();
+}
+
+int SkinnedModel::FindNode(const char* name) const
+{
+	if (!name) return -1;
+	const auto node = m_NodeNames.find(name);
+	return node != m_NodeNames.end() ? static_cast<int>(node->second) : -1;
+}
+
+bool SkinnedModel::GetNodePosition(const SKINNED_POSE& pose, int node, ANIM_VEC3& position) const
+{
+	if (node < 0 || static_cast<size_t>(node) >= pose.Global.size() || pose.Global.size() != m_Nodes.size()) return false;
+	const ANIM_MATRIX& global = pose.Global[node];
+	position = { global[3][0], global[3][1], global[3][2] };
+	return true;
 }
 
 ANIM_TRANSFORM SkinnedModel::SampleClip(SKINNED_CLIP clip, float time, size_t node) const
