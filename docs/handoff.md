@@ -4,13 +4,13 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）、決まったことは [decisions.md](decisions.md)。
 必要なときだけ読むもの：腕の書き方と共通の部品は [dev/01_DX11基盤の構成.md](dev/01_DX11基盤の構成.md) の「腕の共通の仕組み・腕の足し方」と「腕の書き方」、腕の操作と効き方は [plan/03_新しいアームの仕様.md](plan/03_新しいアームの仕様.md)、腕のモデルは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、画面を撮る方法は [dev/04_画面確認の方法.md](dev/04_画面確認の方法.md)。
 
-- 最終更新：2026-11-07（Codex。Shota の Proto1、Visual Studio Community の PC。No.88 を実装し、Claude のレビュー待ち）
+- 最終更新：2026-11-07（Claude。Shota の Proto1、Visual Studio Community の PC。No.88 をレビューしてマージ）
 
 ---
 
 ## 1. 今の状態
 
-- **No.88 は Claude のレビュー待ち**（[PR #147](https://github.com/HEWfuwafuwapancake/Proto1/pull/147)）。骨つきのメカに差し替え、待機・走り・左右の腕のポーズを描画した。正面は Y 軸の π 回転で合わせた。Debug / Release の警告 0、単体テスト各293件、壊す確認、画面、オンライン2人での DESYNC 確認まで実施。
+- **No.88 完了**（[PR #147](https://github.com/HEWfuwafuwapancake/Proto1/pull/147)。実装 Codex・レビュー Claude）。キャラは骨つきのメカ（`render/skinnedmodel`）で、待機・走り・左右の腕のポーズを切り替える。アニメは試合中だけ進む（時間切れ後は止まる）。肩の位置は `arm.cpp` の固定値で、アニメの肩には追従しない。
 - **No.87 完了**。静止モデルの `ModelLoad` は Assimp 5.2.4 で FBX とテクスチャを読み込む（No.21 も完了）。説明は [dev/01_DX11基盤の構成.md](dev/01_DX11基盤の構成.md) の「FBX モデルとテクスチャ」。
 - **No.86 完了**：単体テストを Google Test（`third_party/googletest` v1.15.2）に移した。290 件すべて Debug / Release で成功、警告 0。書き方は [dev/01_DX11基盤の構成.md](dev/01_DX11基盤の構成.md) の「単体テスト」。Visual Studio のテスト エクスプローラーで見えるかは、まだ実機で見ていない。
 - **No.85 完了**（PR #141）：パッドの十字キー ← → で手を選び、↓ ↑ で腕を一周（ハサミは飛ばす）。今の腕は左下・右下に日本語で出て、替えるとキューブのように回る。オンラインを始めると全員の装備を触腕に戻す。キーをパッドの代わりにした一時ビルドで確認し、オンライン2つ起動で DESYNC なし。
@@ -27,14 +27,12 @@
 - **No.83 完了**：起動は最大化した枠ありのウィンドウ（全画面は `--fullscreen` と F11 / Alt+Enter のときだけ）。モニター1枚ではデバッグ用ウィンドウが右上の最前面に出る。No.84 で、ウィンドウの大きさ（最大化・枠を引っぱる・F11）に合わせて黒い帯を付け、ゲームの比率を保つようにした。
 - 前からの実機での確認待ち（No.48・51〜54・57）は [archive/handoff_2026-11.md](archive/handoff_2026-11.md) の「2026-11-04 に handoff.md から移したこと」。
 
-## 2. 次にやること（No.88 のレビュー）
+## 2. 次にやること
 
-- Claude が [PR #147](https://github.com/HEWfuwafuwapancake/Proto1/pull/147) をレビューする。末尾キーの折り返し、両手を使ったときの優先順位、モデルの向きと固定の肩位置を見る。
-- レビューの指摘を反映し、マージ後に `tasks.md` と Notion の No.88 を完了へ更新する。
+- [tasks.md](tasks.md) の上から、次の未着手のタスクを選ぶ（管理者に聞く）。
 
 ### 管理者の実機確認
 
 - Claude の画面確認はキーをパッドの代わりにした一時ビルドなので、実機のパッドで一度だけ触る。まだ見ていないのは、やり直し後も手の選択が残ることと、時間切れ後も切り替えられること。
 - No.86 のついでに、Visual Studio で **テスト → テスト エクスプローラー** を開き、Proto1Tests のテストが出て「すべて実行」で通るかを一度見る（出ないときは、Visual Studio Installer の「C++ によるデスクトップ開発」で「Google Test の Test Adapter」に印があるか確かめる）。
 - メンバーは `git lfs pull` で `third_party/assimp` の lib・dll と `assets/models/` のメカの FBX を取ってからビルドする。
-- そのあとは [tasks.md](tasks.md) の上から、次の未着手のタスクを選ぶ（管理者に聞く）。
