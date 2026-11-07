@@ -12,7 +12,7 @@ static constexpr uint16_t SESSION_PORT = 27026;
 static constexpr int MAX_RECEIVE_PER_UPDATE = 64;
 static constexpr size_t RECEIVE_BYTES = 1024;
 
-bool NetSession::Initialize(const NET_OPTIONS& options)
+bool NetSession::Initialize(const NET_OPTIONS& options, CHARACTER_TYPE character)
 {
 	Finalize();
 	m_Options = options;
@@ -32,7 +32,7 @@ bool NetSession::Initialize(const NET_OPTIONS& options)
 		return false;
 	}
 	std::random_device random;
-	m_Calc.Initialize(options, random());
+	m_Calc.Initialize(options, random(), character);
 	m_Addresses = options.Mode == NET_MODE_HOST ? NetSocket::GetLocalAddresses() : options.Host;
 	return true;
 }
@@ -80,7 +80,8 @@ void NetSession::Receive()
 				m_Calc.Receive(peer, message);
 				continue;
 			}
-			const int slot = m_Calc.Join(message.Nonce, message.Version, message.Build, message.Program);
+			const int slot = m_Calc.Join(message.Nonce, message.Version, message.Build, message.Program,
+				static_cast<CHARACTER_TYPE>(message.Characters[message.Slot]));
 			if (slot > 0 && m_Peers[slot].Port == 0) m_Peers[slot] = from;
 		}
 		else if (peer > 0) m_Calc.Receive(peer, message);

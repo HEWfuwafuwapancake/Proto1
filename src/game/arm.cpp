@@ -45,9 +45,6 @@
 static constexpr float ARM_REST_PITCH = XMConvertToRadians(-75.0f); // 待機の腕を正面から 75° 下げる（体の横に垂らす）
 static constexpr float ARM_REST_SPREAD = XMConvertToRadians(8.0f); // 片側ずつ外へ開く角度
 // メカの胸の高さと横幅に合わせ、Fighter の足元を基準に固定する。
-static constexpr float SHOULDER_OFFSET = 0.29f;
-static constexpr float SHOULDER_FORWARD = 0.0f;
-static constexpr float HAND_HEIGHT = 1.30f;
 static constexpr XMFLOAT4 LEFT_COLOR{ 0.8f, 0.3f, 0.65f, 1.0f };
 static constexpr XMFLOAT4 RIGHT_COLOR{ 0.35f, 0.8f, 0.6f, 1.0f };
 static constexpr XMFLOAT4 HOLD_COLOR{ 1.0f, 0.7f, 0.2f, 1.0f };
@@ -239,11 +236,22 @@ Fighter& Arm::GetPlayer() const
 
 VEC3 Arm::GetShoulder() const
 {
+	// 攻撃の起点はキャラによらず従来のメカの肩を使う。
+	return GetShoulderAt(CHARACTER_DATA::Get(CHARACTER_MEKA).Shoulder);
+}
+
+VEC3 Arm::GetDrawShoulder() const
+{
+	return GetShoulderAt(CHARACTER_DATA::Get(GetPlayer().GetCharacter()).Shoulder);
+}
+
+VEC3 Arm::GetShoulderAt(const VEC3& offset) const
+{
 	const int hand = GetHand();
 	const XMFLOAT3 p = GetPlayer().GetPosition();
 	const VEC3 mount = GetMountOffset();
 	return ArmCalcShoulder({ p.x, p.y, p.z }, GetPlayer().GetYaw(), hand,
-		SHOULDER_OFFSET + mount.X, HAND_HEIGHT + mount.Y, SHOULDER_FORWARD + mount.Z);
+		offset.X + mount.X, offset.Y + mount.Y, offset.Z + mount.Z);
 }
 
 VEC3 Arm::GetRestDirection(float pitchOffset) const
@@ -281,7 +289,7 @@ VEC3 Arm::GetAim(bool keepHeight) const
 
 VEC3 Arm::DrawStubArm(const VEC3& direction, float length, const XMFLOAT4& color) const
 {
-	const VEC3 shoulder = GetShoulder();
+	const VEC3 shoulder = GetDrawShoulder();
 	const VEC3 hand = Vec3Add(shoulder, Vec3Scale(direction, length));
 	ShapeDrawCylinder({ shoulder.X, shoulder.Y, shoulder.Z }, { hand.X, hand.Y, hand.Z }, STUB_RADIUS, color);
 	return hand;

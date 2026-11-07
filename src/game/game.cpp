@@ -27,8 +27,10 @@ bool Game::Initialize(const NET_OPTIONS& options)
 	for (auto& input : m_Inputs) input = {};
 	for (auto& input : m_PreviousInputs) input = {};
 	for (auto& input : m_DeviceInputs) input = {};
+	m_LobbyCharacters.fill(CHARACTER_MEKA);
+	m_Fighters.LoadModels();
 	m_Fighters.Initialize(m_Stage, m_Participants);
-	// モデルは起動時に4枠分だけ読む。参加やTITLE・RETRYでは作り直さない。
+	// 腕のモデルは起動時に4枠分だけ読む。参加やTITLE・RETRYでは作り直さない。
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		m_Cameras[i].Initialize(m_Stage, m_Fighters, i, m_Arms[i], m_Match);
 		m_Arms[i].Initialize(m_Stage, m_Fighters, i, m_Cameras[i]);
@@ -57,6 +59,7 @@ void Game::Finalize()
 		m_Arms[i].Finalize();
 		m_Cameras[i].Finalize();
 	}
+	m_Fighters.Finalize();
 	m_Stage.Finalize();
 }
 
@@ -67,8 +70,10 @@ void Game::ConfigurePlayers()
 	m_Fighters.Initialize(m_Stage, m_Participants);
 	m_HumanCount = 0;
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
-		m_Fighters.GetFighter(i).SetInput(m_Inputs[i], m_PreviousInputs[i]);
-		if (m_Fighters.GetFighter(i).IsHuman()) m_Humans[m_HumanCount++] = i;
+		Fighter& fighter = m_Fighters.GetFighter(i);
+		fighter.SetCharacter(fighter.IsHuman() ? m_LobbyCharacters[i] : CHARACTER_MEKA);
+		fighter.SetInput(m_Inputs[i], m_PreviousInputs[i]);
+		if (fighter.IsHuman()) m_Humans[m_HumanCount++] = i;
 	}
 	for (int k = 0; k < m_HumanCount; ++k) {
 		const int slot = m_Humans[k];
@@ -112,6 +117,8 @@ void Game::Restart()
 void Game::ResetParticipants()
 {
 	m_Participants.Reset();
+	m_LobbyCharacters.fill(CHARACTER_MEKA);
+	m_LobbyCharacters[0] = m_Scene.GetCharacter();
 	for (auto& value : m_Inputs) value = {};
 	for (auto& value : m_PreviousInputs) value = {};
 	for (int device = 0; device < ACTION_DEVICE_COUNT; ++device) m_DeviceInputs[device] = ActionGetPlayerInput(device);
@@ -138,6 +145,7 @@ void Game::UpdateMenu()
 		m_DeviceInputs[device] = ActionGetPlayerInput(device);
 		if (menu.Decide && !input.Decide) { input.Decide = true; m_MenuDevice = device; }
 		if (fabsf(menu.MoveY) > fabsf(input.MoveY)) input.MoveY = menu.MoveY;
+		if (input.CharacterDirection == 0) input.CharacterDirection = menu.CharacterDirection;
 		if (oldScene == SCENE_JOIN_ADDRESS) {
 			m_JoinAddress.Move(menu.Horizontal);
 			m_JoinAddress.Adjust(menu.Vertical);
@@ -160,6 +168,7 @@ void Game::UpdateMenu()
 	if (event == SCENE_EVENT_START_MATCH) {
 		m_Participants.Reset();
 		m_Participants.AssignDevice(m_MenuDevice);
+		m_LobbyCharacters[0] = m_Scene.GetCharacter();
 		ConfigurePlayers();
 		Restart();
 	}
@@ -168,19 +177,26 @@ void Game::UpdateMenu()
 		options.Mode = event == SCENE_EVENT_HOST ? NET_MODE_HOST : NET_MODE_JOIN;
 		options.Host = m_JoinAddress.GetText();
 		options.Delay = LOCKSTEP_AUTO_DELAY;
-		if (m_Net.Initialize(options)) m_Scene.OpenLobby();
+		if (m_Net.Initialize(options, m_Scene.GetCharacter())) m_Scene.OpenLobby();
 		else m_Scene.ShowModes(); // 理由は NetSession がタイトルバーへ残す。
 		ActionSetOnlineEquip(m_Net.IsOnline());
 		// オフラインで替えた装備が残ると、相手の画面と腕がずれて DESYNC になる。
 		for (int i = 0; i < FIGHTER_COUNT; ++i) m_Arms[i].ResetEquip();
 		ResetParticipants();
 	}
+	else if (oldScene == SCENE_MODE_SELECT && m_Scene.GetScene() == SCENE_TITLE) {
+		// モードを決めた機器に、メニューで選んだキャラと 1P を割り当てる。
+		m_Participants.AssignDevice(m_MenuDevice);
+		m_LobbyCharacters[0] = m_Scene.GetCharacter();
+		UpdatePadLights();
+	}
 }
 
 void Game::Update()
 {
 	const SCENE oldScene = m_Scene.GetScene();
-	if (oldScene == SCENE_GAME_START || oldScene == SCENE_MODE_SELECT || oldScene == SCENE_JOIN_ADDRESS) {
+	if (oldScene == SCENE_GAME_START || oldScene == SCENE_CHARACTER_SELECT
+		|| oldScene == SCENE_MODE_SELECT || oldScene == SCENE_JOIN_ADDRESS) {
 		UpdateMenu();
 		return;
 	}
@@ -209,6 +225,7 @@ void Game::Update()
 					device = slot == m_Net.GetLocalSlot() ? m_Net.GetLocalDevice() : VERSUS_DEVICE_REMOTE;
 				}
 				m_Participants.SetSlotDevice(slot, device);
+				m_LobbyCharacters[slot] = m_Net.GetCharacter(slot);
 			}
 		}
 		UpdatePadLights();
@@ -236,6 +253,9 @@ void Game::Update()
 		for (int slot = 0; slot < FIGHTER_COUNT; ++slot) {
 			m_PreviousInputs[slot] = m_Inputs[slot];
 			const int device = m_Participants.GetDevice(slot);
+			if (oldScene == SCENE_TITLE && m_Participants.IsHuman(slot)) {
+				m_LobbyCharacters[slot] = SceneCalc::CycleCharacter(m_LobbyCharacters[slot], ActionGetMenuInput(device).CharacterDirection);
+			}
 			m_Inputs[slot] = device >= 0 && device < ACTION_DEVICE_COUNT ? m_DeviceInputs[device] : ActionGetPlayerInput(device);
 			// F1〜F4は機器ではなく人のスロットを選ぶ。パッドの人にも従来どおり配る。
 			m_Inputs[slot].Equip = m_Participants.IsHuman(slot) ? ActionGetEquipKey(slot) : ACTION_EQUIP_KEY{ -1, -1 };
@@ -263,10 +283,12 @@ void Game::Update()
 		Restart();
 	}
 	else if (event == SCENE_EVENT_BACK_TITLE) {
-		if (m_Net.IsOnline()) m_Net.ReturnToLobby();
-		else m_Participants.Reset();
-		ConfigurePlayers();
-		m_Match.Reset();
+		if (m_Net.IsOnline()) {
+			m_Net.ReturnToLobby();
+			ConfigurePlayers();
+			m_Match.Reset();
+		}
+		else ResetParticipants();
 	}
 	else if (oldScene == SCENE_MATCH) m_Match.Update();
 #ifdef _DEBUG
@@ -330,6 +352,6 @@ void Game::Draw() const
 		const VERSUS_VIEWPORT empty = GetViewport(3);
 		Number2DDrawBox({ empty.X, empty.Y, empty.Width, empty.Height }, EMPTY_VIEW_COLOR);
 	}
-	m_Huds[0].DrawScene(m_Participants, m_Net, m_JoinAddress);
+	m_Huds[0].DrawScene(m_Participants, m_Net, m_JoinAddress, m_LobbyCharacters);
 	if (m_Fullscreen) m_Huds[0].DrawCornerWarning(m_Net);
 }

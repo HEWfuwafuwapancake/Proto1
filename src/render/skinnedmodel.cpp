@@ -5,46 +5,11 @@
 #include <assimp/config.h>
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
-#include <string>
-#include <unordered_map>
+#include <cstring>
 
-namespace {
-	struct Node
-	{
-		int Parent;
-		ANIM_TRANSFORM BindPose;
-	};
-
-	struct Bone
-	{
-		size_t NodeIndex;
-		ANIM_MATRIX Offset;
-	};
-
-	struct Mesh
-	{
-		ID3D11Buffer* Vertices = nullptr;
-		ID3D11Buffer* Indices = nullptr;
-		UINT IndexCount = 0;
-		std::vector<Bone> Bones;
-	};
-
-	struct Clip
-	{
-		float LoopSeconds = 0;
-		std::vector<ANIM_TRACK> Tracks;
-	};
-}
-
-static std::vector<Node> g_Nodes;
-static std::vector<Mesh> g_Meshes;
-static std::array<Clip, static_cast<size_t>(SKINNED_CLIP::Count)> g_Clips;
-static bool g_LoadAttempted = false;
 static constexpr unsigned WEIGHTS_PER_VERTEX = 4;
 static constexpr unsigned IMPORT_FLAGS = aiProcess_ConvertToLeftHanded | aiProcess_LimitBoneWeights
 	| aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_JoinIdenticalVertices;
-
-using NodeNames = std::unordered_map<std::string, size_t>;
 
 static ANIM_MATRIX ToRowMatrix(const aiMatrix4x4& m)
 {
@@ -64,14 +29,14 @@ static ANIM_QUAT ToAnim(aiQuaternion value)
 	return { value.x, value.y, value.z, value.w };
 }
 
-static void ReadNodes(const aiNode& source, int parent, NodeNames& names, std::vector<size_t>& meshNodes)
+void SkinnedModel::ReadNodes(const aiNode& source, int parent, NodeNames& names, std::vector<size_t>& meshNodes)
 {
-	const size_t index = g_Nodes.size();
+	const size_t index = m_Nodes.size();
 	names.emplace(source.mName.C_Str(), index);
 	aiVector3D scale, position;
 	aiQuaternion rotation;
 	source.mTransformation.Decompose(scale, rotation, position);
-	g_Nodes.push_back({ parent, { ToAnim(position), ToAnim(rotation), ToAnim(scale) } });
+	m_Nodes.push_back({ parent, { ToAnim(position), ToAnim(rotation), ToAnim(scale) } });
 	for (unsigned i = 0; i < source.mNumMeshes; ++i) meshNodes[source.mMeshes[i]] = index;
 	for (unsigned i = 0; i < source.mNumChildren; ++i) {
 		ReadNodes(*source.mChildren[i], static_cast<int>(index), names, meshNodes);
@@ -91,7 +56,7 @@ static bool CreateBuffer(const std::vector<T>& data, UINT bind, ID3D11Buffer** b
 	return SUCCEEDED(DirectXGetDevice()->CreateBuffer(&desc, &initial, buffer));
 }
 
-static bool ReadMesh(const aiMesh& source, size_t meshNode, const NodeNames& names, Mesh& mesh)
+bool SkinnedModel::ReadMesh(const aiMesh& source, size_t meshNode, const NodeNames& names, Mesh& mesh)
 {
 	if (!source.HasNormals() || source.mNumBones > SHADER_MAX_BONES) return false;
 	std::vector<SKINNED_VERTEX> vertices(source.mNumVertices);
@@ -157,14 +122,22 @@ static void ReadKeys(std::vector<ANIM_KEY<T>>& out, const Key* keys, unsigned co
 	}
 }
 
-static bool ReadClip(const aiScene& scene, const NodeNames& names, Clip& clip)
+bool SkinnedModel::ReadClip(const aiScene& scene, const NodeNames& names, Clip& clip) const
 {
-	if (scene.mNumAnimations != 1) return false;
-	const aiAnimation& animation = *scene.mAnimations[0];
+	const aiAnimation* selected = nullptr;
+	for (unsigned i = 0; i < scene.mNumAnimations; ++i) {
+		const aiAnimation* candidate = scene.mAnimations[i];
+		if (scene.mNumAnimations == 1 || std::strcmp(candidate->mName.C_Str(), "Take 001") != 0) {
+			selected = candidate;
+			break;
+		}
+	}
+	if (!selected) return false;
+	const aiAnimation& animation = *selected;
 	if (animation.mTicksPerSecond <= 0.0 || animation.mDuration <= 0.0) return false;
 	// 末尾キーは先頭と同じ姿勢。次の周と重ね、末尾の1フレームぶんは待たない。
 	clip.LoopSeconds = static_cast<float>(animation.mDuration / animation.mTicksPerSecond);
-	clip.Tracks.resize(g_Nodes.size());
+	clip.Tracks.resize(m_Nodes.size());
 	for (unsigned i = 0; i < animation.mNumChannels; ++i) {
 		const aiNodeAnim& channel = *animation.mChannels[i];
 		const auto node = names.find(channel.mNodeName.C_Str());
@@ -177,7 +150,7 @@ static bool ReadClip(const aiScene& scene, const NodeNames& names, Clip& clip)
 	return true;
 }
 
-static bool Load(const std::array<const char*, static_cast<size_t>(SKINNED_CLIP::Count)>& paths)
+bool SkinnedModel::LoadFiles(const std::array<const char*, static_cast<size_t>(SKINNED_CLIP::Count)>& paths)
 {
 	Assimp::Importer importer;
 	importer.SetPropertyBool(AI_CONFIG_IMPORT_FBX_PRESERVE_PIVOTS, false);
@@ -190,14 +163,14 @@ static bool Load(const std::array<const char*, static_cast<size_t>(SKINNED_CLIP:
 	NodeNames names;
 	std::vector<size_t> meshNodes(scene->mNumMeshes);
 	ReadNodes(*scene->mRootNode, -1, names, meshNodes);
-	g_Meshes.resize(scene->mNumMeshes);
+	m_Meshes.resize(scene->mNumMeshes);
 	for (unsigned i = 0; i < scene->mNumMeshes; ++i) {
-		if (!ReadMesh(*scene->mMeshes[i], meshNodes[i], names, g_Meshes[i])) return false;
+		if (!ReadMesh(*scene->mMeshes[i], meshNodes[i], names, m_Meshes[i])) return false;
 	}
-	if (!ReadClip(*scene, names, g_Clips[0])) return false;
+	if (!ReadClip(*scene, names, m_Clips[0])) return false;
 	for (size_t i = 1; i < paths.size(); ++i) {
 		scene = importer.ReadFile(paths[i], IMPORT_FLAGS);
-		if (!scene || !ReadClip(*scene, names, g_Clips[i])) {
+		if (!scene || !ReadClip(*scene, names, m_Clips[i])) {
 			hal::dout << paths[i] << ": " << importer.GetErrorString() << std::endl;
 			return false;
 		}
@@ -205,33 +178,31 @@ static bool Load(const std::array<const char*, static_cast<size_t>(SKINNED_CLIP:
 	return true;
 }
 
-bool SkinnedModelLoad(const std::array<const char*, static_cast<size_t>(SKINNED_CLIP::Count)>& paths)
+bool SkinnedModel::Load(const std::array<const char*, static_cast<size_t>(SKINNED_CLIP::Count)>& paths)
 {
-	if (!g_LoadAttempted && !Load(paths)) {
-		hal::dout << "SkinnedModelLoad failed: " << paths[0] << std::endl;
-		SkinnedModelFinalize();
-	}
-	g_LoadAttempted = true;
-	return !g_Meshes.empty();
+	Finalize();
+	if (LoadFiles(paths)) return true;
+	hal::dout << "SkinnedModel::Load failed: " << paths[0] << std::endl;
+	Finalize();
+	return false;
 }
 
-void SkinnedModelFinalize()
+void SkinnedModel::Finalize()
 {
-	for (Mesh& mesh : g_Meshes) {
+	for (Mesh& mesh : m_Meshes) {
 		SAFE_RELEASE(mesh.Indices);
 		SAFE_RELEASE(mesh.Vertices);
 	}
-	g_Meshes.clear();
-	g_Nodes.clear();
-	g_Clips = {};
-	g_LoadAttempted = false;
+	m_Meshes.clear();
+	m_Nodes.clear();
+	m_Clips = {};
 }
 
-static void SamplePose(SKINNED_POSE& pose, float blend)
+void SkinnedModel::SamplePose(SKINNED_POSE& pose, float blend) const
 {
-	const Clip& clip = g_Clips[static_cast<size_t>(pose.Clip)];
-	for (size_t i = 0; i < g_Nodes.size(); ++i) {
-		const Node& node = g_Nodes[i];
+	const Clip& clip = m_Clips[static_cast<size_t>(pose.Clip)];
+	for (size_t i = 0; i < m_Nodes.size(); ++i) {
+		const Node& node = m_Nodes[i];
 		const ANIM_TRANSFORM next = AnimCalcSample(clip.Tracks[i], pose.Time, node.BindPose);
 		pose.Local[i] = blend < 1.0f ? AnimCalcBlend(pose.BlendFrom[i], next, blend) : next;
 		const ANIM_MATRIX local = AnimCalcMatrix(pose.Local[i]);
@@ -239,20 +210,21 @@ static void SamplePose(SKINNED_POSE& pose, float blend)
 	}
 }
 
-void SkinnedModelReset(SKINNED_POSE& pose)
+void SkinnedModel::Reset(SKINNED_POSE& pose) const
 {
 	pose.Clip = SKINNED_CLIP::Idle;
 	pose.Time = 0.0f;
 	pose.BlendElapsed = 0.0f;
 	pose.BlendFrom.clear();
-	pose.Local.resize(g_Nodes.size());
-	pose.Global.resize(g_Nodes.size());
+	pose.Local.resize(m_Nodes.size());
+	pose.Global.resize(m_Nodes.size());
 	SamplePose(pose, 1.0f);
 }
 
-void SkinnedModelUpdate(SKINNED_POSE& pose, SKINNED_CLIP clip, float dt, float blendSeconds)
+void SkinnedModel::Update(SKINNED_POSE& pose, SKINNED_CLIP clip, float dt, float blendSeconds) const
 {
-	if (g_Nodes.empty()) return;
+	if (!IsLoaded()) return;
+	if (pose.Local.size() != m_Nodes.size() || pose.Global.size() != m_Nodes.size()) Reset(pose);
 	if (pose.Clip != clip) {
 		// 切り替え途中でも、直前に表示した姿勢から次の補間を始める。
 		pose.BlendFrom = pose.Local;
@@ -260,7 +232,7 @@ void SkinnedModelUpdate(SKINNED_POSE& pose, SKINNED_CLIP clip, float dt, float b
 		pose.Time = 0.0f;
 		pose.BlendElapsed = 0.0f;
 	}
-	pose.Time = AnimCalcLoopTime(pose.Time + dt, g_Clips[static_cast<size_t>(clip)].LoopSeconds);
+	pose.Time = AnimCalcLoopTime(pose.Time + dt, m_Clips[static_cast<size_t>(clip)].LoopSeconds);
 	float blend = 1.0f;
 	if (!pose.BlendFrom.empty()) {
 		pose.BlendElapsed += dt;
@@ -270,8 +242,15 @@ void SkinnedModelUpdate(SKINNED_POSE& pose, SKINNED_CLIP clip, float dt, float b
 	SamplePose(pose, blend);
 }
 
-void SkinnedModelDraw(const SKINNED_POSE& pose, const XMMATRIX& world, const XMFLOAT4& color)
+void SkinnedModel::Draw(const SKINNED_POSE& pose, const XMMATRIX& world, const XMFLOAT4& color) const
 {
+	if (!IsLoaded()) return;
+	if (pose.Global.size() != m_Nodes.size()) {
+		SKINNED_POSE idle;
+		Reset(idle);
+		Draw(idle, world, color);
+		return;
+	}
 	Shader_BeginSkinned();
 	Shader_SetWorldMatrix(world);
 	MATERIAL material{};
@@ -281,7 +260,7 @@ void SkinnedModelDraw(const SKINNED_POSE& pose, const XMMATRIX& world, const XMF
 	ID3D11DeviceContext* context = DirectXGetDeviceContext();
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	const UINT stride = sizeof(SKINNED_VERTEX), offset = 0;
-	for (const Mesh& mesh : g_Meshes) {
+	for (const Mesh& mesh : m_Meshes) {
 		SKINNED_BONES palette{};
 		for (size_t i = 0; i < mesh.Bones.size(); ++i) {
 			const Bone& bone = mesh.Bones[i];

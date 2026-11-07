@@ -190,6 +190,38 @@ namespace Proto1Tests
 		}
 	}
 
+	// JOIN と機器選択で自分の番号を送り、ホストの開始通知で全員分を受け取る。
+	TEST(SessionCalcTest, Characters_JoinReadyAndStartShareLobbyChoices)
+	{
+		SessionCalc host, guest;
+		host.Initialize({ NET_MODE_HOST }, 100, CHARACTER_MEKA);
+		guest.Initialize({ NET_MODE_JOIN }, 101, CHARACTER_MEKAGIRL);
+
+		const auto join = guest.MakeControl();
+		std::vector<uint8_t> bytes;
+		ASSERT_TRUE(SessionCalc::Encode(join, bytes));
+		SESSION_MESSAGE decoded;
+		ASSERT_TRUE(SessionCalc::Decode(bytes.data(), bytes.size(), decoded));
+		const int slot = host.Join(decoded.Nonce, decoded.Version, decoded.Build, decoded.Program,
+			static_cast<CHARACTER_TYPE>(decoded.Characters[decoded.Slot]));
+		ASSERT_EQ(1, slot);
+		EXPECT_EQ(CHARACTER_MEKAGIRL, host.GetCharacter(slot));
+
+		Deliver(guest, 0, host.MakeControl(slot));
+		EXPECT_EQ(CHARACTER_MEKAGIRL, guest.GetCharacter(slot));
+		guest.Decide();
+		const auto ready = guest.MakeControl();
+		EXPECT_EQ(SESSION_READY, ready.Type);
+		EXPECT_EQ(CHARACTER_MEKAGIRL, ready.Characters[slot]);
+		Deliver(host, slot, ready);
+		host.Decide();
+		host.Decide();
+		Deliver(guest, 0, host.MakeControl(slot));
+		EXPECT_TRUE(guest.IsRunning());
+		EXPECT_EQ(CHARACTER_MEKA, guest.GetCharacter(0));
+		EXPECT_EQ(CHARACTER_MEKAGIRL, guest.GetCharacter(slot));
+	}
+
 	TEST(SessionCalcTest, Inputs_CompleteThroughWaitsForEveryPlayer)
 	{
 		SessionNetwork network(3, 0);

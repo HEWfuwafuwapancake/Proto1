@@ -121,16 +121,17 @@ void TentacleArm::Draw()
 {
 	const int hand = GetHand();
 	const TentacleCalc& arm = m_Arm;
-	const VEC3 origin = GetShoulder();
-	VEC3 tip = arm.GetState() == TENTACLE_IDLE ? origin : arm.GetTip();
+	const VEC3 origin = GetDrawShoulder();
+	const VEC3 physicalOrigin = GetShoulder();
+	VEC3 tip = arm.GetState() == TENTACLE_IDLE ? physicalOrigin : arm.GetTip();
 	if (arm.GetState() != TENTACLE_HOLDING) {
 		// 描画する先端だけを変える。計算上の arm.GetTip()・長さ・判定はそのまま。
-		const VEC3 extended = Vec3Sub(tip, origin);
+		const VEC3 extended = Vec3Sub(tip, physicalOrigin);
 		const float length = Vec3Length(extended);
 		const VEC3 rest = GetRestDirection();
 		const VEC3 aim = length < MODEL_MIN_LENGTH ? rest : Vec3Scale(extended, 1.0f / length);
 		const VEC3 direction = ArmCalcBlendDirection(rest, aim, length / IDLE_LENGTH);
-		tip = Vec3Add(origin, Vec3Scale(direction, fmaxf(length, IDLE_LENGTH)));
+		tip = Vec3Add(length < IDLE_LENGTH ? origin : physicalOrigin, Vec3Scale(direction, fmaxf(length, IDLE_LENGTH)));
 	}
 	const VEC3 delta = Vec3Sub(tip, origin);
 	const int steps = (int)ceilf(Vec3Length(delta) / SPHERE_SPACING) + 1;

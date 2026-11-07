@@ -1,6 +1,8 @@
 ﻿#pragma once
 
 #include "net/lockstepcalc.h"
+#include "physics/scenecalc.h"
+#include <array>
 #include <deque>
 #include <string>
 
@@ -118,6 +120,7 @@ struct SESSION_MESSAGE
 	int32_t CheckFrame = -1; ///< チェックサムの実行済みフレーム（なしは-1）
 	uint32_t Checksum = 0; ///< CheckFrameの全4体のチェックサム
 	int32_t CheckAck = -1; ///< 相手のチェックサムを比較できた最後のフレーム
+	std::array<uint8_t, FIGHTER_COUNT> Characters{}; ///< JOIN・READY の自分と STATE の全員のキャラ番号
 	LOCKSTEP_PACKET Packet; ///< SESSION_INPUTSだけで使う入力と方向別ACK
 };
 
@@ -126,10 +129,10 @@ class SessionCalc
 {
 public:
 	/// @brief 起動設定と0以外の起動番号で初期化する
-	void Initialize(const NET_OPTIONS& options, uint32_t nonce);
+	void Initialize(const NET_OPTIONS& options, uint32_t nonce, CHARACTER_TYPE character = CHARACTER_MEKA);
 	/// @brief ホストが参加を受け付け、スロットを返す（満員・開始後の新規参加は-1）
 	int Join(uint32_t nonce, uint16_t version = LOCKSTEP_VERSION, LOCKSTEP_BUILD build = LOCKSTEP_CURRENT_BUILD,
-		uint32_t program = SessionCalcGetProgram());
+		uint32_t program = SessionCalcGetProgram(), CHARACTER_TYPE character = CHARACTER_MEKA);
 	/// @brief 同じ版・ビルド・ソースか調べ、違うときの理由を返す
 	static SESSION_FAILURE CheckCompatibility(const SESSION_MESSAGE& message);
 	/// @brief 単調時計のミリ秒を設定する（受信の直前に呼ぶ。Windowsの時計は呼び出し元で読む）
@@ -180,6 +183,8 @@ public:
 	uint8_t GetMask() const { return m_Mask; }
 	/// @brief 機器選択済みスロットのビットを取得する
 	uint8_t GetReadyMask() const { return m_Ready; }
+	/// @brief ロビーで共有したキャラをスロット番号で取得する（0〜3）
+	CHARACTER_TYPE GetCharacter(int slot) const { return static_cast<CHARACTER_TYPE>(m_Characters[slot]); }
 	/// @brief ホストが配った入力遅延を取得する
 	int GetDelay() const { return m_Delay; }
 	/// @brief ホストが入力の遅れを ping から自動で決めるか取得する（参加側は常にfalse）
@@ -212,6 +217,8 @@ private:
 	int m_Delay = LOCKSTEP_DEFAULT_DELAY;
 	uint8_t m_Mask = 0;
 	uint8_t m_Ready = 0;
+	CHARACTER_TYPE m_LocalCharacter = CHARACTER_MEKA;
+	std::array<uint8_t, FIGHTER_COUNT> m_Characters{};
 	uint32_t m_Nonce = 0;
 	uint32_t m_Session = 0;
 	uint32_t m_Round = 0;

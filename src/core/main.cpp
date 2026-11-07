@@ -20,7 +20,6 @@
 #include "render/number2d.h"
 #include "render/shape.h"
 #include "render/model.h"
-#include "render/skinnedmodel.h"
 #include "generated/sourceid.h" // ビルドの前に tools/make-sourceid.ps1 が中間フォルダに作る（SOURCE_ID）
 
 #pragma comment (lib, "winmm.lib")
@@ -435,7 +434,6 @@ void Finalize(void)
 	g_Game.Finalize();
 	Number2DFinalize();
 
-	SkinnedModelFinalize();
 	ModelFinalize();
 	ShapeFinalize();
 

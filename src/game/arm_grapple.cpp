@@ -132,7 +132,7 @@ void GrappleArm::Draw()
 {
 	const int hand = GetHand();
 	const GrappleCalc& arm = m_Arm;
-	const VEC3 origin = GetShoulder();
+	const VEC3 origin = GetDrawShoulder();
 	const float yaw = GetPlayer().GetYaw();
 	const VEC3 forward{ sinf(yaw), 0.0f, cosf(yaw) };
 	// 距離によってまぜ方が変わらないよう、フックへの向きも先に長さ 1 にする。

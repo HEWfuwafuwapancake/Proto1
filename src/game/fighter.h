@@ -8,7 +8,7 @@
 #include "physics/statuscalc.h"
 #include "physics/tentaclecalc.h"
 #include "physics/versuscalc.h"
-#include "render/skinnedmodel.h"
+#include "game/character.h"
 
 class Stage;
 class Camera;
@@ -20,7 +20,11 @@ class Fighter
 {
 public:
 	/// @brief ステージ・スロット・機器・最初の足元位置を設定して体を初期化する
-	void Initialize(const Stage& stage, int slot, int device, const VEC3& spawn);
+	void Initialize(const Stage& stage, int slot, int device, const VEC3& spawn, const SkinnedModel* models);
+	/// @brief 描画するキャラを設定し、変わったら待機姿勢に戻す
+	void SetCharacter(CHARACTER_TYPE character);
+	/// @brief 描画するキャラを取得する
+	CHARACTER_TYPE GetCharacter() const { return m_Character; }
 	/// @brief 人ごとの共通色を取得する（1P赤・2P青・3P緑・4P黄。範囲外は白）
 	static XMFLOAT4 GetPlayerColor(int slot);
 	/// @brief 最初の位置・0%・生存状態に戻す（機器の割り当てはそのまま）
@@ -122,7 +126,8 @@ private:
 	bool m_Respawned = false;
 	int m_Device = VERSUS_DEVICE_DUMMY;
 	int m_Slot = 0;
-	bool m_HasModel = false;
+	const SkinnedModel* m_Models = nullptr;
+	CHARACTER_TYPE m_Character = CHARACTER_MEKA;
 	SKINNED_POSE m_Pose;
 	PLAYER_INPUT m_Input;
 	PLAYER_INPUT m_PreviousInput;

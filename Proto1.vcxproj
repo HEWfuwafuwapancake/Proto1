@@ -209,6 +209,7 @@
     <ClCompile Include="src\game\match.cpp" />
     <ClCompile Include="src\physics\matchcalc.cpp" />
     <ClCompile Include="src\physics\scenecalc.cpp" />
+    <ClCompile Include="src\game\character.cpp" />
     <ClCompile Include="src\game\fighter.cpp" />
     <ClCompile Include="src\render\shape.cpp" />
     <ClCompile Include="src\render\model.cpp" />
@@ -298,6 +299,7 @@
     <ClInclude Include="src\physics\matchcalc.h" />
     <ClInclude Include="src\physics\scenecalc.h" />
     <ClInclude Include="src\physics\vec3.h" />
+    <ClInclude Include="src\game\character.h" />
     <ClInclude Include="src\game\fighter.h" />
     <ClInclude Include="src\render\shape.h" />
     <ClInclude Include="src\render\model.h" />

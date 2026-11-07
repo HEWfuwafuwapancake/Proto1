@@ -90,7 +90,7 @@ void MagnetArm::Update(bool trigger)
 
 void MagnetArm::Draw()
 {
-	const VEC3 origin = GetShoulder();
+	const VEC3 origin = GetDrawShoulder();
 	const float yaw = GetCamera().GetYaw();
 	const VEC3 aim = TentacleCalcAim(origin, m_Arm.GetCenter(), true, { sinf(yaw), 0.0f, cosf(yaw) });
 	const VEC3 direction = ArmCalcBlendDirection(GetRestDirection(), aim, m_Straighten);

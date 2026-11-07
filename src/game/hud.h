@@ -3,12 +3,13 @@
 
 #include "core/dx11.h"
 #include "game/arm.h"
+#include "physics/scenecalc.h"
+#include "physics/versuscalc.h"
+#include <array>
 
 class Camera;
 class FighterManager;
 class Match;
-class SceneCalc;
-class VersusCalc;
 class NetSession;
 class SessionAddressCalc;
 
@@ -39,8 +40,9 @@ public:
 	/// @brief 試合中の自分の画面の HUD を描く（自分のビューポートで、深度テストを切りライトを消してから呼ぶ）
 	void Draw(void) const;
 
-	/// @brief 起動・モード・IP・ロビー・結果を画面全体に描く（全画面のビューポートに戻してから呼ぶ）
-	void DrawScene(const VersusCalc& participants, const NetSession& net, const SessionAddressCalc& address) const;
+	/// @brief 起動・キャラ・モード・IP・ロビー・結果を画面全体に描く（全画面のビューポートに戻してから呼ぶ）
+	void DrawScene(const VersusCalc& participants, const NetSession& net, const SessionAddressCalc& address,
+		const std::array<CHARACTER_TYPE, FIGHTER_COUNT>& characters) const;
 
 	/// @brief オンラインのずれ・VS の版の警告を画面左上に描く（画面全体のビューポートで最後に呼ぶ）
 	void DrawCornerWarning(const NetSession& net) const;

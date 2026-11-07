@@ -4,12 +4,13 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）、決まったことは [decisions.md](decisions.md)。
 必要なときだけ読むもの：腕の書き方と共通の部品は [dev/01_DX11基盤の構成.md](dev/01_DX11基盤の構成.md) の「腕の共通の仕組み・腕の足し方」と「腕の書き方」、腕の操作と効き方は [plan/03_新しいアームの仕様.md](plan/03_新しいアームの仕様.md)、腕のモデルは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、画面を撮る方法は [dev/04_画面確認の方法.md](dev/04_画面確認の方法.md)。
 
-- 最終更新：2026-11-07（Claude。Shota の Proto1、Visual Studio Community の PC。No.88 をレビューしてマージ）
+- 最終更新：2026-11-07（Claude。Shota の Proto1、Visual Studio Community の PC。No.89 を確認し PR #148 をマージした）
 
 ---
 
 ## 1. 今の状態
 
+- **No.89 完了**（[PR #148](https://github.com/HEWfuwafuwapancake/Proto1/pull/148)。実装 Codex・確認 Claude）。GAME START のあとにキャラ選択（MEKA / MEKAGIRL）、LOCAL VS のロビーで各自 ← → / A D で変更、オンラインは JOIN・READY・STATE でキャラ番号を送る（版 7）。キャラの表は `game/character.cpp`（足し方は [dev/01_DX11基盤の構成.md](dev/01_DX11基盤の構成.md) の「FBX モデル」）。当たり判定と攻撃の起点は全キャラでメカの値、描画の肩だけキャラ別（MekaGirl の肩 X=0.22 / Y=1.28 は仮の値）。
 - **No.88 完了**（[PR #147](https://github.com/HEWfuwafuwapancake/Proto1/pull/147)。実装 Codex・レビュー Claude）。キャラは骨つきのメカ（`render/skinnedmodel`）で、待機・走り・左右の腕のポーズを切り替える。アニメは試合中だけ進む（時間切れ後は止まる）。肩の位置は `arm.cpp` の固定値で、アニメの肩には追従しない。
 - **No.87 完了**。静止モデルの `ModelLoad` は Assimp 5.2.4 で FBX とテクスチャを読み込む（No.21 も完了）。説明は [dev/01_DX11基盤の構成.md](dev/01_DX11基盤の構成.md) の「FBX モデルとテクスチャ」。
 - **No.86 完了**：単体テストを Google Test（`third_party/googletest` v1.15.2）に移した。290 件すべて Debug / Release で成功、警告 0。書き方は [dev/01_DX11基盤の構成.md](dev/01_DX11基盤の構成.md) の「単体テスト」。Visual Studio のテスト エクスプローラーで見えるかは、まだ実機で見ていない。
@@ -29,10 +30,11 @@
 
 ## 2. 次にやること
 
-- [tasks.md](tasks.md) の上から、次の未着手のタスクを選ぶ（管理者に聞く）。
+- 管理者が次のタスクを決める（tasks.md の ⬜ から、または新しい依頼）。
 
 ### 管理者の実機確認
 
+- No.89：実機のパッドで、LOCAL VS のロビーで 2P がキャラを変えられることと、MekaGirl の右腕のポーズを一度見る（Claude はキーボードで 1P だけ確認した）。MekaGirl の腕の付け根の位置が気になれば `character.cpp` の肩の値を直す。
 - Claude の画面確認はキーをパッドの代わりにした一時ビルドなので、実機のパッドで一度だけ触る。まだ見ていないのは、やり直し後も手の選択が残ることと、時間切れ後も切り替えられること。
 - No.86 のついでに、Visual Studio で **テスト → テスト エクスプローラー** を開き、Proto1Tests のテストが出て「すべて実行」で通るかを一度見る（出ないときは、Visual Studio Installer の「C++ によるデスクトップ開発」で「Google Test の Test Adapter」に印があるか確かめる）。
 - メンバーは `git lfs pull` で `third_party/assimp` の lib・dll と `assets/models/` のメカの FBX を取ってからビルドする。

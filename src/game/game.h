@@ -44,6 +44,7 @@ private:
 	Stage m_Stage;
 	VersusCalc m_Participants; // タイトルで決まる参加者。試合の得点はFighterManagerが持つ。
 	FighterManager m_Fighters;
+	std::array<CHARACTER_TYPE, FIGHTER_COUNT> m_LobbyCharacters{};
 	// カメラ・腕・HUD はスロット番号で持つ。使うのは人のスロットだけ。
 	Camera m_Cameras[FIGHTER_COUNT];
 	ArmManager m_Arms[FIGHTER_COUNT];

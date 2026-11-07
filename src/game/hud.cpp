@@ -62,6 +62,7 @@ static constexpr float TITLE_PLAYER_LINE = 48.0f;
 static constexpr float TITLE_PLAYER_X = 440.0f;
 static constexpr float TITLE_DEVICE_X = 540.0f;
 static constexpr float TITLE_DEVICE_NUMBER_X = 640.0f;
+static constexpr float TITLE_CHARACTER_X = 700.0f;
 static constexpr float TITLE_JOIN_Y = 415.0f;
 static constexpr float TITLE_START_Y = 455.0f;
 static constexpr float TITLE_EQUIP_Y = 497.0f;
@@ -255,11 +256,13 @@ void Hud::SetViewSize(float width, float height)
 	m_Height = height / m_Scale;
 }
 
-void Hud::DrawScene(const VersusCalc& participants, const NetSession& net, const SessionAddressCalc& address) const
+void Hud::DrawScene(const VersusCalc& participants, const NetSession& net, const SessionAddressCalc& address,
+	const std::array<CHARACTER_TYPE, FIGHTER_COUNT>& characters) const
 {
 	const float centerX = (float)SCREEN_WIDTH * 0.5f;
 	const SCENE scene = m_Scene->GetScene();
-	if (scene == SCENE_GAME_START || scene == SCENE_MODE_SELECT || scene == SCENE_JOIN_ADDRESS) {
+	if (scene == SCENE_GAME_START || scene == SCENE_CHARACTER_SELECT
+		|| scene == SCENE_MODE_SELECT || scene == SCENE_JOIN_ADDRESS) {
 		Number2DDrawBox({ 0.0f, 0.0f, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT }, COVER_COLOR);
 		if (scene == SCENE_GAME_START) {
 			Number2DDrawText("PROTO", centerX, TITLE_Y, TITLE_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
@@ -267,7 +270,13 @@ void Hud::DrawScene(const VersusCalc& participants, const NetSession& net, const
 			Number2DDrawText("O / ENTER", centerX, ADDRESS_HELP_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
 			return;
 		}
-		if (scene == SCENE_MODE_SELECT) {
+		if (scene == SCENE_CHARACTER_SELECT) {
+			Number2DDrawText("CHARACTER SELECT", centerX, MODE_TITLE_Y, MENU_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
+			DrawMenuItem(CHARACTER_DATA::Get(m_Scene->GetCharacter()).Name, ADDRESS_Y, true);
+			Number2DDrawText("SELECT  LEFT RIGHT / A D / DPAD", centerX, TITLE_ARMS_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
+			Number2DDrawText("OK  O / ENTER", centerX, TITLE_JUMP_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
+		}
+		else if (scene == SCENE_MODE_SELECT) {
 			Number2DDrawText("MODE SELECT", centerX, MODE_TITLE_Y, MENU_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
 			const char* items[MODE_ITEM_COUNT] = { "SOLO", "LOCAL VS", "ONLINE HOST", "ONLINE JOIN", "BACK" };
 			for (int item = 0; item < MODE_ITEM_COUNT; ++item) {
@@ -334,13 +343,18 @@ void Hud::DrawScene(const VersusCalc& participants, const NetSession& net, const
 			if (device >= 0 && device < ACTION_DEVICE_KEYBOARD) {
 				Number2DDrawNumber(device + 1, 1, TITLE_DEVICE_NUMBER_X, y, PLAYER_TAG_WIDTH, GLYPH_ALIGN_LEFT, color);
 			}
+			if (participants.IsHuman(slot) || (net.IsOnline() && (net.GetMask() & (1u << slot)))) {
+				Number2DDrawText(CHARACTER_DATA::Get(characters[slot]).Name, TITLE_CHARACTER_X, y,
+					MENU_HELP_DOT, GLYPH_ALIGN_LEFT, color);
+			}
 		}
 		Number2DDrawText("JOIN  O / ENTER", centerX, TITLE_JOIN_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
 		if (participants.GetHumanCount() > 0) {
 			Number2DDrawText("1P START  O / ENTER", centerX, TITLE_START_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
 		}
 		Number2DDrawText(TITLE_EQUIP_HELP, centerX, TITLE_EQUIP_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
-		Number2DDrawText("MOVE  WASD / L STICK", centerX, TITLE_MOVE_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
+		Number2DDrawText(net.IsOnline() ? "MOVE  WASD / L STICK" : "CHARACTER  A D / DPAD LEFT RIGHT",
+			centerX, TITLE_MOVE_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
 		Number2DDrawText("ARMS  L1 R1 / CLICK", centerX, TITLE_ARMS_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
 		Number2DDrawText("JUMP  SPACE / X", centerX, TITLE_JUMP_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
 		Number2DDrawText("BACK  X / BACKSPACE", centerX, MENU_BACK_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);

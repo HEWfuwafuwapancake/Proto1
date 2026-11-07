@@ -1,6 +1,8 @@
 ﻿#pragma once
 #include "core/dx11.h"
 #include "render/animcalc.h"
+#include <string>
+#include <unordered_map>
 
 /// @brief メカのクリップ番号
 enum class SKINNED_CLIP
@@ -23,17 +25,68 @@ struct SKINNED_POSE
 	std::vector<ANIM_MATRIX> Global; ///< 各ノードのモデル空間の行列
 };
 
-/// @brief 待機の FBX からモデルを作り、列挙の順に4つのクリップを読む。成功したら true
-bool SkinnedModelLoad(const std::array<const char*, static_cast<size_t>(SKINNED_CLIP::Count)>& paths);
+struct aiScene;
+struct aiNode;
+struct aiMesh;
 
-/// @brief 共有しているモデルとクリップを解放する
-void SkinnedModelFinalize();
+/// @brief 1キャラ分のメッシュ・骨・アニメを持ち、複数の Fighter の描画に使う
+class SkinnedModel
+{
+public:
+	/// @brief 未読み込みのモデルを作る
+	SkinnedModel() = default;
+	SkinnedModel(const SkinnedModel&) = delete;
+	SkinnedModel& operator=(const SkinnedModel&) = delete;
 
-/// @brief 待機の先頭の姿勢に戻す
-void SkinnedModelReset(SKINNED_POSE& pose);
+	/// @brief 列挙の順に4つのFBXを読み、待機のFBXからモデルを作る。成功したら true
+	bool Load(const std::array<const char*, static_cast<size_t>(SKINNED_CLIP::Count)>& paths);
+	/// @brief このモデルとクリップを解放する
+	void Finalize();
+	/// @brief 描画できるモデルを読み込めたか取得する
+	bool IsLoaded() const { return !m_Meshes.empty(); }
+	/// @brief 待機の先頭の姿勢に戻す
+	void Reset(SKINNED_POSE& pose) const;
+	/// @brief 指定されたクリップへ切り替え、ゲームの経過秒で姿勢を進める
+	void Update(SKINNED_POSE& pose, SKINNED_CLIP clip, float dt, float blendSeconds) const;
+	/// @brief 姿勢とワールド行列を使い、全体を指定色で描く
+	void Draw(const SKINNED_POSE& pose, const XMMATRIX& world, const XMFLOAT4& color) const;
 
-/// @brief 指定されたクリップへ切り替え、ゲームの経過秒で姿勢を進める
-void SkinnedModelUpdate(SKINNED_POSE& pose, SKINNED_CLIP clip, float dt, float blendSeconds);
+private:
+	struct Node
+	{
+		int Parent;
+		ANIM_TRANSFORM BindPose;
+	};
 
-/// @brief 姿勢とワールド行列を使い、全体を指定色で描く
-void SkinnedModelDraw(const SKINNED_POSE& pose, const XMMATRIX& world, const XMFLOAT4& color);
+	struct Bone
+	{
+		size_t NodeIndex;
+		ANIM_MATRIX Offset;
+	};
+
+	struct Mesh
+	{
+		ID3D11Buffer* Vertices = nullptr;
+		ID3D11Buffer* Indices = nullptr;
+		UINT IndexCount = 0;
+		std::vector<Bone> Bones;
+	};
+
+	struct Clip
+	{
+		float LoopSeconds = 0;
+		std::vector<ANIM_TRACK> Tracks;
+	};
+
+	using NodeNames = std::unordered_map<std::string, size_t>;
+
+	bool LoadFiles(const std::array<const char*, static_cast<size_t>(SKINNED_CLIP::Count)>& paths);
+	void ReadNodes(const aiNode& source, int parent, NodeNames& names, std::vector<size_t>& meshNodes);
+	static bool ReadMesh(const aiMesh& source, size_t meshNode, const NodeNames& names, Mesh& mesh);
+	bool ReadClip(const aiScene& scene, const NodeNames& names, Clip& clip) const;
+	void SamplePose(SKINNED_POSE& pose, float blend) const;
+
+	std::vector<Node> m_Nodes;
+	std::vector<Mesh> m_Meshes;
+	std::array<Clip, static_cast<size_t>(SKINNED_CLIP::Count)> m_Clips;
+};

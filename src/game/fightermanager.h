@@ -6,6 +6,10 @@
 class FighterManager
 {
 public:
+	/// @brief キャラごとの描画モデルを読み込む（起動時に1回）
+	void LoadModels();
+	/// @brief キャラごとの描画モデルを解放する
+	void Finalize();
 	/// @brief 参加した機器を各スロットに割り当て、空きはダミーとして初期化する
 	void Initialize(const Stage& stage, const VersusCalc& participants);
 	/// @brief 参加者・KO数・順位の計算結果を読み取る
@@ -69,6 +73,7 @@ public:
 private:
 	bool CanAttack(int index, int attacker) const;
 	void PushBodies();
+	SkinnedModel m_Models[CHARACTER_COUNT];
 	Fighter m_Fighters[FIGHTER_COUNT];
 	VersusCalc m_Versus;
 	const Camera* m_Cameras[FIGHTER_COUNT] = {};

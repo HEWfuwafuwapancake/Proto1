@@ -13,6 +13,18 @@
 static constexpr float SPAWN_X[FIGHTER_COUNT] = { 0.0f, 0.0f, -7.0f, 7.0f };
 static constexpr float SPAWN_Z[FIGHTER_COUNT] = { 0.0f, 8.0f, 5.0f, 5.0f };
 
+void FighterManager::LoadModels()
+{
+	for (int type = 0; type < CHARACTER_COUNT; ++type) {
+		m_Models[type].Load(CHARACTER_DATA::Get(static_cast<CHARACTER_TYPE>(type)).Paths);
+	}
+}
+
+void FighterManager::Finalize()
+{
+	for (SkinnedModel& model : m_Models) model.Finalize();
+}
+
 void FighterManager::Initialize(const Stage& stage, const VersusCalc& participants)
 {
 	m_Versus = participants;
@@ -22,7 +34,7 @@ void FighterManager::Initialize(const Stage& stage, const VersusCalc& participan
 		m_Cameras[i] = nullptr;
 		m_Arms[i] = nullptr;
 		m_Fighters[i].Initialize(stage, i, m_Versus.GetDevice(i),
-			{ platform.CenterX + SPAWN_X[i], platform.TopY, platform.CenterZ + SPAWN_Z[i] });
+			{ platform.CenterX + SPAWN_X[i], platform.TopY, platform.CenterZ + SPAWN_Z[i] }, m_Models);
 	}
 }
 
