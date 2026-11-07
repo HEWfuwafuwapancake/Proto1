@@ -4,12 +4,13 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）、決まったことは [decisions.md](decisions.md)。
 必要なときだけ読むもの：腕の書き方と共通の部品は [dev/01_DX11基盤の構成.md](dev/01_DX11基盤の構成.md) の「腕の共通の仕組み・腕の足し方」と「腕の書き方」、腕の操作と効き方は [plan/03_新しいアームの仕様.md](plan/03_新しいアームの仕様.md)、腕のモデルは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、画面を撮る方法は [dev/04_画面確認の方法.md](dev/04_画面確認の方法.md)。
 
-- 最終更新：2026-11-07（Claude。Shota の Proto1、Visual Studio Community の PC。No.89 を確認し PR #148 をマージした）
+- 最終更新：2026-11-07（Claude。Shota の Proto1、Visual Studio Community の PC。No.90 のプランを確定し、実装を始めた）
 
 ---
 
 ## 1. 今の状態
 
+- **No.90 実装中（Claude）**（ブランチ `feature/character-motion`）。
 - **No.89 完了**（[PR #148](https://github.com/HEWfuwafuwapancake/Proto1/pull/148)。実装 Codex・確認 Claude）。GAME START のあとにキャラ選択（MEKA / MEKAGIRL）、LOCAL VS のロビーで各自 ← → / A D で変更、オンラインは JOIN・READY・STATE でキャラ番号を送る（版 7）。キャラの表は `game/character.cpp`（足し方は [dev/01_DX11基盤の構成.md](dev/01_DX11基盤の構成.md) の「FBX モデル」）。当たり判定と攻撃の起点は全キャラでメカの値、描画の肩だけキャラ別（MekaGirl の肩 X=0.22 / Y=1.28 は仮の値）。
 - **No.88 完了**（[PR #147](https://github.com/HEWfuwafuwapancake/Proto1/pull/147)。実装 Codex・レビュー Claude）。キャラは骨つきのメカ（`render/skinnedmodel`）で、待機・走り・左右の腕のポーズを切り替える。アニメは試合中だけ進む（時間切れ後は止まる）。肩の位置は `arm.cpp` の固定値で、アニメの肩には追従しない。
 - **No.87 完了**。静止モデルの `ModelLoad` は Assimp 5.2.4 で FBX とテクスチャを読み込む（No.21 も完了）。説明は [dev/01_DX11基盤の構成.md](dev/01_DX11基盤の構成.md) の「FBX モデルとテクスチャ」。
@@ -30,7 +31,29 @@
 
 ## 2. 次にやること
 
-- 管理者が次のタスクを決める（tasks.md の ⬜ から、または新しい依頼）。
+- **No.90 を Claude が実装する**（管理者の指示で、コードも Maya のクリップも Claude）。終わったら確認・PR。
+
+### No.90 キャラの動きをガンダムオンライン風にする（プラン確定・管理者確認済み 2026-11-07。実装・Maya・確認 Claude）
+
+ブランチ `feature/character-motion`（作成済み）。ねらい：今の動きが硬い。**脚（または体全体）は進む方向を向き、上半身は狙う方向を向く**見た目にする。
+
+**今硬い原因**：① 腕を使うと `PlayerCalcFacing` が体ごとカメラの向きへ一瞬で回る。② 腕のクリップが全身に効き、走りながら攻撃すると脚が止まる。③ 体の向きが1つだけ。④ 走りの再生速度が一定で、傾き・ジャンプ・着地の動きがない。
+
+**大事な決まり**：`Fighter::m_Yaw`（狙いの向き。腕の肩・盾・攻撃の向きに使う）と `PlayerCalcFacing` の結果は**変えない**。足すのは描画だけの向き・姿勢で、ロックステップの計算・チェックサム・通信には入れない（通信の版も上げない）。
+
+**やること**
+1. **デフォルトを MekaGirl に**：`CHARACTER_MEKA` を初期値にしている所（`scenecalc`・`game.cpp` のロビー・`fighter.h`・`netsession`・`sessioncalc` の既定値・ダミー）を `CHARACTER_MEKAGIRL` にする。当たり判定と攻撃の起点（`arm.cpp` の `CHARACTER_MEKA` の肩）はメカの値のまま。テストの期待値も合わせる。
+2. **脚の向き（描画だけ）**：`Fighter` に `m_LegYaw` を足す。横に動いているときは移動方向へ `LEG_TURN_SPEED`（仮 540°/秒）で回し、止まっているときは `m_Yaw` へゆっくり寄せる。上半身のねじれ `m_Yaw − m_LegYaw` は ±`MAX_TWIST`（仮 75°）まで。移動方向と狙いの差が `MAX_TWIST` を超えるとき（狙いながら後ろへ下がる）は、脚を移動方向の逆に向けて**後ろ走り**にする。モデル全体は `m_LegYaw` で回し、ねじれはキャラごとの背骨の骨（MekaGirl は `spine_01`・`spine_02`・`chest`）に Y 回転で分けて足す（`SkinnedModel` に「骨の名前で追加の回転を足す」仕組みを作る）。
+3. **傾き（描画だけ）**：加速すると前へ（仮 最大 8°）、曲がると内側へ（仮 最大 10°）傾け、なめらかに戻す。モデル全体の回転に足す。
+4. **上半身と下半身のアニメを分ける**：腕を使っている間、腕のクリップは「上半身の根元の骨」（MekaGirl は `spine_01`）から下の骨だけに効かせ、ほかの骨は待機・走りなどを続ける。根元の骨の名前は `character.cpp` の表に足す（メカの骨の名前は FBX を読んで決める）。
+5. **走りの再生速度**：横の速さ ÷ `MOVE_SPEED` を再生速度にする（下限 仮 0.5）。
+6. **新しいクリップ**：`SKINNED_CLIP` に `RunBack`（後ろ走り）・`Jump`（上昇。ループしない）・`Fall`（落下。ループ）・`Land`（着地。ループしない・終わったら待機／走り）を足す。選び方：地面にいない＆上向きの速さ > 0 → Jump、地面にいない＆下向き → Fall、着地した直後 `LAND_SECONDS`（仮 0.2 秒）→ Land、地面で後ろ走り中 → RunBack。ループしないクリップは最後の姿勢で止める。`character.cpp` の FBX の表を8つに増やす。**ファイルがないクリップは代わりを使う**（RunBack → Run を逆再生、Jump / Fall → Idle、Land → Idle）。MekaGirl のファイル名は `mekagirl_run_back.fbx`・`mekagirl_jump.fbx`・`mekagirl_fall.fbx`・`mekagirl_land.fbx`（Claude が Maya で作って入れる）。メカは代わりで動かす。
+7. 角度の計算（脚の向き・ねじれの制限・後ろ走りの判定・傾き・再生速度・クリップの選び方）は DirectX を使わないファイル（`src/physics/` か `render/animcalc`）に分け、主な動きのテストを足す。調整する値は `fighter.cpp` の「調整用の値」に `static constexpr` でまとめる。
+8. ドキュメント：`docs/dev/01_DX11基盤の構成.md` の「骨つきのキャラモデル」「キャラの足し方」を直す（8クリップ・上半身の根元の骨・ねじりの骨）。
+
+**Maya（Claude）**：MekaGirl の元 FBX（骨 20 本・腕の骨なし・24fps・cm）を Maya に読み、上の4クリップを作って `assets/models/` に入れる。今の走りは、上半身の前傾と踏み込みの沈みを足して作り直すかもしれない（同じファイル名で差し替える）。
+
+**確認（Claude）**：Debug / Release 警告0・`run-tests.ps1`（Debug・Release）・新しい計算を壊してテストが落ちる確認・画面確認（走り・横移動・狙いながら後ろへ下がる・走りながら腕・ジャンプ・着地、MekaGirl とメカ）・オンライン（127.0.0.1 の2つ起動）で DESYNC なし。
 
 ### 管理者の実機確認
 
