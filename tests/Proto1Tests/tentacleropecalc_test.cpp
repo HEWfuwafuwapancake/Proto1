@@ -13,6 +13,9 @@ namespace
 		TENTACLE_ROPE_PARAMS params;
 		params.MaxBend = 3.2f;
 		params.MaxRootBend = 3.2f;
+		params.MaxTipBend = 3.2f;
+		params.Damping = 1.2f;
+		params.AirDrag = 0.8f;
 		return params;
 	}
 
@@ -73,19 +76,20 @@ TEST(TentacleRopeCalcTest, SwingsForwardWhenAnchorStops)
 	EXPECT_GT(farthest, 0.15f);
 }
 
-// つなぎ目は上限より曲がらない（鎖のように順に引っぱられる）。最初の節は付け根の向きから曲がりすぎない。
+// つなぎ目ごとの可動域より曲がらない（肩は広め・途中は狭め・先っぽは少し広め）。
 TEST(TentacleRopeCalcTest, LimitsBendAtEachJoint)
 {
 	TentacleRopeCalc rope;
 	rope.Reset({ 0, 2, 0 }, { 1, 0, 0 }, LENGTHS, 3);
 	TENTACLE_ROPE_PARAMS params;
-	params.MaxBend = 0.5f;
+	params.MaxBend = 0.2f;
 	params.MaxRootBend = 0.8f;
+	params.MaxTipBend = 0.4f;
 	rope.Step({ 0, 2, 0 }, params, DT);
-	EXPECT_LE(Angle(params.RootDirection, Vec3Sub(rope.GetPoint(1), rope.GetPoint(0))), 0.8f + 0.05f);
-	for (int i = 2; i < rope.GetPointCount(); ++i) {
-		EXPECT_LE(Angle(Vec3Sub(rope.GetPoint(i - 1), rope.GetPoint(i - 2)), Vec3Sub(rope.GetPoint(i), rope.GetPoint(i - 1))), 0.5f + 0.05f);
-	}
+	// 横から放した直後なので、肩のつなぎ目は広い可動域いっぱいまで曲がっている。
+	EXPECT_NEAR(0.8f, Angle(params.RootDirection, Vec3Sub(rope.GetPoint(1), rope.GetPoint(0))), 0.05f);
+	EXPECT_LE(Angle(Vec3Sub(rope.GetPoint(1), rope.GetPoint(0)), Vec3Sub(rope.GetPoint(2), rope.GetPoint(1))), 0.2f + 0.05f);
+	EXPECT_LE(Angle(Vec3Sub(rope.GetPoint(2), rope.GetPoint(1)), Vec3Sub(rope.GetPoint(3), rope.GetPoint(2))), 0.4f + 0.05f);
 }
 
 // 体の円柱の中には入らず、外側へ押し出される。長さの割合の位置は節の上をたどる。

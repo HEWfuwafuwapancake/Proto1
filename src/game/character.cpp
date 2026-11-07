@@ -13,7 +13,7 @@ static constexpr CHARACTER_DATA CHARACTERS[CHARACTER_COUNT] = {
 		{ "spine_01", { "spine_01", "spine_02", "chest" } },
 		110.76f, 0.0f, XM_PI, { 0.22f, 1.28f, 0.0f },
 		{ { { "upperarm_l", "lowerarm_l", "hand_l", "hand_end_l" }, { "upperarm_r", "lowerarm_r", "hand_r", "hand_end_r" } } },
-		0.45f }, // 触腕は腕（約 50）より少し長い大きさ。付け根の肩の塊が肩の骨に来る
+		0.6f }, // 触腕は体に見合った大きさ。付け根の肩の塊が肩の骨に来る
 };
 
 const CHARACTER_DATA& CHARACTER_DATA::Get(CHARACTER_TYPE character)

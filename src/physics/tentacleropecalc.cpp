@@ -50,7 +50,10 @@ void TentacleRopeCalc::LimitBend(int index, const VEC3& previousDirection, float
 	if (cosine >= cosMax) return;
 	const VEC3 side = UnitOr(Vec3Sub(direction, Vec3Scale(previousDirection, cosine)), { 1.0f, 0.0f, 0.0f });
 	const VEC3 limited = Vec3Add(Vec3Scale(previousDirection, cosMax), Vec3Scale(side, sinf(maxBend)));
-	m_Points[index] = Vec3Add(m_Points[index - 1], Vec3Scale(limited, length));
+	const VEC3 corrected = Vec3Add(m_Points[index - 1], Vec3Scale(limited, length));
+	// 上限に当たって戻した分は勢いにしない（跳ね返ってガチャガチャしないように）。
+	m_Previous[index] = Vec3Add(m_Previous[index], Vec3Sub(corrected, m_Points[index]));
+	m_Points[index] = corrected;
 }
 
 void TentacleRopeCalc::PushOutOfBody(int index, const TENTACLE_ROPE_PARAMS& params)
@@ -102,7 +105,7 @@ void TentacleRopeCalc::Step(const VEC3& anchor, const TENTACLE_ROPE_PARAMS& para
 				SolveLink(i);
 				const VEC3 previousDirection = i == 1 ? params.RootDirection
 					: UnitOr(Vec3Sub(m_Points[i - 1], m_Points[i - 2]), params.RootDirection);
-				LimitBend(i, previousDirection, i == 1 ? params.MaxRootBend : params.MaxBend);
+				LimitBend(i, previousDirection, i == 1 ? params.MaxRootBend : (i == m_Count ? params.MaxTipBend : params.MaxBend));
 				PushOutOfBody(i, params);
 			}
 		}

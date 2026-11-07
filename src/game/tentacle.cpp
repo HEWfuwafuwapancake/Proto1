@@ -34,13 +34,14 @@ static constexpr float SEGMENT_LENGTH = 3.207f;
 static constexpr float TIP_LENGTH = 4.434f;
 static constexpr float MIN_STRETCH = 0.2f;
 static constexpr float IDLE_LENGTH = 1.2f; // 待機中・短い伸縮中に描く長さ（判定には使わない）
-static constexpr int BONE_IDLE_SEGMENTS = 5; // 腕の骨に付くキャラの待機中の節の数（元モデルの TAKO1〜5 と同じ1本分）
+static constexpr int BONE_IDLE_SEGMENTS = 3; // 腕の骨に付くキャラの待機中の節の数（元モデルの TAKO1〜5 と同じ1本分）
 // 待機中の節の鎖の物理（描画だけ）。付け根の箱は体に固定し、その下に鎖がぶら下がる
 static constexpr float ROPE_GRAVITY = 14.0f; // 鎖にかかる重力（大きいほど重く速く振れる）
-static constexpr float ROPE_DAMPING = 1.2f; // 体に対する揺れが1秒で減る割合（小さいほど長く振れる）
-static constexpr float ROPE_AIR_DRAG = 0.8f; // 空気抵抗（大きいほど走ったとき後ろへなびく）
-static constexpr float ROPE_MAX_BEND = XMConvertToRadians(28.0f); // 節のつなぎ目が曲がる角度の上限
-static constexpr float ROPE_MAX_ROOT_BEND = XMConvertToRadians(50.0f); // 付け根の箱から最初の節が曲がる角度の上限
+static constexpr float ROPE_DAMPING = 2.5f; // 体に対する揺れが1秒で減る割合（小さいほど長く振れる）
+static constexpr float ROPE_AIR_DRAG = 0.3f; // 空気抵抗（大きいほど走ったとき後ろへなびく）
+static constexpr float ROPE_MAX_BEND = XMConvertToRadians(14.0f); // 途中の節のつなぎ目の可動域
+static constexpr float ROPE_MAX_ROOT_BEND = XMConvertToRadians(60.0f); // 肩（付け根の箱→最初の節）の可動域（広め）
+static constexpr float ROPE_MAX_TIP_BEND = XMConvertToRadians(20.0f); // 先っぽのつなぎ目の可動域
 static constexpr int ROPE_SUBSTEPS = 4; // 1フレームを分ける数
 static constexpr int ROPE_ITERATIONS = 3; // 1回あたりに節の長さ・曲がりを合わせる回数
 static constexpr float ROPE_BODY_RATE = 1.1f; // 体（腰・脚）の半径＝肩の横の距離 × これ
@@ -172,6 +173,7 @@ void TentacleArm::StepRope(const VEC3& origin, float idleLength, float modelScal
 	params.AirDrag = ROPE_AIR_DRAG;
 	params.MaxBend = ROPE_MAX_BEND;
 	params.MaxRootBend = ROPE_MAX_ROOT_BEND;
+	params.MaxTipBend = ROPE_MAX_TIP_BEND;
 	params.RootDirection = { 0.0f, -1.0f, 0.0f };
 	params.Substeps = ROPE_SUBSTEPS;
 	params.Iterations = ROPE_ITERATIONS;
@@ -209,19 +211,22 @@ void TentacleArm::Draw()
 	else if (arm.GetState() != TENTACLE_HOLDING) {
 		hanging = fmaxf(0.0f, 1.0f - Vec3Length(Vec3Sub(arm.GetTip(), physicalOrigin)) / idleLength);
 	}
+	const float baseLength = BASE_LENGTH * modelScale;
+	const VEC3 anchor = Vec3Add(origin, { 0.0f, -baseLength, 0.0f }); // 付け根の箱の下端（肩に固定）
 	if (arm.GetState() != TENTACLE_HOLDING) {
 		// 描画する先端だけを変える。計算上の arm.GetTip()・長さ・判定はそのまま。
 		const VEC3 extended = Vec3Sub(tip, physicalOrigin);
 		const float length = Vec3Length(extended);
 		const VEC3 aim = length < MODEL_MIN_LENGTH ? rest : Vec3Scale(extended, 1.0f / length);
 		const VEC3 direction = ArmCalcBlendDirection(rest, aim, length / idleLength);
-		tip = Vec3Add(length < idleLength ? origin : physicalOrigin, Vec3Scale(direction, fmaxf(length, idleLength)));
+		tip = length < idleLength ? Vec3Add(anchor, Vec3Scale(direction, idleLength - baseLength)) : tip;
 	}
+	// 節は箱の下端から先端へ伸ばす（肩から外れて見えないように）。
 	const VEC3 delta = Vec3Sub(tip, origin);
 	const int steps = (int)ceilf(Vec3Length(delta) / SPHERE_SPACING) + 1;
 	const XMFLOAT4 color = GetColor(arm.GetTarget() >= 0);
 	if (m_BaseModel >= 0 && m_SegmentModel >= 0 && m_TipModel >= 0) {
-		const float length = Vec3Length(delta);
+		const float length = Vec3Length(Vec3Sub(tip, anchor)) + baseLength; // 箱の長さ＋箱の下端から先端まで
 		const float remaining = length / modelScale - BASE_LENGTH - TIP_LENGTH;
 		const int segments = remaining > 0.0f ? (int)floorf(remaining / SEGMENT_LENGTH + 0.5f) : 0;
 		const float total = BASE_LENGTH + segments * SEGMENT_LENGTH + TIP_LENGTH;
@@ -229,13 +234,15 @@ void TentacleArm::Draw()
 		const float drawLength = fmaxf(length, total * modelScale * MIN_STRETCH);
 		const VEC3 direction = length < MODEL_MIN_LENGTH ? VEC3{ sinf(yaw), 0, cosf(yaw) }
 			: Vec3Scale(delta, 1.0f / length);
-		const VEC3 drawTip = Vec3Add(origin, Vec3Scale(direction, drawLength));
+		const VEC3 chainDelta = Vec3Sub(tip, anchor);
+		const float chainLength = Vec3Length(chainDelta);
+		const VEC3 chainDirection = chainLength < MODEL_MIN_LENGTH ? direction : Vec3Scale(chainDelta, 1.0f / chainLength);
+		const VEC3 drawTip = Vec3Add(anchor, Vec3Scale(chainDirection, fmaxf(chainLength, drawLength - baseLength)));
 		const float phase = GameTimeGetElapsed() * WIGGLE_SPEED + hand * WIGGLE_ARM_PHASE;
 		// 待機中は揺らさない（揺れは鎖の物理に任せる）。伸ばしている間とつかんでいる間だけ揺らす。
 		const float amplitude = arm.GetState() == TENTACLE_IDLE ? 0.0f
 			: WIGGLE_AMPLITUDE * fminf(1.0f, length / WIGGLE_FULL_LENGTH)
 			* (arm.GetState() == TENTACLE_HOLDING ? WIGGLE_HOLD_SCALE : 1.0f);
-		const float baseRatio = BASE_LENGTH / total;
 		float distance = 0.0f;
 		VEC3 start = origin;
 		for (int piece = 0; piece < segments + 2; ++piece) {
@@ -243,12 +250,12 @@ void TentacleArm::Draw()
 			const bool last = piece == segments + 1;
 			const float sourceLength = base ? BASE_LENGTH : (last ? TIP_LENGTH : SEGMENT_LENGTH);
 			distance += sourceLength;
-			const float s = last ? 1.0f : distance / total;
-			VEC3 end = TentacleCalcWigglePoint(origin, drawTip, s, phase, amplitude, WIGGLE_WAVES);
-			if (hanging > 0.0f) {
-				// 付け根の箱は体に固定して真下へ、その先は鎖の上の同じ割合の位置。
-				const VEC3 rope = base ? m_Rope.GetPoint(0) : m_Rope.GetPointAt((s - baseRatio) / (1.0f - baseRatio));
-				end = Vec3Add(Vec3Scale(end, 1.0f - hanging), Vec3Scale(rope, hanging));
+			// 付け根の箱はいつも肩に固定して真下へ。その先は、伸ばした形（箱の下端→先端）と鎖の形を混ぜる。
+			const float s = last ? 1.0f : (distance - BASE_LENGTH) / (total - BASE_LENGTH);
+			VEC3 end = anchor;
+			if (!base) {
+				end = TentacleCalcWigglePoint(anchor, drawTip, s, phase, amplitude, WIGGLE_WAVES);
+				if (hanging > 0.0f) end = Vec3Add(Vec3Scale(end, 1.0f - hanging), Vec3Scale(m_Rope.GetPointAt(s), hanging));
 			}
 			DrawPiece(base ? m_BaseModel : (last ? m_TipModel : m_SegmentModel),
 				start, end, sourceLength, modelScale, color, 0.0f, PieceDown(start, end, right));
