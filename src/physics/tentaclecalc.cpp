@@ -37,6 +37,19 @@ VEC3 TentacleCalcWigglePoint(const VEC3& origin, const VEC3& tip, float s,
 			Vec3Scale(vertical, envelope * WIGGLE_VERTICAL_SCALE * cosf(wave))));
 }
 
+VEC3 TentacleCalcDroopPoint(const VEC3& origin, const VEC3& outward, const VEC3& hang, float length, float bend,
+	float s, const VEC3& sway, float phase, float amplitude, float waves)
+{
+	const float t = std::max(0.0f, std::min(1.0f, s));
+	const VEC3 control = Vec3Add(origin, Vec3Scale(outward, length * bend));
+	const VEC3 end = Vec3Add(control, Vec3Scale(hang, length * (1.0f - bend)));
+	// 2次ベジェ曲線：(1-t)^2 肩 + 2t(1-t) 曲がり目 + t^2 先
+	const float u = 1.0f - t;
+	const VEC3 curve = Vec3Add(Vec3Add(Vec3Scale(origin, u * u), Vec3Scale(control, 2.0f * t * u)), Vec3Scale(end, t * t));
+	const float wave = phase - 2.0f * WIGGLE_PI * waves * t;
+	return Vec3Add(curve, Vec3Scale(sway, amplitude * t * sinf(wave)));
+}
+
 TENTACLE_PIECE_AXES TentacleCalcPieceAxes(const VEC3& start, const VEC3& end, const VEC3& down)
 {
 	VEC3 direction = Vec3Sub(end, start);

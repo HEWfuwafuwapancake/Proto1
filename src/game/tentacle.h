@@ -38,4 +38,7 @@ private:
 	int m_BaseModel = -1;
 	int m_SegmentModel = -1;
 	int m_TipModel = -1;
+	float m_Trail = 0.0f; // 走って後ろへなびく強さ（0〜1。描画だけ）
+	VEC3 m_TrailDirection{ 0.0f, 0.0f, -1.0f }; // なびく水平の向き（進む向きの反対。描画だけ）
+	float m_SwayPhase = 0.0f; // 待機・走りの揺れの位相（描画だけ）
 };

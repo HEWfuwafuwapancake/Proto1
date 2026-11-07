@@ -5,7 +5,7 @@ static constexpr CHARACTER_DATA CHARACTERS[CHARACTER_COUNT] = {
 	{ "MEKA", { "assets/models/meka_idle.fbx", "assets/models/meka_run.fbx",
 		"assets/models/meka_armL_forward.fbx", "assets/models/meka_armR_forward.fbx", nullptr, nullptr, nullptr, nullptr },
 		{ "joint2", { "joint2", "joint3", "joint4" } }, // joint1 が腰、joint2〜4 が背骨
-		54.7f, -2.9f, XM_PI, { 0.29f, 1.30f, 0.0f }, {}, 1.0f, 0.0f }, // 腕の骨はないので肩は固定
+		54.7f, -2.9f, XM_PI, { 0.29f, 1.30f, 0.0f }, {}, 1.0f }, // 腕の骨はないので肩は固定
 	{ "MEKAGIRL", { "assets/models/mekagirl_idle.fbx", "assets/models/mekagirl_run.fbx",
 		"assets/models/mekagirl_armL_forward.fbx", "assets/models/mekagirl_armR_forward.fbx",
 		"assets/models/mekagirl_run_back.fbx", "assets/models/mekagirl_jump.fbx",
@@ -13,7 +13,7 @@ static constexpr CHARACTER_DATA CHARACTERS[CHARACTER_COUNT] = {
 		{ "spine_01", { "spine_01", "spine_02", "chest" } },
 		110.76f, 0.0f, XM_PI, { 0.22f, 1.28f, 0.0f },
 		{ { { "upperarm_l", "lowerarm_l", "hand_l", "hand_end_l" }, { "upperarm_r", "lowerarm_r", "hand_r", "hand_end_r" } } },
-		0.45f, 0.12f }, // 触腕は腕（約 50）より少し長い大きさ。付け根は肩より上へ突き出す
+		0.45f }, // 触腕は腕（約 50）より少し長い大きさ。付け根の肩の塊が肩の骨に来る
 };
 
 const CHARACTER_DATA& CHARACTER_DATA::Get(CHARACTER_TYPE character)

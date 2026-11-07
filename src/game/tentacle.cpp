@@ -34,6 +34,18 @@ static constexpr float TIP_LENGTH = 4.434f;
 static constexpr float MIN_STRETCH = 0.2f;
 static constexpr float IDLE_LENGTH = 1.2f; // 待機中・短い伸縮中に描く長さ（判定には使わない）
 static constexpr int BONE_IDLE_SEGMENTS = 5; // 腕の骨に付くキャラの待機中の節の数（元モデルの TAKO1〜5 と同じ1本分）
+// 待機中は垂れ下がり、走ると後ろへなびく形（描画だけ）
+static constexpr float DROOP_BEND = 0.3f; // 肩から最初に外へ出る割合（残りは下へ垂れる）
+static constexpr float DROOP_OUT_DOWN = 0.8f; // 最初に出る向きの下向きの量（外向き 1 に対して）
+static constexpr float TRAIL_ANGLE = XMConvertToRadians(65.0f); // 全速で走ったとき、垂れる向きを後ろへ倒す角度
+static constexpr float TRAIL_FULL_SPEED = 6.0f; // なびきが最大になる横の速さ
+static constexpr float TRAIL_RATE = 5.0f; // なびきが目標へ近づく速さ（1秒あたりの割合）
+static constexpr float SWAY_IDLE_SPEED = 1.8f; // 待機中のゆっくりした揺れの速さ（ラジアン／秒）
+static constexpr float SWAY_RUN_SPEED = 11.0f; // 走っているときの揺れの速さ
+static constexpr float SWAY_IDLE_AMPLITUDE = 0.04f; // 待機中の先の横揺れ（m）
+static constexpr float SWAY_RUN_AMPLITUDE = 0.12f; // 走っているときの先の横揺れ（m）
+static constexpr float SWAY_IDLE_WAVES = 0.4f; // 待機中に触腕全体へ入れる波の数
+static constexpr float SWAY_RUN_WAVES = 1.2f; // 走っているときの波の数
 static constexpr float MODEL_MIN_LENGTH = 0.00001f;
 static constexpr float WIGGLE_AMPLITUDE = 0.25f;
 static constexpr float WIGGLE_WAVES = 1.5f;
@@ -126,15 +138,37 @@ void TentacleArm::Draw()
 	const VEC3 physicalOrigin = GetShoulder();
 	VEC3 tip = arm.GetState() == TENTACLE_IDLE ? physicalOrigin : arm.GetTip();
 	const float modelScale = MODEL_SCALE * GetDrawScale();
-	// 腕の骨があるキャラは、待機の向きをアニメの上腕に合わせ（走ると腕と一緒に振れる）、
-	// 長さは元モデル1本分（付け根・節5つ・先っぽ）を今の大きさで描いた長さにする。
-	VEC3 rest = GetRestDirection();
+	// 腕の骨があるキャラは、待機の長さを元モデル1本分（付け根・節5つ・先っぽ）を今の大きさで描いた長さにする。
+	const VEC3 rest = GetRestDirection();
 	float idleLength = IDLE_LENGTH;
 	VEC3 boneShoulder, boneDirection;
 	float boneLength = 0.0f;
 	if (GetPlayer().GetArmBone(hand, boneShoulder, boneDirection, boneLength)) {
-		rest = boneDirection;
 		idleLength = (BASE_LENGTH + SEGMENT_LENGTH * BONE_IDLE_SEGMENTS + TIP_LENGTH) * modelScale;
+	}
+
+	// 待機中の形：肩から外へ少し出て下へ垂れ、走ると進む向きの反対へなびく（人の腕のようには振らない）。
+	const float dt = GameTimeGetDeltaTime();
+	const VEC3 velocity = GetPlayer().GetVelocity();
+	const float speed = sqrtf(velocity.X * velocity.X + velocity.Z * velocity.Z);
+	if (speed > MODEL_MIN_LENGTH) m_TrailDirection = { -velocity.X / speed, 0.0f, -velocity.Z / speed };
+	const float trailGoal = fminf(1.0f, speed / TRAIL_FULL_SPEED);
+	m_Trail += (trailGoal - m_Trail) * fminf(1.0f, TRAIL_RATE * dt);
+	m_SwayPhase += (SWAY_IDLE_SPEED + (SWAY_RUN_SPEED - SWAY_IDLE_SPEED) * m_Trail) * dt;
+	const float yaw = GetPlayer().GetYaw();
+	const VEC3 side = Vec3Scale(VEC3{ cosf(yaw), 0.0f, -sinf(yaw) }, hand == 0 ? -1.0f : 1.0f);
+	const VEC3 outwardRaw = Vec3Add(side, VEC3{ 0.0f, -DROOP_OUT_DOWN, 0.0f });
+	const VEC3 outward = Vec3Scale(outwardRaw, 1.0f / Vec3Length(outwardRaw));
+	const float trailAngle = TRAIL_ANGLE * m_Trail;
+	const VEC3 hang = Vec3Add(VEC3{ 0.0f, -cosf(trailAngle), 0.0f }, Vec3Scale(m_TrailDirection, sinf(trailAngle)));
+	const float swayAmplitude = SWAY_IDLE_AMPLITUDE + (SWAY_RUN_AMPLITUDE - SWAY_IDLE_AMPLITUDE) * m_Trail;
+	const float swayWaves = SWAY_IDLE_WAVES + (SWAY_RUN_WAVES - SWAY_IDLE_WAVES) * m_Trail;
+	const float swayPhase = m_SwayPhase + hand * WIGGLE_ARM_PHASE;
+	// 伸ばし始めは垂れた形から少しずつまっすぐにする（つかんでいる間は使わない）。
+	float droop = 0.0f;
+	if (arm.GetState() == TENTACLE_IDLE) droop = 1.0f;
+	else if (arm.GetState() != TENTACLE_HOLDING) {
+		droop = fmaxf(0.0f, 1.0f - Vec3Length(Vec3Sub(arm.GetTip(), physicalOrigin)) / idleLength);
 	}
 	if (arm.GetState() != TENTACLE_HOLDING) {
 		// 描画する先端だけを変える。計算上の arm.GetTip()・長さ・判定はそのまま。
@@ -154,7 +188,6 @@ void TentacleArm::Draw()
 		const float total = BASE_LENGTH + segments * SEGMENT_LENGTH + TIP_LENGTH;
 		// 短すぎる腕は見た目だけ最低長まで伸ばす。判定や arm.GetTip() は変えない。
 		const float drawLength = fmaxf(length, total * modelScale * MIN_STRETCH);
-		const float yaw = GetPlayer().GetYaw();
 		const VEC3 direction = length < MODEL_MIN_LENGTH ? VEC3{ sinf(yaw), 0, cosf(yaw) }
 			: Vec3Scale(delta, 1.0f / length);
 		const VEC3 drawTip = Vec3Add(origin, Vec3Scale(direction, drawLength));
@@ -170,8 +203,13 @@ void TentacleArm::Draw()
 			const bool last = piece == segments + 1;
 			const float sourceLength = base ? BASE_LENGTH : (last ? TIP_LENGTH : SEGMENT_LENGTH);
 			distance += sourceLength;
-			const VEC3 end = TentacleCalcWigglePoint(origin, drawTip, last ? 1.0f : distance / total,
-				phase, amplitude, WIGGLE_WAVES);
+			const float s = last ? 1.0f : distance / total;
+			VEC3 end = TentacleCalcWigglePoint(origin, drawTip, s, phase, amplitude, WIGGLE_WAVES);
+			if (droop > 0.0f) {
+				const VEC3 hanging = TentacleCalcDroopPoint(origin, outward, hang, drawLength, DROOP_BEND,
+					s, side, swayPhase, swayAmplitude, swayWaves);
+				end = Vec3Add(Vec3Scale(end, 1.0f - droop), Vec3Scale(hanging, droop));
+			}
 			DrawPiece(base ? m_BaseModel : (last ? m_TipModel : m_SegmentModel),
 				start, end, sourceLength, modelScale, color);
 			start = end;

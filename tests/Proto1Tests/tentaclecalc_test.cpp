@@ -42,6 +42,25 @@ namespace Proto1Tests
 		EXPECT_NEAR(0.0f, Vec3Dot(Vec3Sub(curved, Vec3Scale(end, 0.3f)), end), 0.0001f);
 	}
 
+	// 待機の形は肩から外へ出てから垂れ、先は「外へ bend 分＋垂れる向きへ残り」の位置になる。
+	// 垂れる向きを後ろへ倒すと（走ってなびく）、先は肩より後ろへ流れる。
+	TEST(TentacleCalcTest, Droop_HangsDownAndTrailsBack)
+	{
+		const VEC3 origin{ 0, 2, 0 };
+		const VEC3 outward{ 1, 0, 0 };
+		const VEC3 tip = TentacleCalcDroopPoint(origin, outward, { 0, -1, 0 }, 1.0f, 0.3f, 1.0f, { 0, 0, 1 }, 0.0f, 0.0f, 1.0f);
+		EXPECT_NEAR(0.3f, tip.X, 0.0001f);
+		EXPECT_NEAR(1.3f, tip.Y, 0.0001f);
+		const VEC3 middle = TentacleCalcDroopPoint(origin, outward, { 0, -1, 0 }, 1.0f, 0.3f, 0.5f, { 0, 0, 1 }, 0.0f, 0.0f, 1.0f);
+		EXPECT_NEAR(0.225f, middle.X, 0.0001f); // 0.5*0.3 + 0.25*0.3
+		EXPECT_NEAR(1.825f, middle.Y, 0.0001f); // 0.25*2 + 0.5*2 + 0.25*1.3
+		const VEC3 trailed = TentacleCalcDroopPoint(origin, outward, { 0, -0.6f, -0.8f }, 1.0f, 0.3f, 1.0f, { 0, 0, 1 }, 0.0f, 0.0f, 1.0f);
+		EXPECT_NEAR(-0.56f, trailed.Z, 0.0001f);
+		// 横揺れは先で amplitude × sin(phase - 2π × waves)。
+		const VEC3 swayed = TentacleCalcDroopPoint(origin, outward, { 0, -1, 0 }, 1.0f, 0.3f, 1.0f, { 0, 0, 1 }, 1.5707963f, 0.1f, 1.0f);
+		EXPECT_NEAR(0.1f, swayed.Z, 0.0001f);
+	}
+
 	TEST(TentacleCalcTest, PieceAxes_OrthonormalAndForwardIncludingDegenerateCases)
 	{
 		for (VEC3 end : { VEC3{ 2, 3, 4 }, VEC3{ 0, 4, 0 }, VEC3{ 0, -4, 0 }, VEC3{} }) {
