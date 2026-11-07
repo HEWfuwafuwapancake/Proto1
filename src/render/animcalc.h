@@ -2,6 +2,20 @@
 #include <array>
 #include <vector>
 
+/// @brief キャラのクリップ番号（FBX の並びと同じ）
+enum class SKINNED_CLIP
+{
+	Idle, ///< 待機
+	Run, ///< 走り
+	Left, ///< 左腕を前に出す
+	Right, ///< 右腕を前に出す
+	RunBack, ///< 後ろ走り（ファイルがなければ走りを逆に再生する）
+	Jump, ///< ジャンプの上昇（ループしない。ファイルがなければ待機）
+	Fall, ///< 落下（ファイルがなければ待機）
+	Land, ///< 着地（ループしない。ファイルがなければ待機）
+	Count ///< クリップの数
+};
+
 /// @brief アニメで使う3成分
 struct ANIM_VEC3
 {
@@ -59,3 +73,9 @@ ANIM_MATRIX AnimCalcMatrix(const ANIM_TRANSFORM& pose);
 
 /// @brief ローカル変換に親の変換を掛け、モデル空間の行列にする
 ANIM_MATRIX AnimCalcCompose(const ANIM_MATRIX& local, const ANIM_MATRIX& parent);
+
+/// @brief モデル空間の行列を、その原点を中心にモデルの上下の軸（Y）まわりで回す（上半身のねじり）
+/// @param global ノードのモデル空間の行列
+/// @param angle 回す角度（ラジアン。XMMatrixRotationY と同じ向き）
+/// @return 回したあとのモデル空間の行列（原点の位置は変わらない）
+ANIM_MATRIX AnimCalcRotateY(const ANIM_MATRIX& global, float angle);

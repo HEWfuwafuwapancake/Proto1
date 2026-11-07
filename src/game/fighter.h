@@ -9,6 +9,7 @@
 #include "physics/tentaclecalc.h"
 #include "physics/versuscalc.h"
 #include "game/character.h"
+#include "render/motioncalc.h"
 
 class Stage;
 class Camera;
@@ -39,6 +40,15 @@ public:
 	/// @brief 生存している体を描く
 	/// @param highlighted 強調を設定する（true：ターゲットの色、false：通常の色）
 	void Draw(bool highlighted) const;
+	/// @brief 描画するモデルのワールド行列（大きさ・足元・傾き・脚の向き・位置）を取得する
+	XMMATRIX GetModelWorld() const;
+	/// @brief アニメの腕の骨から、描画用の腕の付け根・向き・長さを取得する（描画だけに使う）
+	/// @param hand 0：左手、1：右手
+	/// @param shoulder 肩の骨のワールド座標を入れる先
+	/// @param direction 肩から肘への単位方向を入れる先
+	/// @param length 肩から手先までの骨の長さの合計を入れる先
+	/// @return 取得できたら true（腕の骨がないキャラ・モデルがないときは false）
+	bool GetArmBone(int hand, VEC3& shoulder, VEC3& direction, float& length) const;
 	/// @brief 足元のワールド座標を取得する
 	XMFLOAT3 GetPosition() const;
 	/// @brief 足元の位置を設定する（速度はそのまま）
@@ -127,8 +137,9 @@ private:
 	int m_Device = VERSUS_DEVICE_DUMMY;
 	int m_Slot = 0;
 	const SkinnedModel* m_Models = nullptr;
-	CHARACTER_TYPE m_Character = CHARACTER_MEKA;
+	CHARACTER_TYPE m_Character = CHARACTER_DEFAULT;
 	SKINNED_POSE m_Pose;
+	MotionCalc m_Motion; // 描画だけの脚の向き・ねじれ・傾き
 	PLAYER_INPUT m_Input;
 	PLAYER_INPUT m_PreviousInput;
 	const Stage* m_Stage = nullptr;

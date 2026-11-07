@@ -30,3 +30,19 @@ TEST(AnimCalcTest, BlendsOverTransitionDuration)
 	EXPECT_FLOAT_EQ(AnimCalcBlendWeight(0.075f, 0.15f), 0.5f);
 	EXPECT_FLOAT_EQ(AnimCalcBlendWeight(0.2f, 0.15f), 1.0f);
 }
+
+// ねじりは骨の位置を中心に回すので、骨の位置は動かず、骨から前へ出た点は横へ回る。
+TEST(AnimCalcTest, RotateYTurnsAroundNodeOrigin)
+{
+	ANIM_TRANSFORM pose;
+	pose.Position = { 0, 50, 0 };
+	const ANIM_MATRIX turned = AnimCalcRotateY(AnimCalcMatrix(pose), 1.5707963f);
+	EXPECT_NEAR(turned[3][1], 50.0f, 0.0001f);
+	ANIM_TRANSFORM child;
+	child.Position = { 0, 0, 10 };
+	const ANIM_MATRIX tip = AnimCalcCompose(AnimCalcMatrix(child), turned);
+	// XMMatrixRotationY と同じ向き：+Z の点は +X へ回る。
+	EXPECT_NEAR(tip[3][0], 10.0f, 0.0001f);
+	EXPECT_NEAR(tip[3][1], 50.0f, 0.0001f);
+	EXPECT_NEAR(tip[3][2], 0.0f, 0.0001f);
+}

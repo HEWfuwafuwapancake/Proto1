@@ -93,8 +93,10 @@ protected:
 	const Stage& GetStage() const { return *m_Links.StageObject; }
 	/// @brief 当たり判定に使う肩のワールド座標を取得する（共通の取付位置に GetMountOffset のずらしを足す）
 	VEC3 GetShoulder() const;
-	/// @brief 描画するキャラの肩のワールド座標を取得する
+	/// @brief 描画するキャラの肩のワールド座標を取得する（腕の骨があるキャラはアニメの肩の骨に付ける）
 	VEC3 GetDrawShoulder() const;
+	/// @brief 描画するキャラの腕のモデルの大きさの倍率を取得する（メカを 1 とする）
+	float GetDrawScale() const;
 	/// @brief この腕だけの取付位置のずらしを取得する（腕のモデルの肩の部分を体の取付口に合わせるため）
 	/// @return X：外向き・Y：上向き・Z：前向きのずらし（m）。基本はずらしなし
 	virtual VEC3 GetMountOffset() const { return {}; }
@@ -126,7 +128,9 @@ protected:
 	/// @return 選んだ色（RGBA）
 	XMFLOAT4 GetColor(bool active) const;
 	/// @brief モデルの -Y を始点から終点へ向け、長さ・太さ・色・ひねりを指定して描く
-	void DrawPiece(int model, VEC3 start, VEC3 end, float sourceLength, float thickness, const XMFLOAT4& color, float roll = 0.0f) const;
+	/// @param down モデルの -Z（吸盤側）をなるべく向ける方向（腕と平行なら補助の軸で決める）
+	void DrawPiece(int model, VEC3 start, VEC3 end, float sourceLength, float thickness, const XMFLOAT4& color, float roll = 0.0f,
+		const VEC3& down = { 0.0f, -1.0f, 0.0f }) const;
 	/// @brief 片手用の OBJ を読む（右手だけ X を鏡写しにする。失敗は -1）
 	int LoadModel(const char* path) const;
 	/// @brief この腕を使う人のパッドを振動させる（キーボードの人には出力しない）

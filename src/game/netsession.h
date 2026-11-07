@@ -9,7 +9,7 @@ class NetSession
 {
 public:
 	/// @brief 前の接続を閉じて設定から準備する（何度でも呼べる。失敗時はオフラインで false）
-	bool Initialize(const NET_OPTIONS& options, CHARACTER_TYPE character = CHARACTER_MEKA);
+	bool Initialize(const NET_OPTIONS& options, CHARACTER_TYPE character = CHARACTER_DEFAULT);
 	/// @brief UDP接続・機器選択を閉じてオフラインへ戻す（エラーの説明は残す）
 	void Finalize();
 	/// @brief 受信・ロビーの機器選択・未採取の入力の固定・再送を行う（待たない）

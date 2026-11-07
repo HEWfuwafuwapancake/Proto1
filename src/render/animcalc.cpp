@@ -86,3 +86,20 @@ ANIM_MATRIX AnimCalcCompose(const ANIM_MATRIX& local, const ANIM_MATRIX& parent)
 	}
 	return result;
 }
+
+ANIM_MATRIX AnimCalcRotateY(const ANIM_MATRIX& global, float angle)
+{
+	// 原点へ戻し、Y まわりに回してから元の位置へ置く（行ベクトルなので右から掛ける）。
+	const float c = cosf(angle), s = sinf(angle);
+	const ANIM_MATRIX rotation = {{
+		{{ c, 0, -s, 0 }}, {{ 0, 1, 0, 0 }}, {{ s, 0, c, 0 }}, {{ 0, 0, 0, 1 }}
+	}};
+	const float x = global[3][0], y = global[3][1], z = global[3][2];
+	ANIM_MATRIX moved = global;
+	moved[3][0] = moved[3][1] = moved[3][2] = 0.0f;
+	ANIM_MATRIX result = AnimCalcCompose(moved, rotation);
+	result[3][0] = x;
+	result[3][1] = y;
+	result[3][2] = z;
+	return result;
+}

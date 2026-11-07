@@ -11,6 +11,9 @@ enum CHARACTER_TYPE
 	CHARACTER_COUNT ///< キャラの数
 };
 
+/// @brief 最初に選ばれているキャラ（ダミーもこのキャラで描く）
+static constexpr CHARACTER_TYPE CHARACTER_DEFAULT = CHARACTER_MEKAGIRL;
+
 /// @brief ゲームのシーン
 enum SCENE
 {
@@ -91,7 +94,7 @@ public:
 
 private:
 	void MoveCursor(float moveY, int count);
-	CHARACTER_TYPE m_Character = CHARACTER_MEKA;
+	CHARACTER_TYPE m_Character = CHARACTER_DEFAULT;
 	SCENE m_Scene = SCENE_GAME_START;
 	int m_Cursor = RESULT_ITEM_RETRY;
 	bool m_MenuReady = true;

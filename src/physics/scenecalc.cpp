@@ -9,7 +9,7 @@ static constexpr float MENU_STICK_DEADZONE = 0.3f; // 次の弾きの前に戻�
 
 void SceneCalc::Start(bool online)
 {
-	m_Character = CHARACTER_MEKA;
+	m_Character = CHARACTER_DEFAULT;
 	m_Scene = online ? SCENE_TITLE : SCENE_GAME_START;
 	m_Cursor = RESULT_ITEM_RETRY;
 	m_MenuReady = true;

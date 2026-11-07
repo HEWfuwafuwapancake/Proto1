@@ -93,6 +93,9 @@
     <ClCompile Include="src\game\fightermanager.cpp">
       <Filter>src\game</Filter>
     </ClCompile>
+    <ClCompile Include="src\physics\tentacleropecalc.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
     <ClCompile Include="src\physics\playercalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
@@ -130,6 +133,9 @@
       <Filter>src\render</Filter>
     </ClCompile>
     <ClCompile Include="src\render\animcalc.cpp">
+      <Filter>src\render</Filter>
+    </ClCompile>
+    <ClCompile Include="src\render\motioncalc.cpp">
       <Filter>src\render</Filter>
     </ClCompile>
     <ClCompile Include="src\render\skinnedmodel.cpp">
@@ -218,6 +224,9 @@
     <ClInclude Include="src\physics\vec3.h">
       <Filter>src\physics</Filter>
     </ClInclude>
+    <ClInclude Include="src\physics\tentacleropecalc.h">
+      <Filter>src\physics</Filter>
+    </ClInclude>
     <ClInclude Include="src\physics\playercalc.h">
       <Filter>src\physics</Filter>
     </ClInclude>
@@ -258,6 +267,9 @@
       <Filter>src\render</Filter>
     </ClInclude>
     <ClInclude Include="src\render\animcalc.h">
+      <Filter>src\render</Filter>
+    </ClInclude>
+    <ClInclude Include="src\render\motioncalc.h">
       <Filter>src\render</Filter>
     </ClInclude>
     <ClInclude Include="src\render\skinnedmodel.h">
