@@ -211,8 +211,14 @@ void TentacleArm::Draw()
 	else if (arm.GetState() != TENTACLE_HOLDING) {
 		hanging = fmaxf(0.0f, 1.0f - Vec3Length(Vec3Sub(arm.GetTip(), physicalOrigin)) / idleLength);
 	}
+	// 付け根の箱は待機中は真下。伸ばすほど、箱の真ん中を支点に先端の方へ回す（肩も一緒に回って見える）。
 	const float baseLength = BASE_LENGTH * modelScale;
-	const VEC3 anchor = Vec3Add(origin, { 0.0f, -baseLength, 0.0f }); // 付け根の箱の下端（肩に固定）
+	const VEC3 baseCenter = Vec3Add(origin, { 0.0f, -baseLength * 0.5f, 0.0f });
+	const VEC3 hangAnchor = Vec3Add(origin, { 0.0f, -baseLength, 0.0f }); // 真下に垂らしたときの箱の下端（鎖の根元）
+	const VEC3 baseDirection = ArmCalcBlendDirection({ 0.0f, -1.0f, 0.0f }, Vec3Sub(tip, baseCenter), 1.0f - hanging);
+	const VEC3 baseTop = Vec3Sub(baseCenter, Vec3Scale(baseDirection, baseLength * 0.5f));
+	const VEC3 anchor = Vec3Add(baseCenter, Vec3Scale(baseDirection, baseLength * 0.5f)); // 回した箱の下端
+	const VEC3 ropeShift = Vec3Sub(anchor, hangAnchor); // 鎖の形を回した箱の下端へ寄せる
 	if (arm.GetState() != TENTACLE_HOLDING) {
 		// 描画する先端だけを変える。計算上の arm.GetTip()・長さ・判定はそのまま。
 		const VEC3 extended = Vec3Sub(tip, physicalOrigin);
@@ -222,7 +228,7 @@ void TentacleArm::Draw()
 		tip = length < idleLength ? Vec3Add(anchor, Vec3Scale(direction, idleLength - baseLength)) : tip;
 	}
 	// 節は箱の下端から先端へ伸ばす（肩から外れて見えないように）。
-	const VEC3 delta = Vec3Sub(tip, origin);
+	const VEC3 delta = Vec3Sub(tip, baseTop);
 	const int steps = (int)ceilf(Vec3Length(delta) / SPHERE_SPACING) + 1;
 	const XMFLOAT4 color = GetColor(arm.GetTarget() >= 0);
 	if (m_BaseModel >= 0 && m_SegmentModel >= 0 && m_TipModel >= 0) {
@@ -244,18 +250,18 @@ void TentacleArm::Draw()
 			: WIGGLE_AMPLITUDE * fminf(1.0f, length / WIGGLE_FULL_LENGTH)
 			* (arm.GetState() == TENTACLE_HOLDING ? WIGGLE_HOLD_SCALE : 1.0f);
 		float distance = 0.0f;
-		VEC3 start = origin;
+		VEC3 start = baseTop;
 		for (int piece = 0; piece < segments + 2; ++piece) {
 			const bool base = piece == 0;
 			const bool last = piece == segments + 1;
 			const float sourceLength = base ? BASE_LENGTH : (last ? TIP_LENGTH : SEGMENT_LENGTH);
 			distance += sourceLength;
-			// 付け根の箱はいつも肩に固定して真下へ。その先は、伸ばした形（箱の下端→先端）と鎖の形を混ぜる。
+			// 付け根の箱は肩で回した向きへ。その先は、伸ばした形（箱の下端→先端）と鎖の形を混ぜる。
 			const float s = last ? 1.0f : (distance - BASE_LENGTH) / (total - BASE_LENGTH);
 			VEC3 end = anchor;
 			if (!base) {
 				end = TentacleCalcWigglePoint(anchor, drawTip, s, phase, amplitude, WIGGLE_WAVES);
-				if (hanging > 0.0f) end = Vec3Add(Vec3Scale(end, 1.0f - hanging), Vec3Scale(m_Rope.GetPointAt(s), hanging));
+				if (hanging > 0.0f) end = Vec3Add(Vec3Scale(end, 1.0f - hanging), Vec3Scale(Vec3Add(m_Rope.GetPointAt(s), ropeShift), hanging));
 			}
 			DrawPiece(base ? m_BaseModel : (last ? m_TipModel : m_SegmentModel),
 				start, end, sourceLength, modelScale, color, 0.0f, PieceDown(start, end, right));
@@ -264,7 +270,7 @@ void TentacleArm::Draw()
 		return;
 	}
 	for (int i = 0; i <= steps; ++i) {
-		const VEC3 p = Vec3Add(origin, Vec3Scale(delta, (float)i / steps));
+		const VEC3 p = Vec3Add(baseTop, Vec3Scale(delta, (float)i / steps));
 		ShapeDrawSphere({ p.X, p.Y, p.Z }, PARAMS.Radius, color);
 	}
 }
