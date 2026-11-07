@@ -249,7 +249,8 @@ VEC3 Arm::GetDrawShoulder() const
 	}
 	// アニメの肩の骨に、腕ごとの取付のずらしをキャラの腕の大きさに合わせて足す（描画だけ）。
 	const VEC3 mount = Vec3Scale(GetMountOffset(), GetDrawScale());
-	return ArmCalcShoulder(shoulder, GetPlayer().GetYaw(), GetHand(), mount.X, mount.Y, mount.Z);
+	const float lift = CHARACTER_DATA::Get(GetPlayer().GetCharacter()).ArmLift;
+	return ArmCalcShoulder(shoulder, GetPlayer().GetYaw(), GetHand(), mount.X, mount.Y + lift, mount.Z);
 }
 
 float Arm::GetDrawScale() const

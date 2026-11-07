@@ -33,6 +33,7 @@ static constexpr float SEGMENT_LENGTH = 3.207f;
 static constexpr float TIP_LENGTH = 4.434f;
 static constexpr float MIN_STRETCH = 0.2f;
 static constexpr float IDLE_LENGTH = 1.2f; // 待機中・短い伸縮中に描く長さ（判定には使わない）
+static constexpr int BONE_IDLE_SEGMENTS = 5; // 腕の骨に付くキャラの待機中の節の数（元モデルの TAKO1〜5 と同じ1本分）
 static constexpr float MODEL_MIN_LENGTH = 0.00001f;
 static constexpr float WIGGLE_AMPLITUDE = 0.25f;
 static constexpr float WIGGLE_WAVES = 1.5f;
@@ -125,14 +126,15 @@ void TentacleArm::Draw()
 	const VEC3 physicalOrigin = GetShoulder();
 	VEC3 tip = arm.GetState() == TENTACLE_IDLE ? physicalOrigin : arm.GetTip();
 	const float modelScale = MODEL_SCALE * GetDrawScale();
-	// 腕の骨があるキャラは、待機の向き・長さをアニメの腕に合わせる（走ると腕と一緒に振れる）。
+	// 腕の骨があるキャラは、待機の向きをアニメの上腕に合わせ（走ると腕と一緒に振れる）、
+	// 長さは元モデル1本分（付け根・節5つ・先っぽ）を今の大きさで描いた長さにする。
 	VEC3 rest = GetRestDirection();
 	float idleLength = IDLE_LENGTH;
 	VEC3 boneShoulder, boneDirection;
 	float boneLength = 0.0f;
 	if (GetPlayer().GetArmBone(hand, boneShoulder, boneDirection, boneLength)) {
 		rest = boneDirection;
-		idleLength = boneLength;
+		idleLength = (BASE_LENGTH + SEGMENT_LENGTH * BONE_IDLE_SEGMENTS + TIP_LENGTH) * modelScale;
 	}
 	if (arm.GetState() != TENTACLE_HOLDING) {
 		// 描画する先端だけを変える。計算上の arm.GetTip()・長さ・判定はそのまま。
