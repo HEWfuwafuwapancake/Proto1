@@ -8,6 +8,7 @@
 #include "physics/statuscalc.h"
 #include "physics/tentaclecalc.h"
 #include "physics/versuscalc.h"
+#include "render/skinnedmodel.h"
 
 class Stage;
 class Camera;
@@ -29,6 +30,8 @@ public:
 	DUMMY_EVENT Update(const Camera* camera, const ArmManager* arms);
 	/// @brief カメラ更新後、ターゲットか移動方向へ向く（保持中・吹っ飛び中・復活待ちは回らない）
 	void UpdateFacing(const Camera& camera, const ArmManager& arms, const FighterManager& fighters, int slot);
+	/// @brief 腕の更新後、ゲームの経過秒で描画専用のポーズを進める
+	void UpdateAnimation(const ArmManager* arms, float dt);
 	/// @brief 生存している体を描く
 	/// @param highlighted 強調を設定する（true：ターゲットの色、false：通常の色）
 	void Draw(bool highlighted) const;
@@ -119,7 +122,8 @@ private:
 	bool m_Respawned = false;
 	int m_Device = VERSUS_DEVICE_DUMMY;
 	int m_Slot = 0;
-	int m_Model = -1;
+	bool m_HasModel = false;
+	SKINNED_POSE m_Pose;
 	PLAYER_INPUT m_Input;
 	PLAYER_INPUT m_PreviousInput;
 	const Stage* m_Stage = nullptr;

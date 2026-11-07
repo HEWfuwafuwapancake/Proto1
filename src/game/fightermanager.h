@@ -18,6 +18,8 @@ public:
 	void Update();
 	/// @brief カメラ更新後、人の向きを更新する
 	void UpdateFacing();
+	/// @brief 左右の腕の処理後、全員の描画専用のアニメを更新する
+	void UpdateAnimation();
 	/// @brief 全員の体を描く（targetは強調するスロット、なしは-1）
 	void Draw(int target) const;
 	/// @brief 体への参照を取得する（slotは0〜3）

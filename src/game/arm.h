@@ -154,6 +154,8 @@ public:
 	void Draw(void) const;
 	/// @brief どちらかの腕が効いているか（待機以外なら true）
 	bool IsActive(void) const;
+	/// @brief 今使っている手を取得する（左 0・右 1・なし -1。両手なら後から使った手）
+	int GetActiveHand() const;
 	/// @brief どちらかの腕が敵をつかんでいるか（保持中なら true）
 	bool IsHolding(void) const;
 	/// @brief 左右の装備している腕のガードの強いほうを取得する
@@ -174,6 +176,7 @@ private:
 	void ChangeType(int hand, int next, int direction = 1);
 	ARM_LINKS m_Links = {};
 	int m_SelectedHand = 0;
+	int m_LastActiveHand = -1;
 	int m_ChangeDirections[2] = { 1, 1 };
 	ARM_TYPE m_Types[2] = { ARM_TYPE_TENTACLE, ARM_TYPE_TENTACLE };
 	// 左右それぞれ全種類を起動時に作る。装備切り替えでは作り直さない。

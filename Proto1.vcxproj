@@ -152,6 +152,8 @@
     <ClCompile Include="src\render\number2d.cpp" />
     <ClCompile Include="src\render\text2d.cpp" />
     <ClCompile Include="src\render\cubeflipcalc.cpp" />
+    <ClCompile Include="src\render\animcalc.cpp" />
+    <ClCompile Include="src\render\skinnedmodel.cpp" />
     <ClCompile Include="src\game\hud.cpp" />
     <ClCompile Include="src\core\shader.cpp" />
     <ClCompile Include="src\game\stage.cpp" />
@@ -238,6 +240,8 @@
     <ClInclude Include="src\render\number2d.h" />
     <ClInclude Include="src\render\text2d.h" />
     <ClInclude Include="src\render\cubeflipcalc.h" />
+    <ClInclude Include="src\render\animcalc.h" />
+    <ClInclude Include="src\render\skinnedmodel.h" />
     <ClInclude Include="src\game\hud.h" />
     <ClInclude Include="src\core\shader.h" />
     <ClInclude Include="src\game\stage.h" />
@@ -306,6 +310,12 @@
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="shaders\shaderVertex3D.hlsl">
+      <ShaderType>Vertex</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <EntryPointName>main</EntryPointName>
+      <ObjectFileOutput>$(ProjectDir)%(Filename).cso</ObjectFileOutput>
+    </FxCompile>
+    <FxCompile Include="shaders\shaderVertex3DSkinned.hlsl">
       <ShaderType>Vertex</ShaderType>
       <ShaderModel>5.0</ShaderModel>
       <EntryPointName>main</EntryPointName>

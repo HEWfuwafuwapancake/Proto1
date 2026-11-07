@@ -255,6 +255,7 @@ void Game::Update()
 		if (m_Match.IsPlaying()) m_Fighters.UpdateFacing();
 		// 装備切り替えは時間切れのあとも受け付ける。
 		for (int k = 0; k < m_HumanCount; ++k) m_Arms[m_Humans[k]].Update(m_Match.IsPlaying());
+		if (m_Match.IsPlaying()) m_Fighters.UpdateAnimation();
 	}
 	const SCENE_EVENT event = m_Scene.Step(input, m_Match.GetState() == MATCH_STATE_FINISHED);
 	if (event == SCENE_EVENT_START_MATCH) {

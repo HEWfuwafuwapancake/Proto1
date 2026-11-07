@@ -15,15 +15,18 @@
 
 static ID3D11VertexShader* g_pVertexShader = nullptr;
 static ID3D11InputLayout* g_pInputLayout = nullptr;
+static ID3D11VertexShader* g_pSkinnedVertexShader = nullptr;
+static ID3D11InputLayout* g_pSkinnedInputLayout = nullptr;
 static ID3D11PixelShader* g_pPixelShader = nullptr;
 static ID3D11SamplerState* g_SamplerState = nullptr;
 
-// 定数バッファ（番号は shaderCommon.hlsli の register(b0)〜(b4) と合わせる）
+// 定数バッファ（番号は shaderCommon.hlsli の register(b0)〜(b5) と合わせる）
 static ID3D11Buffer* g_pWorldBuffer = nullptr;		// b0
 static ID3D11Buffer* g_pViewBuffer = nullptr;		// b1
 static ID3D11Buffer* g_pProjectionBuffer = nullptr;	// b2
 static ID3D11Buffer* g_pMaterialBuffer = nullptr;	// b3
 static ID3D11Buffer* g_pLightBuffer = nullptr;		// b4
+static ID3D11Buffer* g_pSkinnedBoneBuffer = nullptr;	// b5
 
 // 注意！初期化で外部から設定されるもの。Release不要。
 static ID3D11Device* g_pDevice = nullptr;
@@ -120,6 +123,24 @@ bool Shader_Initialize(ID3D11Device* pDevice, ID3D11DeviceContext* pContext)
 	}
 
 
+	// スキニング用は頂点シェーダーとレイアウトだけを切り替える。
+	std::vector<unsigned char> skinnedBinary;
+	if (!LoadShaderFile("shaderVertex3DSkinned.cso", skinnedBinary)) {
+		MessageBox(nullptr, "頂点シェーダーの読み込みに失敗しました\n\nshaderVertex3DSkinned.cso", "エラー", MB_OK);
+		return false;
+	}
+	D3D11_INPUT_ELEMENT_DESC skinnedLayout[] = {
+		layout[0], layout[1],
+		{ "BLENDINDICES", 0, DXGI_FORMAT_R32G32B32A32_UINT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "BLENDWEIGHT",  0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+	};
+	if (FAILED(g_pDevice->CreateVertexShader(skinnedBinary.data(), skinnedBinary.size(), nullptr, &g_pSkinnedVertexShader))
+		|| FAILED(g_pDevice->CreateInputLayout(skinnedLayout, ARRAYSIZE(skinnedLayout), skinnedBinary.data(),
+			skinnedBinary.size(), &g_pSkinnedInputLayout))) {
+		hal::dout << "Shader_Initialize() : スキニング用の頂点シェーダーかレイアウトの作成に失敗しました" << std::endl;
+		return false;
+	}
+
 	// 事前コンパイル済みピクセルシェーダーの読み込み
 	std::vector<unsigned char> psbinary;
 	if (!LoadShaderFile("shaderPixel3D.cso", psbinary)) {
@@ -141,7 +162,8 @@ bool Shader_Initialize(ID3D11Device* pDevice, ID3D11DeviceContext* pContext)
 	g_pProjectionBuffer = CreateConstantBuffer(sizeof(XMFLOAT4X4));
 	g_pMaterialBuffer = CreateConstantBuffer(sizeof(MATERIAL));
 	g_pLightBuffer = CreateConstantBuffer(sizeof(LIGHT));
-	if (!g_pWorldBuffer || !g_pViewBuffer || !g_pProjectionBuffer || !g_pMaterialBuffer || !g_pLightBuffer) {
+	g_pSkinnedBoneBuffer = CreateConstantBuffer(sizeof(SKINNED_BONES));
+	if (!g_pWorldBuffer || !g_pViewBuffer || !g_pProjectionBuffer || !g_pMaterialBuffer || !g_pLightBuffer || !g_pSkinnedBoneBuffer) {
 		hal::dout << "Shader_Initialize() : 定数バッファの作成に失敗しました" << std::endl;
 		return false;
 	}
@@ -182,6 +204,9 @@ bool Shader_Initialize(ID3D11Device* pDevice, ID3D11DeviceContext* pContext)
 void Shader_Finalize()
 {
 	SAFE_RELEASE(g_SamplerState);
+	SAFE_RELEASE(g_pSkinnedBoneBuffer);
+	SAFE_RELEASE(g_pSkinnedInputLayout);
+	SAFE_RELEASE(g_pSkinnedVertexShader);
 	SAFE_RELEASE(g_pLightBuffer);
 	SAFE_RELEASE(g_pMaterialBuffer);
 	SAFE_RELEASE(g_pProjectionBuffer);
@@ -245,4 +270,16 @@ void Shader_Begin()
 	ID3D11Buffer* buffers[] = { g_pWorldBuffer, g_pViewBuffer, g_pProjectionBuffer, g_pMaterialBuffer, g_pLightBuffer };
 	g_pContext->VSSetConstantBuffers(0, ARRAYSIZE(buffers), buffers);
 	g_pContext->PSSetConstantBuffers(0, ARRAYSIZE(buffers), buffers);
+}
+
+void Shader_BeginSkinned()
+{
+	g_pContext->VSSetShader(g_pSkinnedVertexShader, nullptr, 0);
+	g_pContext->IASetInputLayout(g_pSkinnedInputLayout);
+	g_pContext->VSSetConstantBuffers(5, 1, &g_pSkinnedBoneBuffer);
+}
+
+void Shader_SetSkinnedBones(const SKINNED_BONES& bones)
+{
+	g_pContext->UpdateSubresource(g_pSkinnedBoneBuffer, 0, nullptr, &bones, 0, 0);
 }
