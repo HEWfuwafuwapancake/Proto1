@@ -44,11 +44,10 @@
 // 調整用の値（今後追加する腕も、取付位置と待機方向はここを使う）
 static constexpr float ARM_REST_PITCH = XMConvertToRadians(-75.0f); // 待機の腕を正面から 75° 下げる（体の横に垂らす）
 static constexpr float ARM_REST_SPREAD = XMConvertToRadians(8.0f); // 片側ずつ外へ開く角度
-// 肩の高さ・前後はキャラのリグの armMount（X ±14.6・高さ 110.5・Z 0 cm × 1.8 / 157.9）に合わせる。
-// 左右は腕の付け根の箱が胸にめり込まないよう、取付口（0.165）より外へ出す。
-static constexpr float SHOULDER_OFFSET = 0.24f;
+// メカの胸の高さと横幅に合わせ、Fighter の足元を基準に固定する。
+static constexpr float SHOULDER_OFFSET = 0.29f;
 static constexpr float SHOULDER_FORWARD = 0.0f;
-static constexpr float HAND_HEIGHT = 1.26f;
+static constexpr float HAND_HEIGHT = 1.30f;
 static constexpr XMFLOAT4 LEFT_COLOR{ 0.8f, 0.3f, 0.65f, 1.0f };
 static constexpr XMFLOAT4 RIGHT_COLOR{ 0.35f, 0.8f, 0.6f, 1.0f };
 static constexpr XMFLOAT4 HOLD_COLOR{ 1.0f, 0.7f, 0.2f, 1.0f };
@@ -138,6 +137,7 @@ void ArmManager::Finalize(void)
 void ArmManager::Reset(void)
 {
 	for (int hand = 0; hand < 2; ++hand) m_Arms[hand][m_Types[hand]]->Reset();
+	m_LastActiveHand = -1;
 }
 
 void ArmManager::ResetEquip(void)
@@ -169,7 +169,10 @@ void ArmManager::Update(bool playing)
 		return;
 	}
 	for (int hand = 0; hand < 2; ++hand) {
-		m_Arms[hand][m_Types[hand]]->Update(player.IsTrigger(hand == 0 ? ACTION_ARM_LEFT : ACTION_ARM_RIGHT));
+		Arm& arm = *m_Arms[hand][m_Types[hand]];
+		const bool wasActive = arm.IsActive();
+		arm.Update(player.IsTrigger(hand == 0 ? ACTION_ARM_LEFT : ACTION_ARM_RIGHT));
+		if (!wasActive && arm.IsActive()) m_LastActiveHand = hand;
 	}
 }
 
@@ -193,6 +196,15 @@ bool ArmManager::IsHolding(void) const
 		if (m_Arms[hand][m_Types[hand]]->IsHolding()) return true;
 	}
 	return false;
+}
+
+int ArmManager::GetActiveHand() const
+{
+	if (m_LastActiveHand >= 0 && m_Arms[m_LastActiveHand][m_Types[m_LastActiveHand]]->IsActive()) return m_LastActiveHand;
+	for (int hand = 0; hand < 2; ++hand) {
+		if (m_Arms[hand][m_Types[hand]]->IsActive()) return hand;
+	}
+	return -1;
 }
 
 ARM_TYPE ArmManager::GetType(int hand) const

@@ -34,6 +34,24 @@ struct LIGHT
 	XMFLOAT4 Ambient;		///< 環境光の色（光が当たらない面の明るさ）
 };
 
+/// @brief スキニングの頂点レイアウト
+struct SKINNED_VERTEX
+{
+	XMFLOAT3 Position; ///< メッシュ空間の座標
+	XMFLOAT3 Normal; ///< メッシュ空間の法線
+	UINT Bones[4]; ///< 頂点に効く骨の番号
+	float Weights[4]; ///< 各骨の重み（合計1）
+};
+
+/// @brief 1メッシュの定数バッファに収める骨の最大数
+constexpr UINT SHADER_MAX_BONES = 64;
+
+/// @brief b5 に送る骨のパレット
+struct SKINNED_BONES
+{
+	XMFLOAT4X4 Matrices[SHADER_MAX_BONES]; ///< HLSL の列優先の並びにした行列
+};
+
 /// @brief シェーダーと定数バッファを作る
 /// @param pDevice デバイス
 /// @param pContext デバイスコンテキスト
@@ -73,3 +91,9 @@ void Shader_SetLight(const LIGHT& light);
 
 /// @brief ふつうの3D／2D用のシェーダーに切り替える
 void Shader_Begin();
+
+/// @brief スキニング用の頂点シェーダーとレイアウトに切り替える
+void Shader_BeginSkinned();
+
+/// @brief 今描くメッシュの骨のパレットを設定する
+void Shader_SetSkinnedBones(const SKINNED_BONES& bones);

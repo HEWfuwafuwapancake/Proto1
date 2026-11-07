@@ -89,6 +89,12 @@ void FighterManager::UpdateFacing()
 	}
 }
 
+void FighterManager::UpdateAnimation()
+{
+	const float dt = GameTimeGetDeltaTime();
+	for (int i = 0; i < FIGHTER_COUNT; ++i) m_Fighters[i].UpdateAnimation(m_Arms[i], dt);
+}
+
 void FighterManager::Draw(int target) const
 {
 	for (int i = 0; i < FIGHTER_COUNT; ++i) m_Fighters[i].Draw(i == target);

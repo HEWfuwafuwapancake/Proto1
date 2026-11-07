@@ -126,6 +126,12 @@
     <ClCompile Include="src\render\cubeflipcalc.cpp">
       <Filter>src\render</Filter>
     </ClCompile>
+    <ClCompile Include="src\render\animcalc.cpp">
+      <Filter>src\render</Filter>
+    </ClCompile>
+    <ClCompile Include="src\render\skinnedmodel.cpp">
+      <Filter>src\render</Filter>
+    </ClCompile>
     <ClCompile Include="src\game\hud.cpp">
       <Filter>src\game</Filter>
     </ClCompile>
@@ -245,6 +251,12 @@
     <ClInclude Include="src\render\cubeflipcalc.h">
       <Filter>src\render</Filter>
     </ClInclude>
+    <ClInclude Include="src\render\animcalc.h">
+      <Filter>src\render</Filter>
+    </ClInclude>
+    <ClInclude Include="src\render\skinnedmodel.h">
+      <Filter>src\render</Filter>
+    </ClInclude>
     <ClInclude Include="src\game\hud.h">
       <Filter>src\game</Filter>
     </ClInclude>
@@ -271,6 +283,9 @@
       <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="shaders\shaderVertex3D.hlsl">
+      <Filter>shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="shaders\shaderVertex3DSkinned.hlsl">
       <Filter>shaders</Filter>
     </FxCompile>
   </ItemGroup>
