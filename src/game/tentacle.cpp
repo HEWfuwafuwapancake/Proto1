@@ -36,10 +36,15 @@ static constexpr float MIN_STRETCH = 0.2f;
 static constexpr float IDLE_LENGTH = 1.2f; // 待機中・短い伸縮中に描く長さ（判定には使わない）
 static constexpr int BONE_IDLE_SEGMENTS = 5; // 腕の骨に付くキャラの待機中の節の数（元モデルの TAKO1〜5 と同じ1本分）
 // 待機中の節の鎖の物理（描画だけ）。付け根の箱は体に固定し、その下に鎖がぶら下がる
-static constexpr float ROPE_GRAVITY = 9.8f; // 鎖にかかる重力
-static constexpr float ROPE_DRAG = 2.5f; // 空気抵抗（大きいほど走ったとき後ろへなびく）
-static constexpr float ROPE_STIFFNESS = 0.12f; // 曲がりにくさ（0：ひも、1：棒）
-static constexpr float ROPE_BODY_RATE = 0.8f; // 体の半径＝肩の横の距離 × これ（鎖が体にめり込まない）
+static constexpr float ROPE_GRAVITY = 14.0f; // 鎖にかかる重力（大きいほど重く速く振れる）
+static constexpr float ROPE_DAMPING = 1.2f; // 体に対する揺れが1秒で減る割合（小さいほど長く振れる）
+static constexpr float ROPE_AIR_DRAG = 0.8f; // 空気抵抗（大きいほど走ったとき後ろへなびく）
+static constexpr float ROPE_MAX_BEND = XMConvertToRadians(28.0f); // 節のつなぎ目が曲がる角度の上限
+static constexpr float ROPE_MAX_ROOT_BEND = XMConvertToRadians(50.0f); // 付け根の箱から最初の節が曲がる角度の上限
+static constexpr int ROPE_SUBSTEPS = 4; // 1フレームを分ける数
+static constexpr int ROPE_ITERATIONS = 3; // 1回あたりに節の長さ・曲がりを合わせる回数
+static constexpr float ROPE_BODY_RATE = 1.1f; // 体（腰・脚）の半径＝肩の横の距離 × これ
+static constexpr float ROPE_THICKNESS = 3.0f; // 節の中心から表面までの太さ（OBJ の cm。体の半径に足す）
 static constexpr float ROPE_RESET_DISTANCE = 1.5f; // 1フレームでこれ以上動いたら（ワープ・復活）並べ直す
 static constexpr float ROPE_RESET_OUTWARD = 0.3f; // 並べ直すとき、真下に対して外へ開く量
 static constexpr float PIECE_DOWN_MIN = 0.3f; // 吸盤側の向きを横の軸から決められる最小の長さ
@@ -163,12 +168,19 @@ void TentacleArm::StepRope(const VEC3& origin, float idleLength, float modelScal
 	}
 	TENTACLE_ROPE_PARAMS params;
 	params.Gravity = ROPE_GRAVITY;
-	params.Drag = ROPE_DRAG;
-	params.Stiffness = ROPE_STIFFNESS;
+	params.Damping = ROPE_DAMPING;
+	params.AirDrag = ROPE_AIR_DRAG;
+	params.MaxBend = ROPE_MAX_BEND;
+	params.MaxRootBend = ROPE_MAX_ROOT_BEND;
+	params.RootDirection = { 0.0f, -1.0f, 0.0f };
+	params.Substeps = ROPE_SUBSTEPS;
+	params.Iterations = ROPE_ITERATIONS;
 	const XMFLOAT3 p = GetPlayer().GetPosition();
 	params.BodyBottom = { p.x, p.y, p.z };
 	params.BodyTop = { p.x, origin.Y, p.z };
-	params.BodyRadius = sqrtf((origin.X - p.x) * (origin.X - p.x) + (origin.Z - p.z) * (origin.Z - p.z)) * ROPE_BODY_RATE;
+	// 体は足元から肩までの円柱。腰・脚の幅として肩の横の距離より太くし、節の太さも足す（すり抜けないように）。
+	params.BodyRadius = sqrtf((origin.X - p.x) * (origin.X - p.x) + (origin.Z - p.z) * (origin.Z - p.z)) * ROPE_BODY_RATE
+		+ ROPE_THICKNESS * modelScale;
 	m_Rope.Step(anchor, params, dt);
 }
 

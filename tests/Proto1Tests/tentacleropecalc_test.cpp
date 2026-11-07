@@ -1,51 +1,91 @@
 ﻿#include <gtest/gtest.h>
 #include "physics/tentacleropecalc.h"
+#include <cmath>
 
 namespace
 {
 	constexpr float DT = 1.0f / 60.0f;
 	const float LENGTHS[3] = { 0.2f, 0.2f, 0.1f };
 
-	TENTACLE_ROPE_PARAMS NoBody()
+	// つなぎ目の曲がる上限を外した、体のない鎖
+	TENTACLE_ROPE_PARAMS FreeChain()
 	{
 		TENTACLE_ROPE_PARAMS params;
-		params.Stiffness = 0.0f;
+		params.MaxBend = 3.2f;
+		params.MaxRootBend = 3.2f;
 		return params;
+	}
+
+	float Angle(const VEC3& a, const VEC3& b)
+	{
+		const float c = Vec3Dot(a, b) / (Vec3Length(a) * Vec3Length(b));
+		return acosf(fmaxf(-1.0f, fminf(1.0f, c)));
 	}
 }
 
-// 横に伸ばした鎖を放すと、重力で根元の真下へ垂れ下がり、節の長さは変わらない。
+// 横に伸ばした鎖を放すと、重さで根元の真下へ垂れ下がって止まり、節の長さはほぼ変わらない。
 TEST(TentacleRopeCalcTest, HangsStraightDownKeepingLengths)
 {
 	TentacleRopeCalc rope;
 	rope.Reset({ 0, 2, 0 }, { 1, 0, 0 }, LENGTHS, 3);
-	for (int i = 0; i < 600; ++i) rope.Step({ 0, 2, 0 }, NoBody(), DT);
+	for (int i = 0; i < 900; ++i) rope.Step({ 0, 2, 0 }, FreeChain(), DT);
 	const VEC3 tip = rope.GetPoint(3);
 	EXPECT_NEAR(0.0f, tip.X, 0.01f);
 	EXPECT_NEAR(1.5f, tip.Y, 0.01f);
-	EXPECT_NEAR(0.2f, Vec3Length(Vec3Sub(rope.GetPoint(1), rope.GetPoint(0))), 0.0001f);
-	EXPECT_NEAR(0.1f, Vec3Length(Vec3Sub(rope.GetPoint(3), rope.GetPoint(2))), 0.0001f);
+	EXPECT_NEAR(0.2f, Vec3Length(Vec3Sub(rope.GetPoint(1), rope.GetPoint(0))), 0.005f);
+	EXPECT_NEAR(0.1f, Vec3Length(Vec3Sub(rope.GetPoint(3), rope.GetPoint(2))), 0.005f);
 }
 
-// 根元が一定の速さで動き続けると、空気抵抗で先は進む向きの反対へなびく。
-TEST(TentacleRopeCalcTest, TrailsBehindMovingAnchor)
+// 根元が一定の速さで動き続けると、体と一緒に動きつつ空気抵抗で少し後ろへなびき、その形で落ち着く。
+TEST(TentacleRopeCalcTest, TrailsBehindMovingAnchorAndSettles)
 {
 	TentacleRopeCalc rope;
 	rope.Reset({ 0, 2, 0 }, { 0, -1, 0 }, LENGTHS, 3);
 	VEC3 anchor{ 0, 2, 0 };
-	for (int i = 0; i < 240; ++i) {
+	for (int i = 0; i < 300; ++i) {
 		anchor.Z += 6.0f * DT;
-		rope.Step(anchor, NoBody(), DT);
+		rope.Step(anchor, FreeChain(), DT);
 	}
-	const VEC3 tip = rope.GetPoint(3);
-	EXPECT_LT(tip.Z, anchor.Z - 0.2f);
-	EXPECT_GT(tip.Y, anchor.Y - 0.5f + 0.05f);
-	// 振り子のように揺れ続けず、なびいた形で落ち着く（振り子の半周期あとも同じ位置）。
-	for (int i = 0; i < 42; ++i) {
+	const float behind = rope.GetPoint(3).Z - anchor.Z;
+	EXPECT_LT(behind, -0.1f);
+	for (int i = 0; i < 40; ++i) {
 		anchor.Z += 6.0f * DT;
-		rope.Step(anchor, NoBody(), DT);
+		rope.Step(anchor, FreeChain(), DT);
 	}
-	EXPECT_NEAR(tip.Z - (anchor.Z - 42 * 6.0f * DT), rope.GetPoint(3).Z - anchor.Z, 0.02f);
+	EXPECT_NEAR(behind, rope.GetPoint(3).Z - anchor.Z, 0.02f);
+}
+
+// 重さで勢いが残るので、走っていた根元が止まると、先は根元より前へ振り出される。
+TEST(TentacleRopeCalcTest, SwingsForwardWhenAnchorStops)
+{
+	TentacleRopeCalc rope;
+	rope.Reset({ 0, 2, 0 }, { 0, -1, 0 }, LENGTHS, 3);
+	VEC3 anchor{ 0, 2, 0 };
+	for (int i = 0; i < 300; ++i) {
+		anchor.Z += 6.0f * DT;
+		rope.Step(anchor, FreeChain(), DT);
+	}
+	float farthest = -1.0f;
+	for (int i = 0; i < 30; ++i) {
+		rope.Step(anchor, FreeChain(), DT);
+		farthest = fmaxf(farthest, rope.GetPoint(3).Z - anchor.Z);
+	}
+	EXPECT_GT(farthest, 0.15f);
+}
+
+// つなぎ目は上限より曲がらない（鎖のように順に引っぱられる）。最初の節は付け根の向きから曲がりすぎない。
+TEST(TentacleRopeCalcTest, LimitsBendAtEachJoint)
+{
+	TentacleRopeCalc rope;
+	rope.Reset({ 0, 2, 0 }, { 1, 0, 0 }, LENGTHS, 3);
+	TENTACLE_ROPE_PARAMS params;
+	params.MaxBend = 0.5f;
+	params.MaxRootBend = 0.8f;
+	rope.Step({ 0, 2, 0 }, params, DT);
+	EXPECT_LE(Angle(params.RootDirection, Vec3Sub(rope.GetPoint(1), rope.GetPoint(0))), 0.8f + 0.05f);
+	for (int i = 2; i < rope.GetPointCount(); ++i) {
+		EXPECT_LE(Angle(Vec3Sub(rope.GetPoint(i - 1), rope.GetPoint(i - 2)), Vec3Sub(rope.GetPoint(i), rope.GetPoint(i - 1))), 0.5f + 0.05f);
+	}
 }
 
 // 体の円柱の中には入らず、外側へ押し出される。長さの割合の位置は節の上をたどる。
@@ -53,7 +93,7 @@ TEST(TentacleRopeCalcTest, StaysOutsideBodyAndSamplesAlongLength)
 {
 	TentacleRopeCalc rope;
 	rope.Reset({ 0.3f, 2, 0 }, { -1, 0, 0 }, LENGTHS, 3);
-	TENTACLE_ROPE_PARAMS params = NoBody();
+	TENTACLE_ROPE_PARAMS params = FreeChain();
 	params.BodyBottom = { 0, 0, 0 };
 	params.BodyTop = { 0, 2, 0 };
 	params.BodyRadius = 0.15f;
