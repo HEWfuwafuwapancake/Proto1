@@ -4,12 +4,13 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）、決まったことは [decisions.md](decisions.md)。
 必要なときだけ読むもの：腕の書き方と共通の部品は [dev/01_DX11基盤の構成.md](dev/01_DX11基盤の構成.md) の「腕の共通の仕組み・腕の足し方」と「腕の書き方」、腕の操作と効き方は [plan/03_新しいアームの仕様.md](plan/03_新しいアームの仕様.md)、腕のモデルは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、画面を撮る方法は [dev/04_画面確認の方法.md](dev/04_画面確認の方法.md)。
 
-- 最終更新：2026-11-07（Claude。Shota の Proto1、Visual Studio Community の PC。No.89 を確認し PR #148 をマージした）
+- 最終更新：2026-11-09（Claude。Shota の Proto1、Visual Studio Community の PC。No.90 を develop にマージした）
 
 ---
 
 ## 1. 今の状態
 
+- **No.90 完了・develop にマージ済み**（実装・Maya・確認 Claude）。最初のキャラとダミーは MekaGirl。脚は進む向き・上半身は狙う向き（描画だけ。ねじれ ±75°・110° を超えると後ろ走り）、走ると前傾・曲がると内側へ傾く、腕のクリップは上半身だけ、走りの再生速度は速さに合わせる。MekaGirl に後ろ走り・ジャンプ・落下・着地のクリップを Maya で作り、走りは前傾・腰の弾み・腕と脚の振りを大きくした（メカは代わりのクリップ）。触腕は待機中に揺らさない。MekaGirl の腕はアニメの肩の骨に付き、大きさは 0.6 倍（ほかの腕はまだメカの大きさ）。触腕は付け根の箱を肩に固定し（平たい面が体側）、節は重い鎖の物理（つなぎ目ごとの可動域つき）でぶら下がり、走ると少し後ろへ流れ、止まると1回ほど振れる。伸ばすと肩の箱が真ん中を支点に腕の向きへ回り、腕はその下端から出る。体にはめり込まない（描画だけ。`physics/tentacleropecalc`。調整は `tentacle.cpp` の `ROPE_*`）。仕組みは [dev/01_DX11基盤の構成.md](dev/01_DX11基盤の構成.md) の「骨つきのキャラモデル」。Maya の元データも `assets/models/source/` に入っている。別の PC では develop を取ってきて `git lfs pull` する。
 - **No.89 完了**（[PR #148](https://github.com/HEWfuwafuwapancake/Proto1/pull/148)。実装 Codex・確認 Claude）。GAME START のあとにキャラ選択（MEKA / MEKAGIRL）、LOCAL VS のロビーで各自 ← → / A D で変更、オンラインは JOIN・READY・STATE でキャラ番号を送る（版 7）。キャラの表は `game/character.cpp`（足し方は [dev/01_DX11基盤の構成.md](dev/01_DX11基盤の構成.md) の「FBX モデル」）。当たり判定と攻撃の起点は全キャラでメカの値、描画の肩だけキャラ別（MekaGirl の肩 X=0.22 / Y=1.28 は仮の値）。
 - **No.88 完了**（[PR #147](https://github.com/HEWfuwafuwapancake/Proto1/pull/147)。実装 Codex・レビュー Claude）。キャラは骨つきのメカ（`render/skinnedmodel`）で、待機・走り・左右の腕のポーズを切り替える。アニメは試合中だけ進む（時間切れ後は止まる）。肩の位置は `arm.cpp` の固定値で、アニメの肩には追従しない。
 - **No.87 完了**。静止モデルの `ModelLoad` は Assimp 5.2.4 で FBX とテクスチャを読み込む（No.21 も完了）。説明は [dev/01_DX11基盤の構成.md](dev/01_DX11基盤の構成.md) の「FBX モデルとテクスチャ」。
@@ -30,10 +31,11 @@
 
 ## 2. 次にやること
 
-- 管理者が次のタスクを決める（tasks.md の ⬜ から、または新しい依頼）。
+- 次のタスクは管理者が決める。
 
 ### 管理者の実機確認
 
+- No.90：実機で動かして、脚と上半身の向き・後ろ走り・ジャンプ／着地・傾きが自然か見る。強すぎ／弱すぎなら `fighter.cpp` の「調整用の値」（`LEG_TURN_SPEED`・`MAX_TWIST`・`BACK_RUN_ANGLE`・`LEAN_FORWARD`・`LEAN_SIDE_MAX`）と、Maya のポーズ（`assets/models/source/mekagirl_motion.mb`）を直す。Claude は画面を止めて撮った絵でしか見ていない（オンラインの DESYNC は見ていない。描画だけの変更）。
 - No.89：実機のパッドで、LOCAL VS のロビーで 2P がキャラを変えられることと、MekaGirl の右腕のポーズを一度見る（Claude はキーボードで 1P だけ確認した）。MekaGirl の腕の付け根の位置が気になれば `character.cpp` の肩の値を直す。
 - Claude の画面確認はキーをパッドの代わりにした一時ビルドなので、実機のパッドで一度だけ触る。まだ見ていないのは、やり直し後も手の選択が残ることと、時間切れ後も切り替えられること。
 - No.86 のついでに、Visual Studio で **テスト → テスト エクスプローラー** を開き、Proto1Tests のテストが出て「すべて実行」で通るかを一度見る（出ないときは、Visual Studio Installer の「C++ によるデスクトップ開発」で「Google Test の Test Adapter」に印があるか確かめる）。

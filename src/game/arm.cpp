@@ -242,7 +242,20 @@ VEC3 Arm::GetShoulder() const
 
 VEC3 Arm::GetDrawShoulder() const
 {
-	return GetShoulderAt(CHARACTER_DATA::Get(GetPlayer().GetCharacter()).Shoulder);
+	VEC3 shoulder, direction;
+	float length = 0.0f;
+	if (!GetPlayer().GetArmBone(GetHand(), shoulder, direction, length)) {
+		return GetShoulderAt(CHARACTER_DATA::Get(GetPlayer().GetCharacter()).Shoulder);
+	}
+	// アニメの肩の骨に、腕ごとの取付のずらしをキャラの腕の大きさに合わせて足す（描画だけ）。
+	const VEC3 mount = Vec3Scale(GetMountOffset(), GetDrawScale());
+	const float outward = CHARACTER_DATA::Get(GetPlayer().GetCharacter()).ArmOutward;
+	return ArmCalcShoulder(shoulder, GetPlayer().GetYaw(), GetHand(), mount.X + outward, mount.Y, mount.Z);
+}
+
+float Arm::GetDrawScale() const
+{
+	return CHARACTER_DATA::Get(GetPlayer().GetCharacter()).ArmScale;
 }
 
 VEC3 Arm::GetShoulderAt(const VEC3& offset) const
@@ -312,9 +325,10 @@ XMFLOAT4 Arm::GetColor(bool active) const
 	return active ? HOLD_COLOR : (GetHand() == 0 ? LEFT_COLOR : RIGHT_COLOR);
 }
 
-void Arm::DrawPiece(int model, VEC3 start, VEC3 end, float sourceLength, float thickness, const XMFLOAT4& color, float roll) const
+void Arm::DrawPiece(int model, VEC3 start, VEC3 end, float sourceLength, float thickness, const XMFLOAT4& color, float roll,
+	const VEC3& down) const
 {
-	const TENTACLE_PIECE_AXES axes = ArmCalcRollAxes(TentacleCalcPieceAxes(start, end, { 0, -1, 0 }), roll);
+	const TENTACLE_PIECE_AXES axes = ArmCalcRollAxes(TentacleCalcPieceAxes(start, end, down), roll);
 	const VEC3 x = Vec3Scale(axes.X, thickness);
 	const VEC3 y = Vec3Scale(axes.Y, Vec3Length(Vec3Sub(end, start)) / sourceLength);
 	const VEC3 z = Vec3Scale(axes.Z, thickness);

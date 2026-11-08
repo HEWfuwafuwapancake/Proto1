@@ -90,15 +90,16 @@ namespace Proto1Tests
 		EXPECT_EQ((int)SCENE_GAME_START, (int)scene.GetScene());
 		scene.Step({ true, false, 0 }, false);
 		EXPECT_EQ(SCENE_CHARACTER_SELECT, scene.GetScene());
+		EXPECT_EQ(CHARACTER_DEFAULT, scene.GetCharacter());
 		scene.Step({ true, false, 0, false, false, 1 }, false);
-		EXPECT_EQ(CHARACTER_MEKAGIRL, scene.GetCharacter());
+		EXPECT_EQ(CHARACTER_MEKA, scene.GetCharacter());
 		EXPECT_EQ(SCENE_MODE_SELECT, scene.GetScene());
 		EXPECT_EQ(SCENE_EVENT_START_MATCH, scene.Step({ true, false, 0 }, false));
 		scene.Step({ true, false, 0 }, true);
 		scene.Step({ false, false, -1 }, true);
 		EXPECT_EQ((int)SCENE_EVENT_BACK_TITLE, (int)scene.Step({ true, false, 0 }, true));
 		EXPECT_EQ(SCENE_GAME_START, scene.GetScene());
-		EXPECT_EQ(CHARACTER_MEKAGIRL, scene.GetCharacter());
+		EXPECT_EQ(CHARACTER_MEKA, scene.GetCharacter());
 	}
 
 	// 左右で両端をまたぎ、戻ると GAME START を表示する。
@@ -108,9 +109,9 @@ namespace Proto1Tests
 		scene.Start();
 		scene.Step({ true, false, 0 }, false);
 		scene.Step({ false, false, 0, false, false, -1 }, false);
-		EXPECT_EQ(CHARACTER_MEKAGIRL, scene.GetCharacter());
-		scene.Step({ false, false, 0, false, false, 1 }, false);
 		EXPECT_EQ(CHARACTER_MEKA, scene.GetCharacter());
+		scene.Step({ false, false, 0, false, false, 1 }, false);
+		EXPECT_EQ(CHARACTER_MEKAGIRL, scene.GetCharacter());
 		scene.Step({ false, false, 0, true }, false);
 		EXPECT_EQ(SCENE_GAME_START, scene.GetScene());
 	}

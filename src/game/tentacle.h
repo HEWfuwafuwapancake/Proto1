@@ -2,6 +2,7 @@
 
 #include "game/arm.h"
 #include "physics/tentaclecalc.h"
+#include "physics/tentacleropecalc.h"
 
 /// @file tentacle.h
 /// @brief 触腕（片手の腕で敵をつかんで、カメラの向きへ投げる）
@@ -34,8 +35,12 @@ protected:
 
 private:
 	VEC3 HoldPosition(float side, float forward, float height) const;
+	void StepRope(const VEC3& origin, float idleLength, float modelScale);
 	TentacleCalc m_Arm;
 	int m_BaseModel = -1;
 	int m_SegmentModel = -1;
 	int m_TipModel = -1;
+	TentacleRopeCalc m_Rope; // 付け根からぶら下がる節の鎖の物理（描画だけ）
+	float m_RopeTime = -1.0f; // 鎖を最後に進めたゲームの経過秒（1フレームに1回だけ進める）
+	float m_RopeScale = 0.0f; // 鎖を並べたときの大きさ（キャラが替わったら並べ直す）
 };

@@ -17,6 +17,18 @@ static constexpr float BODY_HEIGHT = 1.8f;
 static constexpr float RESPAWN_SECONDS = 2.0f;
 static constexpr float RUN_SPEED_THRESHOLD = 0.25f;
 static constexpr float ANIMATION_BLEND_SECONDS = 0.15f;
+// 見た目の動き（描画だけ。当たり判定と m_Yaw は変えない）
+static constexpr float LEG_TURN_SPEED = XMConvertToRadians(900.0f); // 走るとき脚が進む向きへ回る速さ（体の向きより速く、脚が先に向く）
+static constexpr float LEG_IDLE_TURN_SPEED = XMConvertToRadians(360.0f); // 止まっているとき脚が狙いの向きへ回る速さ
+static constexpr float MAX_TWIST = XMConvertToRadians(75.0f); // 上半身を脚からねじれる角度の上限
+static constexpr float BACK_RUN_ANGLE = XMConvertToRadians(110.0f); // 進む向きと狙いの差がこれを超えると後ろ走り
+static constexpr float BACK_RUN_HYSTERESIS = XMConvertToRadians(10.0f);
+static constexpr float LAND_SECONDS = 0.2f; // 着地の動きを見せる秒数
+static constexpr float MIN_RUN_PLAY_SPEED = 0.5f; // 走りの再生速度の下限
+static constexpr float LEAN_FORWARD = XMConvertToRadians(10.0f); // 全速で走ったときの前傾
+static constexpr float LEAN_TURN = 0.06f; // 脚が 1 ラジアン／秒で回るときの内側への傾き（ラジアン）
+static constexpr float LEAN_SIDE_MAX = XMConvertToRadians(10.0f); // 内側への傾きの上限
+static constexpr float LEAN_RATE = 8.0f; // 傾きが目標へ近づく速さ（1秒あたりの割合）
 static constexpr XMFLOAT4 PLAYER_COLORS[FIGHTER_COUNT] = {
 	{ 0.95f, 0.2f, 0.2f, 1.0f }, { 0.2f, 0.45f, 1.0f, 1.0f },
 	{ 0.2f, 0.85f, 0.3f, 1.0f }, { 1.0f, 0.85f, 0.15f, 1.0f }
@@ -81,6 +93,7 @@ void Fighter::PlaceAtSpawn()
 	m_Pulled = false;
 	m_Status.Reset();
 	m_Models[m_Character].Reset(m_Pose);
+	m_Motion.Reset(m_Yaw);
 }
 
 void Fighter::Reset()
@@ -171,14 +184,39 @@ void Fighter::UpdateFacing(const Camera& camera, const ArmManager& arms, const F
 void Fighter::UpdateAnimation(const ArmManager* arms, float dt)
 {
 	if (!IsActive() || !m_Models[m_Character].IsLoaded()) return;
-	SKINNED_CLIP clip = SKINNED_CLIP::Idle;
-	if (IsHuman() && !m_Launched) {
-		const int hand = arms ? arms->GetActiveHand() : -1;
-		const float vx = m_Body.GetVelocityX(), vz = m_Body.GetVelocityZ();
-		if (hand >= 0) clip = hand == 0 ? SKINNED_CLIP::Left : SKINNED_CLIP::Right;
-		else if (vx * vx + vz * vz > RUN_SPEED_THRESHOLD * RUN_SPEED_THRESHOLD) clip = SKINNED_CLIP::Run;
-	}
-	m_Models[m_Character].Update(m_Pose, clip, dt, ANIMATION_BLEND_SECONDS);
+	if (m_Respawned) m_Motion.Reset(m_Yaw);
+	MOTION_PARAMS params;
+	params.FullSpeed = MOVE_SPEED;
+	params.RunThreshold = RUN_SPEED_THRESHOLD;
+	params.LegTurnSpeed = LEG_TURN_SPEED;
+	params.IdleTurnSpeed = LEG_IDLE_TURN_SPEED;
+	params.MaxTwist = MAX_TWIST;
+	params.BackAngle = BACK_RUN_ANGLE;
+	params.BackHysteresis = BACK_RUN_HYSTERESIS;
+	params.LandSeconds = LAND_SECONDS;
+	params.MinPlaySpeed = MIN_RUN_PLAY_SPEED;
+	params.LeanForward = LEAN_FORWARD;
+	params.LeanTurn = LEAN_TURN;
+	params.LeanSideMax = LEAN_SIDE_MAX;
+	params.LeanRate = LEAN_RATE;
+	MOTION_INPUT input;
+	input.VelocityX = m_Body.GetVelocityX();
+	input.VelocityY = m_Body.GetVelocityY();
+	input.VelocityZ = m_Body.GetVelocityZ();
+	input.OnGround = m_Body.GetOnGround();
+	input.AimYaw = m_Yaw;
+	// 吹っ飛び中・保持中・引っぱられ中は走らせない（脚は狙いの向き、空中なら落下）。
+	input.Locomotion = !m_Launched && !IsHeld() && !m_Pulled;
+	m_Motion.Step(input, params, dt);
+
+	// 脚は走り・ジャンプなどを続け、腕を使っている手のクリップは上半身だけに重ねる。
+	SKINNED_REQUEST request;
+	request.Clip = m_Motion.GetClip();
+	request.Speed = m_Motion.GetPlaySpeed();
+	request.Twist = m_Motion.GetTwist();
+	const int hand = IsHuman() && arms ? arms->GetActiveHand() : -1;
+	if (hand >= 0 && !m_Launched) request.Upper = hand == 0 ? SKINNED_CLIP::Left : SKINNED_CLIP::Right;
+	m_Models[m_Character].Update(m_Pose, request, dt, ANIMATION_BLEND_SECONDS);
 }
 
 void Fighter::Draw(bool highlighted) const
@@ -188,12 +226,7 @@ void Fighter::Draw(bool highlighted) const
 	const XMFLOAT4 color = IsHuman() ? GetPlayerColor(m_Slot)
 		: (m_Launched ? LAUNCHED_COLOR : (highlighted ? TARGET_COLOR : DUMMY_COLOR));
 	if (m_Models[m_Character].IsLoaded()) {
-		const CHARACTER_DATA& character = CHARACTER_DATA::Get(m_Character);
-		const float scale = BODY_HEIGHT / character.ModelHeight;
-		const XMFLOAT3 p = GetPosition();
-		const XMMATRIX world = XMMatrixScaling(scale, scale, scale) * XMMatrixRotationY(m_Yaw + character.ModelYaw)
-			* XMMatrixTranslation(p.x, p.y - character.ModelFootY * scale, p.z);
-		m_Models[m_Character].Draw(m_Pose, world, color);
+		m_Models[m_Character].Draw(m_Pose, GetModelWorld(), color);
 	} else {
 		ShapeDrawCapsule(GetPosition(), BODY_RADIUS, BODY_HEIGHT, color);
 	}
@@ -207,6 +240,44 @@ void Fighter::Draw(bool highlighted) const
 		const XMFLOAT3 p = GetPosition();
 		ShapeDrawSphere({ p.x, p.y + BODY_HEIGHT + TARGET_MARKER_HEIGHT, p.z }, TARGET_MARKER_RADIUS, TARGET_COLOR);
 	}
+}
+
+XMMATRIX Fighter::GetModelWorld() const
+{
+	const CHARACTER_DATA& character = CHARACTER_DATA::Get(m_Character);
+	const float scale = BODY_HEIGHT / character.ModelHeight;
+	const XMFLOAT3 p = GetPosition();
+	// 足元を中心に、前後・左右へ傾けてから脚の向きへ回す（上半身は骨のねじれで狙いの向きになる）。
+	// RotationZ はプラスで左へ傾くので、右へ傾く値の符号を変えて渡す。
+	return XMMatrixScaling(scale, scale, scale) * XMMatrixRotationY(character.ModelYaw)
+		* XMMatrixTranslation(0.0f, -character.ModelFootY * scale, 0.0f)
+		* XMMatrixRotationX(m_Motion.GetLeanPitch()) * XMMatrixRotationZ(-m_Motion.GetLeanRoll())
+		* XMMatrixRotationY(m_Motion.GetLegYaw()) * XMMatrixTranslation(p.x, p.y, p.z);
+}
+
+bool Fighter::GetArmBone(int hand, VEC3& shoulder, VEC3& direction, float& length) const
+{
+	if (hand < 0 || hand > 1 || !m_Models || !m_Models[m_Character].IsLoaded()) return false;
+	const SkinnedModel& model = m_Models[m_Character];
+	const auto& chain = CHARACTER_DATA::Get(m_Character).ArmChains[hand];
+	const XMMATRIX world = GetModelWorld();
+	XMVECTOR points[4];
+	for (size_t i = 0; i < chain.size(); ++i) {
+		ANIM_VEC3 p{};
+		if (!model.GetNodePosition(m_Pose, model.FindNode(chain[i]), p)) return false;
+		points[i] = XMVector3TransformCoord(XMVectorSet(p.X, p.Y, p.Z, 1.0f), world);
+	}
+	// 触腕は肘のない1本の腕なので、向きは上腕（肩→肘）、長さは手先までの骨の合計にする。
+	length = 0.0f;
+	for (size_t i = 1; i < chain.size(); ++i) length += XMVectorGetX(XMVector3Length(XMVectorSubtract(points[i], points[i - 1])));
+	const XMVECTOR upper = XMVectorSubtract(points[1], points[0]);
+	if (length <= 0.0f || XMVectorGetX(XMVector3LengthSq(upper)) <= 0.0f) return false;
+	XMFLOAT3 s, d;
+	XMStoreFloat3(&s, points[0]);
+	XMStoreFloat3(&d, XMVector3Normalize(upper));
+	shoulder = { s.x, s.y, s.z };
+	direction = { d.x, d.y, d.z };
+	return true;
 }
 
 XMFLOAT3 Fighter::GetPosition() const

@@ -424,7 +424,7 @@ void SessionCalc::CheckTimeouts()
 			m_Mask &= static_cast<uint8_t>(~(1u << peer));
 			m_Ready &= m_Mask;
 			m_PeerNonces[peer] = 0;
-			m_Characters[peer] = CHARACTER_MEKA;
+			m_Characters[peer] = CHARACTER_DEFAULT;
 			m_LastEcho[peer] = 0;
 		}
 		m_RemoteChecksums[peer].clear();

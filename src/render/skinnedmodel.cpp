@@ -5,9 +5,23 @@
 #include <assimp/config.h>
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
+#include <algorithm>
 #include <cstring>
 
 static constexpr unsigned WEIGHTS_PER_VERTEX = 4;
+static constexpr size_t REQUIRED_CLIPS = static_cast<size_t>(SKINNED_CLIP::RunBack); // 待機・走り・左腕・右腕
+
+// ループしないクリップ（最後の姿勢で止める）
+static bool IsLoopClip(SKINNED_CLIP clip)
+{
+	return clip != SKINNED_CLIP::Jump && clip != SKINNED_CLIP::Land;
+}
+
+// ファイルがないクリップの代わり
+static SKINNED_CLIP FallbackClip(SKINNED_CLIP clip)
+{
+	return clip == SKINNED_CLIP::RunBack ? SKINNED_CLIP::Run : SKINNED_CLIP::Idle;
+}
 static constexpr unsigned IMPORT_FLAGS = aiProcess_ConvertToLeftHanded | aiProcess_LimitBoneWeights
 	| aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_JoinIdenticalVertices;
 
@@ -150,7 +164,30 @@ bool SkinnedModel::ReadClip(const aiScene& scene, const NodeNames& names, Clip& 
 	return true;
 }
 
-bool SkinnedModel::LoadFiles(const std::array<const char*, static_cast<size_t>(SKINNED_CLIP::Count)>& paths)
+void SkinnedModel::ReadBones(const NodeNames& names, const SKINNED_BONES_DESC& bones)
+{
+	m_UpperMask.clear();
+	m_TwistNodes.clear();
+	const auto upper = bones.UpperRoot ? names.find(bones.UpperRoot) : names.end();
+	if (upper != names.end()) {
+		// ノードは親が先に並ぶので、親が上半身なら子も上半身。
+		m_UpperMask.resize(m_Nodes.size());
+		for (size_t i = 0; i < m_Nodes.size(); ++i) {
+			const int parent = m_Nodes[i].Parent;
+			m_UpperMask[i] = i == upper->second || (parent >= 0 && m_UpperMask[parent]);
+		}
+	} else if (bones.UpperRoot) {
+		hal::dout << "SkinnedModel: upper root not found: " << bones.UpperRoot << std::endl;
+	}
+	for (const char* name : bones.Twist) {
+		if (!name) continue;
+		const auto node = names.find(name);
+		if (node != names.end()) m_TwistNodes.push_back(node->second);
+		else hal::dout << "SkinnedModel: twist bone not found: " << name << std::endl;
+	}
+}
+
+bool SkinnedModel::LoadFiles(const std::array<const char*, static_cast<size_t>(SKINNED_CLIP::Count)>& paths, const SKINNED_BONES_DESC& bones)
 {
 	Assimp::Importer importer;
 	importer.SetPropertyBool(AI_CONFIG_IMPORT_FBX_PRESERVE_PIVOTS, false);
@@ -167,21 +204,28 @@ bool SkinnedModel::LoadFiles(const std::array<const char*, static_cast<size_t>(S
 	for (unsigned i = 0; i < scene->mNumMeshes; ++i) {
 		if (!ReadMesh(*scene->mMeshes[i], meshNodes[i], names, m_Meshes[i])) return false;
 	}
+	ReadBones(names, bones);
+	m_NodeNames = names;
 	if (!ReadClip(*scene, names, m_Clips[0])) return false;
 	for (size_t i = 1; i < paths.size(); ++i) {
-		scene = importer.ReadFile(paths[i], IMPORT_FLAGS);
-		if (!scene || !ReadClip(*scene, names, m_Clips[i])) {
+		if (paths[i]) {
+			scene = importer.ReadFile(paths[i], IMPORT_FLAGS);
+			if (scene && ReadClip(*scene, names, m_Clips[i])) continue;
 			hal::dout << paths[i] << ": " << importer.GetErrorString() << std::endl;
-			return false;
 		}
+		if (i < REQUIRED_CLIPS) return false;
+		// 後ろ走り・ジャンプなどのファイルがなければ、読み込み済みのクリップで代わりに動かす。
+		const SKINNED_CLIP clip = static_cast<SKINNED_CLIP>(i);
+		m_Clips[i] = GetClip(FallbackClip(clip));
+		m_Clips[i].Reverse = clip == SKINNED_CLIP::RunBack;
 	}
 	return true;
 }
 
-bool SkinnedModel::Load(const std::array<const char*, static_cast<size_t>(SKINNED_CLIP::Count)>& paths)
+bool SkinnedModel::Load(const std::array<const char*, static_cast<size_t>(SKINNED_CLIP::Count)>& paths, const SKINNED_BONES_DESC& bones)
 {
 	Finalize();
-	if (LoadFiles(paths)) return true;
+	if (LoadFiles(paths, bones)) return true;
 	hal::dout << "SkinnedModel::Load failed: " << paths[0] << std::endl;
 	Finalize();
 	return false;
@@ -196,17 +240,50 @@ void SkinnedModel::Finalize()
 	m_Meshes.clear();
 	m_Nodes.clear();
 	m_Clips = {};
+	m_UpperMask.clear();
+	m_TwistNodes.clear();
+	m_NodeNames.clear();
+}
+
+int SkinnedModel::FindNode(const char* name) const
+{
+	if (!name) return -1;
+	const auto node = m_NodeNames.find(name);
+	return node != m_NodeNames.end() ? static_cast<int>(node->second) : -1;
+}
+
+bool SkinnedModel::GetNodePosition(const SKINNED_POSE& pose, int node, ANIM_VEC3& position) const
+{
+	if (node < 0 || static_cast<size_t>(node) >= pose.Global.size() || pose.Global.size() != m_Nodes.size()) return false;
+	const ANIM_MATRIX& global = pose.Global[node];
+	position = { global[3][0], global[3][1], global[3][2] };
+	return true;
+}
+
+ANIM_TRANSFORM SkinnedModel::SampleClip(SKINNED_CLIP clip, float time, size_t node) const
+{
+	const Clip& source = GetClip(clip);
+	const float t = source.Reverse ? source.LoopSeconds - time : time;
+	return AnimCalcSample(source.Tracks[node], t, m_Nodes[node].BindPose);
 }
 
 void SkinnedModel::SamplePose(SKINNED_POSE& pose, float blend) const
 {
-	const Clip& clip = m_Clips[static_cast<size_t>(pose.Clip)];
+	const bool upper = pose.Upper != SKINNED_CLIP::Count && pose.UpperWeight > 0.0f && !m_UpperMask.empty();
+	const float twist = m_TwistNodes.empty() ? 0.0f : pose.Twist / static_cast<float>(m_TwistNodes.size());
 	for (size_t i = 0; i < m_Nodes.size(); ++i) {
 		const Node& node = m_Nodes[i];
-		const ANIM_TRANSFORM next = AnimCalcSample(clip.Tracks[i], pose.Time, node.BindPose);
-		pose.Local[i] = blend < 1.0f ? AnimCalcBlend(pose.BlendFrom[i], next, blend) : next;
-		const ANIM_MATRIX local = AnimCalcMatrix(pose.Local[i]);
-		pose.Global[i] = node.Parent < 0 ? local : AnimCalcCompose(local, pose.Global[node.Parent]);
+		const ANIM_TRANSFORM next = SampleClip(pose.Clip, pose.Time, i);
+		ANIM_TRANSFORM local = blend < 1.0f ? AnimCalcBlend(pose.BlendFrom[i], next, blend) : next;
+		// 上半身の骨だけ、腕のクリップを重みの分だけ重ねる（脚は走りなどのまま）。
+		if (upper && m_UpperMask[i]) local = AnimCalcBlend(local, SampleClip(pose.Upper, pose.UpperTime, i), pose.UpperWeight);
+		pose.Local[i] = local;
+		const ANIM_MATRIX matrix = AnimCalcMatrix(local);
+		pose.Global[i] = node.Parent < 0 ? matrix : AnimCalcCompose(matrix, pose.Global[node.Parent]);
+		// ねじる骨は、ねじれを等分してモデルの上下の軸まわりに回す（子の骨もついてくる）。
+		if (twist != 0.0f && std::find(m_TwistNodes.begin(), m_TwistNodes.end(), i) != m_TwistNodes.end()) {
+			pose.Global[i] = AnimCalcRotateY(pose.Global[i], twist);
+		}
 	}
 }
 
@@ -215,16 +292,21 @@ void SkinnedModel::Reset(SKINNED_POSE& pose) const
 	pose.Clip = SKINNED_CLIP::Idle;
 	pose.Time = 0.0f;
 	pose.BlendElapsed = 0.0f;
+	pose.Upper = SKINNED_CLIP::Count;
+	pose.UpperTime = 0.0f;
+	pose.UpperWeight = 0.0f;
+	pose.Twist = 0.0f;
 	pose.BlendFrom.clear();
 	pose.Local.resize(m_Nodes.size());
 	pose.Global.resize(m_Nodes.size());
 	SamplePose(pose, 1.0f);
 }
 
-void SkinnedModel::Update(SKINNED_POSE& pose, SKINNED_CLIP clip, float dt, float blendSeconds) const
+void SkinnedModel::Update(SKINNED_POSE& pose, const SKINNED_REQUEST& request, float dt, float blendSeconds) const
 {
 	if (!IsLoaded()) return;
 	if (pose.Local.size() != m_Nodes.size() || pose.Global.size() != m_Nodes.size()) Reset(pose);
+	const SKINNED_CLIP clip = request.Clip;
 	if (pose.Clip != clip) {
 		// 切り替え途中でも、直前に表示した姿勢から次の補間を始める。
 		pose.BlendFrom = pose.Local;
@@ -232,7 +314,23 @@ void SkinnedModel::Update(SKINNED_POSE& pose, SKINNED_CLIP clip, float dt, float
 		pose.Time = 0.0f;
 		pose.BlendElapsed = 0.0f;
 	}
-	pose.Time = AnimCalcLoopTime(pose.Time + dt, m_Clips[static_cast<size_t>(clip)].LoopSeconds);
+	const float length = GetClip(clip).LoopSeconds;
+	const float time = pose.Time + dt * (request.Speed > 0.0f ? request.Speed : 0.0f);
+	pose.Time = IsLoopClip(clip) ? AnimCalcLoopTime(time, length) : std::min(time, length);
+
+	// 上半身のクリップは、出し入れのときに重みを少しずつ変える。
+	const bool wantUpper = request.Upper != SKINNED_CLIP::Count && !m_UpperMask.empty();
+	if (wantUpper && pose.Upper != request.Upper) {
+		pose.Upper = request.Upper;
+		pose.UpperTime = 0.0f;
+	}
+	const float step = blendSeconds > 0.0f ? dt / blendSeconds : 1.0f;
+	pose.UpperWeight = wantUpper ? std::min(1.0f, pose.UpperWeight + step) : std::max(0.0f, pose.UpperWeight - step);
+	if (pose.UpperWeight <= 0.0f) pose.Upper = SKINNED_CLIP::Count;
+	if (pose.Upper != SKINNED_CLIP::Count) {
+		pose.UpperTime = AnimCalcLoopTime(pose.UpperTime + dt, GetClip(pose.Upper).LoopSeconds);
+	}
+	pose.Twist = request.Twist;
 	float blend = 1.0f;
 	if (!pose.BlendFrom.empty()) {
 		pose.BlendElapsed += dt;

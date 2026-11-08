@@ -129,10 +129,10 @@ class SessionCalc
 {
 public:
 	/// @brief 起動設定と0以外の起動番号で初期化する
-	void Initialize(const NET_OPTIONS& options, uint32_t nonce, CHARACTER_TYPE character = CHARACTER_MEKA);
+	void Initialize(const NET_OPTIONS& options, uint32_t nonce, CHARACTER_TYPE character = CHARACTER_DEFAULT);
 	/// @brief ホストが参加を受け付け、スロットを返す（満員・開始後の新規参加は-1）
 	int Join(uint32_t nonce, uint16_t version = LOCKSTEP_VERSION, LOCKSTEP_BUILD build = LOCKSTEP_CURRENT_BUILD,
-		uint32_t program = SessionCalcGetProgram(), CHARACTER_TYPE character = CHARACTER_MEKA);
+		uint32_t program = SessionCalcGetProgram(), CHARACTER_TYPE character = CHARACTER_DEFAULT);
 	/// @brief 同じ版・ビルド・ソースか調べ、違うときの理由を返す
 	static SESSION_FAILURE CheckCompatibility(const SESSION_MESSAGE& message);
 	/// @brief 単調時計のミリ秒を設定する（受信の直前に呼ぶ。Windowsの時計は呼び出し元で読む）
@@ -217,7 +217,7 @@ private:
 	int m_Delay = LOCKSTEP_DEFAULT_DELAY;
 	uint8_t m_Mask = 0;
 	uint8_t m_Ready = 0;
-	CHARACTER_TYPE m_LocalCharacter = CHARACTER_MEKA;
+	CHARACTER_TYPE m_LocalCharacter = CHARACTER_DEFAULT;
 	std::array<uint8_t, FIGHTER_COUNT> m_Characters{};
 	uint32_t m_Nonce = 0;
 	uint32_t m_Session = 0;

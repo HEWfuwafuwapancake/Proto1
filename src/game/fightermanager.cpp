@@ -16,7 +16,8 @@ static constexpr float SPAWN_Z[FIGHTER_COUNT] = { 0.0f, 8.0f, 5.0f, 5.0f };
 void FighterManager::LoadModels()
 {
 	for (int type = 0; type < CHARACTER_COUNT; ++type) {
-		m_Models[type].Load(CHARACTER_DATA::Get(static_cast<CHARACTER_TYPE>(type)).Paths);
+		const CHARACTER_DATA& character = CHARACTER_DATA::Get(static_cast<CHARACTER_TYPE>(type));
+		m_Models[type].Load(character.Paths, character.Bones);
 	}
 }
 
