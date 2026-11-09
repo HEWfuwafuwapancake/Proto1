@@ -35,7 +35,7 @@ struct PROJECTILE
 enum PROJECTILE_EVENT_TYPE
 {
 	PROJECTILE_HIT_FIGHTER, ///< 相手に当たった
-	PROJECTILE_HIT_STAGE, ///< 浮島に当たって消えた
+	PROJECTILE_HIT_STAGE, ///< 浮島や高台に当たって消えた
 	PROJECTILE_EXPIRED ///< 時間切れか場外の線より下で消えた
 };
 
@@ -45,7 +45,7 @@ struct PROJECTILE_EVENT
 	PROJECTILE_EVENT_TYPE Type; ///< 起きたことの種類
 	int Index; ///< 弾の番号
 	int Target; ///< 当たった相手の番号（相手に当たったとき以外は -1）
-	VEC3 Position; ///< 起きた位置（浮島なら上の面の高さ）
+	VEC3 Position; ///< 起きた位置（足場なら上の面の高さ）
 	VEC3 Direction; ///< そのときの進む単位方向
 };
 
@@ -65,11 +65,11 @@ public:
 	/// @return 弾の番号。いっぱいなら -1
 	int Fire(const VEC3& origin, const VEC3& velocity, int target, const PROJECTILE_PARAMS& params);
 	/// @brief すべての弾を1フレーム進め、起きたことを返す
-	/// @details 当たりは「前の位置 → 今の位置」のカプセルで調べる（速い弾がすり抜けない）。相手が先、浮島があと
+	/// @details 相手との当たりは「前の位置 → 今の位置」のカプセルで調べる（速い弾がすり抜けない）。相手が先、足場があと
 	/// @param dt 進める秒数（0 以下なら何もしない）
 	/// @param targets 相手の並び（Available が false の相手には当たらず、追いかけもしない）
 	/// @param count 相手の数
-	/// @param stage 浮島と場外の線
+	/// @param stage 浮島・高台・場外の線
 	/// @param params 調整値
 	/// @param events 起きたことを書く並び
 	/// @param maxEvents events の数

@@ -49,6 +49,30 @@ namespace Proto1Tests
 		EXPECT_NEAR(8.0f, land.Position.Z, 0.3f);
 	}
 
+	// 弾は高台を下から通り抜け、落ちてきたら高台の上面に当たる。
+	TEST(ProjectileCalcTest, Lob_PassesUpThroughHighPlatformAndHitsItFromAbove)
+	{
+		STAGE stage = SHOT_STAGE;
+		stage.Platforms[0] = { -8.0f, 8.0f, 3.0f, 3.0f, 4.0f, 0.6f };
+		stage.PlatformCount = 1;
+		const PROJECTILE_PARAMS params{ 0.1f, 12.0f, 5.0f, 0.0f, false };
+		ProjectileCalc shots;
+		const int index = shots.Fire({ -8.0f, 3.5f, 8.0f }, { 0.0f, 12.0f, 0.0f }, -1, params);
+		PROJECTILE_EVENT event{};
+		for (int i = 0; i < 4; ++i) {
+			ASSERT_EQ(0, shots.Step(SHOT_DT, nullptr, 0, stage, params, &event, 1));
+		}
+		EXPECT_GT(shots.Get(index).Position.Y, stage.Platforms[0].TopY);
+
+		int events = 0;
+		for (int i = 0; i < 180 && events == 0; ++i) {
+			events = shots.Step(SHOT_DT, nullptr, 0, stage, params, &event, 1);
+		}
+		ASSERT_EQ(1, events);
+		EXPECT_EQ(PROJECTILE_HIT_STAGE, event.Type);
+		EXPECT_FLOAT_EQ(stage.Platforms[0].TopY, event.Position.Y);
+	}
+
 	// 追いかける弾は横の相手へ曲がって当たる。
 	TEST(ProjectileCalcTest, Homing_TurnsToTarget)
 	{

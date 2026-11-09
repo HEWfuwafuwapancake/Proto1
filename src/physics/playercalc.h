@@ -4,7 +4,7 @@
 #include "physics/vec3.h"
 
 /// @file playercalc.h
-/// @brief プレイヤーの動きの計算（移動・ジャンプ・重力・浮島への着地・左右の向き）
+/// @brief プレイヤーの動きの計算（移動・ジャンプ・重力・足場への着地・左右の向き）
 /// @details DirectX と Windows を使わないので、単体テスト（tests/Proto1Tests）からそのまま使える
 
 /// @brief プレイヤーの動きの調整用の値
@@ -36,16 +36,15 @@ public:
 	/// @brief プレイヤーの体を1フレーム分動かす
 	/// @details 次の順に計算する：
 	///          1. 横の速度は、突進速度または移動の向き × 歩く速さ（向きの長さは 1 までに縮める）
-	///          2. 立っていてジャンプを押したら、上向きの速さを与える。浮島の外へ歩き出たら立っていない状態にする
+	///          2. 足元に足場があるときにジャンプを押したら、上向きの速さを与える
 	///          3. 立っていなければ重力で下向きの速さを増やし、位置を動かす
-	///          4. 落ちてきて浮島の上の面を上から通り過ぎ、そこが浮島の範囲の中なら、上の面に止めて立っている状態にする
-	///             （浮島の外や、浮島より下から上がってきたときは止めない）
+	///          4. 足場から出たら立っていない状態にする。上から足場の上面を通り過ぎたら、その上面に着地する
 	/// @param moveX 移動の向きの X（ワールドの向き。-1〜1）
 	/// @param moveZ 移動の向きの Z（ワールドの向き。-1〜1）
 	/// @param jump ジャンプ入力を設定する（true：押した瞬間、false：押していない）
 	/// @param dt 1フレームの秒数（ふつうは GameTimeGetDeltaTime() の値）
 	/// @param params 調整用の値
-	/// @param stage 浮島
+	/// @param stage 浮島と高台
 	/// @param rushVelocity 突進のワールド速度（X・Z をそのまま使う。両方 0 なら通常の移動）
 	void Step(float moveX, float moveZ, bool jump, float dt,
 		const PLAYER_PARAMS& params, const STAGE& stage, const VEC3& rushVelocity = {});
@@ -68,7 +67,7 @@ public:
 	/// @brief 速度の Zを取得する
 	float GetVelocityZ() const { return m_VelocityZ; }
 
-	/// @brief 浮島の上に立っているか（立っているときだけジャンプできる）を取得する
+	/// @brief 足場の上に立っているか（立っているときだけジャンプできる）を取得する
 	bool GetOnGround() const { return m_OnGround; }
 
 	/// @brief 足元の位置を設定する
@@ -79,7 +78,7 @@ public:
 	/// @param velocity 1秒あたりの移動量
 	void SetVelocity(const VEC3& velocity) { m_VelocityX = velocity.X; m_VelocityY = velocity.Y; m_VelocityZ = velocity.Z; }
 
-	/// @brief 着地状態を設定する（true：浮島の上、false：空中）
+	/// @brief 着地状態を設定する（true：足場の上、false：空中）
 	void SetOnGround(bool onGround) { m_OnGround = onGround; }
 
 private:
@@ -89,5 +88,5 @@ private:
 	float m_VelocityX{}; ///< 速度の X（1秒に進む距離）
 	float m_VelocityY{}; ///< 速度の Y（上がプラス）
 	float m_VelocityZ{}; ///< 速度の Z
-	bool m_OnGround{}; ///< 浮島の上に立っているか（立っているときだけジャンプできる）
+	bool m_OnGround{}; ///< 足場の上に立っているか（立っているときだけジャンプできる）
 };
