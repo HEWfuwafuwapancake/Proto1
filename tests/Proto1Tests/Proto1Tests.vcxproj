@@ -105,6 +105,7 @@
     <ClCompile Include="projectilecalc_test.cpp" />
     <ClCompile Include="areacalc_test.cpp" />
     <ClCompile Include="armphasecalc_test.cpp" />
+    <ClCompile Include="gunlancecalc_test.cpp" />
     <ClCompile Include="c4calc_test.cpp" />
     <ClCompile Include="armpresscalc_test.cpp" />
     <ClCompile Include="..\..\src\physics\guardcalc.cpp" />
@@ -112,6 +113,7 @@
     <ClCompile Include="..\..\src\physics\projectilecalc.cpp" />
     <ClCompile Include="..\..\src\physics\areacalc.cpp" />
     <ClCompile Include="..\..\src\physics\armphasecalc.cpp" />
+    <ClCompile Include="..\..\src\physics\gunlancecalc.cpp" />
     <ClCompile Include="..\..\src\physics\c4calc.cpp" />
     <ClCompile Include="..\..\src\physics\grapplecalc.cpp" />
     <ClCompile Include="cameracalc_test.cpp" />
