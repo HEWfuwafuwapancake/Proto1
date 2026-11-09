@@ -71,6 +71,8 @@ PLAYER_INPUT ActionCalcPlayerInput(ACTION_AXIS move, ACTION_AXIS look, uint16_t 
 ACTION_AXIS ActionCalcPlayerMove(const PLAYER_INPUT& input);
 /// @brief 丸めたカメラ入力をラジアンに戻す
 ACTION_AXIS ActionCalcPlayerLook(const PLAYER_INPUT& input);
+/// @brief このフレームで指定の行動のボタンビットが立っているか調べる
+bool ActionCalcPlayerPress(const PLAYER_INPUT& input, ACTION action);
 /// @brief 今と前の入力から押した瞬間を調べる（ターゲット切り替えのイベントは連続フレームでも有効）
 bool ActionCalcPlayerTrigger(const PLAYER_INPUT& current, const PLAYER_INPUT& previous, ACTION action);
 

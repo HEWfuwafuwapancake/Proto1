@@ -113,6 +113,11 @@ ACTION_AXIS Fighter::GetLookInput() const
 	return ActionCalcPlayerLook(m_Input);
 }
 
+bool Fighter::IsPress(ACTION action) const
+{
+	return ActionCalcPlayerPress(m_Input, action);
+}
+
 bool Fighter::IsTrigger(ACTION action) const
 {
 	return ActionCalcPlayerTrigger(m_Input, m_PreviousInput, action);
@@ -138,6 +143,7 @@ DUMMY_EVENT Fighter::Update(const Camera* camera, const ArmManager* arms)
 			params.Gravity = GRAVITY;
 			float moveX = 0.0f, moveZ = 0.0f;
 			bool jump = false;
+			VEC3 rushVelocity{};
 			if (IsHuman() && camera != nullptr && arms != nullptr) {
 				const ACTION_AXIS move = GetMoveInput();
 				const float yaw = camera->GetYaw();
@@ -145,9 +151,12 @@ DUMMY_EVENT Fighter::Update(const Camera* camera, const ArmManager* arms)
 				moveZ = -sinf(yaw) * move.X + cosf(yaw) * move.Y;
 				params.MoveSpeed = MOVE_SPEED * arms->GetMoveScale() * m_Status.GetMoveScale();
 				params.JumpSpeed = JUMP_SPEED;
-				jump = IsTrigger(ACTION_JUMP) && !m_Status.IsActive(STATUS_STUN);
+				if (!m_Status.IsActive(STATUS_STUN)) {
+					jump = IsTrigger(ACTION_JUMP);
+					rushVelocity = arms->GetRushVelocity();
+				}
 			}
-			m_Body.Step(moveX, moveZ, jump, dt, params, stage);
+			m_Body.Step(moveX, moveZ, jump, dt, params, stage, rushVelocity);
 		}
 	}
 	const DUMMY_EVENT event = m_Life.Update(StageCalcIsOut(stage, m_Body.GetY()), RESPAWN_SECONDS, dt);
@@ -169,7 +178,8 @@ void Fighter::UpdateFacing(const Camera& camera, const ArmManager& arms, const F
 		m_Yaw = camera.GetYaw();
 		return;
 	}
-	const bool armActive = arms.IsActive() || IsTrigger(ACTION_ARM_LEFT) || IsTrigger(ACTION_ARM_RIGHT);
+	// 単押しは離したときに始まるので、押した瞬間では向きを変えない。
+	const bool armActive = arms.IsActive();
 	const int target = camera.GetTarget();
 	float targetYaw = m_Yaw;
 	if (target >= 0) {

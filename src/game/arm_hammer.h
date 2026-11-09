@@ -15,8 +15,8 @@ public:
 	/// @param links 腕が使うゲームの部品への参照
 	HammerArm(int hand, const ARM_LINKS& links);
 	/// @brief 振り上げ・叩き・休みを進め、叩きに入ったフレームに着いた所のまわりへ効かせる
-	/// @param trigger 入力を設定する（true：押した瞬間、false：それ以外）
-	void Update(bool trigger) override;
+	/// @param input このフレームの腕の入力（単押しで攻撃する）
+	void Update(const ARM_INPUT& input) override;
 	/// @brief 仮の形（腕・柄の円柱と頭の箱）を、振り上げ・叩きに合わせて上下させて描画する
 	void Draw() override;
 	/// @brief 待機へ戻す
