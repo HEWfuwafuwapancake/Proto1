@@ -259,6 +259,7 @@ namespace Proto1Tests
 		ReachGrip(arm);
 		EXPECT_EQ((int)TENTACLE_PULLING, (int)arm.GetState());
 		EXPECT_NEAR(0.0f, Vec3Length(Vec3Sub(arm.GetTip(), gripAhead.Point)), 0.0001f);
+		EXPECT_NEAR(Vec3Length(Vec3Sub(gripAhead.Point, origin)), arm.GetLength(), 0.001f);
 		EXPECT_NEAR(11.0f, arm.GetSurface().CenterZ, 0.0001f);
 	}
 
