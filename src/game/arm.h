@@ -116,6 +116,22 @@ protected:
 	/// @param down モデルの -Z（吸盤側）をなるべく向ける方向（腕と平行なら補助の軸で決める）
 	void DrawPiece(int model, VEC3 start, VEC3 end, float sourceLength, float thickness, const XMFLOAT4& color, float roll = 0.0f,
 		const VEC3& down = { 0.0f, -1.0f, 0.0f }) const;
+	/// @brief モデルの -Y を指定の向きへ向け、元の長さのまま描いて、先の位置を返す（読み込み失敗なら円柱で代わりに描く）
+	/// @param model モデルの番号（失敗は -1）
+	/// @param start つなぐ所
+	/// @param direction 向ける単位方向
+	/// @param sourceLength モデルの -Y の長さ（cm）
+	/// @param scale cm からゲーム単位への倍率
+	/// @param color 色（RGBA）
+	/// @param roll 長さ方向のひねり（ラジアン）
+	/// @return モデルの先の位置
+	VEC3 DrawAlong(int model, const VEC3& start, const VEC3& direction, float sourceLength, float scale,
+		const XMFLOAT4& color, float roll = 0.0f) const;
+	/// @brief 水平の円の上に小さな球を並べて、当たる範囲を見せる
+	/// @param center 円の中心
+	/// @param radius 円の半径
+	/// @param color 色（RGBA）
+	void DrawRangeRing(const VEC3& center, float radius, const XMFLOAT4& color) const;
 	/// @brief 片手用の OBJ を読む（右手だけ X を鏡写しにする。失敗は -1）
 	int LoadModel(const char* path) const;
 	/// @brief この腕を使う人のパッドを振動させる（キーボードの人には出力しない）

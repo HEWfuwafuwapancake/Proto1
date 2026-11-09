@@ -4,20 +4,20 @@
 #include "physics/armphasecalc.h"
 
 /// @file arm_hammer.h
-/// @brief 片手のハンマーの入力・叩きつけと描画
+/// @brief 片手のハンマーの入力・叩きつけ・衝撃波と描画
 
-/// @brief 振り上げてから前の足元を叩き、まわりの相手を打ち上げる腕（遅いが強い）
+/// @brief 単押しで前を強く叩き、長押しで長くためて衝撃波としびれを出す腕
 class HammerArm : public Arm
 {
 public:
-	/// @brief 待機状態にする（モデルはないので読み込まない）
+	/// @brief モデルを読み、待機状態にする
 	/// @param hand 左 0・右 1
 	/// @param links 腕が使うゲームの部品への参照
 	HammerArm(int hand, const ARM_LINKS& links);
-	/// @brief 振り上げ・叩き・休みを進め、叩きに入ったフレームに着いた所のまわりへ効かせる
-	/// @param input このフレームの腕の入力（単押しで攻撃する）
+	/// @brief ため・叩き・休みを進め、叩きに入ったフレームに範囲へ効かせる
+	/// @param input このフレームの腕の入力（単押しで強打、長押しで衝撃波）
 	void Update(const ARM_INPUT& input) override;
-	/// @brief 仮の形（腕・柄の円柱と頭の箱）を、振り上げ・叩きに合わせて上下させて描画する
+	/// @brief 腕とハンマーを、ため・叩きに合わせて上下させて描画する
 	void Draw() override;
 	/// @brief 待機へ戻す
 	void Reset() override;
@@ -25,11 +25,18 @@ public:
 	bool IsActive() const override;
 	/// @brief 敵をつかまないので、常に false を返す
 	bool IsHolding() const override;
-	/// @brief 振り上げ・叩き・休みの間だけ歩く速さを下げる
+	/// @brief ため・叩き・休みの間だけ歩く速さを下げる
 	float GetMoveScale() const override;
 
 private:
+	void Impact();
 	ArmPhaseCalc m_Phase;
+	int m_ArmModel = -1;
+	int m_HeadModel = -1;
+	bool m_Wave = false; // true：長押しの衝撃波、false：単押しの強打
 	VEC3 m_Direction = { 0.0f, 0.0f, 1.0f }; // 叩く水平の向き。
 	float m_Straighten = 0.0f; // 描画だけのまっすぐ度（0：待機、1：叩く向き）。
+	float m_RangeSeconds = 0.0f; // 当たる範囲を見せる残りの秒数。
+	VEC3 m_RangeCenter = {}; // 当たる範囲の中心。
+	float m_RangeRadius = 0.0f; // 当たる範囲の半径。
 };
