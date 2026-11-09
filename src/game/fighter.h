@@ -49,6 +49,11 @@ public:
 	/// @param length 肩から手先までの骨の長さの合計を入れる先
 	/// @return 取得できたら true（腕の骨がないキャラ・モデルがないときは false）
 	bool GetArmBone(int hand, VEC3& shoulder, VEC3& direction, float& length) const;
+	/// @brief 描画の上半身の向き（狙いの向きと、走りの傾き）を、直交する単位方向で取得する（描画だけに使う）
+	/// @param up 上半身の上の方向を入れる先
+	/// @param forward 上半身の前の方向を入れる先
+	/// @param right 上半身の右の方向を入れる先
+	void GetUpperBodyAxes(VEC3& up, VEC3& forward, VEC3& right) const;
 	/// @brief 足元のワールド座標を取得する
 	XMFLOAT3 GetPosition() const;
 	/// @brief 足元の位置を設定する（速度はそのまま）

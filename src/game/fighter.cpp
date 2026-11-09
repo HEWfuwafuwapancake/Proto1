@@ -280,6 +280,24 @@ bool Fighter::GetArmBone(int hand, VEC3& shoulder, VEC3& direction, float& lengt
 	return true;
 }
 
+void Fighter::GetUpperBodyAxes(VEC3& up, VEC3& forward, VEC3& right) const
+{
+	// GetModelWorld と同じ順で傾ける。前は狙いの向きを、傾いた上方向に直交させる。
+	const XMMATRIX lean = XMMatrixRotationX(m_Motion.GetLeanPitch()) * XMMatrixRotationZ(-m_Motion.GetLeanRoll())
+		* XMMatrixRotationY(m_Motion.GetLegYaw());
+	const XMVECTOR u = XMVector3Normalize(XMVector3TransformNormal(XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f), lean));
+	const XMVECTOR aim = XMVectorSet(sinf(m_Yaw), 0.0f, cosf(m_Yaw), 0.0f);
+	const XMVECTOR f = XMVector3Normalize(XMVectorSubtract(aim, XMVectorScale(u, XMVectorGetX(XMVector3Dot(aim, u)))));
+	const XMVECTOR r = XMVector3Cross(u, f);
+	XMFLOAT3 a, b, c;
+	XMStoreFloat3(&a, u);
+	XMStoreFloat3(&b, f);
+	XMStoreFloat3(&c, r);
+	up = { a.x, a.y, a.z };
+	forward = { b.x, b.y, b.z };
+	right = { c.x, c.y, c.z };
+}
+
 XMFLOAT3 Fighter::GetPosition() const
 {
 	return { m_Body.GetX(), m_Body.GetY(), m_Body.GetZ() };

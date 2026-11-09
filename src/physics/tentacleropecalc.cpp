@@ -15,6 +15,7 @@ void TentacleRopeCalc::Reset(const VEC3& anchor, const VEC3& direction, const fl
 {
 	m_Count = std::max(0, std::min(count, MAX_POINTS - 1));
 	m_Total = 0.0f;
+	m_AnchorVelocity = {};
 	m_Points[0] = m_Previous[0] = anchor;
 	for (int i = 1; i <= m_Count; ++i) {
 		m_Lengths[i] = std::max(0.0f, lengths[i - 1]);
@@ -50,10 +51,39 @@ void TentacleRopeCalc::LimitBend(int index, const VEC3& previousDirection, float
 	if (cosine >= cosMax) return;
 	const VEC3 side = UnitOr(Vec3Sub(direction, Vec3Scale(previousDirection, cosine)), { 1.0f, 0.0f, 0.0f });
 	const VEC3 limited = Vec3Add(Vec3Scale(previousDirection, cosMax), Vec3Scale(side, sinf(maxBend)));
-	const VEC3 corrected = Vec3Add(m_Points[index - 1], Vec3Scale(limited, length));
+	MovePoint(index, Vec3Add(m_Points[index - 1], Vec3Scale(limited, length)));
+}
+
+void TentacleRopeCalc::MovePoint(int index, const VEC3& position)
+{
 	// 上限に当たって戻した分は勢いにしない（跳ね返ってガチャガチャしないように）。
-	m_Previous[index] = Vec3Add(m_Previous[index], Vec3Sub(corrected, m_Points[index]));
-	m_Points[index] = corrected;
+	m_Previous[index] = Vec3Add(m_Previous[index], Vec3Sub(position, m_Points[index]));
+	m_Points[index] = position;
+}
+
+void TentacleRopeCalc::LimitShoulder(const TENTACLE_ROPE_PARAMS& params)
+{
+	// 上半身から見た上腕の向きを「真下からの角度」と「どちらへ振れているか」に分け、
+	// 振れている方角の可動域（前・後ろ・外・内の間は楕円でなめらかにつなぐ）より外なら戻す。
+	const VEC3 link = Vec3Sub(m_Points[1], m_Points[0]);
+	const float length = Vec3Length(link);
+	if (length < ROPE_MIN_LENGTH) return;
+	const float forward = Vec3Dot(link, params.BodyForward) / length;
+	const float outward = Vec3Dot(link, params.BodyOutward) / length;
+	const float down = -Vec3Dot(link, params.BodyUp) / length;
+	const float swing = sqrtf(forward * forward + outward * outward);
+	if (swing < ROPE_MIN_LENGTH) return;
+	const float cosForward = forward / swing;
+	const float cosOutward = outward / swing;
+	const float limitForward = std::max(ROPE_MIN_LENGTH, forward >= 0.0f ? params.ShoulderForward : params.ShoulderBack);
+	const float limitOutward = std::max(ROPE_MIN_LENGTH, outward >= 0.0f ? params.ShoulderOutward : params.ShoulderInward);
+	const float a = cosForward / limitForward;
+	const float b = cosOutward / limitOutward;
+	const float limit = 1.0f / sqrtf(a * a + b * b);
+	if (atan2f(swing, down) <= limit) return;
+	const VEC3 horizontal = Vec3Add(Vec3Scale(params.BodyForward, cosForward), Vec3Scale(params.BodyOutward, cosOutward));
+	const VEC3 limited = Vec3Add(Vec3Scale(params.BodyUp, -cosf(limit)), Vec3Scale(horizontal, sinf(limit)));
+	MovePoint(1, Vec3Add(m_Points[0], Vec3Scale(limited, length)));
 }
 
 void TentacleRopeCalc::PushOutOfBody(int index, const TENTACLE_ROPE_PARAMS& params)
@@ -87,6 +117,11 @@ void TentacleRopeCalc::Step(const VEC3& anchor, const TENTACLE_ROPE_PARAMS& para
 	const float relativeKeep = std::max(0.0f, 1.0f - params.Damping * h);
 	const float airKeep = std::max(0.0f, 1.0f - params.AirDrag * h);
 	const VEC3 gravity{ 0.0f, -params.Gravity * h * h, 0.0f };
+	// 根元の速さが急に変わった分の一部は、腕も一緒に受ける（走り出し・急停止で大きく振られず、なめらかになる）。
+	const VEC3 anchorVelocity = Vec3Scale(Vec3Sub(anchor, start), 1.0f / dt);
+	const VEC3 follow = Vec3Scale(Vec3Sub(anchorVelocity, m_AnchorVelocity), params.BodyFollow * h);
+	m_AnchorVelocity = anchorVelocity;
+	for (int i = 1; i <= m_Count; ++i) m_Previous[i] = Vec3Sub(m_Previous[i], follow);
 	for (int step = 1; step <= substeps; ++step) {
 		m_Points[0] = m_Previous[0] = Vec3Add(start, Vec3Scale(Vec3Sub(anchor, start), static_cast<float>(step) / substeps));
 
@@ -103,14 +138,19 @@ void TentacleRopeCalc::Step(const VEC3& anchor, const TENTACLE_ROPE_PARAMS& para
 		for (int iteration = 0; iteration < iterations; ++iteration) {
 			for (int i = 1; i <= m_Count; ++i) {
 				SolveLink(i);
-				const VEC3 previousDirection = i == 1 ? params.RootDirection
-					: UnitOr(Vec3Sub(m_Points[i - 1], m_Points[i - 2]), params.RootDirection);
-				LimitBend(i, previousDirection, i == 1 ? params.MaxRootBend : (i == m_Count ? params.MaxTipBend : params.MaxBend));
+				if (i == 1) {
+					// 肩は箱の真ん中にあり、体のそばから動かないので、体の円柱は見ずに可動域だけで止める。
+					LimitShoulder(params);
+					continue;
+				}
+				const VEC3 previousDirection = UnitOr(Vec3Sub(m_Points[i - 1], m_Points[i - 2]), { 0.0f, -1.0f, 0.0f });
+				LimitBend(i, previousDirection, i == 2 ? params.MaxElbowBend : (i == m_Count ? params.MaxTipBend : params.MaxBend));
 				PushOutOfBody(i, params);
 			}
 		}
 		// 3. 最後に体へのめり込みをもう一度直す（節の長さ合わせで引き戻された点があっても体を優先する）
-		for (int i = 1; i <= m_Count; ++i) PushOutOfBody(i, params);
+		for (int i = 2; i <= m_Count; ++i) PushOutOfBody(i, params);
+		LimitShoulder(params);
 	}
 }
 

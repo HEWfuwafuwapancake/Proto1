@@ -12,8 +12,12 @@ namespace
 	{
 		TENTACLE_ROPE_PARAMS params;
 		params.MaxBend = 3.2f;
-		params.MaxRootBend = 3.2f;
+		params.MaxElbowBend = 3.2f;
 		params.MaxTipBend = 3.2f;
+		params.ShoulderForward = 3.2f;
+		params.ShoulderBack = 3.2f;
+		params.ShoulderOutward = 3.2f;
+		params.ShoulderInward = 3.2f;
 		params.Damping = 1.2f;
 		params.AirDrag = 0.8f;
 		return params;
@@ -76,20 +80,76 @@ TEST(TentacleRopeCalcTest, SwingsForwardWhenAnchorStops)
 	EXPECT_GT(farthest, 0.15f);
 }
 
-// つなぎ目ごとの可動域より曲がらない（肩は広め・途中は狭め・先っぽは少し広め）。
+// 根元の速さの変化を腕も受けるようにすると、急に止まったときの振れが小さくなる。
+TEST(TentacleRopeCalcTest, BodyFollowSoftensSuddenStop)
+{
+	const auto farthestSwing = [](float bodyFollow) {
+		TENTACLE_ROPE_PARAMS params = FreeChain();
+		params.BodyFollow = bodyFollow;
+		TentacleRopeCalc rope;
+		rope.Reset({ 0, 2, 0 }, { 0, -1, 0 }, LENGTHS, 3);
+		VEC3 anchor{ 0, 2, 0 };
+		for (int i = 0; i < 300; ++i) {
+			anchor.Z += 6.0f * DT;
+			rope.Step(anchor, params, DT);
+		}
+		float farthest = -1.0f;
+		for (int i = 0; i < 30; ++i) {
+			rope.Step(anchor, params, DT);
+			farthest = fmaxf(farthest, rope.GetPoint(3).Z - anchor.Z);
+		}
+		return farthest;
+	};
+	EXPECT_LT(farthestSwing(0.8f), farthestSwing(0.0f) * 0.5f);
+}
+
+// つなぎ目ごとの可動域より曲がらない（上腕の次は広め・途中は狭め・先っぽは少し広め）。
 TEST(TentacleRopeCalcTest, LimitsBendAtEachJoint)
 {
+	const float lengths[4] = { 0.2f, 0.2f, 0.2f, 0.1f };
 	TentacleRopeCalc rope;
-	rope.Reset({ 0, 2, 0 }, { 1, 0, 0 }, LENGTHS, 3);
+	rope.Reset({ 0, 2, 0 }, { 1, 0, 0 }, lengths, 4);
 	TENTACLE_ROPE_PARAMS params;
+	params.ShoulderOutward = 0.6f;
+	params.MaxElbowBend = 0.8f;
 	params.MaxBend = 0.2f;
-	params.MaxRootBend = 0.8f;
 	params.MaxTipBend = 0.4f;
 	rope.Step({ 0, 2, 0 }, params, DT);
-	// 横から放した直後なので、肩のつなぎ目は広い可動域いっぱいまで曲がっている。
-	EXPECT_NEAR(0.8f, Angle(params.RootDirection, Vec3Sub(rope.GetPoint(1), rope.GetPoint(0))), 0.05f);
-	EXPECT_LE(Angle(Vec3Sub(rope.GetPoint(1), rope.GetPoint(0)), Vec3Sub(rope.GetPoint(2), rope.GetPoint(1))), 0.2f + 0.05f);
-	EXPECT_LE(Angle(Vec3Sub(rope.GetPoint(2), rope.GetPoint(1)), Vec3Sub(rope.GetPoint(3), rope.GetPoint(2))), 0.4f + 0.05f);
+	const auto link = [&rope](int i) { return Vec3Sub(rope.GetPoint(i), rope.GetPoint(i - 1)); };
+	// 横から放した直後でも、肩は外への可動域を超えない。
+	EXPECT_LE(Angle({ 0, -1, 0 }, link(1)), 0.6f + 0.05f);
+	EXPECT_LE(Angle(link(1), link(2)), 0.8f + 0.05f);
+	EXPECT_LE(Angle(link(2), link(3)), 0.2f + 0.05f);
+	EXPECT_LE(Angle(link(3), link(4)), 0.4f + 0.05f);
+}
+
+// 肩は前・後ろで可動域が違い、基準は上半身の向き（前へ傾いた体の「体に沿った向き」はワールドの真下より後ろ）。
+TEST(TentacleRopeCalcTest, ShoulderRangeFollowsUpperBody)
+{
+	TENTACLE_ROPE_PARAMS params = FreeChain();
+	params.ShoulderBack = 0.5f;
+	params.ShoulderForward = 2.0f;
+	const VEC3 anchor{ 0, 2, 0 };
+	const VEC3 backward = Vec3Scale(VEC3{ 0, -1, -1 }, 1.0f / sqrtf(2.0f)); // 真下から後ろへ 45°
+	const VEC3 forward = Vec3Scale(VEC3{ 0, -1, 1 }, 1.0f / sqrtf(2.0f)); // 真下から前へ 45°
+
+	// まっすぐ立っているとき：後ろの 45° は上限 0.5 まで戻り、前の 45° はそのまま。
+	TentacleRopeCalc back;
+	back.Reset(anchor, backward, LENGTHS, 3);
+	back.Step(anchor, params, DT);
+	EXPECT_NEAR(0.5f, Angle({ 0, -1, 0 }, Vec3Sub(back.GetPoint(1), anchor)), 0.03f);
+	TentacleRopeCalc front;
+	front.Reset(anchor, forward, LENGTHS, 3);
+	front.Step(anchor, params, DT);
+	EXPECT_GT(Angle({ 0, -1, 0 }, Vec3Sub(front.GetPoint(1), anchor)), 0.6f);
+
+	// 上半身が前へ 0.3 傾いているとき：後ろの上限はワールドの真下から 0.3 + 0.5 = 0.8 になる。
+	params.BodyUp = { 0.0f, cosf(0.3f), sinf(0.3f) };
+	params.BodyForward = { 0.0f, -sinf(0.3f), cosf(0.3f) };
+	TentacleRopeCalc leaned;
+	leaned.Reset(anchor, Vec3Scale(VEC3{ 0, -1, -2 }, 1.0f / sqrtf(5.0f)), LENGTHS, 3); // 真下から後ろへ約 63°
+	leaned.Step(anchor, params, DT);
+	EXPECT_NEAR(0.8f, Angle({ 0, -1, 0 }, Vec3Sub(leaned.GetPoint(1), anchor)), 0.05f);
 }
 
 // 体の円柱の中には入らず、外側へ押し出される。長さの割合の位置は節の上をたどる。
@@ -102,7 +162,7 @@ TEST(TentacleRopeCalcTest, StaysOutsideBodyAndSamplesAlongLength)
 	params.BodyTop = { 0, 2, 0 };
 	params.BodyRadius = 0.15f;
 	rope.Step({ 0.3f, 2, 0 }, params, DT);
-	for (int i = 1; i < rope.GetPointCount(); ++i) {
+	for (int i = 2; i < rope.GetPointCount(); ++i) { // 肩から出る最初の節は可動域だけで止める
 		const VEC3 p = rope.GetPoint(i);
 		EXPECT_GE(sqrtf(p.X * p.X + p.Z * p.Z), 0.15f - 0.0001f);
 	}
