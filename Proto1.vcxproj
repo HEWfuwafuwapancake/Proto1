@@ -172,6 +172,7 @@
     <ClCompile Include="src\physics\statuscalc.cpp" />
     <ClCompile Include="src\physics\projectilecalc.cpp" />
     <ClCompile Include="src\game\arm_hammer.cpp" />
+    <ClCompile Include="src\game\arm_knuckle.cpp" />
     <ClCompile Include="src\physics\areacalc.cpp" />
     <ClCompile Include="src\physics\armphasecalc.cpp" />
     <ClCompile Include="src\physics\grapplecalc.cpp" />
@@ -233,6 +234,7 @@
     <ClInclude Include="src\physics\statuscalc.h" />
     <ClInclude Include="src\physics\projectilecalc.h" />
     <ClInclude Include="src\game\arm_hammer.h" />
+    <ClInclude Include="src\game\arm_knuckle.h" />
     <ClInclude Include="src\physics\areacalc.h" />
     <ClInclude Include="src\physics\armphasecalc.h" />
     <ClInclude Include="src\physics\grapplecalc.h" />
