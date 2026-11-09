@@ -14,16 +14,22 @@ float PlayerCalcFacing(float current, float moveX, float moveZ, float cameraYaw,
 
 
 void PlayerBodyCalc::Step(float moveX, float moveZ, bool jump, float dt,
-	const PLAYER_PARAMS& params, const STAGE& stage)
+	const PLAYER_PARAMS& params, const STAGE& stage, const VEC3& rushVelocity)
 {
-	// 1. 横の速度（斜めでも速くならないように、向きの長さは 1 まで）
-	const float length = sqrtf(moveX * moveX + moveZ * moveZ);
-	if (length > 1.0f) {
-		moveX /= length;
-		moveZ /= length;
+	// 1. 突進中は指定された横の速度を使う。通常の移動の向きは長さ 1 まで。
+	if (rushVelocity.X != 0.0f || rushVelocity.Z != 0.0f) {
+		m_VelocityX = rushVelocity.X;
+		m_VelocityZ = rushVelocity.Z;
 	}
-	m_VelocityX = moveX * params.MoveSpeed;
-	m_VelocityZ = moveZ * params.MoveSpeed;
+	else {
+		const float length = sqrtf(moveX * moveX + moveZ * moveZ);
+		if (length > 1.0f) {
+			moveX /= length;
+			moveZ /= length;
+		}
+		m_VelocityX = moveX * params.MoveSpeed;
+		m_VelocityZ = moveZ * params.MoveSpeed;
+	}
 
 	// 2. ジャンプ・浮島の端から歩き出たとき
 	if (m_OnGround && jump) {

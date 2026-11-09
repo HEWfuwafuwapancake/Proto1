@@ -18,8 +18,8 @@ public:
 	/// @brief 保持している敵をダメージなしで離して終了する
 	~TentacleArm() override;
 	/// @brief カメラ更新後に入力・命中・保持・投げを更新する
-	/// @param trigger 入力を設定する（true：押した瞬間、false：それ以外）
-	void Update(bool trigger) override;
+	/// @param input このフレームの腕の入力（単押しで伸ばす・投げる）
+	void Update(const ARM_INPUT& input) override;
 	/// @brief OBJ をつないで触腕を描く（読み込み失敗時は球）
 	void Draw() override;
 	/// @brief つかんでいる敵をダメージなしで離し、待機状態に戻す

@@ -35,7 +35,7 @@ class PlayerBodyCalc
 public:
 	/// @brief プレイヤーの体を1フレーム分動かす
 	/// @details 次の順に計算する：
-	///          1. 横の速度 = 移動の向き × 歩く速さ（空中でも同じように動ける。向きの長さは 1 までに縮める）
+	///          1. 横の速度は、突進速度または移動の向き × 歩く速さ（向きの長さは 1 までに縮める）
 	///          2. 立っていてジャンプを押したら、上向きの速さを与える。浮島の外へ歩き出たら立っていない状態にする
 	///          3. 立っていなければ重力で下向きの速さを増やし、位置を動かす
 	///          4. 落ちてきて浮島の上の面を上から通り過ぎ、そこが浮島の範囲の中なら、上の面に止めて立っている状態にする
@@ -46,8 +46,9 @@ public:
 	/// @param dt 1フレームの秒数（ふつうは GameTimeGetDeltaTime() の値）
 	/// @param params 調整用の値
 	/// @param stage 浮島
+	/// @param rushVelocity 突進のワールド速度（X・Z をそのまま使う。両方 0 なら通常の移動）
 	void Step(float moveX, float moveZ, bool jump, float dt,
-		const PLAYER_PARAMS& params, const STAGE& stage);
+		const PLAYER_PARAMS& params, const STAGE& stage, const VEC3& rushVelocity = {});
 
 	/// @brief 足元の Xを取得する
 	float GetX() const { return m_X; }

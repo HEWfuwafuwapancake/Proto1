@@ -30,6 +30,17 @@ namespace Proto1Tests
 		EXPECT_EQ(-1, input.Equip.Hand);
 	}
 
+	// 腕の入力に使う押下状態は、前フレームの状態とは関係なく読める。
+	TEST(ActionCalcTest, PlayerInput_ReadsHeldArmButton)
+	{
+		PLAYER_INPUT input;
+		input.Buttons = 1u << ACTION_ARM_RIGHT;
+		EXPECT_TRUE(ActionCalcPlayerPress(input, ACTION_ARM_RIGHT));
+		EXPECT_FALSE(ActionCalcPlayerPress(input, ACTION_ARM_LEFT));
+		EXPECT_FALSE(ActionCalcPlayerTrigger(input, input, ACTION_ARM_RIGHT));
+		EXPECT_FALSE(ActionCalcPlayerPress(PLAYER_INPUT{}, ACTION_ARM_RIGHT));
+	}
+
 	// 押し始め・長押し・離す・押し直し。ターゲットのイベントは連続でも落とさない。
 	TEST(ActionCalcTest, PlayerInput_TriggersFromPreviousFrame)
 	{

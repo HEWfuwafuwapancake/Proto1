@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "core/dx11.h"
+#include "physics/armpresscalc.h"
 #include "physics/guardcalc.h"
 #include "physics/vec3.h"
 #include <memory>
@@ -10,19 +11,15 @@ class FighterManager;
 class Camera;
 class Stage;
 
-/// @brief 腕の種類（10個ずつが1段。段の中は数字キー 1〜9・0 と同じ順）
+/// @brief 腕の種類（1段目の数字キー 1〜6 の順）
 enum ARM_TYPE
 {
-	ARM_TYPE_TENTACLE, ///< 触腕（1段目 1）
-	ARM_TYPE_GRAPPLE, ///< グラップリング（1段目 2）
-	ARM_TYPE_DRILL, ///< ドリル（1段目 3）
-	ARM_TYPE_MAGNET, ///< 磁石（1段目 4）
-	ARM_TYPE_SHIELD, ///< デカ盾（1段目 5）
-	ARM_TYPE_HASAMI, ///< ハサミ（1段目 6）
-	ARM_TYPE_KNUCKLE, ///< ナックル（1段目 7）
-	ARM_TYPE_BLADE, ///< ブレード（1段目 8）
-	ARM_TYPE_SPEAR, ///< スピア（1段目 9）
-	ARM_TYPE_HAMMER, ///< ハンマー（1段目 0）
+	ARM_TYPE_TENTACLE, ///< 触手（1段目 1）
+	ARM_TYPE_HAMMER, ///< ハンマー（1段目 2）
+	ARM_TYPE_KNUCKLE, ///< ナックル（1段目 3）
+	ARM_TYPE_C4, ///< C4（1段目 4）
+	ARM_TYPE_GUNLANCE, ///< ガンランス（1段目 5）
+	ARM_TYPE_KATANA, ///< 刀（1段目 6）
 	ARM_TYPE_COUNT ///< 腕の種類の数（装備ではない）
 };
 
@@ -44,19 +41,23 @@ public:
 	/// @brief 派生クラスの終了処理も呼んで腕を破棄する
 	virtual ~Arm() = default;
 	/// @brief カメラ更新後に片手の腕を更新する
-	/// @param trigger 入力を設定する（true：押した瞬間、false：それ以外）
-	virtual void Update(bool trigger) = 0;
+	/// @param input 単押し・長押し開始・押下中の状態
+	virtual void Update(const ARM_INPUT& input) = 0;
 	/// @brief 片手の腕を描画する
 	virtual void Draw() = 0;
 	/// @brief 待機に戻す（保持している敵はダメージなしで離す）
 	virtual void Reset() = 0;
+	/// @brief 吹っ飛びやしびれで動作を中断する（基本は待機に戻す）
+	virtual void Interrupt() { Reset(); }
 	/// @brief 待機以外なら true を返す
 	virtual bool IsActive() const = 0;
 	/// @brief 敵をつかんでいる間だけ true を返す
 	virtual bool IsHolding() const = 0;
 	/// @brief 歩く速さの倍率を取得する（基本は 1.0、派生クラスで変更できる）
 	virtual float GetMoveScale() const { return 1.0f; }
-	/// @brief 今のガードを取得する（基本はガードなし。デカ盾で変更する）
+	/// @brief 突進のワールド速度を取得する（水平のみ。突進していなければゼロ）
+	virtual VEC3 GetRushVelocity() const { return {}; }
+	/// @brief 今のガードを取得する（基本はガードなし）
 	virtual GUARD GetGuard() const { return {}; }
 	/// @brief 受け持つ手（左 0・右 1）を取得する
 	int GetHand() const { return m_Hand; }
@@ -130,13 +131,13 @@ private:
 class ArmManager
 {
 public:
-	/// @brief 自分のスロットと体の管理を受け取り、左右とも触腕を装備する（体の初期化後）
+	/// @brief 自分のスロットと体の管理を受け取り、左右とも触手を装備する（体の初期化後）
 	void Initialize(const Stage& stage, FighterManager& fighters, int slot, const Camera& camera);
 	/// @brief 腕の処理を終了し、保持している敵を離す
 	void Finalize(void);
 	/// @brief 左右の腕を待機に戻す（装備はそのまま。時間切れ・やり直し用）
 	void Reset(void);
-	/// @brief 両手を触腕に戻し、十字キーの手の選択も左手に戻す（オンラインを始めるとき。相手と装備をそろえる）
+	/// @brief 両手を触手に戻し、十字キーの手の選択も左手に戻す（オンラインを始めるとき。相手と装備をそろえる）
 	void ResetEquip(void);
 	/// @brief 装備を切り替え、試合中だけ左手・右手の順に更新する（カメラとキャラの向きの更新後）
 	/// @param playing 腕の更新を設定する（true：試合中として更新、false：装備切り替えだけ）
@@ -153,6 +154,8 @@ public:
 	GUARD GetGuard() const;
 	/// @brief 左右の装備している腕の、歩く速さの倍率の小さいほうを取得する
 	float GetMoveScale() const;
+	/// @brief 左右の装備の突進速度を取得する（両手なら後から使った手を優先）
+	VEC3 GetRushVelocity() const;
 	/// @brief 片手の装備を取得する
 	/// @param hand 左 0・右 1
 	/// @return 装備している種類。手が範囲外なら ARM_TYPE_COUNT
@@ -172,6 +175,7 @@ private:
 	ARM_TYPE m_Types[2] = { ARM_TYPE_TENTACLE, ARM_TYPE_TENTACLE };
 	// 左右それぞれ全種類を起動時に作る。装備切り替えでは作り直さない。
 	std::unique_ptr<Arm> m_Arms[2][ARM_TYPE_COUNT];
+	ArmPressCalc m_Presses[2];
 };
 
 /// @brief 腕の日本語名を取得する（範囲外は「不明」）

@@ -122,6 +122,8 @@ public:
 	ACTION_AXIS GetMoveInput() const;
 	/// @brief この体に渡されたカメラ入力を取得する
 	ACTION_AXIS GetLookInput() const;
+	/// @brief この体に渡されたボタンが押されているか取得する
+	bool IsPress(ACTION action) const;
 	/// @brief この体に渡されたボタンを押した瞬間か取得する
 	bool IsTrigger(ACTION action) const;
 

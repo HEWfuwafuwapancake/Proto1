@@ -39,11 +39,11 @@ void HammerArm::Reset()
 	m_Straighten = 0.0f;
 }
 
-void HammerArm::Update(bool trigger)
+void HammerArm::Update(const ARM_INPUT& input)
 {
 	const float dt = fmaxf(0.0f, GameTimeGetDeltaTime());
 	if (GetPlayer().DidRespawn()) Reset();
-	if (m_Phase.IsIdle() && trigger) {
+	if (m_Phase.IsIdle() && input.Tap) {
 		m_Direction = GetAim(false);
 		m_Phase.Start(HAMMER_RAISE);
 	}

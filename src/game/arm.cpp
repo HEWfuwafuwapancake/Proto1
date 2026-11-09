@@ -1,13 +1,7 @@
 ﻿#include "game/arm.h"
 #include "game/fighter.h"
 #include "game/fightermanager.h"
-#include "game/arm_grapple.h"
-#include "game/arm_drill.h"
-#include "game/arm_magnet.h"
-#include "game/arm_shield.h"
-#include "game/arm_knuckle.h"
-#include "game/arm_blade.h"
-#include "game/arm_spear.h"
+#include "core/gametime.h"
 #include "game/arm_hammer.h"
 #include "game/tentacle.h"
 #include "input/pad.h"
@@ -33,6 +27,7 @@ static constexpr XMFLOAT4 LEFT_COLOR{ 0.8f, 0.3f, 0.65f, 1.0f };
 static constexpr XMFLOAT4 RIGHT_COLOR{ 0.35f, 0.8f, 0.6f, 1.0f };
 static constexpr XMFLOAT4 HOLD_COLOR{ 1.0f, 0.7f, 0.2f, 1.0f };
 static constexpr float STUB_RADIUS = 0.06f; // モデルのない腕の円柱の半径。
+static constexpr ACTION ARM_ACTIONS[] = { ACTION_ARM_LEFT, ACTION_ARM_RIGHT };
 
 static_assert(ARM_TYPE_COUNT <= ACTION_EQUIP_NUMBER_COUNT, "腕の番号は通信で送れる数までにする");
 
@@ -46,26 +41,25 @@ static std::unique_ptr<Arm> CreateArm(int hand, const ARM_LINKS& links)
 // nullptr の種類は読み込まず、数字キーでも選べない。
 using ArmFactory = std::unique_ptr<Arm> (*)(int hand, const ARM_LINKS& links);
 static const ArmFactory ARM_FACTORIES[ARM_TYPE_COUNT] = {
-	CreateArm<TentacleArm>, // 触腕
-	CreateArm<GrappleArm>, // グラップリング（No.36）
-	CreateArm<DrillArm>, // ドリル（No.37）
-	CreateArm<MagnetArm>, // 磁石（No.38）
-	CreateArm<ShieldArm>, // デカ盾（No.39）
-	nullptr, // ハサミ（No.40）
-	CreateArm<KnuckleArm>, // ナックル（No.60）
-	CreateArm<BladeArm>, // ブレード（No.61）
-	CreateArm<SpearArm>, // スピア（No.62）
-	CreateArm<HammerArm>, // ハンマー（No.63）
+	CreateArm<TentacleArm>, // 触手
+	CreateArm<HammerArm>, // ハンマー
+	nullptr, // ナックル（No.97）
+	nullptr, // C4（No.98）
+	nullptr, // ガンランス（No.99）
+	nullptr, // 刀（No.100）
 };
 static const char* const ARM_NAMES[ARM_TYPE_COUNT] = {
-	"触腕", "グラップリング", "ドリル", "磁石", "デカ盾", "ハサミ",
-	"ナックル", "ブレード", "スピア", "ハンマー"
+	"触手", "ハンマー", "ナックル", "C4", "ガンランス", "刀"
 };
 
 void ArmManager::ChangeType(int hand, int next, int direction)
 {
 	if (next < 0 || next >= ARM_TYPE_COUNT || ARM_FACTORIES[next] == nullptr || next == m_Types[hand]) return;
 	m_Arms[hand][m_Types[hand]]->Reset();
+	const Fighter& player = m_Links.Fighters->GetFighter(m_Links.Slot);
+	const ACTION action = ARM_ACTIONS[hand];
+	// 前の装備で押し始めた入力は持ち越さない。
+	m_Presses[hand].Reset(player.IsPress(action) && !player.IsTrigger(action));
 	m_Types[hand] = (ARM_TYPE)next;
 	m_ChangeDirections[hand] = direction;
 #ifdef _DEBUG
@@ -83,10 +77,6 @@ void ArmManager::Initialize(const Stage& stage, FighterManager& fighters, int sl
 		if (ARM_FACTORIES[type] == nullptr) continue;
 		for (int hand = 0; hand < 2; ++hand) m_Arms[hand][type] = ARM_FACTORIES[type](hand, m_Links);
 	}
-	// 引き寄せは両手で同時に行わず、後から刺さった手へ所有権を渡す。
-	GrappleArm& left = static_cast<GrappleArm&>(*m_Arms[0][ARM_TYPE_GRAPPLE]);
-	GrappleArm& right = static_cast<GrappleArm&>(*m_Arms[1][ARM_TYPE_GRAPPLE]);
-	left.ConnectOtherArm(right);
 	Reset();
 }
 
@@ -99,7 +89,11 @@ void ArmManager::Finalize(void)
 
 void ArmManager::Reset(void)
 {
-	for (int hand = 0; hand < 2; ++hand) m_Arms[hand][m_Types[hand]]->Reset();
+	const Fighter& player = m_Links.Fighters->GetFighter(m_Links.Slot);
+	for (int hand = 0; hand < 2; ++hand) {
+		m_Arms[hand][m_Types[hand]]->Reset();
+		m_Presses[hand].Reset(player.IsPress(ARM_ACTIONS[hand]));
+	}
 	m_LastActiveHand = -1;
 }
 
@@ -126,15 +120,20 @@ void ArmManager::Update(bool playing)
 		if (key.Hand == hand) ChangeType(hand, direct);
 	}
 	if (!playing) return;
-	// しびれている間は腕を使えない（構え・ガードも解ける）。
+	// 中断中に押していた入力は、使えるようになっても一度離すまで引き継がない。
 	if (!player.CanUseArms() || player.DidRespawn() || player.IsStatus(STATUS_STUN)) {
-		Reset();
+		for (int hand = 0; hand < 2; ++hand) {
+			m_Arms[hand][m_Types[hand]]->Interrupt();
+			m_Presses[hand].Reset(player.IsPress(ARM_ACTIONS[hand]));
+		}
+		m_LastActiveHand = -1;
 		return;
 	}
+	const float dt = GameTimeGetDeltaTime();
 	for (int hand = 0; hand < 2; ++hand) {
 		Arm& arm = *m_Arms[hand][m_Types[hand]];
 		const bool wasActive = arm.IsActive();
-		arm.Update(player.IsTrigger(hand == 0 ? ACTION_ARM_LEFT : ACTION_ARM_RIGHT));
+		arm.Update(m_Presses[hand].Step(player.IsPress(ARM_ACTIONS[hand]), dt));
 		if (!wasActive && arm.IsActive()) m_LastActiveHand = hand;
 	}
 }
@@ -188,6 +187,15 @@ float ArmManager::GetMoveScale() const
 GUARD ArmManager::GetGuard() const
 {
 	return GuardCalcStronger(m_Arms[0][m_Types[0]]->GetGuard(), m_Arms[1][m_Types[1]]->GetGuard());
+}
+
+VEC3 ArmManager::GetRushVelocity() const
+{
+	const int first = m_LastActiveHand == 1 ? 1 : 0;
+	const VEC3 velocity = m_Arms[first][m_Types[first]]->GetRushVelocity();
+	if (velocity.X != 0.0f || velocity.Z != 0.0f) return velocity;
+	const int other = 1 - first;
+	return m_Arms[other][m_Types[other]]->GetRushVelocity();
 }
 
 const char* ArmGetName(ARM_TYPE type)

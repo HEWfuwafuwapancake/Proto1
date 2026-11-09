@@ -314,21 +314,6 @@
     <ClCompile Include="src\game\arm.cpp">
       <Filter>src\game</Filter>
     </ClCompile>
-    <ClCompile Include="src\game\arm_grapple.cpp">
-      <Filter>src\game</Filter>
-    </ClCompile>
-    <ClCompile Include="src\game\arm_drill.cpp">
-      <Filter>src\game</Filter>
-    </ClCompile>
-    <ClCompile Include="src\game\arm_magnet.cpp">
-      <Filter>src\game</Filter>
-    </ClCompile>
-    <ClCompile Include="src\game\arm_shield.cpp">
-      <Filter>src\game</Filter>
-    </ClCompile>
-    <ClCompile Include="src\physics\shieldcalc.cpp">
-      <Filter>src\physics</Filter>
-    </ClCompile>
     <ClCompile Include="src\physics\guardcalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
@@ -341,31 +326,10 @@
     <ClCompile Include="src\game\arm_hammer.cpp">
       <Filter>src\game</Filter>
     </ClCompile>
-    <ClCompile Include="src\game\arm_spear.cpp">
-      <Filter>src\game</Filter>
-    </ClCompile>
-    <ClCompile Include="src\physics\bladecalc.cpp">
-      <Filter>src\physics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\game\arm_blade.cpp">
-      <Filter>src\game</Filter>
-    </ClCompile>
-    <ClCompile Include="src\physics\knucklecalc.cpp">
-      <Filter>src\physics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\game\arm_knuckle.cpp">
-      <Filter>src\game</Filter>
-    </ClCompile>
     <ClCompile Include="src\physics\areacalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
     <ClCompile Include="src\physics\armphasecalc.cpp">
-      <Filter>src\physics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\physics\magnetcalc.cpp">
-      <Filter>src\physics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\physics\drillcalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
     <ClCompile Include="src\physics\grapplecalc.cpp">
@@ -374,10 +338,10 @@
     <ClInclude Include="src\physics\grapplecalc.h">
       <Filter>src\physics</Filter>
     </ClInclude>
-    <ClInclude Include="src\physics\drillcalc.h">
-      <Filter>src\physics</Filter>
-    </ClInclude>
     <ClCompile Include="src\physics\armcalc.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\physics\armpresscalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
     <ClCompile Include="src\physics\tentaclecalc.cpp">
@@ -398,21 +362,6 @@
     <ClInclude Include="src\game\arm.h">
       <Filter>src\game</Filter>
     </ClInclude>
-    <ClInclude Include="src\game\arm_grapple.h">
-      <Filter>src\game</Filter>
-    </ClInclude>
-    <ClInclude Include="src\game\arm_drill.h">
-      <Filter>src\game</Filter>
-    </ClInclude>
-    <ClInclude Include="src\game\arm_magnet.h">
-      <Filter>src\game</Filter>
-    </ClInclude>
-    <ClInclude Include="src\game\arm_shield.h">
-      <Filter>src\game</Filter>
-    </ClInclude>
-    <ClInclude Include="src\physics\shieldcalc.h">
-      <Filter>src\physics</Filter>
-    </ClInclude>
     <ClInclude Include="src\physics\guardcalc.h">
       <Filter>src\physics</Filter>
     </ClInclude>
@@ -425,31 +374,16 @@
     <ClInclude Include="src\game\arm_hammer.h">
       <Filter>src\game</Filter>
     </ClInclude>
-    <ClInclude Include="src\game\arm_spear.h">
-      <Filter>src\game</Filter>
-    </ClInclude>
-    <ClInclude Include="src\physics\bladecalc.h">
-      <Filter>src\physics</Filter>
-    </ClInclude>
-    <ClInclude Include="src\game\arm_blade.h">
-      <Filter>src\game</Filter>
-    </ClInclude>
-    <ClInclude Include="src\physics\knucklecalc.h">
-      <Filter>src\physics</Filter>
-    </ClInclude>
-    <ClInclude Include="src\game\arm_knuckle.h">
-      <Filter>src\game</Filter>
-    </ClInclude>
     <ClInclude Include="src\physics\areacalc.h">
       <Filter>src\physics</Filter>
     </ClInclude>
     <ClInclude Include="src\physics\armphasecalc.h">
       <Filter>src\physics</Filter>
     </ClInclude>
-    <ClInclude Include="src\physics\magnetcalc.h">
+    <ClInclude Include="src\physics\armcalc.h">
       <Filter>src\physics</Filter>
     </ClInclude>
-    <ClInclude Include="src\physics\armcalc.h">
+    <ClInclude Include="src\physics\armpresscalc.h">
       <Filter>src\physics</Filter>
     </ClInclude>
     <ClInclude Include="src\physics\tentaclecalc.h">

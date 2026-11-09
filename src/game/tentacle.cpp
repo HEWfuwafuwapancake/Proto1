@@ -96,7 +96,7 @@ TentacleArm::~TentacleArm()
 	Reset();
 }
 
-void TentacleArm::Update(bool trigger)
+void TentacleArm::Update(const ARM_INPUT& input)
 {
 	const int hand = GetHand();
 	const float yaw = GetCamera().GetYaw();
@@ -110,7 +110,7 @@ void TentacleArm::Update(bool trigger)
 	// 肩と同じ高さ（従来の p.y + HAND_HEIGHT）。XZ の計算順は従来の Position と同じ。
 	const VEC3 hold = HoldPosition(side * HOLD_OFFSET, HOLD_FORWARD, origin.Y);
 	VEC3 aim = cameraForward;
-	if (trigger && arm.GetState() == TENTACLE_IDLE) {
+	if (input.Tap && arm.GetState() == TENTACLE_IDLE) {
 		const int target = GetCamera().GetTarget();
 		const bool hasTarget = target >= 0 && target < FIGHTER_COUNT;
 		const VEC3 center = hasTarget
@@ -120,7 +120,7 @@ void TentacleArm::Update(bool trigger)
 	}
 	const bool cancel = GetPlayer().DidRespawn() || (arm.GetTarget() >= 0 && !GetFighters().IsHeldBy(arm.GetTarget(), GetSlot()));
 	const TENTACLE_EVENT event = arm.Step(origin, aim, hold,
-		trigger, cancel,
+		input.Tap, cancel,
 		GameTimeGetDeltaTime(), PARAMS, targets, FIGHTER_COUNT, GetStage().GetStage());
 	if (event.Grabbed >= 0) {
 		if (GetFighters().Grab(event.Grabbed, GetSlot())) Rumble(GRAB_RUMBLE_SMALL, GRAB_RUMBLE_LARGE, GRAB_RUMBLE_SECONDS);

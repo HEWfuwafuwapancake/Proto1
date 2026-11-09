@@ -116,6 +116,36 @@ namespace Proto1Tests
 		EXPECT_NEAR(6.0f, speed, PLAYER_EPSILON);
 	}
 
+	// 逆方向に移動入力を入れても突進の速度で進み、ふちを越えたら落ちる。
+	TEST(PlayerCalcTest, Step_RushOverridesWalkingAndFallsOffEdge)
+	{
+		PlayerBodyCalc body = MakeStandingBody(14.95f, 0.0f);
+		const STAGE stage = MakePlayerStage();
+		const PLAYER_PARAMS params = MakeParams();
+		const VEC3 rush{ 14.0f, 0.0f, 0.0f };
+		body.Step(-1.0f, 0.0f, false, PLAYER_DT, params, stage, rush);
+		EXPECT_NEAR(14.0f, body.GetVelocityX(), PLAYER_EPSILON);
+		EXPECT_NEAR(14.95f + 14.0f * PLAYER_DT, body.GetX(), PLAYER_EPSILON);
+
+		body.Step(-1.0f, 0.0f, false, PLAYER_DT, params, stage, rush);
+		EXPECT_FALSE(body.GetOnGround());
+		EXPECT_LT(body.GetY(), stage.TopY);
+	}
+
+	// 空中で突進していても、浮島の上面に着地する。
+	TEST(PlayerCalcTest, Step_RushLandsOnPlatform)
+	{
+		PlayerBodyCalc body{};
+		body.SetPosition({ 0.0f, 0.1f, 0.0f });
+		body.SetVelocity({ 0.0f, -9.0f, 0.0f });
+		const STAGE stage = MakePlayerStage();
+		body.Step(0.0f, 0.0f, false, PLAYER_DT, MakeParams(), stage, { 0.0f, 0.0f, 4.0f });
+		EXPECT_TRUE(body.GetOnGround());
+		EXPECT_NEAR(stage.TopY, body.GetY(), PLAYER_EPSILON);
+		EXPECT_NEAR(0.0f, body.GetVelocityY(), PLAYER_EPSILON);
+		EXPECT_NEAR(4.0f * PLAYER_DT, body.GetZ(), PLAYER_EPSILON);
+	}
+
 	// 立っているときにジャンプを押すと、上に飛ぶ
 	TEST(PlayerCalcTest, Step_JumpWhenOnGround)
 	{

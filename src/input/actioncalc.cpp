@@ -33,12 +33,17 @@ ACTION_AXIS ActionCalcPlayerLook(const PLAYER_INPUT& input)
 	return { input.LookX / LOOK_INPUT_SCALE, input.LookY / LOOK_INPUT_SCALE };
 }
 
-bool ActionCalcPlayerTrigger(const PLAYER_INPUT& current, const PLAYER_INPUT& previous, ACTION action)
+bool ActionCalcPlayerPress(const PLAYER_INPUT& input, ACTION action)
 {
 	if (action < 0 || action >= ACTION_COUNT) return false;
 	const uint16_t bit = static_cast<uint16_t>(1u << action);
+	return (input.Buttons & bit) != 0;
+}
+
+bool ActionCalcPlayerTrigger(const PLAYER_INPUT& current, const PLAYER_INPUT& previous, ACTION action)
+{
 	const bool event = action == ACTION_TARGET_LEFT || action == ACTION_TARGET_RIGHT;
-	return (current.Buttons & bit) != 0 && (event || (previous.Buttons & bit) == 0);
+	return ActionCalcPlayerPress(current, action) && (event || !ActionCalcPlayerPress(previous, action));
 }
 
 
