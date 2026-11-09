@@ -99,10 +99,12 @@ int ProjectileCalc::Step(float dt, const TENTACLE_TARGET* targets, int count, co
 			shot.Active = false;
 			continue;
 		}
-		// 浮島：上の面より下で、浮島の厚さの中に入ったら当たり。
-		if (shot.Position.Y <= stage.TopY && shot.Position.Y >= stage.TopY - stage.Thickness - params.Radius
-			&& StageCalcIsOnPlatform(stage, shot.Position.X, shot.Position.Z)) {
-			add(PROJECTILE_HIT_STAGE, i, -1, { shot.Position.X, stage.TopY, shot.Position.Z });
+		// 高台は上から当たる。浮島は今までどおり厚さの中に入っても当たる。
+		float landingY = stage.TopY;
+		if (StageCalcFindLanding(stage, shot.Position.X, shot.Position.Z, previous.Y, shot.Position.Y, landingY)
+			|| (shot.Position.Y <= stage.TopY && shot.Position.Y >= stage.TopY - stage.Thickness - params.Radius
+				&& StageCalcIsOnPlatform(stage, shot.Position.X, shot.Position.Z))) {
+			add(PROJECTILE_HIT_STAGE, i, -1, { shot.Position.X, landingY, shot.Position.Z });
 			shot.Active = false;
 			continue;
 		}

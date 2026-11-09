@@ -134,6 +134,29 @@ namespace Proto1Tests
 		EXPECT_TRUE(body.GetX() > 0.0f && body.GetX() < 15.0f);
 	}
 
+	// 吹っ飛び中も高台に着地し、勢いが残っていればふちから落ちる。
+	TEST(KnockbackCalcTest, Step_LandsAndSlidesOffHighPlatform)
+	{
+		STAGE stage = MakeKnockbackStage();
+		stage.Platforms[0] = { -8.0f, 8.0f, 3.0f, 3.0f, 4.0f, 0.6f };
+		stage.PlatformCount = 1;
+		const KNOCKBACK_PARAMS params = MakeKnockbackParams();
+		PlayerBodyCalc body{};
+		body.SetPosition({ -5.3f, 4.1f, 8.0f });
+		body.SetVelocity({ 10.0f, -10.0f, 0.0f });
+
+		EXPECT_TRUE(KnockbackCalcStep(body, KB_DT, params, stage));
+		EXPECT_TRUE(body.GetOnGround());
+		EXPECT_NEAR(stage.Platforms[0].TopY, body.GetY(), KB_EPSILON);
+		EXPECT_GT(body.GetVelocityX(), 0.0f);
+
+		for (int i = 0; i < 3; ++i) {
+			EXPECT_TRUE(KnockbackCalcStep(body, KB_DT, params, stage));
+		}
+		EXPECT_FALSE(body.GetOnGround());
+		EXPECT_LT(body.GetY(), stage.Platforms[0].TopY);
+	}
+
 	// % が低いと浮島の上で止まり、高いと場外まで飛ぶ（真ん中から +X へ）
 	TEST(KnockbackCalcTest, Launch_LowStaysHighFliesOut)
 	{

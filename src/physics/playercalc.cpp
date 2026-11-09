@@ -31,18 +31,20 @@ void PlayerBodyCalc::Step(float moveX, float moveZ, bool jump, float dt,
 		m_VelocityZ = moveZ * params.MoveSpeed;
 	}
 
-	// 2. ジャンプ・浮島の端から歩き出たとき
-	if (m_OnGround && jump) {
-		m_VelocityY = params.JumpSpeed;
+	// 2. 足元の高さに足場があるときだけジャンプできる
+	if (m_OnGround && !StageCalcHasSupport(stage, m_X, m_Y, m_Z)) {
 		m_OnGround = false;
 	}
-	if (m_OnGround && !StageCalcIsOnPlatform(stage, m_X, m_Z)) {
+	if (m_OnGround && jump) {
+		m_VelocityY = params.JumpSpeed;
 		m_OnGround = false;
 	}
 
 	// 3. 重力と移動
 	const float previousY = m_Y;
-	if (!m_OnGround) {
+	if (m_OnGround) {
+		m_VelocityY = 0.0f;
+	} else {
 		m_VelocityY -= params.Gravity * dt;
 	}
 	m_X += m_VelocityX * dt;
@@ -50,17 +52,12 @@ void PlayerBodyCalc::Step(float moveX, float moveZ, bool jump, float dt,
 	m_Z += m_VelocityZ * dt;
 
 	// 4. 着地（上から落ちてきて、上の面を通り過ぎたときだけ）
-	if (!m_OnGround && m_VelocityY <= 0.0f
-		&& previousY >= stage.TopY && m_Y <= stage.TopY
-		&& StageCalcIsOnPlatform(stage, m_X, m_Z)) {
-		m_Y = stage.TopY;
+	float landingY;
+	if (m_OnGround) {
+		m_OnGround = StageCalcHasSupport(stage, m_X, m_Y, m_Z);
+	} else if (m_VelocityY <= 0.0f && StageCalcFindLanding(stage, m_X, m_Z, previousY, m_Y, landingY)) {
+		m_Y = landingY;
 		m_VelocityY = 0.0f;
 		m_OnGround = true;
-	}
-
-	// 立っている間は上の面の高さに止めておく
-	if (m_OnGround) {
-		m_Y = stage.TopY;
-		m_VelocityY = 0.0f;
 	}
 }

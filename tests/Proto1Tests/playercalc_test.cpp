@@ -29,6 +29,14 @@ namespace Proto1Tests
 		return params;
 	}
 
+	static STAGE MakePlayerStageWithHighPlatform(void)
+	{
+		STAGE stage = MakePlayerStage();
+		stage.Platforms[0] = { -8.0f, 8.0f, 3.0f, 3.0f, 4.0f, 0.6f };
+		stage.PlatformCount = 1;
+		return stage;
+	}
+
 	// 浮島の上の (x, z) に立っている体
 	static PlayerBodyCalc MakeStandingBody(float x, float z)
 	{
@@ -144,6 +152,47 @@ namespace Proto1Tests
 		EXPECT_NEAR(stage.TopY, body.GetY(), PLAYER_EPSILON);
 		EXPECT_NEAR(0.0f, body.GetVelocityY(), PLAYER_EPSILON);
 		EXPECT_NEAR(4.0f * PLAYER_DT, body.GetZ(), PLAYER_EPSILON);
+	}
+
+	// 高台は下から通り抜け、折り返して上から落ちてきたら着地する。
+	TEST(PlayerCalcTest, Step_PassesUpThroughHighPlatformAndLandsOnIt)
+	{
+		const STAGE stage = MakePlayerStageWithHighPlatform();
+		const PLAYER_PARAMS params = MakeParams();
+		PlayerBodyCalc body{};
+		body.SetPosition({ -8.0f, 3.5f, 8.0f });
+		body.SetVelocity({ 0.0f, 12.0f, 0.0f });
+		for (int i = 0; i < 4; ++i) {
+			body.Step(0.0f, 0.0f, false, PLAYER_DT, params, stage);
+		}
+		EXPECT_FALSE(body.GetOnGround());
+		EXPECT_GT(body.GetY(), stage.Platforms[0].TopY);
+
+		for (int i = 0; i < 120 && !body.GetOnGround(); ++i) {
+			body.Step(0.0f, 0.0f, false, PLAYER_DT, params, stage);
+		}
+		EXPECT_TRUE(body.GetOnGround());
+		EXPECT_NEAR(stage.Platforms[0].TopY, body.GetY(), PLAYER_EPSILON);
+		EXPECT_NEAR(0.0f, body.GetVelocityY(), PLAYER_EPSILON);
+	}
+
+	// 高台のふちを歩いて出ると、同じ高さに留まらず下の浮島に着地する。
+	TEST(PlayerCalcTest, Step_WalksOffHighPlatformOntoMainIsland)
+	{
+		const STAGE stage = MakePlayerStageWithHighPlatform();
+		const PLAYER_PARAMS params = MakeParams();
+		PlayerBodyCalc body{};
+		body.SetPosition({ -5.05f, stage.Platforms[0].TopY, 8.0f });
+		body.SetOnGround(true);
+		body.Step(1.0f, 0.0f, false, PLAYER_DT, params, stage);
+		EXPECT_FALSE(body.GetOnGround());
+		EXPECT_NEAR(stage.Platforms[0].TopY, body.GetY(), PLAYER_EPSILON);
+
+		for (int i = 0; i < 120 && !body.GetOnGround(); ++i) {
+			body.Step(0.0f, 0.0f, false, PLAYER_DT, params, stage);
+		}
+		EXPECT_TRUE(body.GetOnGround());
+		EXPECT_NEAR(stage.TopY, body.GetY(), PLAYER_EPSILON);
 	}
 
 	// 立っているときにジャンプを押すと、上に飛ぶ

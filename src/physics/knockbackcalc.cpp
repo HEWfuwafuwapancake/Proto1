@@ -41,13 +41,13 @@ bool KnockbackCalcStep(PlayerBodyCalc& body, float dt, const KNOCKBACK_PARAMS& p
 	float VelocityY = body.GetVelocityY();
 	float VelocityZ = body.GetVelocityZ();
 	bool OnGround = body.GetOnGround();
-	// すべっている途中で浮島の端から出たら、落ち始める
-	if (OnGround && !StageCalcIsOnPlatform(stage, X, Z)) {
+	// 足元の高さに足場がなければ落ち始める
+	if (OnGround && !StageCalcHasSupport(stage, X, Y, Z)) {
 		OnGround = false;
 	}
 
 	if (OnGround) {
-		// 浮島の上をすべる：横の速さを摩擦の分だけ減らす
+		// 足場の上をすべる：横の速さを摩擦の分だけ減らす
 		const float speed = sqrtf(VelocityX * VelocityX + VelocityZ * VelocityZ);
 		const float slowed = speed - params.GroundFriction * dt;
 		if (slowed <= params.StopSpeed) {
@@ -77,15 +77,13 @@ bool KnockbackCalcStep(PlayerBodyCalc& body, float dt, const KNOCKBACK_PARAMS& p
 	Z += VelocityZ * dt;
 
 	// 着地（上から落ちてきて、上の面を通り過ぎたときだけ。横の速さは残してすべらせる）
-	if (!OnGround && VelocityY <= 0.0f
-		&& previousY >= stage.TopY && Y <= stage.TopY
-		&& StageCalcIsOnPlatform(stage, X, Z)) {
-		Y = stage.TopY;
+	float landingY;
+	if (OnGround) {
+		OnGround = StageCalcHasSupport(stage, X, Y, Z);
+	} else if (VelocityY <= 0.0f && StageCalcFindLanding(stage, X, Z, previousY, Y, landingY)) {
+		Y = landingY;
 		VelocityY = 0.0f;
 		OnGround = true;
-	}
-	if (OnGround) {
-		Y = stage.TopY;
 	}
 	body.SetPosition({ X, Y, Z });
 	body.SetVelocity({ VelocityX, VelocityY, VelocityZ });
