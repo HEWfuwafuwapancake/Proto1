@@ -9,22 +9,6 @@
 #include "game/arm_blade.h"
 #include "game/arm_spear.h"
 #include "game/arm_hammer.h"
-#include "game/arm_whip.h"
-#include "game/arm_laser.h"
-#include "game/arm_shotgun.h"
-#include "game/arm_sniper.h"
-#include "game/arm_warp.h"
-#include "game/arm_repair.h"
-#include "game/arm_rocket.h"
-#include "game/arm_cannon.h"
-#include "game/arm_gatling.h"
-#include "game/arm_missile.h"
-#include "game/arm_flame.h"
-#include "game/arm_freeze.h"
-#include "game/arm_thunder.h"
-#include "game/arm_smoke.h"
-#include "game/arm_barrier.h"
-#include "game/arm_axe.h"
 #include "game/tentacle.h"
 #include "input/pad.h"
 #include "game/camera.h"
@@ -72,28 +56,10 @@ static const ArmFactory ARM_FACTORIES[ARM_TYPE_COUNT] = {
 	CreateArm<BladeArm>, // ブレード（No.61）
 	CreateArm<SpearArm>, // スピア（No.62）
 	CreateArm<HammerArm>, // ハンマー（No.63）
-	CreateArm<WhipArm>, // ウィップ（No.64）
-	CreateArm<LaserArm>, // レーザー（No.65）
-	CreateArm<ShotgunArm>, // ショットガン（No.66）
-	CreateArm<SniperArm>, // スナイパー（No.67）
-	CreateArm<WarpArm>, // ワープ（No.68）
-	CreateArm<RepairArm>, // リペア（No.69）
-	CreateArm<RocketArm>, // ロケットパンチ（No.71）
-	CreateArm<CannonArm>, // キャノン（No.72）
-	CreateArm<GatlingArm>, // ガトリング（No.73）
-	CreateArm<MissileArm>, // ミサイル（No.74）
-	CreateArm<FlameArm>, // 火炎放射（No.76）
-	CreateArm<FreezeArm>, // フリーズ（No.77）
-	CreateArm<ThunderArm>, // サンダー（No.78）
-	CreateArm<SmokeArm>, // スモーク（No.79）
-	CreateArm<BarrierArm>, // バリア（No.81）
-	CreateArm<AxeArm>, // アックス（No.82）
 };
 static const char* const ARM_NAMES[ARM_TYPE_COUNT] = {
 	"触腕", "グラップリング", "ドリル", "磁石", "デカ盾", "ハサミ",
-	"ナックル", "ブレード", "スピア", "ハンマー", "ウィップ", "レーザー", "ショットガン", "スナイパー",
-	"ワープ", "リペア", "ロケットパンチ", "キャノン", "ガトリング", "ミサイル",
-	"火炎放射", "フリーズ", "サンダー", "スモーク", "バリア", "アックス"
+	"ナックル", "ブレード", "スピア", "ハンマー"
 };
 
 void ArmManager::ChangeType(int hand, int next, int direction)
