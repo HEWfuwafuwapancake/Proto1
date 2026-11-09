@@ -172,10 +172,12 @@
     <ClCompile Include="src\physics\statuscalc.cpp" />
     <ClCompile Include="src\physics\projectilecalc.cpp" />
     <ClCompile Include="src\game\arm_hammer.cpp" />
+    <ClCompile Include="src\game\arm_gunlance.cpp" />
     <ClCompile Include="src\game\arm_c4.cpp" />
     <ClCompile Include="src\game\arm_knuckle.cpp" />
     <ClCompile Include="src\physics\areacalc.cpp" />
     <ClCompile Include="src\physics\armphasecalc.cpp" />
+    <ClCompile Include="src\physics\gunlancecalc.cpp" />
     <ClCompile Include="src\physics\c4calc.cpp" />
     <ClCompile Include="src\physics\grapplecalc.cpp" />
     <ClCompile Include="src\physics\armcalc.cpp" />
@@ -236,10 +238,12 @@
     <ClInclude Include="src\physics\statuscalc.h" />
     <ClInclude Include="src\physics\projectilecalc.h" />
     <ClInclude Include="src\game\arm_hammer.h" />
+    <ClInclude Include="src\game\arm_gunlance.h" />
     <ClInclude Include="src\game\arm_c4.h" />
     <ClInclude Include="src\game\arm_knuckle.h" />
     <ClInclude Include="src\physics\areacalc.h" />
     <ClInclude Include="src\physics\armphasecalc.h" />
+    <ClInclude Include="src\physics\gunlancecalc.h" />
     <ClInclude Include="src\physics\c4calc.h" />
     <ClInclude Include="src\physics\grapplecalc.h" />
     <ClInclude Include="src\physics\armcalc.h" />
