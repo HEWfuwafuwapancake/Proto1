@@ -3,7 +3,7 @@
 # -Inspect を付けると transform ごとの親・範囲・三角形数も表示する。
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("all", "grapple", "drill", "shield", "magnet", "hasami")]
+    [ValidateSet("all", "grapple", "drill", "shield", "magnet", "hasami", "weapons")]
     [string]$Arm = "all",
     [switch]$Inspect
 )
@@ -16,8 +16,8 @@ $mayapy = Get-ChildItem "C:\Program Files\Autodesk\Maya*\bin\mayapy.exe" -ErrorA
 if (-not $mayapy) { Stop-Team "mayapy.exe が見つかりませんでした。" "Maya が入っている PC で実行してください" }
 
 $sourceDir = Join-Path $RepoRoot "assets\models\source"
-$sources = @{ grapple = "grappling.mb"; drill = "doriru.mb"; shield = "dekaitate.mb"; magnet = "magnet.mb"; hasami = "hasami.mb" }
-$names = if ($Arm -eq "all") { @("grapple", "drill", "shield", "magnet", "hasami") } else { @($Arm) }
+$sources = @{ grapple = "grappling.mb"; drill = "doriru.mb"; shield = "dekaitate.mb"; magnet = "magnet.mb"; hasami = "hasami.mb"; weapons = "weapon_parts.mb" }
+$names = if ($Arm -eq "all") { @("grapple", "drill", "shield", "magnet", "hasami", "weapons") } else { @($Arm) }
 foreach ($name in $names) {
     $source = Join-Path $sourceDir $sources[$name]
     if (-not (Test-Path -LiteralPath $source)) { Stop-Team "$source がありません。" "git lfs pull を試してください" }

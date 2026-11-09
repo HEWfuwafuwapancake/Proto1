@@ -27,6 +27,8 @@ static constexpr XMFLOAT4 LEFT_COLOR{ 0.8f, 0.3f, 0.65f, 1.0f };
 static constexpr XMFLOAT4 RIGHT_COLOR{ 0.35f, 0.8f, 0.6f, 1.0f };
 static constexpr XMFLOAT4 HOLD_COLOR{ 1.0f, 0.7f, 0.2f, 1.0f };
 static constexpr float STUB_RADIUS = 0.06f; // モデルのない腕の円柱の半径。
+static constexpr int RANGE_RING_POINTS = 32; // 当たる範囲の円に並べる球の数。
+static constexpr float RANGE_RING_RADIUS = 0.08f; // 当たる範囲の円に並べる球の半径。
 static constexpr ACTION ARM_ACTIONS[] = { ACTION_ARM_LEFT, ACTION_ARM_RIGHT };
 
 static_assert(ARM_TYPE_COUNT <= ACTION_EQUIP_NUMBER_COUNT, "腕の番号は通信で送れる数までにする");
@@ -309,6 +311,23 @@ void Arm::DrawPiece(int model, VEC3 start, VEC3 end, float sourceLength, float t
 	const VEC3 y = Vec3Scale(axes.Y, Vec3Length(Vec3Sub(end, start)) / sourceLength);
 	const VEC3 z = Vec3Scale(axes.Z, thickness);
 	ModelDraw(model, { start.X, start.Y, start.Z }, { x.X, x.Y, x.Z }, { y.X, y.Y, y.Z }, { z.X, z.Y, z.Z }, color);
+}
+
+VEC3 Arm::DrawAlong(int model, const VEC3& start, const VEC3& direction, float sourceLength, float scale,
+	const XMFLOAT4& color, float roll) const
+{
+	const VEC3 end = Vec3Add(start, Vec3Scale(direction, sourceLength * scale));
+	if (model >= 0) DrawPiece(model, start, end, sourceLength, scale, color, roll);
+	else ShapeDrawCylinder({ start.X, start.Y, start.Z }, { end.X, end.Y, end.Z }, STUB_RADIUS, color);
+	return end;
+}
+
+void Arm::DrawRangeRing(const VEC3& center, float radius, const XMFLOAT4& color) const
+{
+	for (int i = 0; i < RANGE_RING_POINTS; ++i) {
+		const float angle = XM_2PI * i / RANGE_RING_POINTS;
+		ShapeDrawSphere({ center.X + sinf(angle) * radius, center.Y, center.Z + cosf(angle) * radius }, RANGE_RING_RADIUS, color);
+	}
 }
 
 int Arm::LoadModel(const char* path) const

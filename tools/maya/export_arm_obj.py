@@ -80,6 +80,32 @@ ARMS = {
             },
         },
     },
+    # build_weapon_parts.py で作った、腕に足す武器の部品。原点はどれも腕につなぐ所。
+    "weapons": {
+        "source": "weapon_parts.mb", "root": "|weapons", "omit": (),
+        "files": {
+            "arm_hammer_head.obj": {
+                "parts": ("hammer_handle", "hammer_head", "hammer_face_a", "hammer_face_b"),
+                "origin": ("pivot", "hammer_handle"), "rotate_x": 0.0,
+            },
+            "arm_knuckle_fist.obj": {
+                "parts": ("fist_wrist", "fist_palm", "fist_knuckle0", "fist_knuckle1", "fist_knuckle2", "fist_knuckle3"),
+                "origin": ("pivot", "fist_wrist"), "rotate_x": 0.0,
+            },
+            "arm_c4_body.obj": {
+                "parts": ("c4_block", "c4_band_a", "c4_band_b", "c4_detonator"),
+                "origin": ("pivot", "c4_block"), "rotate_x": 0.0,
+            },
+            "arm_gunlance_barrel.obj": {
+                "parts": ("barrel_tube", "barrel_ring_mid", "barrel_muzzle"),
+                "origin": ("pivot", "barrel_tube"), "rotate_x": 0.0,
+            },
+            "arm_katana_blade.obj": {
+                "parts": ("blade_guard", "blade_body"),
+                "origin": ("pivot", "blade_guard"), "rotate_x": 0.0,
+            },
+        },
+    },
     "hasami": {
         "source": "hasami.mb", "root": "|hasami", "omit": (),
         "files": {
