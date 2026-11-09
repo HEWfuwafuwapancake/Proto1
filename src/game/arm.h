@@ -23,22 +23,6 @@ enum ARM_TYPE
 	ARM_TYPE_BLADE, ///< ブレード（1段目 8）
 	ARM_TYPE_SPEAR, ///< スピア（1段目 9）
 	ARM_TYPE_HAMMER, ///< ハンマー（1段目 0）
-	ARM_TYPE_WHIP, ///< ウィップ（2段目 1）
-	ARM_TYPE_LASER, ///< レーザー（2段目 2）
-	ARM_TYPE_SHOTGUN, ///< ショットガン（2段目 3）
-	ARM_TYPE_SNIPER, ///< スナイパー（2段目 4）
-	ARM_TYPE_WARP, ///< ワープ（2段目 5）
-	ARM_TYPE_REPAIR, ///< リペア（2段目 6）
-	ARM_TYPE_ROCKET, ///< ロケットパンチ（2段目 7）
-	ARM_TYPE_CANNON, ///< キャノン（2段目 8）
-	ARM_TYPE_GATLING, ///< ガトリング（2段目 9）
-	ARM_TYPE_MISSILE, ///< ミサイル（2段目 0）
-	ARM_TYPE_FLAME, ///< 火炎放射（3段目 1）
-	ARM_TYPE_FREEZE, ///< フリーズ（3段目 2）
-	ARM_TYPE_THUNDER, ///< サンダー（3段目 3）
-	ARM_TYPE_SMOKE, ///< スモーク（3段目 4）
-	ARM_TYPE_BARRIER, ///< バリア（3段目 5）
-	ARM_TYPE_AXE, ///< アックス（3段目 6）
 	ARM_TYPE_COUNT ///< 腕の種類の数（装備ではない）
 };
 
@@ -72,7 +56,7 @@ public:
 	virtual bool IsHolding() const = 0;
 	/// @brief 歩く速さの倍率を取得する（基本は 1.0、派生クラスで変更できる）
 	virtual float GetMoveScale() const { return 1.0f; }
-	/// @brief 今のガードを取得する（基本はガードなし。デカ盾・バリア・ワープで変更する）
+	/// @brief 今のガードを取得する（基本はガードなし。デカ盾で変更する）
 	virtual GUARD GetGuard() const { return {}; }
 	/// @brief 受け持つ手（左 0・右 1）を取得する
 	int GetHand() const { return m_Hand; }
