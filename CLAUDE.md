@@ -58,8 +58,8 @@ DX11 の土台は `HEW2026GitTest` から持ってきた（水のレイトレー
 - C++（`.cpp` / `.h`）は **BOM付きUTF-8・CRLF**。シェーダー（`.hlsl` / `.hlsli`）は **BOMなしUTF-8**（fxc は BOM があると `X3000` で失敗する）。
 - 文字セットは **マルチバイト**（ひな形が `char` 文字列のため）。`/utf-8` オプションは付けない。サブシステムは Windows。
 - 定数バッファは `src/core/shader.h` / `shader.cpp` の構造体と `shaders/shaderCommon.hlsli`（b0〜b4）の並び・番号をそろえる。
-- ステージは空に浮かぶ四角い浮島が1つ（`src/game/stage.cpp`。地形 `field.cpp` は今は使っていない）。浮島の大きさ・場外の下の線は `stage.cpp` の「調整用の値」、計算は `src/physics/stagecalc.h`。
-  浮島の上に物を置くときは `Stage::GetStage().TopY` の高さ、浮島の範囲かは `StageCalcIsOnPlatform`、場外かは `StageCalcIsOut` で調べる。
+- ステージは空に浮かぶ四角い浮島が1つと、下から通り抜けられる高台が4つ（`src/game/stage.cpp`。地形 `field.cpp` は今は使っていない）。浮島の大きさ・高台の配置・場外の下の線は `stage.cpp` の「調整用の値」、計算は `src/physics/stagecalc.h`。
+  浮島の上に物を置くときは `Stage::GetStage().TopY` の高さ、浮島の範囲かは `StageCalcIsOnPlatform`、その高さに足場（浮島・高台）があるかは `StageCalcHasSupport`、場外かは `StageCalcIsOut` で調べる。
 - ファイルを足したら `.vcxproj` と `.vcxproj.filters` にも追加する（`save-work.ps1` も登録漏れを止める）。
 - ビルド確認：
   `& "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe" Proto1.vcxproj /p:Configuration=Debug /p:Platform=x64 /v:minimal /nologo`
