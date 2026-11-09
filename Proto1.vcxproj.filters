@@ -326,6 +326,9 @@
     <ClCompile Include="src\game\arm_hammer.cpp">
       <Filter>src\game</Filter>
     </ClCompile>
+    <ClCompile Include="src\game\arm_c4.cpp">
+      <Filter>src\game</Filter>
+    </ClCompile>
     <ClCompile Include="src\game\arm_knuckle.cpp">
       <Filter>src\game</Filter>
     </ClCompile>
@@ -333,6 +336,9 @@
       <Filter>src\physics</Filter>
     </ClCompile>
     <ClCompile Include="src\physics\armphasecalc.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\physics\c4calc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
     <ClCompile Include="src\physics\grapplecalc.cpp">
@@ -377,6 +383,9 @@
     <ClInclude Include="src\game\arm_hammer.h">
       <Filter>src\game</Filter>
     </ClInclude>
+    <ClInclude Include="src\game\arm_c4.h">
+      <Filter>src\game</Filter>
+    </ClInclude>
     <ClInclude Include="src\game\arm_knuckle.h">
       <Filter>src\game</Filter>
     </ClInclude>
@@ -384,6 +393,9 @@
       <Filter>src\physics</Filter>
     </ClInclude>
     <ClInclude Include="src\physics\armphasecalc.h">
+      <Filter>src\physics</Filter>
+    </ClInclude>
+    <ClInclude Include="src\physics\c4calc.h">
       <Filter>src\physics</Filter>
     </ClInclude>
     <ClInclude Include="src\physics\armcalc.h">

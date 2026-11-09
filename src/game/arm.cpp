@@ -4,6 +4,7 @@
 #include "core/gametime.h"
 #include "game/arm_hammer.h"
 #include "game/arm_knuckle.h"
+#include "game/arm_c4.h"
 #include "game/tentacle.h"
 #include "input/pad.h"
 #include "game/camera.h"
@@ -47,7 +48,7 @@ static const ArmFactory ARM_FACTORIES[ARM_TYPE_COUNT] = {
 	CreateArm<TentacleArm>, // 触手
 	CreateArm<HammerArm>, // ハンマー
 	CreateArm<KnuckleArm>, // ナックル
-	nullptr, // C4（No.98）
+	CreateArm<C4Arm>, // C4
 	nullptr, // ガンランス（No.99）
 	nullptr, // 刀（No.100）
 };
