@@ -6,6 +6,7 @@
 #include "game/arm_knuckle.h"
 #include "game/arm_c4.h"
 #include "game/arm_gunlance.h"
+#include "game/arm_katana.h"
 #include "game/tentacle.h"
 #include "input/pad.h"
 #include "game/camera.h"
@@ -51,7 +52,7 @@ static const ArmFactory ARM_FACTORIES[ARM_TYPE_COUNT] = {
 	CreateArm<KnuckleArm>, // ナックル
 	CreateArm<C4Arm>, // C4
 	CreateArm<GunlanceArm>, // ガンランス
-	nullptr, // 刀（No.100）
+	CreateArm<KatanaArm>, // 刀
 };
 static const char* const ARM_NAMES[ARM_TYPE_COUNT] = {
 	"触手", "ハンマー", "ナックル", "C4", "ガンランス", "刀"
