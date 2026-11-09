@@ -326,6 +326,9 @@
     <ClCompile Include="src\game\arm_hammer.cpp">
       <Filter>src\game</Filter>
     </ClCompile>
+    <ClCompile Include="src\game\arm_katana.cpp">
+      <Filter>src\game</Filter>
+    </ClCompile>
     <ClCompile Include="src\game\arm_gunlance.cpp">
       <Filter>src\game</Filter>
     </ClCompile>
@@ -387,6 +390,9 @@
       <Filter>src\physics</Filter>
     </ClInclude>
     <ClInclude Include="src\game\arm_hammer.h">
+      <Filter>src\game</Filter>
+    </ClInclude>
+    <ClInclude Include="src\game\arm_katana.h">
       <Filter>src\game</Filter>
     </ClInclude>
     <ClInclude Include="src\game\arm_gunlance.h">

@@ -172,6 +172,7 @@
     <ClCompile Include="src\physics\statuscalc.cpp" />
     <ClCompile Include="src\physics\projectilecalc.cpp" />
     <ClCompile Include="src\game\arm_hammer.cpp" />
+    <ClCompile Include="src\game\arm_katana.cpp" />
     <ClCompile Include="src\game\arm_gunlance.cpp" />
     <ClCompile Include="src\game\arm_c4.cpp" />
     <ClCompile Include="src\game\arm_knuckle.cpp" />
@@ -238,6 +239,7 @@
     <ClInclude Include="src\physics\statuscalc.h" />
     <ClInclude Include="src\physics\projectilecalc.h" />
     <ClInclude Include="src\game\arm_hammer.h" />
+    <ClInclude Include="src\game\arm_katana.h" />
     <ClInclude Include="src\game\arm_gunlance.h" />
     <ClInclude Include="src\game\arm_c4.h" />
     <ClInclude Include="src\game\arm_knuckle.h" />
