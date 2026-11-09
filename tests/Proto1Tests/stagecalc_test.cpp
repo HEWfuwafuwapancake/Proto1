@@ -57,4 +57,62 @@ namespace Proto1Tests
 		EXPECT_FALSE(StageCalcIsOnPlatform(stage, 100.0f, 0.0f));
 		EXPECT_FALSE(StageCalcIsOut(stage, 50.0f));
 	}
+
+	// 高台が2つある中心 (0, 0) の浮島。(0, 10) が近い高台、(0, 14) が遠い高台。
+	static STAGE MakeGripStage(void)
+	{
+		STAGE stage = MakeStage();
+		stage.CenterX = 0.0f;
+		stage.CenterZ = 0.0f;
+		stage.Platforms[0] = { 0.0f, 10.0f, 1.0f, 1.0f, 4.0f, 0.6f };
+		stage.Platforms[1] = { 0.0f, 14.0f, 1.0f, 1.0f, 4.0f, 0.6f };
+		stage.PlatformCount = 2;
+		return stage;
+	}
+	static constexpr VEC3 GRIP_FEET{ 0.0f, 0.0f, 0.0f };
+	static constexpr VEC3 GRIP_ORIGIN{ 0.0f, 1.35f, 0.0f };
+	static constexpr float GRIP_RANGE = 16.0f;
+	static constexpr float GRIP_HALF_ANGLE = 0.7f;
+
+	// 正面の高台のうち、いちばん近いふち（手前の辺）を選ぶ
+	TEST(StageCalcTest, FindGrip_ChoosesNearestRimInFront)
+	{
+		const STAGE stage = MakeGripStage();
+		STAGE_GRIP grip{};
+		ASSERT_TRUE(StageCalcFindGrip(stage, GRIP_ORIGIN, GRIP_FEET, { 0.0f, 0.0f, 1.0f }, GRIP_RANGE, GRIP_HALF_ANGLE, grip));
+		EXPECT_NEAR(9.0f, grip.Point.Z, 0.001f);
+		EXPECT_NEAR(4.0f, grip.Point.Y, 0.001f);
+		EXPECT_NEAR(10.0f, grip.Surface.CenterZ, 0.001f);
+	}
+
+	// 後ろの高台と、遠すぎる高台は選ばない
+	TEST(StageCalcTest, FindGrip_IgnoresBehindAndTooFar)
+	{
+		const STAGE stage = MakeGripStage();
+		STAGE_GRIP grip{};
+		EXPECT_FALSE(StageCalcFindGrip(stage, GRIP_ORIGIN, GRIP_FEET, { 0.0f, 0.0f, -1.0f }, GRIP_RANGE, GRIP_HALF_ANGLE, grip));
+		EXPECT_FALSE(StageCalcFindGrip(stage, GRIP_ORIGIN, GRIP_FEET, { 0.0f, 0.0f, 1.0f }, 5.0f, GRIP_HALF_ANGLE, grip));
+	}
+
+	// 立っている高台は選ばず、その先の高台を選ぶ
+	TEST(StageCalcTest, FindGrip_SkipsPlatformBeingStoodOn)
+	{
+		const STAGE stage = MakeGripStage();
+		const VEC3 feet{ 0.0f, 4.0f, 10.0f };
+		STAGE_GRIP grip{};
+		ASSERT_TRUE(StageCalcFindGrip(stage, { 0.0f, 5.35f, 10.0f }, feet, { 0.0f, 0.0f, 1.0f }, GRIP_RANGE, GRIP_HALF_ANGLE, grip));
+		EXPECT_NEAR(14.0f, grip.Surface.CenterZ, 0.001f);
+	}
+
+	// 浮島のふちは、場外にいるときだけ選ぶ
+	TEST(StageCalcTest, FindGrip_MainIslandOnlyWhenOffIt)
+	{
+		STAGE stage = MakeGripStage();
+		stage.PlatformCount = 0;
+		STAGE_GRIP grip{};
+		EXPECT_FALSE(StageCalcFindGrip(stage, GRIP_ORIGIN, GRIP_FEET, { 0.0f, 0.0f, 1.0f }, GRIP_RANGE, GRIP_HALF_ANGLE, grip));
+		ASSERT_TRUE(StageCalcFindGrip(stage, { 0.0f, -1.65f, -18.0f }, { 0.0f, -3.0f, -18.0f }, { 0.0f, 0.0f, 1.0f }, GRIP_RANGE, GRIP_HALF_ANGLE, grip));
+		EXPECT_NEAR(-15.0f, grip.Point.Z, 0.001f);
+		EXPECT_NEAR(stage.TopY, grip.Surface.TopY, 0.001f);
+	}
 }

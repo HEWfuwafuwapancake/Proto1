@@ -179,6 +179,13 @@ namespace Proto1Tests
 		for (int i = 0; i < 8; ++i) AssertPoint(expected[i], GrappleCalcLanding(anchors[i], stage, 0.8f));
 	}
 
+	// 高台のふちに付いたときも、その高台の内側の上面に着地する
+	TEST(GrappleCalcTest, Landing_WorksOnHighPlatform)
+	{
+		const STAGE_PLATFORM platform{ -8, 8, 3, 3, 4, 0.6f };
+		AssertPoint({ -10.2f, 4, 8 }, GrappleCalcLanding({ -11, 4, 8 }, platform, 0.8f));
+	}
+
 	TEST(GrappleCalcTest, Trigger_ReleasesDuringFlightAndPullWithoutMovingBody)
 	{
 		for (int kind = 0; kind < 2; ++kind) {

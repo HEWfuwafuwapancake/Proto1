@@ -8,7 +8,8 @@ enum TENTACLE_STATE
 	TENTACLE_IDLE, ///< 待機中
 	TENTACLE_EXTENDING, ///< 敵を探して伸長中
 	TENTACLE_HOLDING, ///< 敵を引き寄せ・保持中
-	TENTACLE_RETURNING ///< 空の腕を収縮中
+	TENTACLE_RETURNING, ///< 空の腕を収縮中
+	TENTACLE_PULLING ///< 足場のふちに付いて、自分が引っぱられ中
 };
 
 /// @brief 触腕の調整値
@@ -34,6 +35,23 @@ struct TENTACLE_EVENT
 	int Grabbed; ///< 新たにつかんだ敵（なしは -1）
 	int Released; ///< 離した敵（なしは -1）
 	bool Throw; ///< true：投げる、false：その場で離す
+	bool Anchored; ///< このフレームに足場のふちに付いたか
+	bool PullEnded; ///< 再入力・取りやめで引っぱりを終えたか
+};
+
+/// @brief 自分を足場へ引っぱるときの調整値
+struct TENTACLE_PULL_PARAMS
+{
+	float Speed; ///< 引っぱられる速さ
+	float ArriveDistance; ///< 体の中心がふちからこの距離に入ったら到着
+	float MaxSeconds; ///< 引っぱりを続けられる秒数
+};
+
+/// @brief 引っぱりを1フレーム進めた結果
+struct TENTACLE_PULL
+{
+	bool Arrived; ///< このフレームに到着したか
+	bool Ended; ///< このフレームに引っぱりが終わったか（到着か時間切れ）
 };
 
 /// @brief モデルを配置する直交単位軸（-Y が腕の進む向き、-Z が下、X が横）
@@ -97,9 +115,23 @@ public:
 	/// @details targets は count 個。保持対象自身は Available が false でも有効。消失時は cancel で解除する
 	/// @param trigger 入力を設定する（true：押した瞬間、false：入力なし）
 	/// @param cancel 解除を設定する（true：復活などで待機に戻す、false：通常更新）
+	/// @param grip 伸ばし始めに、足場のふちへ向かうときのふち（なしは nullptr。伸ばせる長さはふちまでになる）
 	TENTACLE_EVENT Step(const VEC3& origin, const VEC3& aim,
 		const VEC3& holdPosition, bool trigger, bool cancel, float dt, const TENTACLE_PARAMS& params,
-		const TENTACLE_TARGET* targets, int count, const STAGE& stage);
+		const TENTACLE_TARGET* targets, int count, const STAGE& stage, const STAGE_GRIP* grip = nullptr);
+
+	/// @brief 足場のふちへ自分を引っぱる（TENTACLE_PULLING の間だけ動かす）
+	/// @param center 体の中心（移動後の位置を書き戻す）
+	/// @param params 引っぱりの調整値
+	/// @param dt 進める秒数（0 以下なら動かさない）
+	/// @return 到着したか・終わったか
+	TENTACLE_PULL StepPull(VEC3& center, const TENTACLE_PULL_PARAMS& params, float dt);
+
+	/// @brief 引っぱりをやめて腕を戻す（反対の手が新しく付いたとき）
+	void ReleasePull();
+
+	/// @brief 付いている足場の形を取得する
+	const STAGE_PLATFORM& GetSurface() const { return m_Surface; }
 
 	/// @brief 現在の状態を取得する
 	TENTACLE_STATE GetState() const { return m_State; }
@@ -123,6 +155,12 @@ public:
 	const HitRecord& GetHits() const { return m_Hits; }
 
 private:
+	void Anchor(const VEC3& point, const STAGE_PLATFORM& surface, TENTACLE_EVENT& event);
+	bool m_HasGrip{}; ///< 足場のふちへ向かって伸びているか
+	STAGE_GRIP m_Grip{}; ///< 向かっている足場のふち
+	float m_GripDistance{}; ///< 伸ばし始めの肩からふちまでの距離
+	STAGE_PLATFORM m_Surface{}; ///< 付いている足場の形
+	float m_PullTime{}; ///< 引っぱり始めてからの秒数
 	TENTACLE_STATE m_State{}; ///< 現在の状態
 	VEC3 m_Tip{}; ///< 腕の先端、保持中は敵の中心
 	VEC3 m_Direction{}; ///< 伸ばし始めの向き

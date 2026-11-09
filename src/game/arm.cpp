@@ -77,6 +77,8 @@ void ArmManager::Initialize(const Stage& stage, FighterManager& fighters, int sl
 		if (ARM_FACTORIES[type] == nullptr) continue;
 		for (int hand = 0; hand < 2; ++hand) m_Arms[hand][type] = ARM_FACTORIES[type](hand, m_Links);
 	}
+	// 足場への引っぱりは両手で同時に行わず、後から付いた手へ受け持ちを渡す。
+	static_cast<TentacleArm&>(*m_Arms[0][ARM_TYPE_TENTACLE]).ConnectOtherArm(static_cast<TentacleArm&>(*m_Arms[1][ARM_TYPE_TENTACLE]));
 	Reset();
 }
 
