@@ -1,4 +1,5 @@
 ﻿#include "physics/tentaclecalc.h"
+#include "physics/grapplecalc.h"
 #include <algorithm>
 
 // 調整用の値
@@ -118,11 +119,12 @@ VEC3 TentacleCalcClip(const VEC3& from, const VEC3& to, const STAGE& stage, floa
 
 TENTACLE_EVENT TentacleCalc::Step(const VEC3& origin, const VEC3& aim,
 	const VEC3& holdPosition, bool trigger, bool cancel, float dt, const TENTACLE_PARAMS& params,
-	const TENTACLE_TARGET* targets, int count, const STAGE& stage)
+	const TENTACLE_TARGET* targets, int count, const STAGE& stage, const STAGE_GRIP* grip)
 {
-	TENTACLE_EVENT event{ -1, -1, false };
+	TENTACLE_EVENT event{ -1, -1, false, false, false };
 	if (cancel) {
 		event.Released = m_Target;
+		event.PullEnded = m_State == TENTACLE_PULLING;
 		Reset();
 		m_Tip = origin;
 		return event;
@@ -137,6 +139,18 @@ TENTACLE_EVENT TentacleCalc::Step(const VEC3& origin, const VEC3& aim,
 		m_Length = 0.0f;
 		m_Hits.Clear();
 		m_State = TENTACLE_EXTENDING;
+		m_HasGrip = grip != nullptr;
+		if (m_HasGrip) {
+			m_Grip = *grip;
+			m_GripDistance = Vec3Length(Vec3Sub(grip->Point, origin));
+		}
+	}
+	else if (m_State == TENTACLE_PULLING) {
+		if (trigger) {
+			event.PullEnded = true;
+			m_State = TENTACLE_RETURNING;
+		}
+		return event;
 	}
 	else if (m_State == TENTACLE_HOLDING) {
 		m_HoldTime += dt;
@@ -159,7 +173,8 @@ TENTACLE_EVENT TentacleCalc::Step(const VEC3& origin, const VEC3& aim,
 		return event;
 	}
 
-	m_Length = (std::min)(params.MaxLength, m_Length + params.ExtendSpeed * dt);
+	const float maxLength = m_HasGrip ? m_GripDistance : params.MaxLength;
+	m_Length = (std::min)(maxLength, m_Length + params.ExtendSpeed * dt);
 	const VEC3 desired = Vec3Add(origin, Vec3Scale(m_Direction, m_Length));
 	const VEC3 end = TentacleCalcClip(origin, desired, stage, params.Radius, params.Radius);
 	// 腕全体を調べるので、一度に大きく伸びても敵を飛び越えない。
@@ -187,8 +202,43 @@ TENTACLE_EVENT TentacleCalc::Step(const VEC3& origin, const VEC3& aim,
 		m_Tip = Vec3Scale(Vec3Add(targets[first].Body.Start, targets[first].Body.End), 0.5f);
 		event.Grabbed = first;
 	}
-	else if (m_Length >= params.MaxLength || Vec3LengthSq(Vec3Sub(end, desired)) > 0.000001f) {
-		m_State = TENTACLE_RETURNING;
+	else if (Vec3LengthSq(Vec3Sub(end, desired)) > 0.000001f) {
+		// 浮島の横のふちに当たったら付き、上の面に当たっただけなら戻る。
+		if (StageCalcIsOnPlatform(stage, end.X, end.Z)) m_State = TENTACLE_RETURNING;
+		else Anchor(end, StageCalcIslandSurface(stage), event);
+	}
+	else if (m_Length >= maxLength) {
+		if (m_HasGrip) Anchor(m_Grip.Point, m_Grip.Surface, event);
+		else m_State = TENTACLE_RETURNING;
 	}
 	return event;
+}
+
+void TentacleCalc::Anchor(const VEC3& point, const STAGE_PLATFORM& surface, TENTACLE_EVENT& event)
+{
+	m_Tip = point;
+	m_Surface = surface;
+	m_PullTime = 0.0f;
+	m_State = TENTACLE_PULLING;
+	event.Anchored = true;
+}
+
+TENTACLE_PULL TentacleCalc::StepPull(VEC3& center, const TENTACLE_PULL_PARAMS& params, float dt)
+{
+	TENTACLE_PULL pull{ false, false };
+	if (m_State != TENTACLE_PULLING || dt <= 0.0f) return pull;
+	// 残っている時間までだけ進め、長いフレームでも制限時間を越えて引っぱらない。
+	const float pullDt = (std::min)(dt, (std::max)(0.0f, params.MaxSeconds - m_PullTime));
+	m_PullTime += pullDt;
+	pull.Arrived = GrappleCalcPull(center, m_Tip, params.Speed, params.ArriveDistance, pullDt);
+	if (pull.Arrived || m_PullTime >= params.MaxSeconds) {
+		pull.Ended = true;
+		m_State = TENTACLE_RETURNING;
+	}
+	return pull;
+}
+
+void TentacleCalc::ReleasePull()
+{
+	if (m_State == TENTACLE_PULLING) m_State = TENTACLE_RETURNING;
 }

@@ -1,5 +1,7 @@
 ﻿#pragma once
 
+#include "physics/vec3.h"
+
 /// @file stagecalc.h
 /// @brief ステージ（浮島と高台）と場外の計算
 /// @details DirectX と Windows を使わないので、単体テスト（tests/Proto1Tests）からそのまま使える。
@@ -58,6 +60,31 @@ bool StageCalcHasSupport(const STAGE& stage, float x, float y, float z);
 /// @param landingY 上面が見つかったときに書き込む高さ
 /// @return 上面が見つかったら true（同じ高さでの接触を含む）
 bool StageCalcFindLanding(const STAGE& stage, float x, float z, float previousY, float y, float& landingY);
+
+/// @brief 触手がつかむ足場のふち
+struct STAGE_GRIP
+{
+	VEC3 Point;				///< ふちの点（上の面の高さ）
+	STAGE_PLATFORM Surface;	///< そのふちを持つ足場の形（浮島なら浮島の形）
+};
+
+/// @brief 浮島の形を高台と同じ形にして取得する
+/// @param stage ステージ
+/// @return 浮島の中心・半幅・半奥行き・上の面の高さ・厚さ
+STAGE_PLATFORM StageCalcIslandSurface(const STAGE& stage);
+
+/// @brief 正面の水平の扇の中で、いちばん近い足場のふちを探す
+/// @details 立っている高台は選ばない。浮島は、浮島の上に立っていないとき（場外・浮島より下）だけ選ぶ
+/// @param stage ステージ
+/// @param origin 距離と向きを測る点（肩）
+/// @param feet 足元の位置（立っている足場を除くのに使う）
+/// @param forward 扇の中心の向き（上下は使わない）
+/// @param maxDistance 上下も含めて、これより遠いふちは選ばない
+/// @param halfAngle 扇の左右それぞれの開き（ラジアン）
+/// @param grip 見つかったときに書き込むふち
+/// @return 見つかったら true
+bool StageCalcFindGrip(const STAGE& stage, const VEC3& origin, const VEC3& feet, const VEC3& forward,
+	float maxDistance, float halfAngle, STAGE_GRIP& grip);
 
 /// @brief 場外の下の線より下に落ちたか調べる
 /// @param stage ステージ

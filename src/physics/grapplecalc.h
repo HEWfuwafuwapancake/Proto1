@@ -60,6 +60,12 @@ bool GrappleCalcPull(VEC3& center, const VEC3& anchor, float speed, float distan
 /// @param inset ふちから内側へ寄せる距離（半幅・半奥行きまでに制限する）
 VEC3 GrappleCalcLanding(const VEC3& anchor, const STAGE& stage, float inset);
 
+/// @brief 刺さった所の XZ を足場のふちの内側へ寄せ、上面に置いた足元の位置を求める（高台にも使える）
+/// @param anchor 刺さった所
+/// @param surface 足場の形
+/// @param inset ふちから内側へ寄せる距離（半幅・半奥行きまでに制限する）
+VEC3 GrappleCalcLanding(const VEC3& anchor, const STAGE_PLATFORM& surface, float inset);
+
 /// @brief モデルの点を cm からワールドへ変換する（ArmDrawPiece と同じ軸・ひねり）
 /// @param point OBJ 読み込み後と同じ左手系のモデル座標（cm。Maya からの Z 反転済み、X 鏡写し前）
 /// @param start 付け根の原点

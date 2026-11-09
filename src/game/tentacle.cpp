@@ -7,14 +7,32 @@
 #include "core/mathutil.h"
 #include "game/arm.h"
 #include "input/pad.h"
+#include "physics/areacalc.h"
 #include "physics/armcalc.h"
+#include "physics/grapplecalc.h"
 #include "render/shape.h"
 #include <algorithm>
 
 // 調整用の値
 static constexpr TENTACLE_PARAMS PARAMS{ 8.0f, 24.0f, 30.0f, 3.0f, 0.18f };
-static constexpr float THROW_DAMAGE = 12.0f;
-static constexpr float THROW_POWER = 2.0f;
+static constexpr float GRAB_DAMAGE = 4.0f; // つかんだときに足す %
+static constexpr float THROW_DAMAGE = 4.0f;
+static constexpr float THROW_POWER = 1.5f;
+static constexpr float GRIP_RANGE = 16.0f; // 足場のふちへ伸ばせる距離（上下も含む）
+static constexpr float GRIP_HALF_ANGLE = XMConvertToRadians(40.0f); // 足場のふちを探す画面の正面の左右の開き
+static constexpr TENTACLE_PULL_PARAMS PULL_PARAMS{ 20.0f, 0.8f, 1.5f };
+static constexpr float LANDING_INSET = 0.8f; // 足場のふちから内側へ寄せて着地する距離
+static constexpr float SPIN_PHASE_SECONDS[] = { 0.25f, 0.4f, 0.2f }; // 溜め・回転・休み
+static constexpr float SPIN_RADIUS = 3.5f;
+static constexpr float SPIN_DAMAGE = 10.0f;
+static constexpr float SPIN_POWER = 2.0f;
+static constexpr float SPIN_UP = 0.6f; // 外への水平の単位方向に足す上向きの量
+static constexpr float SPIN_HALF_HEIGHT = 1.5f; // 肩の高さから上下それぞれの当たる幅
+static constexpr float SPIN_MARGIN = XMConvertToRadians(2.0f); // 1フレーム分の扇に足す角度（つなぎ目の取りこぼし防止）
+static constexpr float SPIN_FULL_TURN = XMConvertToRadians(360.0f);
+static constexpr float SPIN_RUMBLE_SMALL = 0.6f;
+static constexpr float SPIN_RUMBLE_LARGE = 0.6f;
+static constexpr float SPIN_RUMBLE_SECONDS = 0.15f;
 static constexpr float GRAB_RUMBLE_SMALL = 0.4f;
 static constexpr float GRAB_RUMBLE_LARGE = 0.0f;
 static constexpr float GRAB_RUMBLE_SECONDS = 0.1f;
@@ -62,6 +80,8 @@ static constexpr float WIGGLE_ARM_PHASE = 1.6f;
 static constexpr float WIGGLE_FULL_LENGTH = 3.0f;
 static constexpr float WIGGLE_HOLD_SCALE = 0.3f;
 
+enum SPIN_PHASE { SPIN_CHARGE, SPIN_SWING, SPIN_RECOVER, SPIN_PHASE_COUNT };
+
 VEC3 TentacleArm::GetMountOffset() const
 {
 	return MOUNT_OFFSET;
@@ -89,11 +109,105 @@ void TentacleArm::Reset()
 	TentacleCalc& arm = m_Arm;
 	GetFighters().Release(arm.GetTarget(), GetSlot(), false, {}, 0.0f, 0.0f);
 	arm.Reset();
+	m_Spin.Reset();
+	StopPulling();
 }
 
 TentacleArm::~TentacleArm()
 {
 	Reset();
+}
+
+void TentacleArm::ConnectOtherArm(TentacleArm& other)
+{
+	m_OtherArm = &other;
+	other.m_OtherArm = this;
+}
+
+void TentacleArm::StopPulling()
+{
+	if (!m_Pulling) return;
+	m_Pulling = false;
+	GetPlayer().SetPulled(false);
+}
+
+// 伸ばす先を決める：届く距離のロックオン中の敵 → 画面の正面の足場のふち → 今までどおり水平に。
+void TentacleArm::StartReach(const TENTACLE_TARGET* targets, const VEC3& origin, const VEC3& cameraForward,
+	VEC3& aim, STAGE_GRIP& grip, bool& hasGrip) const
+{
+	const int target = GetAimTarget();
+	const VEC3 center = target >= 0
+		? Vec3Scale(Vec3Add(targets[target].Body.Start, targets[target].Body.End), 0.5f) : VEC3{};
+	const XMFLOAT3 p = GetPlayer().GetPosition();
+	hasGrip = (target < 0 || Vec3Length(Vec3Sub(center, origin)) > PARAMS.MaxLength)
+		&& StageCalcFindGrip(GetStage().GetStage(), origin, { p.x, p.y, p.z }, cameraForward, GRIP_RANGE, GRIP_HALF_ANGLE, grip);
+	// 各肩からの向きを開始時だけ決める。伸長中は追いかけず、投げる向きとも分ける。
+	aim = hasGrip ? Vec3Sub(grip.Point, origin) : TentacleCalcAim(origin, center, target >= 0, cameraForward);
+}
+
+void TentacleArm::StepPull(const TENTACLE_EVENT& event, float dt)
+{
+	if (event.Anchored) {
+		// 新しく付いた手へ受け持ちを移す。先の手は腕を戻す。
+		if (m_OtherArm != nullptr && m_OtherArm->m_Pulling) {
+			m_OtherArm->m_Arm.ReleasePull();
+			m_OtherArm->m_Pulling = false;
+		}
+		m_Pulling = true;
+		GetPlayer().SetPulled(true);
+		Rumble(GRAB_RUMBLE_SMALL, GRAB_RUMBLE_LARGE, GRAB_RUMBLE_SECONDS);
+	}
+	if (event.PullEnded) StopPulling();
+	if (!m_Pulling) return;
+	const XMFLOAT3 p = GetPlayer().GetPosition();
+	const float halfHeight = GetPlayer().GetHeight() * 0.5f;
+	VEC3 center{ p.x, p.y + halfHeight, p.z };
+	const TENTACLE_PULL pull = m_Arm.StepPull(center, PULL_PARAMS, dt);
+	if (pull.Arrived) {
+		const VEC3 landing = GrappleCalcLanding(m_Arm.GetTip(), m_Arm.GetSurface(), LANDING_INSET);
+		GetPlayer().SetPosition({ landing.X, landing.Y, landing.Z });
+	}
+	else {
+		GetPlayer().SetPosition({ center.X, center.Y - halfHeight, center.Z });
+	}
+	if (pull.Ended) StopPulling();
+}
+
+VEC3 TentacleArm::GetSpinTip() const
+{
+	const float side = GetHand() == 0 ? -1.0f : 1.0f;
+	return Vec3Add(GetShoulder(), Vec3Scale(AreaCalcRotateYaw(m_SpinForward, side * m_SpinAngle), SPIN_RADIUS));
+}
+
+void TentacleArm::StepSpin(const ARM_INPUT& input, float dt)
+{
+	if (m_Spin.IsIdle() && input.HoldStarted && m_Arm.GetState() == TENTACLE_IDLE) {
+		m_SpinForward = GetAim(false);
+		m_SpinAngle = 0.0f;
+		m_SpinHits.Clear();
+		m_Spin.Start(SPIN_CHARGE);
+	}
+	const ARM_PHASE_STEP step = m_Spin.Step(dt, SPIN_PHASE_SECONDS, SPIN_PHASE_COUNT);
+	if (m_Spin.GetPhase() != SPIN_SWING && step.Entered != SPIN_RECOVER) return;
+	// 前のフレームから今までに回った扇だけを調べる（段階の終わりは必ず一周まで）。
+	const float angle = step.Entered == SPIN_RECOVER ? SPIN_FULL_TURN
+		: SPIN_FULL_TURN * fminf(1.0f, m_Spin.GetTime() / SPIN_PHASE_SECONDS[SPIN_SWING]);
+	const float side = GetHand() == 0 ? -1.0f : 1.0f;
+	const VEC3 middle = AreaCalcRotateYaw(m_SpinForward, side * (m_SpinAngle + angle) * 0.5f);
+	const float halfAngle = (angle - m_SpinAngle) * 0.5f + SPIN_MARGIN;
+	const XMFLOAT3 p = GetPlayer().GetPosition();
+	const VEC3 center{ p.x, GetShoulder().Y, p.z };
+	bool hit = false;
+	for (int i = 0; i < FIGHTER_COUNT; ++i) {
+		const TENTACLE_TARGET target = GetFighters().GetTarget(i, GetSlot());
+		if (!target.Available || m_SpinHits.Contains(i)
+			|| !AreaCalcInSector(center, middle, 0.0f, SPIN_RADIUS, halfAngle, SPIN_HALF_HEIGHT, target.Body)) continue;
+		m_SpinHits.TryAdd(i);
+		GetFighters().Launch(i, GetSlot(), AreaCalcRadialDirection(center, target.Body, SPIN_UP, middle), SPIN_DAMAGE, SPIN_POWER);
+		hit = true;
+	}
+	m_SpinAngle = angle;
+	if (hit) Rumble(SPIN_RUMBLE_SMALL, SPIN_RUMBLE_LARGE, SPIN_RUMBLE_SECONDS);
 }
 
 void TentacleArm::Update(const ARM_INPUT& input)
@@ -110,22 +224,24 @@ void TentacleArm::Update(const ARM_INPUT& input)
 	// 肩と同じ高さ（従来の p.y + HAND_HEIGHT）。XZ の計算順は従来の Position と同じ。
 	const VEC3 hold = HoldPosition(side * HOLD_OFFSET, HOLD_FORWARD, origin.Y);
 	VEC3 aim = cameraForward;
-	if (input.Tap && arm.GetState() == TENTACLE_IDLE) {
-		const int target = GetCamera().GetTarget();
-		const bool hasTarget = target >= 0 && target < FIGHTER_COUNT;
-		const VEC3 center = hasTarget
-			? Vec3Scale(Vec3Add(targets[target].Body.Start, targets[target].Body.End), 0.5f) : VEC3{};
-		// 各肩からの向きを開始時だけ決める。伸長中は追いかけず、投げる向きとも分ける。
-		aim = TentacleCalcAim(origin, center, hasTarget, cameraForward);
-	}
+	STAGE_GRIP grip{};
+	bool hasGrip = false;
+	// 回転の間は単押しで伸ばさない。
+	const bool trigger = input.Tap && m_Spin.IsIdle();
+	if (trigger && arm.GetState() == TENTACLE_IDLE) StartReach(targets, origin, cameraForward, aim, grip, hasGrip);
+	const float dt = GameTimeGetDeltaTime();
 	const bool cancel = GetPlayer().DidRespawn() || (arm.GetTarget() >= 0 && !GetFighters().IsHeldBy(arm.GetTarget(), GetSlot()));
-	const TENTACLE_EVENT event = arm.Step(origin, aim, hold,
-		input.Tap, cancel,
-		GameTimeGetDeltaTime(), PARAMS, targets, FIGHTER_COUNT, GetStage().GetStage());
+	const TENTACLE_EVENT event = arm.Step(origin, aim, hold, trigger, cancel,
+		dt, PARAMS, targets, FIGHTER_COUNT, GetStage().GetStage(), hasGrip ? &grip : nullptr);
 	if (event.Grabbed >= 0) {
-		if (GetFighters().Grab(event.Grabbed, GetSlot())) Rumble(GRAB_RUMBLE_SMALL, GRAB_RUMBLE_LARGE, GRAB_RUMBLE_SECONDS);
+		if (GetFighters().Grab(event.Grabbed, GetSlot())) {
+			GetFighters().AddDamage(event.Grabbed, GetSlot(), GRAB_DAMAGE);
+			Rumble(GRAB_RUMBLE_SMALL, GRAB_RUMBLE_LARGE, GRAB_RUMBLE_SECONDS);
+		}
 		else arm.Reset();
 	}
+	StepPull(event, dt);
+	StepSpin(input, dt);
 	if (event.Released >= 0) {
 		GetFighters().Release(event.Released, GetSlot(), event.Throw, cameraForward, THROW_DAMAGE, THROW_POWER);
 		if (event.Throw) Rumble(THROW_RUMBLE_SMALL, THROW_RUMBLE_LARGE, THROW_RUMBLE_SECONDS);
@@ -209,7 +325,10 @@ void TentacleArm::Draw()
 	const TentacleCalc& arm = m_Arm;
 	const VEC3 origin = GetDrawShoulder();
 	const VEC3 physicalOrigin = GetShoulder();
-	VEC3 tip = arm.GetState() == TENTACLE_IDLE ? physicalOrigin : arm.GetTip();
+	// 回転中は腕の先を回転の円の上に置いて、伸ばしている腕と同じように描く。
+	const bool spinning = m_Spin.GetPhase() == SPIN_SWING;
+	const bool idle = arm.GetState() == TENTACLE_IDLE && !spinning;
+	VEC3 tip = spinning ? GetSpinTip() : (idle ? physicalOrigin : arm.GetTip());
 	const float modelScale = MODEL_SCALE * GetDrawScale();
 	const float yaw = GetPlayer().GetYaw();
 	const VEC3 right{ cosf(yaw), 0.0f, -sinf(yaw) };
@@ -224,8 +343,8 @@ void TentacleArm::Draw()
 	// 待機中は物理の鎖の形。伸ばし始めは鎖の形から少しずつまっすぐにする（つかんでいる間は使わない）。
 	StepRope(origin, idleLength, modelScale);
 	float hanging = 0.0f;
-	if (arm.GetState() == TENTACLE_IDLE) hanging = 1.0f;
-	else if (arm.GetState() != TENTACLE_HOLDING) {
+	if (idle) hanging = 1.0f;
+	else if (!spinning && arm.GetState() != TENTACLE_HOLDING) {
 		hanging = fmaxf(0.0f, 1.0f - Vec3Length(Vec3Sub(arm.GetTip(), physicalOrigin)) / idleLength);
 	}
 	// 付け根の箱は待機中は鎖の最初の節の向き（肩の可動域の中で振れる）。伸ばすほど、箱の真ん中を支点に先端の方へ回す。
@@ -249,7 +368,7 @@ void TentacleArm::Draw()
 	// 節は箱の下端から先端へ伸ばす（肩から外れて見えないように）。
 	const VEC3 delta = Vec3Sub(tip, baseTop);
 	const int steps = (int)ceilf(Vec3Length(delta) / SPHERE_SPACING) + 1;
-	const XMFLOAT4 color = GetColor(arm.GetTarget() >= 0);
+	const XMFLOAT4 color = GetColor(arm.GetTarget() >= 0 || m_Pulling || !m_Spin.IsIdle());
 	if (m_BaseModel >= 0 && m_SegmentModel >= 0 && m_TipModel >= 0) {
 		const float length = Vec3Length(Vec3Sub(tip, anchor)) + baseLength; // 箱の長さ＋箱の下端から先端まで
 		const float remaining = length / modelScale - BASE_LENGTH - TIP_LENGTH;
@@ -265,7 +384,7 @@ void TentacleArm::Draw()
 		const VEC3 drawTip = Vec3Add(anchor, Vec3Scale(chainDirection, fmaxf(chainLength, drawLength - baseLength)));
 		const float phase = GameTimeGetElapsed() * WIGGLE_SPEED + hand * WIGGLE_ARM_PHASE;
 		// 待機中は揺らさない（揺れは鎖の物理に任せる）。伸ばしている間とつかんでいる間だけ揺らす。
-		const float amplitude = arm.GetState() == TENTACLE_IDLE ? 0.0f
+		const float amplitude = idle ? 0.0f
 			: WIGGLE_AMPLITUDE * fminf(1.0f, length / WIGGLE_FULL_LENGTH)
 			* (arm.GetState() == TENTACLE_HOLDING ? WIGGLE_HOLD_SCALE : 1.0f);
 		float distance = 0.0f;
@@ -305,5 +424,5 @@ bool TentacleArm::IsHolding() const
 
 bool TentacleArm::IsActive() const
 {
-	return m_Arm.GetState() != TENTACLE_IDLE;
+	return m_Arm.GetState() != TENTACLE_IDLE || !m_Spin.IsIdle();
 }

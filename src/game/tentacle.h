@@ -1,13 +1,14 @@
 ﻿#pragma once
 
 #include "game/arm.h"
+#include "physics/armphasecalc.h"
 #include "physics/tentaclecalc.h"
 #include "physics/tentacleropecalc.h"
 
 /// @file tentacle.h
-/// @brief 触腕（片手の腕で敵をつかんで、カメラの向きへ投げる）
+/// @brief 触手（単押しで敵をつかんで投げる・足場へ飛ぶ。長押しで周囲を1回転）
 
-/// @brief 片手の触腕の状態・モデルと、命中・保持・投げ・描画を管理する
+/// @brief 片手の触手の状態・モデルと、命中・保持・投げ・足場への引っぱり・回転・描画を管理する
 class TentacleArm : public Arm
 {
 public:
@@ -17,14 +18,17 @@ public:
 	TentacleArm(int hand, const ARM_LINKS& links);
 	/// @brief 保持している敵をダメージなしで離して終了する
 	~TentacleArm() override;
-	/// @brief カメラ更新後に入力・命中・保持・投げを更新する
-	/// @param input このフレームの腕の入力（単押しで伸ばす・投げる）
+	/// @brief 左右の腕を接続し、足場への引っぱりを後から付いた手へ渡せるようにする（起動時に1回）
+	/// @param other 反対の手の触手
+	void ConnectOtherArm(TentacleArm& other);
+	/// @brief カメラ更新後に入力・命中・保持・投げ・引っぱり・回転を更新する
+	/// @param input このフレームの腕の入力（単押しで伸ばす・投げる、長押しで回転する）
 	void Update(const ARM_INPUT& input) override;
 	/// @brief OBJ をつないで触腕を描く（読み込み失敗時は球）
 	void Draw() override;
-	/// @brief つかんでいる敵をダメージなしで離し、待機状態に戻す
+	/// @brief つかんでいる敵をダメージなしで離し、引っぱりと回転もやめて待機状態に戻す
 	void Reset() override;
-	/// @brief 伸長・保持・収縮中なら true を返す
+	/// @brief 伸長・保持・収縮・引っぱり・回転中なら true を返す
 	bool IsActive() const override;
 	/// @brief 保持中なら true を返す
 	bool IsHolding() const override;
@@ -36,6 +40,17 @@ protected:
 private:
 	VEC3 HoldPosition(float side, float forward, float height) const;
 	void StepRope(const VEC3& origin, float idleLength, float modelScale);
+	void StartReach(const TENTACLE_TARGET* targets, const VEC3& origin, const VEC3& cameraForward, VEC3& aim, STAGE_GRIP& grip, bool& hasGrip) const;
+	void StopPulling();
+	void StepPull(const TENTACLE_EVENT& event, float dt);
+	void StepSpin(const ARM_INPUT& input, float dt);
+	VEC3 GetSpinTip() const;
+	ArmPhaseCalc m_Spin; // 長押しの溜め → 回転 → 休み
+	HitRecord m_SpinHits; // 1回の回転で当たった相手
+	VEC3 m_SpinForward = { 0.0f, 0.0f, 1.0f }; // 回転を始めた向き
+	float m_SpinAngle = 0.0f; // 回転し終わった角度（ラジアン）
+	TentacleArm* m_OtherArm = nullptr; // 反対の手の触手（起動時につなぐ）
+	bool m_Pulling = false; // 左右のうち、後から付いて引っぱりを受け持つ手だけ true
 	TentacleCalc m_Arm;
 	int m_BaseModel = -1;
 	int m_SegmentModel = -1;

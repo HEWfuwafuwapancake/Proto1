@@ -239,6 +239,93 @@ namespace Proto1Tests
 		EXPECT_TRUE(arm.GetExtendRatio(params) > first);
 	}
 
+	static const STAGE_GRIP gripAhead{ { 0, 4, 10 }, { 0, 11, 3, 3, 4, 0.6f } };
+	static const TENTACLE_PULL_PARAMS pullParams{ 20, 0.8f, 1.5f };
+	static const float PULL_DT = 1.0f / 60.0f;
+
+	static void ReachGrip(TentacleCalc& arm)
+	{
+		const VEC3 toGrip = Vec3Sub(gripAhead.Point, origin);
+		arm.Step(origin, toGrip, hold, true, false, PULL_DT, params, nullptr, 0, stage, &gripAhead);
+		for (int i = 0; i < 120 && arm.GetState() == TENTACLE_EXTENDING; ++i) {
+			arm.Step(origin, toGrip, hold, false, false, PULL_DT, params, nullptr, 0, stage);
+		}
+	}
+
+	// ふちへ向かう腕は、普通の長さ（8）より遠くても届いて付く
+	TEST(TentacleCalcTest, Grip_ReachesBeyondNormalLengthAndAnchors)
+	{
+		TentacleCalc arm; arm.Reset();
+		ReachGrip(arm);
+		EXPECT_EQ((int)TENTACLE_PULLING, (int)arm.GetState());
+		EXPECT_NEAR(0.0f, Vec3Length(Vec3Sub(arm.GetTip(), gripAhead.Point)), 0.0001f);
+		EXPECT_NEAR(Vec3Length(Vec3Sub(gripAhead.Point, origin)), arm.GetLength(), 0.001f);
+		EXPECT_NEAR(11.0f, arm.GetSurface().CenterZ, 0.0001f);
+	}
+
+	// ふちへ向かう途中に敵がいたら、敵をつかむ
+	TEST(TentacleCalcTest, Grip_EnemyInThePathIsGrabbed)
+	{
+		TentacleCalc arm; arm.Reset();
+		TENTACLE_TARGET target{ { { 0, 1.5f, 5 }, { 0, 2.5f, 5 }, 0.5f }, true };
+		const VEC3 toGrip = Vec3Sub(gripAhead.Point, origin);
+		const auto event = arm.Step(origin, toGrip, hold, true, false, 1, params, &target, 1, stage, &gripAhead);
+		EXPECT_EQ(0, event.Grabbed);
+		EXPECT_EQ((int)TENTACLE_HOLDING, (int)arm.GetState());
+	}
+
+	// 浮島の横のふちに当たると付く（上の面に当たると戻るのは Stage_BlocksDownwardReach）
+	TEST(TentacleCalcTest, SideOfMainIsland_Anchors)
+	{
+		TentacleCalc arm; arm.Reset();
+		const VEC3 outside{ 0, -1, -18 };
+		const auto event = arm.Step(outside, { 0, 0, 1 }, hold, true, false, 1, params, nullptr, 0, stage);
+		EXPECT_TRUE(event.Anchored);
+		EXPECT_EQ((int)TENTACLE_PULLING, (int)arm.GetState());
+		EXPECT_NEAR(stage.TopY, arm.GetSurface().TopY, 0.0001f);
+	}
+
+	// 引っぱりは少しずつ近づき、到着したら終わって腕が戻る
+	TEST(TentacleCalcTest, Pull_MovesThenArrives)
+	{
+		TentacleCalc arm; arm.Reset();
+		ReachGrip(arm);
+		VEC3 center{ 0, 0.9f, 0 };
+		const float before = Vec3Length(Vec3Sub(gripAhead.Point, center));
+		TENTACLE_PULL pull = arm.StepPull(center, pullParams, PULL_DT);
+		EXPECT_FALSE(pull.Ended);
+		EXPECT_LT(Vec3Length(Vec3Sub(gripAhead.Point, center)), before);
+		for (int i = 0; i < 120 && !pull.Ended; ++i) pull = arm.StepPull(center, pullParams, PULL_DT);
+		EXPECT_TRUE(pull.Arrived);
+		EXPECT_NEAR(pullParams.ArriveDistance, Vec3Length(Vec3Sub(gripAhead.Point, center)), 0.001f);
+		EXPECT_EQ((int)TENTACLE_RETURNING, (int)arm.GetState());
+	}
+
+	// 届かないまま時間切れになったら、到着せずに終わる（1/60 秒刻み）
+	TEST(TentacleCalcTest, Pull_TimesOutWithoutArriving)
+	{
+		TentacleCalc arm; arm.Reset();
+		ReachGrip(arm);
+		VEC3 center{ 0, 0.9f, 0 };
+		const TENTACLE_PULL_PARAMS slow{ 1, 0.8f, 1.5f };
+		TENTACLE_PULL pull{};
+		int frames = 0;
+		for (; frames < 200 && !pull.Ended; ++frames) pull = arm.StepPull(center, slow, PULL_DT);
+		EXPECT_FALSE(pull.Arrived);
+		EXPECT_TRUE(pull.Ended);
+		EXPECT_NEAR(90, frames, 1);
+	}
+
+	// 引っぱり中にもう一度押すと、やめて腕を戻す
+	TEST(TentacleCalcTest, Pull_SecondPressEnds)
+	{
+		TentacleCalc arm; arm.Reset();
+		ReachGrip(arm);
+		const auto event = arm.Step(origin, aim, hold, true, false, PULL_DT, params, nullptr, 0, stage);
+		EXPECT_TRUE(event.PullEnded);
+		EXPECT_EQ((int)TENTACLE_RETURNING, (int)arm.GetState());
+	}
+
 	TEST(TentacleCalcTest, DirectedThrow_UsesPitchAndNormalizesSpeed)
 	{
 		const VEC3 down = KnockbackCalcDirectedVelocity({ 0, -3, 4 }, 10);

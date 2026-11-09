@@ -137,10 +137,15 @@ GRAPPLE_EVENT GrappleCalc::Step(const VEC3& origin, const VEC3& aim, VEC3& cente
 
 VEC3 GrappleCalcLanding(const VEC3& anchor, const STAGE& stage, float inset)
 {
-	const float width = fmaxf(0.0f, stage.HalfWidth - fmaxf(0.0f, inset));
-	const float depth = fmaxf(0.0f, stage.HalfDepth - fmaxf(0.0f, inset));
-	return { fmaxf(stage.CenterX - width, fminf(stage.CenterX + width, anchor.X)), stage.TopY,
-		fmaxf(stage.CenterZ - depth, fminf(stage.CenterZ + depth, anchor.Z)) };
+	return GrappleCalcLanding(anchor, StageCalcIslandSurface(stage), inset);
+}
+
+VEC3 GrappleCalcLanding(const VEC3& anchor, const STAGE_PLATFORM& surface, float inset)
+{
+	const float width = fmaxf(0.0f, surface.HalfWidth - fmaxf(0.0f, inset));
+	const float depth = fmaxf(0.0f, surface.HalfDepth - fmaxf(0.0f, inset));
+	return { fmaxf(surface.CenterX - width, fminf(surface.CenterX + width, anchor.X)), surface.TopY,
+		fmaxf(surface.CenterZ - depth, fminf(surface.CenterZ + depth, anchor.Z)) };
 }
 
 VEC3 GrappleCalcModelPoint(const VEC3& point, const VEC3& start, const VEC3& end,
