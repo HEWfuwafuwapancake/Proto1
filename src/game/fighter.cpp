@@ -178,7 +178,8 @@ void Fighter::UpdateFacing(const Camera& camera, const ArmManager& arms, const F
 		m_Yaw = camera.GetYaw();
 		return;
 	}
-	const bool armActive = arms.IsActive() || IsTrigger(ACTION_ARM_LEFT) || IsTrigger(ACTION_ARM_RIGHT);
+	// 単押しは離したときに始まるので、押した瞬間では向きを変えない。
+	const bool armActive = arms.IsActive();
 	const int target = camera.GetTarget();
 	float targetYaw = m_Yaw;
 	if (target >= 0) {
