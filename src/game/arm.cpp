@@ -3,6 +3,7 @@
 #include "game/fightermanager.h"
 #include "core/gametime.h"
 #include "game/arm_hammer.h"
+#include "game/arm_knuckle.h"
 #include "game/tentacle.h"
 #include "input/pad.h"
 #include "game/camera.h"
@@ -45,7 +46,7 @@ using ArmFactory = std::unique_ptr<Arm> (*)(int hand, const ARM_LINKS& links);
 static const ArmFactory ARM_FACTORIES[ARM_TYPE_COUNT] = {
 	CreateArm<TentacleArm>, // 触手
 	CreateArm<HammerArm>, // ハンマー
-	nullptr, // ナックル（No.97）
+	CreateArm<KnuckleArm>, // ナックル
 	nullptr, // C4（No.98）
 	nullptr, // ガンランス（No.99）
 	nullptr, // 刀（No.100）
