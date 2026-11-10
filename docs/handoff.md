@@ -4,7 +4,7 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）、決まったことは [decisions.md](decisions.md)。
 必要なときだけ読むもの：腕の書き方と共通の部品は [dev/01_DX11基盤の構成.md](dev/01_DX11基盤の構成.md) の「腕の共通の仕組み・腕の足し方」と「腕の書き方」、腕の操作と効き方は [plan/03_新しいアームの仕様.md](plan/03_新しいアームの仕様.md)、腕のモデルは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、画面を撮る方法は [dev/04_画面確認の方法.md](dev/04_画面確認の方法.md)。
 
-- 最終更新：2026-11-10（Codex。Shota の Proto1、Visual Studio Community の PC。No.107 を実装）
+- 最終更新：2026-11-10（Codex。Shota の Proto1、Visual Studio Community の PC。No.108 を実装）
 
 ---
 
@@ -12,7 +12,9 @@
 
 - No.106 まで完了。腕6本（触手・ハンマー・ナックル・C4・ガンランス・刀）と高台4つ、操作感の見直し、フリーカメラ、武器の攻撃アニメが develop に入っている。
 - **ゲーム本体（No.107〜111）のプランは管理者が確認した（2026-11-10）**。Codex が段階1〜5を順に実装し、終わったら Claude がまとめて確認する（プロンプトは 2.4）。
-- 段階1（No.107）は Codex が実装。Claude の確認待ち。本体・テスト用プロジェクトの Debug x64 ビルドは警告0。次は 2.4 の段階2（No.108）。`Game::GetRule()` と `Game::GetSeed()` で試合のルールと初期の種を取得できる。
+- 段階1（No.107）は Codex が実装。Claude の確認待ち。本体・テスト用プロジェクトの Debug x64 ビルドは警告0。`Game::GetRule()` と `Game::GetSeed()` で試合のルールと初期の種を取得できる。
+- 段階2（No.108）は Codex が実装。Claude の確認待ち。本体・テスト用プロジェクトの Debug x64 ビルドは警告0。`Game::Restart` で試合ごとの種を `m_MatchSeed` に設定する。次は 2.4 の段階3（No.109）。
+- 途中の進捗は `tasks.md` を基準にし、Notion の反映は最後の確認にまとめる（管理者確認済み）。
 - これまでの細かい記録と実機確認の見どころは [archive/handoff_2026-11.md](archive/handoff_2026-11.md) の「2026-11-10 に handoff.md から移したこと」。
 
 ## 2. 次にやること

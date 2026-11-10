@@ -1,12 +1,13 @@
 ﻿#pragma once
 
 #include "physics/matchcalc.h"
+#include "physics/scenecalc.h"
 
 class FighterManager;
 class ArmManager;
 
 /// @file match.h
-/// @brief 試合の流れ（制限時間90秒・最後に攻撃して場外へ落とすと+1・時間切れ・やり直し）
+/// @brief 試合の流れ（GAME は180秒、DEBUG は90秒。最後に攻撃して場外へ落とすと+1）
 /// @details 時間切れのあとは、プレイヤー・ダミー・触腕が止まる（カメラは回せる）。
 ///          OPTIONS / R で、いつでも最初からやり直せる。制限時間は match.cpp の「調整用の値」、計算は physics/matchcalc.h
 
@@ -18,6 +19,9 @@ public:
 	/// @brief 試合を始める（全員の体の初期化のあとに呼ぶ）
 	/// @param arms スロットごとの腕（FIGHTER_COUNT 個の配列。時間切れで人のスロットの腕を離す）
 	void Initialize(const FighterManager& fighters, ArmManager* arms);
+
+	/// @brief 次の Reset で使う試合のルールを設定する
+	void SetRule(GAME_RULE rule) { m_Rule = rule; }
 
 	/// @brief 状態を最初に戻す（参照はそのまま）
 	void Reset(void);
@@ -47,6 +51,7 @@ public:
 
 private:
 	int GetTotalScore() const;
+	GAME_RULE m_Rule = GAME_RULE_DEBUG;
 	MatchCalc m_Match = {};
 	const FighterManager* m_Fighters = nullptr;
 	ArmManager* m_Arms = nullptr;

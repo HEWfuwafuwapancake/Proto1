@@ -33,7 +33,7 @@ public:
 	const ArmManager& GetArms(int slot) const { return m_Arms[slot]; }
 
 private:
-	void Restart();
+	void Restart(bool retry);
 	void ResetParticipants();
 	void UpdateMenu();
 	bool IsLobbyBack() const;
@@ -61,6 +61,7 @@ private:
 	NetSession m_Net;
 	SessionAddressCalc m_JoinAddress;
 	uint32_t m_OfflineSeed = 0;
+	uint32_t m_MatchSeed = 0;
 	int m_MenuDevice = ACTION_DEVICE_KEYBOARD; // SOLO の決定を押した機器
 	bool m_Fullscreen = false;
 };

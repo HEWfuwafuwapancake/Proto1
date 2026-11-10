@@ -13,12 +13,13 @@
 /*------------------------------------------------------------------------------
 	調整用の値
 ------------------------------------------------------------------------------*/
-static constexpr float MATCH_SECONDS = 90.0f;	// 制限時間（秒）
+static constexpr float GAME_MATCH_SECONDS = 180.0f;	// GAME の制限時間（秒）
+static constexpr float DEBUG_MATCH_SECONDS = 90.0f;	// DEBUG の制限時間（秒）
 
 
 void Match::Reset(void)
 {
-	m_Match.Start(MATCH_SECONDS, GetTotalScore());
+	m_Match.Start(m_Rule == GAME_RULE_GAME ? GAME_MATCH_SECONDS : DEBUG_MATCH_SECONDS, GetTotalScore());
 	for (int slot = 0; slot < FIGHTER_COUNT; ++slot) {
 		const int device = m_Fighters->GetFighter(slot).GetDevice();
 		PadRumble(device == VERSUS_DEVICE_COMBINED ? 0 : device, 0.0f, 0.0f, 0.0f);

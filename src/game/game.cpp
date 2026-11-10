@@ -14,6 +14,7 @@
 
 // 調整用の値
 static constexpr XMFLOAT4 EMPTY_VIEW_COLOR = { 0.0f, 0.0f, 0.0f, 1.0f };	// 3人のときの空いた画面（黒）
+static constexpr uint32_t MATCH_SEED_STEP = 0x9e3779b9u;	// やり直すたびに試合の種へ足す値
 
 VERSUS_VIEWPORT Game::GetViewport(int index) const
 {
@@ -104,8 +105,14 @@ void Game::UpdatePadLights() const
 	}
 }
 
-void Game::Restart()
+void Game::Restart(bool retry)
 {
+	// 試合中に引いた乱数の回数にかかわらず、やり直しでは全員が同じ種を使う。
+	const GAME_RULE rule = GetRule();
+	m_MatchSeed = retry ? m_MatchSeed + MATCH_SEED_STEP : GetSeed();
+	m_Match.SetRule(rule);
+	m_Fighters.SetMatchSettings(rule, m_MatchSeed);
+
 	// 敵を戻す前に腕を離し、プレイヤー・敵のあとにカメラを戻す。
 	for (int k = 0; k < m_HumanCount; ++k) m_Arms[m_Humans[k]].Reset();
 	m_Fighters.Reset();
@@ -182,7 +189,7 @@ void Game::UpdateMenu()
 		m_Participants.AssignDevice(m_MenuDevice);
 		m_LobbyCharacters[0] = m_Scene.GetCharacter();
 		ConfigurePlayers();
-		Restart();
+		Restart(false);
 	}
 	else if (event == SCENE_EVENT_HOST || event == SCENE_EVENT_JOIN) {
 		NET_OPTIONS options;
@@ -296,7 +303,7 @@ void Game::Update()
 	const SCENE_EVENT event = m_Scene.Step(input, m_Match.GetState() == MATCH_STATE_FINISHED);
 	if (event == SCENE_EVENT_START_MATCH) {
 		if (oldScene == SCENE_TITLE) ConfigurePlayers();
-		Restart();
+		Restart(oldScene != SCENE_TITLE);
 	}
 	else if (event == SCENE_EVENT_BACK_TITLE) {
 		if (m_Net.IsOnline()) {

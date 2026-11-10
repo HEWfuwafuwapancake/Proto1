@@ -12,6 +12,15 @@
 // 調整用の値（1Pとダミー3体の配置は従来どおり）
 static constexpr float SPAWN_X[FIGHTER_COUNT] = { 0.0f, 0.0f, -7.0f, 7.0f };
 static constexpr float SPAWN_Z[FIGHTER_COUNT] = { 0.0f, 8.0f, 5.0f, 5.0f };
+// GAME の復活先（浮島の中心と上面からの相対位置）
+static constexpr VEC3 ISLAND_RESPAWN_OFFSETS[] = {
+	{ 0.0f, 0.0f, -11.0f }, { 0.0f, 0.0f, 11.0f },
+	{ -11.0f, 0.0f, 0.0f }, { 11.0f, 0.0f, 0.0f },
+	{ -11.0f, 0.0f, -11.0f }, { -11.0f, 0.0f, 11.0f },
+	{ 11.0f, 0.0f, -11.0f }, { 11.0f, 0.0f, 11.0f },
+};
+static constexpr int ISLAND_RESPAWN_COUNT = sizeof(ISLAND_RESPAWN_OFFSETS) / sizeof(ISLAND_RESPAWN_OFFSETS[0]);
+static constexpr float SPAWN_SAFE_DISTANCE = 10.0f;
 
 void FighterManager::LoadModels()
 {
@@ -28,6 +37,7 @@ void FighterManager::Finalize()
 
 void FighterManager::Initialize(const Stage& stage, const VersusCalc& participants)
 {
+	m_Stage = &stage;
 	m_Versus = participants;
 	m_Versus.ResetMatch();
 	const STAGE& platform = stage.GetStage();
@@ -46,6 +56,12 @@ void FighterManager::BindPlayer(int slot, const Camera& camera, const ArmManager
 	m_Arms[slot] = &arms;
 }
 
+void FighterManager::SetMatchSettings(GAME_RULE rule, uint32_t seed)
+{
+	m_Rule = rule;
+	m_Spawn.SetSeed(seed);
+}
+
 void FighterManager::Reset()
 {
 	// 得点だけでなく最後の攻撃者も消す。機器とスロットの対応は保つ。
@@ -61,6 +77,7 @@ void FighterManager::Update()
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		const DUMMY_EVENT event = m_Fighters[i].Update(m_Cameras[i], m_Arms[i]);
 		if (event == DUMMY_EVENT_OUT) m_Versus.RecordOut(i);
+		else if (event == DUMMY_EVENT_RESPAWN && m_Rule == GAME_RULE_GAME) RespawnAtSafePoint(i);
 #ifdef _DEBUG
 		if (event == DUMMY_EVENT_OUT || event == DUMMY_EVENT_RESPAWN) {
 			hal::dout << "体" << i + 1 << (event == DUMMY_EVENT_OUT ? "：場外" : "：復活（0%）") << std::endl;
@@ -75,6 +92,30 @@ void FighterManager::Update()
 		if (status.Attacker >= 0 && m_Versus.IsOpponent(status.Attacker, i)) m_Versus.RecordAttack(status.Attacker, i);
 	}
 	PushBodies();
+}
+
+void FighterManager::RespawnAtSafePoint(int slot)
+{
+	const STAGE& stage = m_Stage->GetStage();
+	const VEC3 center{ stage.CenterX, stage.TopY, stage.CenterZ };
+	VEC3 points[ISLAND_RESPAWN_COUNT + STAGE_PLATFORM_MAX];
+	int pointCount = 0;
+	for (const VEC3& offset : ISLAND_RESPAWN_OFFSETS) points[pointCount++] = Vec3Add(center, offset);
+	for (int i = 0; i < stage.PlatformCount; ++i) {
+		const STAGE_PLATFORM& platform = stage.Platforms[i];
+		points[pointCount++] = { platform.CenterX, platform.TopY, platform.CenterZ };
+	}
+
+	VEC3 opponents[FIGHTER_COUNT - 1];
+	int opponentCount = 0;
+	for (int i = 0; i < FIGHTER_COUNT; ++i) {
+		if (i == slot || !m_Fighters[i].IsActive()) continue;
+		const XMFLOAT3 position = m_Fighters[i].GetPosition();
+		opponents[opponentCount++] = { position.x, position.y, position.z };
+	}
+
+	const int point = m_Spawn.ChoosePoint(points, pointCount, opponents, opponentCount, SPAWN_SAFE_DISTANCE);
+	if (point >= 0) m_Fighters[slot].Teleport(points[point]);
 }
 
 void FighterManager::PushBodies()

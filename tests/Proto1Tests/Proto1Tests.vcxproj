@@ -133,6 +133,10 @@
     <ClCompile Include="tentaclecalc_test.cpp" />
     <ClCompile Include="matchcalc_test.cpp" />
     <ClCompile Include="scenecalc_test.cpp" />
+    <ClCompile Include="randomcalc_test.cpp" />
+    <ClCompile Include="spawncalc_test.cpp" />
+    <ClCompile Include="..\..\src\physics\randomcalc.cpp" />
+    <ClCompile Include="..\..\src\physics\spawncalc.cpp" />
     <ClCompile Include="..\..\src\physics\scenecalc.cpp" />
     <ClCompile Include="..\..\src\physics\matchcalc.cpp" />
     <ClCompile Include="..\..\src\physics\tentaclecalc.cpp" />
