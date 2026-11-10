@@ -119,7 +119,7 @@ VEC3 TentacleCalcClip(const VEC3& from, const VEC3& to, const STAGE& stage, floa
 
 TENTACLE_EVENT TentacleCalc::Step(const VEC3& origin, const VEC3& aim,
 	const VEC3& holdPosition, bool trigger, bool cancel, float dt, const TENTACLE_PARAMS& params,
-	const TENTACLE_TARGET* targets, int count, const STAGE& stage, const STAGE_GRIP* grip)
+	const TENTACLE_TARGET* targets, int count, const STAGE& stage, const STAGE_GRIP* grip, bool canAnchor)
 {
 	TENTACLE_EVENT event{ -1, -1, false, false, false };
 	if (cancel) {
@@ -139,6 +139,7 @@ TENTACLE_EVENT TentacleCalc::Step(const VEC3& origin, const VEC3& aim,
 		m_Length = 0.0f;
 		m_Hits.Clear();
 		m_State = TENTACLE_EXTENDING;
+		m_CanAnchor = canAnchor;
 		m_HasGrip = grip != nullptr;
 		if (m_HasGrip) {
 			m_Grip = *grip;
@@ -204,7 +205,7 @@ TENTACLE_EVENT TentacleCalc::Step(const VEC3& origin, const VEC3& aim,
 	}
 	else if (Vec3LengthSq(Vec3Sub(end, desired)) > 0.000001f) {
 		// 浮島の横のふちに当たったら付き、上の面に当たっただけなら戻る。
-		if (StageCalcIsOnPlatform(stage, end.X, end.Z)) m_State = TENTACLE_RETURNING;
+		if (!m_CanAnchor || StageCalcIsOnPlatform(stage, end.X, end.Z)) m_State = TENTACLE_RETURNING;
 		else Anchor(end, StageCalcIslandSurface(stage), event);
 	}
 	else if (m_Length >= maxLength) {

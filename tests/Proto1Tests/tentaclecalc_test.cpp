@@ -285,6 +285,16 @@ namespace Proto1Tests
 		EXPECT_NEAR(stage.TopY, arm.GetSurface().TopY, 0.0001f);
 	}
 
+	// ロックオン中（足場に付けない）は、浮島の横のふちに当たっても付かずに戻る
+	TEST(TentacleCalcTest, SideOfMainIsland_ReturnsWhenCannotAnchor)
+	{
+		TentacleCalc arm; arm.Reset();
+		const VEC3 outside{ 0, -1, -18 };
+		const auto event = arm.Step(outside, { 0, 0, 1 }, hold, true, false, 1, params, nullptr, 0, stage, nullptr, false);
+		EXPECT_FALSE(event.Anchored);
+		EXPECT_EQ((int)TENTACLE_RETURNING, (int)arm.GetState());
+	}
+
 	// 引っぱりは少しずつ近づき、到着したら終わって腕が戻る
 	TEST(TentacleCalcTest, Pull_MovesThenArrives)
 	{

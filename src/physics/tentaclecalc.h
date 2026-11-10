@@ -116,9 +116,10 @@ public:
 	/// @param trigger 入力を設定する（true：押した瞬間、false：入力なし）
 	/// @param cancel 解除を設定する（true：復活などで待機に戻す、false：通常更新）
 	/// @param grip 伸ばし始めに、足場のふちへ向かうときのふち（なしは nullptr。伸ばせる長さはふちまでになる）
+	/// @param canAnchor 伸ばし始めに、足場に付くことを設定する（true：付いて自分を引っぱる、false：足場に当たったら戻る）
 	TENTACLE_EVENT Step(const VEC3& origin, const VEC3& aim,
 		const VEC3& holdPosition, bool trigger, bool cancel, float dt, const TENTACLE_PARAMS& params,
-		const TENTACLE_TARGET* targets, int count, const STAGE& stage, const STAGE_GRIP* grip = nullptr);
+		const TENTACLE_TARGET* targets, int count, const STAGE& stage, const STAGE_GRIP* grip = nullptr, bool canAnchor = true);
 
 	/// @brief 足場のふちへ自分を引っぱる（TENTACLE_PULLING の間だけ動かす）
 	/// @param center 体の中心（移動後の位置を書き戻す）
@@ -157,6 +158,7 @@ public:
 private:
 	void Anchor(const VEC3& point, const STAGE_PLATFORM& surface, TENTACLE_EVENT& event);
 	bool m_HasGrip{}; ///< 足場のふちへ向かって伸びているか
+	bool m_CanAnchor = true; ///< この伸長で足場に付けるか
 	STAGE_GRIP m_Grip{}; ///< 向かっている足場のふち
 	float m_GripDistance{}; ///< 伸ばし始めの肩からふちまでの距離
 	STAGE_PLATFORM m_Surface{}; ///< 付いている足場の形

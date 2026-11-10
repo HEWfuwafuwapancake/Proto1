@@ -133,7 +133,7 @@ void TentacleArm::StopPulling()
 	GetPlayer().SetPulled(false);
 }
 
-// 伸ばす先を決める：届く距離のロックオン中の敵 → 画面の正面の足場のふち → 画面の正面。
+// 伸ばす先を決める：届く距離のロックオン中の敵 → 画面の正面の足場のふち（フリーカメラのときだけ） → 画面の正面。
 // 見上げているときだけ上下も含めて狙い、画面の中央から外れたロックオンの敵より見ている先を優先する。
 void TentacleArm::StartReach(const TENTACLE_TARGET* targets, const VEC3& origin, const VEC3& cameraForward,
 	VEC3& aim, STAGE_GRIP& grip, bool& hasGrip) const
@@ -149,7 +149,8 @@ void TentacleArm::StartReach(const TENTACLE_TARGET* targets, const VEC3& origin,
 		if (Vec3Dot(toTarget, viewForward) < Vec3Length(toTarget) * cosf(LOOK_TARGET_HALF_ANGLE)) target = -1;
 	}
 	const XMFLOAT3 p = GetPlayer().GetPosition();
-	hasGrip =(target < 0 || Vec3Length(Vec3Sub(center, origin)) > PARAMS.MaxLength)
+	// 足場へ飛ぶのはフリーカメラの間だけ（ロックオン中は敵をつかむ操作に絞る）。
+	hasGrip = GetCamera().IsFreeLook() && (target < 0 || Vec3Length(Vec3Sub(center, origin)) > PARAMS.MaxLength)
 		&& StageCalcFindGrip(GetStage().GetStage(), origin, { p.x, p.y, p.z }, viewForward, GRIP_RANGE, GRIP_HALF_ANGLE, grip);
 	// 各肩からの向きを開始時だけ決める。伸長中は追いかけず、投げる向きとも分ける。
 	aim = hasGrip ? Vec3Sub(grip.Point, origin) : (target >= 0 ? Vec3Sub(center, origin) : viewForward);
@@ -242,7 +243,7 @@ void TentacleArm::Update(const ARM_INPUT& input)
 	const float dt = GameTimeGetDeltaTime();
 	const bool cancel = GetPlayer().DidRespawn() || (arm.GetTarget() >= 0 && !GetFighters().IsHeldBy(arm.GetTarget(), GetSlot()));
 	const TENTACLE_EVENT event = arm.Step(origin, aim, hold, trigger, cancel,
-		dt, PARAMS, targets, FIGHTER_COUNT, GetStage().GetStage(), hasGrip ? &grip : nullptr);
+		dt, PARAMS, targets, FIGHTER_COUNT, GetStage().GetStage(), hasGrip ? &grip : nullptr, GetCamera().IsFreeLook());
 	if (event.Grabbed >= 0) {
 		if (GetFighters().Grab(event.Grabbed, GetSlot())) {
 			GetFighters().AddDamage(event.Grabbed, GetSlot(), GRAB_DAMAGE);

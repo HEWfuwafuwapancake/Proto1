@@ -4,7 +4,7 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）、決まったことは [decisions.md](decisions.md)。
 必要なときだけ読むもの：腕の書き方と共通の部品は [dev/01_DX11基盤の構成.md](dev/01_DX11基盤の構成.md) の「腕の共通の仕組み・腕の足し方」と「腕の書き方」、腕の操作と効き方は [plan/03_新しいアームの仕様.md](plan/03_新しいアームの仕様.md)、腕のモデルは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、画面を撮る方法は [dev/04_画面確認の方法.md](dev/04_画面確認の方法.md)。
 
-- 最終更新：2026-11-10（Claude。Shota の Proto1、Visual Studio Community の PC。No.104 完了）
+- 最終更新：2026-11-10（Claude。Shota の Proto1、Visual Studio Community の PC。No.105 完了）
 
 ---
 
@@ -21,6 +21,7 @@
 
 ### 管理者の実機確認
 
+- No.105：ロックオン中は触手で足場へ飛べず、F / R3 でフリーカメラにすると飛べることを見る。場外に落ちたときはフリーカメラにしないと戻れない（Claude は単体テストとビルドだけ確認した）。
 - No.104：左右で振り方が違う見え方、攻撃していない腕の振れ幅（`build_weapon_clips.py` の `counter_arm`）、両手同時の形、居合の踏み込み（`arm_katana.cpp` の `IAI_STEP_SPEED`）を見る。Claude はスローで撮って見た（ガンランスの左手の突進・左手のアサルト・実際の速さ・オンラインは見ていない）。
 - No.103：実際の速さで8種の動きの気持ちよさを見る。ポーズは `tools/maya/build_weapon_clips.py` の `CLIPS` / `LEFT_CLIPS` を直して `build` → `export` で作り直す。居合の遅れは `arm_katana.cpp` の `IAI_DELAY_SECONDS`、空間を斬る長さは `BREACH_CUT_SECONDS`。Claude はキーボードとマウスの SOLO を左手・スローで撮って見た（右手・実際の速さの手触り・オンラインの DESYNC は見ていない）。
 - No.102：実機のパッドの R3 で切り替わることを見る。Claude はキーボードの F と矢印キーで確認した（オンラインの DESYNC は見ていない）。
