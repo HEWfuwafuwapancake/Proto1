@@ -1,67 +1,78 @@
-﻿// physics/gunlancecalc.h（ガンランスの段階のためと、当たる間隔）の単体テスト
+﻿// physics/gunlancecalc.h（ガンランスの単発射撃と撃ち込み）の単体テスト
 #include <gtest/gtest.h>
 #include "physics/gunlancecalc.h"
 
 namespace Proto1Tests
 {
-	static const GUNLANCE_PARAMS GUNLANCE_PARAMS_VALUE{ 1.0f, 0.5f };
-	static const float GUNLANCE_DT = 1.0f / 60.0f;
+	static constexpr float FRAME_DT = 1.0f / 60.0f;
 
-	// 3回押すと、3回目のフレームに3段階で発射する
-	TEST(GunlanceCalcTest, ThreeTaps_FireAtMaxLevel)
+	// 単発射撃は 0.25 秒あける。入力判定では、このフレームの時間も含める。
+	TEST(GunlanceCalcTest, SingleShotWaitsForCooldown)
 	{
 		GunlanceCalc gun;
-		EXPECT_EQ(0, gun.Step(true, GUNLANCE_DT, GUNLANCE_PARAMS_VALUE));
-		EXPECT_EQ(1, gun.GetLevel());
-		EXPECT_EQ(0, gun.Step(true, GUNLANCE_DT, GUNLANCE_PARAMS_VALUE));
-		EXPECT_EQ(2, gun.GetLevel());
-		EXPECT_EQ(3, gun.Step(true, GUNLANCE_DT, GUNLANCE_PARAMS_VALUE));
-		EXPECT_EQ(0, gun.GetLevel());
-	}
-
-	// 押したあと 1 秒押さないと、その段階で発射する（1/60 秒刻み）
-	TEST(GunlanceCalcTest, Waiting_FiresCurrentLevelAfterOneSecond)
-	{
-		GunlanceCalc gun;
-		gun.Step(true, GUNLANCE_DT, GUNLANCE_PARAMS_VALUE);
-		int frames = 0, fired = 0;
-		while (fired == 0 && frames < 120) {
-			fired = gun.Step(false, GUNLANCE_DT, GUNLANCE_PARAMS_VALUE);
-			++frames;
+		EXPECT_TRUE(gun.CanFire());
+		gun.RecordShot();
+		for (int frame = 1; frame < 15; ++frame) {
+			EXPECT_FALSE(gun.CanFire(FRAME_DT));
+			EXPECT_EQ(0, gun.Step(FRAME_DT, false).Shots);
 		}
-		EXPECT_EQ(1, fired);
-		EXPECT_NEAR(60, frames, 1);
+		EXPECT_FALSE(gun.CanFire());
+		EXPECT_TRUE(gun.CanFire(FRAME_DT));
+		gun.Step(FRAME_DT, false);
+		EXPECT_TRUE(gun.CanFire());
 	}
 
-	// 押すと待ち時間が最初に戻る
-	TEST(GunlanceCalcTest, TappingAgain_RestartsWait)
+	// 相手をつかむ前の突進は、長押しを離すか 2 秒たつと終わる。
+	TEST(GunlanceCalcTest, RushEndsOnReleaseOrTimeout)
 	{
 		GunlanceCalc gun;
-		gun.Step(true, GUNLANCE_DT, GUNLANCE_PARAMS_VALUE);
-		EXPECT_EQ(0, gun.Step(false, 0.9f, GUNLANCE_PARAMS_VALUE));
-		gun.Step(true, GUNLANCE_DT, GUNLANCE_PARAMS_VALUE);
-		EXPECT_EQ(0, gun.Step(false, 0.9f, GUNLANCE_PARAMS_VALUE));
-		EXPECT_EQ(2, gun.Step(false, 0.2f, GUNLANCE_PARAMS_VALUE));
+		gun.StartRush();
+		gun.Step(0.5f, true);
+		EXPECT_TRUE(gun.IsRushing());
+		EXPECT_FALSE(gun.CanFire());
+		gun.Step(FRAME_DT, false);
+		EXPECT_TRUE(gun.IsIdle());
+
+		gun.StartRush();
+		for (int frame = 1; frame < 120; ++frame) gun.Step(FRAME_DT, true);
+		EXPECT_TRUE(gun.IsRushing());
+		EXPECT_EQ(0, gun.Step(FRAME_DT, true).Shots);
+		EXPECT_TRUE(gun.IsIdle());
 	}
 
-	// 押していないときは何も起きない
-	TEST(GunlanceCalcTest, NoTap_NeverFires)
+	// 突き上げは 0.35 秒。離しても撃ち込みを続け、0.2 秒間隔で3発撃つ。
+	TEST(GunlanceCalcTest, ImpaleLiftsThenFiresThreeShots)
 	{
 		GunlanceCalc gun;
-		EXPECT_EQ(0, gun.Step(false, 5.0f, GUNLANCE_PARAMS_VALUE));
-		EXPECT_EQ(0, gun.GetLevel());
+		gun.StartRush();
+		gun.StartImpale(-1);
+		for (int frame = 1; frame <= 21; ++frame) {
+			EXPECT_EQ(0, gun.Step(FRAME_DT, false).Shots);
+			EXPECT_TRUE(gun.IsHolding());
+		}
+		EXPECT_FLOAT_EQ(1.0f, gun.GetLiftProgress());
+		for (int frame = 1; frame <= 36; ++frame) {
+			const GUNLANCE_STEP step = gun.Step(FRAME_DT, false);
+			EXPECT_EQ(frame % 12 == 0 ? 1 : 0, step.Shots);
+			EXPECT_EQ(frame == 36, step.Finished);
+			EXPECT_EQ(frame != 36, gun.IsHolding());
+		}
+		EXPECT_TRUE(gun.IsIdle());
 	}
 
-	// 同じ相手には 0.5 秒あけないと当たらず、別の相手には当たる
-	TEST(GunlanceCalcTest, Rehit_WaitsPerTarget)
+	// 残弾が1発または2発なら、その数で撃ち込みを終える。
+	TEST(GunlanceCalcTest, ImpaleEndsWithLastAvailableShot)
 	{
-		GunlanceCalc gun;
-		EXPECT_TRUE(gun.TryHit(1, GUNLANCE_PARAMS_VALUE));
-		EXPECT_FALSE(gun.TryHit(1, GUNLANCE_PARAMS_VALUE));
-		EXPECT_TRUE(gun.TryHit(2, GUNLANCE_PARAMS_VALUE));
-		gun.Step(false, 0.4f, GUNLANCE_PARAMS_VALUE);
-		EXPECT_FALSE(gun.TryHit(1, GUNLANCE_PARAMS_VALUE));
-		gun.Step(false, 0.2f, GUNLANCE_PARAMS_VALUE);
-		EXPECT_TRUE(gun.TryHit(1, GUNLANCE_PARAMS_VALUE));
+		for (int remaining = 1; remaining <= 2; ++remaining) {
+			GunlanceCalc gun;
+			gun.StartRush();
+			gun.StartImpale(remaining);
+			EXPECT_EQ(0, gun.Step(0.35f, false).Shots);
+			const GUNLANCE_STEP step = gun.Step(0.2f * remaining, false);
+			EXPECT_EQ(remaining, step.Shots);
+			EXPECT_TRUE(step.Finished);
+			EXPECT_TRUE(gun.IsIdle());
+			EXPECT_EQ(0, gun.Step(0.2f, false).Shots);
+		}
 	}
 }
