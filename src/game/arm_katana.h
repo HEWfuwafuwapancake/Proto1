@@ -28,6 +28,12 @@ public:
 	void Interrupt() override;
 	/// @brief 待機以外なら true を返す
 	bool IsActive() const override;
+	/// @brief 遅れて効く斬撃や、その表示が残っていれば true を返す
+	bool IsBusy() const override;
+	/// @brief 待機中に単押しを受け付ける（GAME では前の居合が効くまで待つ）
+	bool CanTakeTap() const override;
+	/// @brief 単押しと同じ条件で長押しを受け付ける
+	bool CanTakeHold() const override { return CanTakeTap(); }
 	/// @brief 敵をつかまないので、常に false を返す
 	bool IsHolding() const override;
 	/// @brief 居合の間の歩く速さの倍率を取得する（空間を斬る間は止まる）
@@ -60,6 +66,7 @@ private:
 	ArmPhaseCalc m_Phase; // 居合の構え → 一閃 → 残心
 	HitRecord m_Hits; // 1回の一閃で当たった相手
 	DelayedHitCalc m_Delayed; // 一閃で当てて、あとから効かせる斬撃
+	bool m_IaiConsumed = false; // 今の居合で使用回数を消費したか
 	float m_SlashSeconds[FIGHTER_COUNT] = {}; // 相手ごとの、斬撃を見せる残りの秒数。
 	VEC3 m_SlashDirections[FIGHTER_COUNT] = {}; // 相手ごとの、斬撃を見せる水平の向き。
 	BREACH_STATE m_Breach = BREACH_NONE;

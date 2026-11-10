@@ -2,13 +2,16 @@
 
 #include "core/dx11.h"
 #include "physics/armpresscalc.h"
+#include "physics/armusecalc.h"
 #include "physics/guardcalc.h"
+#include "physics/scenecalc.h"
 #include "render/animcalc.h"
 #include "physics/vec3.h"
 #include <memory>
 
 class Fighter;
 class FighterManager;
+class ArmManager;
 class Camera;
 class Stage;
 
@@ -21,6 +24,7 @@ enum ARM_TYPE
 	ARM_TYPE_C4, ///< C4（1段目 4）
 	ARM_TYPE_GUNLANCE, ///< ガンランス（1段目 5）
 	ARM_TYPE_KATANA, ///< 刀（1段目 6）
+	ARM_TYPE_NONE, ///< 素手（装備なし）
 	ARM_TYPE_COUNT ///< 腕の種類の数（装備ではない）
 };
 
@@ -31,6 +35,7 @@ struct ARM_LINKS
 	int Slot; ///< 自分のスロット番号（0〜3。相手の候補から除く）
 	const Camera* CameraObject; ///< 狙いと投げる向きを読むカメラ
 	const Stage* StageObject; ///< 浮島と場外の線を読むステージ
+	const ArmManager* Arms; ///< 片手の残り使用回数を読む腕の管理
 };
 
 /// @brief 腕が今の動作で体に見せる攻撃クリップ
@@ -61,6 +66,8 @@ public:
 	virtual void Interrupt() { Reset(); }
 	/// @brief 待機以外なら true を返す
 	virtual bool IsActive() const = 0;
+	/// @brief 動作後も弾や遅れて効く攻撃が残っていれば true を返す（基本は false）
+	virtual bool IsBusy() const { return false; }
 	/// @brief 敵をつかんでいる間だけ true を返す
 	virtual bool IsHolding() const = 0;
 	/// @brief 単押しをすぐ受け付けられるなら true を返す（false の間の単押しは少しの間覚えておく。基本は待機中だけ）
@@ -82,6 +89,10 @@ protected:
 	/// @brief 手とゲームの部品への参照を保持する（モデルは派生クラスの生成時に読む）
 	Arm(int hand, const ARM_LINKS& links) : m_Hand(hand), m_Links(links) {}
 
+	/// @brief 効いた攻撃などで使った回数を、このフレームの消費に加える
+	void ConsumeUse(int count = 1);
+	/// @brief 残り使用回数を取得する（DEBUG の無制限は -1）
+	int GetRemainingUses() const;
 	/// @brief プレイヤーへの参照を取得する
 	Fighter& GetPlayer() const;
 	/// @brief 全員の体の管理への参照を取得する
@@ -127,8 +138,9 @@ protected:
 	/// @param damage 足すダメージ%
 	/// @param power 吹っ飛ばす強さ
 	/// @param up 外への水平の単位方向に足す上向きの量
-	/// @return 当てた相手の数
-	int Explode(const VEC3& center, float radius, float damage, float power, float up) const;
+	/// @param affected 効果が入った相手の数を書く先（不要なら nullptr）
+	/// @return 範囲に入った相手の数
+	int Explode(const VEC3& center, float radius, float damage, float power, float up, int* affected = nullptr) const;
 	/// @brief 色の選択を設定する（true：効いている色、false：左右の基本色）
 	/// @return 選んだ色（RGBA）
 	XMFLOAT4 GetColor(bool active) const;
@@ -158,9 +170,11 @@ protected:
 	void Rumble(float smallMotor, float largeMotor, float seconds) const;
 
 private:
+	friend class ArmManager;
 	VEC3 GetShoulderAt(const VEC3& offset) const;
 	int m_Hand;
 	ARM_LINKS m_Links;
+	int m_Used = 0;
 };
 
 /// @brief 左右の装備と全種類の腕の寿命・更新・描画を管理する
@@ -173,9 +187,11 @@ public:
 	void Finalize(void);
 	/// @brief 左右の腕を待機に戻す（装備はそのまま。時間切れ・やり直し用）
 	void Reset(void);
+	/// @brief 試合開始や復活に備えて腕を戻す（GAME は素手、DEBUG は素手だけ触手にする）
+	void ResetForMatch(GAME_RULE rule);
 	/// @brief 両手を触手に戻し、十字キーの手の選択も左手に戻す（オンラインを始めるとき。相手と装備をそろえる）
 	void ResetEquip(void);
-	/// @brief 装備を切り替え、試合中だけ左手・右手の順に更新する（カメラとキャラの向きの更新後）
+	/// @brief DEBUG では装備を切り替え、試合中は左手・右手の順に更新する（カメラとキャラの向きの更新後）
 	/// @param playing 腕の更新を設定する（true：試合中として更新、false：装備切り替えだけ）
 	void Update(bool playing);
 	/// @brief 左手・右手の順に装備している腕を描画する
@@ -200,6 +216,8 @@ public:
 	/// @param hand 左 0・右 1
 	/// @return 装備している種類。手が範囲外なら ARM_TYPE_COUNT
 	ARM_TYPE GetType(int hand) const;
+	/// @brief 片手の残り使用回数を取得する（DEBUG は -1、範囲外は 0）
+	int GetRemainingUses(int hand) const;
 
 	/// @brief 十字キーで選んでいる手を取得する（左 0・右 1）
 	int GetSelectedHand() const { return m_SelectedHand; }
@@ -208,7 +226,10 @@ public:
 
 private:
 	void ChangeType(int hand, int next, int direction = 1);
+	void UpdateEquip(const Fighter& player);
+	void BreakExhaustedArm(int hand);
 	ARM_LINKS m_Links = {};
+	GAME_RULE m_Rule = GAME_RULE_DEBUG;
 	int m_SelectedHand = 0;
 	int m_LastActiveHand = -1;
 	int m_ChangeDirections[2] = { 1, 1 };
@@ -216,6 +237,7 @@ private:
 	// 左右それぞれ全種類を起動時に作る。装備切り替えでは作り直さない。
 	std::unique_ptr<Arm> m_Arms[2][ARM_TYPE_COUNT];
 	ArmPressCalc m_Presses[2];
+	ArmUseCalc m_Uses[2];
 };
 
 /// @brief 腕の日本語名を取得する（範囲外は「不明」）

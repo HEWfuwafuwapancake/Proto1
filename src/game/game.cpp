@@ -114,7 +114,7 @@ void Game::Restart(bool retry)
 	m_Fighters.SetMatchSettings(rule, m_MatchSeed);
 
 	// 敵を戻す前に腕を離し、プレイヤー・敵のあとにカメラを戻す。
-	for (int k = 0; k < m_HumanCount; ++k) m_Arms[m_Humans[k]].Reset();
+	for (int k = 0; k < m_HumanCount; ++k) m_Arms[m_Humans[k]].ResetForMatch(rule);
 	m_Fighters.Reset();
 	for (int k = 0; k < m_HumanCount; ++k) m_Cameras[m_Humans[k]].Reset();
 	m_Match.Reset();
@@ -296,7 +296,7 @@ void Game::Update()
 		}
 		for (int k = 0; k < m_HumanCount; ++k) m_Cameras[m_Humans[k]].Update();
 		if (m_Match.IsPlaying()) m_Fighters.UpdateFacing();
-		// 装備切り替えは時間切れのあとも受け付ける。
+		// DEBUG の装備切り替えは時間切れのあとも受け付ける。
 		for (int k = 0; k < m_HumanCount; ++k) m_Arms[m_Humans[k]].Update(m_Match.IsPlaying());
 		if (m_Match.IsPlaying()) m_Fighters.UpdateAnimation();
 	}
@@ -328,7 +328,15 @@ void Game::Update()
 		for (int slot = 0; slot < FIGHTER_COUNT; ++slot) {
 			const Fighter& fighter = m_Fighters.GetFighter(slot);
 			const XMFLOAT3 position = fighter.GetPosition();
-			states[slot] = { { position.x, position.y, position.z }, fighter.GetPercent(), m_Fighters.GetScore(slot) };
+			const ArmManager& arms = m_Arms[slot];
+			states[slot] = { { position.x, position.y, position.z }, fighter.GetPercent(), m_Fighters.GetScore(slot),
+				{ ARM_TYPE_NONE, ARM_TYPE_NONE }, { 0, 0 } };
+			if (fighter.IsHuman()) {
+				for (int hand = 0; hand < 2; ++hand) {
+					states[slot].ArmTypes[hand] = arms.GetType(hand);
+					states[slot].ArmUses[hand] = arms.GetRemainingUses(hand);
+				}
+			}
 		}
 		m_Net.RecordChecksum(onlineFrame, states);
 	}

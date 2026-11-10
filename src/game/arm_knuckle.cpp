@@ -60,7 +60,7 @@ int KnuckleArm::FindTarget(float reach, float radius) const
 
 void KnuckleArm::Strike(int target, float up, float damage, float power)
 {
-	GetFighters().Launch(target, GetSlot(), AreaCalcLaunchDirection(m_Direction, up), damage, power);
+	if (GetFighters().Launch(target, GetSlot(), AreaCalcLaunchDirection(m_Direction, up), damage, power)) ConsumeUse();
 	Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
 }
 

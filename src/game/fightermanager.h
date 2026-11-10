@@ -60,7 +60,8 @@ public:
 	/// @brief 攻撃者を記録し、ダメージ%だけを足す（速度はそのまま）
 	void AddDamage(int index, int attacker, float damage);
 	/// @brief 攻撃者を記録し、ダメージを足して指定した3D方向へ吹っ飛ばす
-	void Launch(int index, int attacker, const VEC3& direction, float damage, float power);
+	/// @return 相手に効いたら true（ガードされた場合などは false）
+	bool Launch(int index, int attacker, const VEC3& direction, float damage, float power);
 	/// @brief 状態異常をかけて攻撃者を記録する（隠れるだけは自分にもかけられ、攻撃者を記録しない）
 	/// @return かけられたら true
 	bool ApplyStatus(int index, int attacker, STATUS_TYPE type, float seconds, float value);

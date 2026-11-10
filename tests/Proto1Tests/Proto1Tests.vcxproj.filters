@@ -63,11 +63,15 @@
     <ClCompile Include="gunlancecalc_test.cpp" />
     <ClCompile Include="c4calc_test.cpp" />
     <ClCompile Include="armpresscalc_test.cpp" />
+    <ClCompile Include="armusecalc_test.cpp" />
     <ClCompile Include="breachcalc_test.cpp" />
     <ClCompile Include="..\..\src\physics\breachcalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\physics\armpresscalc.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\physics\armusecalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
     <ClCompile Include="framestats_test.cpp" />

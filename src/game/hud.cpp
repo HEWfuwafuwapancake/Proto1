@@ -41,6 +41,7 @@ static constexpr float ARM_LABEL_PADDING = 12.0f;
 static constexpr float ARM_LABEL_BORDER = 2.0f;
 static constexpr float ARM_HAND_DOT = 4.0f;
 static constexpr float ARM_NAME_OFFSET = 46.0f;
+static constexpr float ARM_USES_DIGIT_WIDTH = 10.0f;
 static constexpr float ARM_FLIP_SECONDS = 0.2f;
 static constexpr float ARM_EDGE_BRIGHTNESS = 0.65f;
 
@@ -204,7 +205,8 @@ void Hud::Update(void)
 
 void Hud::DrawArmName(int hand) const
 {
-	const bool selected = m_Arms->GetSelectedHand() == hand;
+	const int remaining = m_Arms->GetRemainingUses(hand);
+	const bool selected = remaining < 0 && m_Arms->GetSelectedHand() == hand;
 	const float x = hand == 0 ? ARM_LABEL_MARGIN : m_Width - ARM_LABEL_MARGIN - ARM_LABEL_WIDTH;
 	const float y = m_Height - ARM_LABEL_MARGIN - ARM_LABEL_PADDING - ARM_LABEL_HEIGHT;
 	const XMFLOAT4 color = selected ? MENU_SELECTED_COLOR : TEXT_COLOR;
@@ -229,6 +231,11 @@ void Hud::DrawArmName(int hand) const
 	};
 	drawFace(flip.Previous, faces.Previous);
 	drawFace(flip.Current, faces.Next);
+	if (remaining >= 0 && flip.Current != ARM_TYPE_NONE) {
+		const float countX = x + ARM_LABEL_WIDTH - ARM_LABEL_PADDING;
+		const float countY = y + ARM_LABEL_HEIGHT * 0.5f - ARM_USES_DIGIT_WIDTH;
+		Number2DDrawNumber(remaining, 1, countX, countY, ARM_USES_DIGIT_WIDTH, GLYPH_ALIGN_RIGHT, color);
+	}
 }
 
 void Hud::DrawMenuItem(const char* text, float y, bool selected) const
@@ -290,7 +297,9 @@ void Hud::DrawScene(const VersusCalc& participants, const NetSession& net, const
 				DrawMenuItem(items[item], MODE_FIRST_Y + item * MODE_LINE, m_Scene->GetCursor() == item);
 			}
 			// 下の「BACK」と重ならないよう、タイトルの説明と同じ高さに置く。
-			Number2DDrawText(TITLE_EQUIP_HELP, centerX, MODE_EQUIP_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
+			if (m_Scene->GetRule() == GAME_RULE_DEBUG) {
+				Number2DDrawText(TITLE_EQUIP_HELP, centerX, MODE_EQUIP_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
+			}
 			Number2DDrawText("SELECT  UP DOWN / W S / DPAD", centerX, TITLE_ARMS_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
 			Number2DDrawText("OK  O / ENTER", centerX, TITLE_JUMP_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
 		}
@@ -359,7 +368,10 @@ void Hud::DrawScene(const VersusCalc& participants, const NetSession& net, const
 		if (participants.GetHumanCount() > 0) {
 			Number2DDrawText("1P START  O / ENTER", centerX, TITLE_START_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
 		}
-		Number2DDrawText(TITLE_EQUIP_HELP, centerX, TITLE_EQUIP_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
+		const GAME_RULE rule = net.IsOnline() ? net.GetRule() : m_Scene->GetRule();
+		if (rule == GAME_RULE_DEBUG) {
+			Number2DDrawText(TITLE_EQUIP_HELP, centerX, TITLE_EQUIP_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
+		}
 		Number2DDrawText(net.IsOnline() ? "MOVE  WASD / L STICK" : "CHARACTER  A D / DPAD LEFT RIGHT",
 			centerX, TITLE_MOVE_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
 		Number2DDrawText("ARMS  L1 R1 / CLICK", centerX, TITLE_ARMS_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);

@@ -77,6 +77,9 @@ void GunlanceArm::Interrupt()
 
 void GunlanceArm::Fire(int level)
 {
+	const int remaining = GetRemainingUses();
+	if (remaining >= 0 && level > remaining) level = remaining;
+	if (level == 0) return;
 	const VEC3 shoulder = GetShoulder();
 	m_Direction = GetAim(false);
 	m_PoseSeconds = POSE_SECONDS;
@@ -87,7 +90,10 @@ void GunlanceArm::Fire(int level)
 	const int hits = Explode(m_RangeCenter, BLAST_RADIUS, damage, power, BLAST_UP);
 	const VEC3 aim = GetAim(true);
 	const int index = m_Shots.Fire(Vec3Add(shoulder, Vec3Scale(aim, MUZZLE_FORWARD)), Vec3Scale(aim, SHOT_SPEED), -1, SHOT_PARAMS);
-	if (index >= 0) m_ShotLevels[index] = level;
+	if (index >= 0) {
+		m_ShotLevels[index] = level;
+		ConsumeUse(level);
+	}
 	if (hits > 0) Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
 }
 
@@ -168,6 +174,11 @@ void GunlanceArm::Draw()
 bool GunlanceArm::IsActive() const
 {
 	return m_Rushing || m_Calc.GetLevel() > 0 || m_PoseSeconds > 0.0f;
+}
+
+bool GunlanceArm::IsBusy() const
+{
+	return m_Shots.GetCount() > 0;
 }
 
 ARM_BODY_CLIP GunlanceArm::GetBodyClip() const

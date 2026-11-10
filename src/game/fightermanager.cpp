@@ -271,11 +271,12 @@ void FighterManager::Hit(int index, int attacker, const XMFLOAT3& direction, flo
 	m_Versus.RecordAttack(attacker, index);
 }
 
-void FighterManager::Launch(int index, int attacker, const VEC3& direction, float damage, float power)
+bool FighterManager::Launch(int index, int attacker, const VEC3& direction, float damage, float power)
 {
-	if (!CanAttack(index, attacker)) return;
+	if (!CanAttack(index, attacker)) return false;
 	m_Fighters[index].Launch(direction, damage, power);
 	m_Versus.RecordAttack(attacker, index);
+	return true;
 }
 
 void FighterManager::Push(int index, int attacker, const VEC3& velocity)

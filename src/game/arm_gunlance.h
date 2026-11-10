@@ -26,6 +26,8 @@ public:
 	void Interrupt() override;
 	/// @brief ため・突進・発射の構えの間なら true を返す
 	bool IsActive() const override;
+	/// @brief 飛んでいる弾が残っていれば true を返す
+	bool IsBusy() const override;
 	/// @brief 敵をつかまないので、常に false を返す
 	bool IsHolding() const override;
 	/// @brief 突進の間を除いて単押しを受け付ける（ためている間も段階を足せる）

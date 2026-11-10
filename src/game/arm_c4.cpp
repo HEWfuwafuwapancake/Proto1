@@ -78,11 +78,13 @@ void C4Arm::Detonate()
 	m_RangeCount = m_Bombs.Detonate(positions);
 	if (m_RangeCount == 0) return;
 	int hits = 0;
+	int affected = 0;
 	for (int i = 0; i < m_RangeCount; ++i) {
 		m_RangeCenters[i] = Vec3Add(positions[i], { 0.0f, BLAST_HEIGHT, 0.0f });
-		hits += Explode(m_RangeCenters[i], BLAST_RADIUS, BLAST_DAMAGE, BLAST_POWER, BLAST_UP);
+		hits += Explode(m_RangeCenters[i], BLAST_RADIUS, BLAST_DAMAGE, BLAST_POWER, BLAST_UP, &affected);
 	}
 	m_RangeSeconds = RANGE_SHOW_SECONDS;
+	if (affected > 0) ConsumeUse();
 	if (hits > 0) Rumble(BLAST_RUMBLE_SMALL, BLAST_RUMBLE_LARGE, BLAST_RUMBLE_SECONDS);
 }
 
@@ -140,6 +142,11 @@ void C4Arm::Draw()
 bool C4Arm::IsActive() const
 {
 	return !m_Phase.IsIdle();
+}
+
+bool C4Arm::IsBusy() const
+{
+	return m_RangeSeconds > 0.0f || m_Bombs.GetThrown().GetCount() > 0 || m_Bombs.GetFalling().GetCount() > 0;
 }
 
 bool C4Arm::IsHolding() const

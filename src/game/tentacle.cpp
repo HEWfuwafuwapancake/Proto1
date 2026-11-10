@@ -167,6 +167,7 @@ void TentacleArm::StartReach(const TENTACLE_TARGET* targets, const VEC3& origin,
 void TentacleArm::StepPull(const TENTACLE_EVENT& event, float dt)
 {
 	if (event.Anchored) {
+		ConsumeUse();
 		// 新しく付いた手へ受け持ちを移す。先の手は腕を戻す。
 		if (m_OtherArm != nullptr && m_OtherArm->m_Pulling) {
 			m_OtherArm->m_Arm.ReleasePull();
@@ -204,6 +205,7 @@ void TentacleArm::StepSpin(const ARM_INPUT& input, float dt)
 		m_SpinForward = GetAim(false);
 		m_SpinAngle = 0.0f;
 		m_SpinHits.Clear();
+		m_SpinConsumed = false;
 		m_Spin.Start(SPIN_CHARGE);
 	}
 	const ARM_PHASE_STEP step = m_Spin.Step(dt, SPIN_PHASE_SECONDS, SPIN_PHASE_COUNT);
@@ -222,7 +224,11 @@ void TentacleArm::StepSpin(const ARM_INPUT& input, float dt)
 		if (!target.Available || m_SpinHits.Contains(i)
 			|| !AreaCalcInSector(center, middle, 0.0f, SPIN_RADIUS, halfAngle, SPIN_HALF_HEIGHT, target.Body)) continue;
 		m_SpinHits.TryAdd(i);
-		GetFighters().Launch(i, GetSlot(), AreaCalcRadialDirection(center, target.Body, SPIN_UP, middle), SPIN_DAMAGE, SPIN_POWER);
+		const bool applied = GetFighters().Launch(i, GetSlot(), AreaCalcRadialDirection(center, target.Body, SPIN_UP, middle), SPIN_DAMAGE, SPIN_POWER);
+		if (applied && !m_SpinConsumed) {
+			ConsumeUse();
+			m_SpinConsumed = true;
+		}
 		hit = true;
 	}
 	m_SpinAngle = angle;
@@ -254,6 +260,7 @@ void TentacleArm::Update(const ARM_INPUT& input)
 		dt, PARAMS, targets, FIGHTER_COUNT, GetStage().GetStage(), hasGrip ? &grip : nullptr, CanAnchor());
 	if (event.Grabbed >= 0) {
 		if (GetFighters().Grab(event.Grabbed, GetSlot())) {
+			ConsumeUse();
 			GetFighters().AddDamage(event.Grabbed, GetSlot(), GRAB_DAMAGE);
 			Rumble(GRAB_RUMBLE_SMALL, GRAB_RUMBLE_LARGE, GRAB_RUMBLE_SECONDS);
 		}
