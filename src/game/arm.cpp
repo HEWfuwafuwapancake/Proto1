@@ -177,6 +177,11 @@ int ArmManager::GetActiveHand() const
 	return -1;
 }
 
+ARM_BODY_CLIP ArmManager::GetBodyClip(int hand) const
+{
+	return hand == 0 || hand == 1 ? m_Arms[hand][m_Types[hand]]->GetBodyClip() : ARM_BODY_CLIP{};
+}
+
 ARM_TYPE ArmManager::GetType(int hand) const
 {
 	return hand >= 0 && hand < 2 ? m_Types[hand] : ARM_TYPE_COUNT;
@@ -233,6 +238,15 @@ VEC3 Arm::GetDrawShoulder() const
 	const VEC3 mount = Vec3Scale(GetMountOffset(), GetDrawScale());
 	const float outward = CHARACTER_DATA::Get(GetPlayer().GetCharacter()).ArmOutward;
 	return ArmCalcShoulder(shoulder, GetPlayer().GetYaw(), GetHand(), mount.X + outward, mount.Y, mount.Z);
+}
+
+void Arm::BlendClipPose(VEC3& arm, VEC3& weapon) const
+{
+	VEC3 clipArm, clipWeapon;
+	const float weight = GetPlayer().GetAttackArm(GetHand(), clipArm, clipWeapon);
+	if (weight <= 0.0f) return;
+	arm = ArmCalcBlendDirection(arm, clipArm, weight);
+	weapon = ArmCalcBlendDirection(weapon, clipWeapon, weight);
 }
 
 float Arm::GetDrawScale() const

@@ -13,8 +13,54 @@ enum class SKINNED_CLIP
 	Jump, ///< ジャンプの上昇（ループしない。ファイルがなければ待機）
 	Fall, ///< 落下（ファイルがなければ待機）
 	Land, ///< 着地（ループしない。ファイルがなければ待機）
+	KatanaIaiLeft, ///< 刀の居合（左手）
+	KatanaIaiRight, ///< 刀の居合（右手）
+	KatanaAssaultLeft, ///< 刀のアサルト（左手）
+	KatanaAssaultRight, ///< 刀のアサルト（右手）
+	HammerTapLeft, ///< ハンマーの叩き（左手）
+	HammerTapRight, ///< ハンマーの叩き（右手）
+	HammerSlamLeft, ///< ハンマーの叩きつけ（左手）
+	HammerSlamRight, ///< ハンマーの叩きつけ（右手）
+	GunlanceShotLeft, ///< ガンランスの射撃（左手）
+	GunlanceShotRight, ///< ガンランスの射撃（右手）
+	GunlanceRushLeft, ///< ガンランスの突進（左手）
+	GunlanceRushRight, ///< ガンランスの突進（右手）
+	KnucklePunchLeft, ///< ナックルの殴り（左手）
+	KnucklePunchRight, ///< ナックルの殴り（右手）
+	KnuckleRushLeft, ///< ナックルの爆速突進（左手）
+	KnuckleRushRight, ///< ナックルの爆速突進（右手）
 	Count ///< クリップの数
 };
+
+/// @brief 武器の攻撃クリップの種類（左右の組で SKINNED_CLIP に並ぶ順）
+enum class ATTACK_CLIP
+{
+	KatanaIai, ///< 刀の居合
+	KatanaAssault, ///< 刀のアサルト（構え・空間を斬る・飛ぶ・着地）
+	HammerTap, ///< ハンマーの叩き
+	HammerSlam, ///< ハンマーの叩きつけ
+	GunlanceShot, ///< ガンランスの射撃
+	GunlanceRush, ///< ガンランスの突進
+	KnucklePunch, ///< ナックルの殴り
+	KnuckleRush, ///< ナックルの爆速突進
+};
+
+/// @brief 攻撃の種類と手から、再生するクリップを求める
+/// @param kind 攻撃の種類
+/// @param hand 左 0・右 1
+/// @return その手のクリップ
+inline SKINNED_CLIP AnimCalcAttackClip(ATTACK_CLIP kind, int hand)
+{
+	return static_cast<SKINNED_CLIP>(static_cast<int>(SKINNED_CLIP::KatanaIaiLeft) + static_cast<int>(kind) * 2 + hand);
+}
+
+/// @brief 武器の攻撃クリップか調べる
+/// @param clip 調べるクリップ
+/// @return 攻撃クリップなら true
+inline bool AnimCalcIsAttackClip(SKINNED_CLIP clip)
+{
+	return clip >= SKINNED_CLIP::KatanaIaiLeft && clip < SKINNED_CLIP::Count;
+}
 
 /// @brief アニメで使う3成分
 struct ANIM_VEC3

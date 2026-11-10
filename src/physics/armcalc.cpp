@@ -42,6 +42,16 @@ VEC3 ArmCalcPitchDirection(const VEC3& forward, float pitch)
 	return { direction.X * c, sinf(pitch), direction.Z * c };
 }
 
+float ArmCalcClipTime(int phase, float phaseTime, const float* phaseSeconds, const float* clipSeconds)
+{
+	float time = 0.0f;
+	for (int i = 0; i < phase; ++i) time += clipSeconds[i];
+	float ratio = phaseSeconds[phase] > 0.0f ? phaseTime / phaseSeconds[phase] : 1.0f;
+	if (ratio < 0.0f) ratio = 0.0f;
+	if (ratio > 1.0f) ratio = 1.0f;
+	return time + clipSeconds[phase] * ratio;
+}
+
 VEC3 ArmCalcBlendDirection(const VEC3& a, const VEC3& b, float ratio)
 {
 	const float t = fmaxf(0.0f, fminf(1.0f, ratio));

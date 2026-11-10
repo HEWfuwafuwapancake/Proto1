@@ -359,6 +359,9 @@
     <ClCompile Include="src\physics\armcalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
+    <ClCompile Include="src\physics\delayedhitcalc.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
     <ClCompile Include="src\physics\armpresscalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
@@ -420,6 +423,9 @@
       <Filter>src\physics</Filter>
     </ClInclude>
     <ClInclude Include="src\physics\armcalc.h">
+      <Filter>src\physics</Filter>
+    </ClInclude>
+    <ClInclude Include="src\physics\delayedhitcalc.h">
       <Filter>src\physics</Filter>
     </ClInclude>
     <ClInclude Include="src\physics\armpresscalc.h">

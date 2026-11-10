@@ -225,7 +225,16 @@ void Fighter::UpdateAnimation(const ArmManager* arms, float dt)
 	request.Speed = m_Motion.GetPlaySpeed();
 	request.Twist = m_Motion.GetTwist();
 	const int hand = IsHuman() && arms ? arms->GetActiveHand() : -1;
-	if (hand >= 0 && !m_Launched) request.Upper = hand == 0 ? SKINNED_CLIP::Left : SKINNED_CLIP::Right;
+	if (hand >= 0 && !m_Launched) {
+		const ARM_BODY_CLIP attack = arms->GetBodyClip(hand);
+		if (attack.Active) {
+			request.Upper = AnimCalcAttackClip(attack.Kind, hand);
+			request.UpperTime = attack.Time;
+			request.UpperFull = attack.FullBody;
+			m_AttackHand = hand;
+		}
+		else request.Upper = hand == 0 ? SKINNED_CLIP::Left : SKINNED_CLIP::Right;
+	}
 	m_Models[m_Character].Update(m_Pose, request, dt, ANIMATION_BLEND_SECONDS);
 }
 
@@ -263,6 +272,30 @@ XMMATRIX Fighter::GetModelWorld() const
 		* XMMatrixTranslation(0.0f, -character.ModelFootY * scale, 0.0f)
 		* XMMatrixRotationX(m_Motion.GetLeanPitch()) * XMMatrixRotationZ(-m_Motion.GetLeanRoll())
 		* XMMatrixRotationY(m_Motion.GetLegYaw()) * XMMatrixTranslation(p.x, p.y, p.z);
+}
+
+float Fighter::GetAttackArm(int hand, VEC3& arm, VEC3& weapon) const
+{
+	if (hand != m_AttackHand || hand < 0 || hand > 1 || !m_Models || !m_Models[m_Character].IsLoaded()) return 0.0f;
+	if (!AnimCalcIsAttackClip(m_Pose.Upper) || m_Pose.UpperWeight <= 0.0f) return 0.0f;
+	const SkinnedModel& model = m_Models[m_Character];
+	const auto& chain = CHARACTER_DATA::Get(m_Character).ArmChains[hand];
+	const XMMATRIX world = GetModelWorld();
+	XMVECTOR points[4];
+	for (size_t i = 0; i < chain.size(); ++i) {
+		ANIM_VEC3 p{};
+		if (!model.GetNodePosition(m_Pose, model.FindNode(chain[i]), p)) return 0.0f;
+		points[i] = XMVector3TransformCoord(XMVectorSet(p.X, p.Y, p.Z, 1.0f), world);
+	}
+	const XMVECTOR toHand = XMVectorSubtract(points[2], points[0]);
+	const XMVECTOR toEnd = XMVectorSubtract(points[3], points[2]);
+	if (XMVectorGetX(XMVector3LengthSq(toHand)) <= 0.0f || XMVectorGetX(XMVector3LengthSq(toEnd)) <= 0.0f) return 0.0f;
+	XMFLOAT3 a, b;
+	XMStoreFloat3(&a, XMVector3Normalize(toHand));
+	XMStoreFloat3(&b, XMVector3Normalize(toEnd));
+	arm = { a.x, a.y, a.z };
+	weapon = { b.x, b.y, b.z };
+	return m_Pose.UpperWeight;
 }
 
 bool Fighter::GetArmBone(int hand, VEC3& shoulder, VEC3& direction, float& length) const

@@ -49,6 +49,12 @@ public:
 	/// @param length 肩から手先までの骨の長さの合計を入れる先
 	/// @return 取得できたら true（腕の骨がないキャラ・モデルがないときは false）
 	bool GetArmBone(int hand, VEC3& shoulder, VEC3& direction, float& length) const;
+	/// @brief 攻撃クリップの腕と武器の向きを、アニメの骨から取得する（描画だけに使う）
+	/// @param hand 0：左手、1：右手
+	/// @param arm 肩から手首への単位方向を入れる先
+	/// @param weapon 手首から手先への単位方向を入れる先
+	/// @return クリップの重み（0〜1。その手の攻撃クリップを再生していない・骨がないなら 0）
+	float GetAttackArm(int hand, VEC3& arm, VEC3& weapon) const;
 	/// @brief 描画の上半身の向き（狙いの向きと、走りの傾き）を、直交する単位方向で取得する（描画だけに使う）
 	/// @param up 上半身の上の方向を入れる先
 	/// @param forward 上半身の前の方向を入れる先
@@ -146,6 +152,7 @@ private:
 	const SkinnedModel* m_Models = nullptr;
 	CHARACTER_TYPE m_Character = CHARACTER_DEFAULT;
 	SKINNED_POSE m_Pose;
+	int m_AttackHand = -1; // 最後に攻撃クリップを再生した手（左 0・右 1。描画だけ）
 	MotionCalc m_Motion; // 描画だけの脚の向き・ねじれ・傾き
 	PLAYER_INPUT m_Input;
 	PLAYER_INPUT m_PreviousInput;

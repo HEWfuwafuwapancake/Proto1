@@ -9,6 +9,8 @@
 // 調整用の値
 static constexpr float TAP_SECONDS[] = { 0.9f, 0.1f, 0.4f }; // 単押し：ため・叩き・休み
 static constexpr float WAVE_SECONDS[] = { 1.2f, 0.1f, 0.5f }; // 長押し：ため・叩き・休み
+static constexpr float TAP_CLIP_SECONDS[] = { 16.0f / 24.0f, 4.0f / 24.0f, 10.0f / 24.0f }; // 単押しのクリップの区切り（hammer_tap）
+static constexpr float WAVE_CLIP_SECONDS[] = { 22.0f / 24.0f, 4.0f / 24.0f, 14.0f / 24.0f }; // 長押しのクリップの区切り（hammer_slam）
 static constexpr float MOVE_SCALE = 0.5f;
 static constexpr float IMPACT_FORWARD = 1.6f; // 足元から叩く所までの前への距離。
 static constexpr float IMPACT_HEIGHT = 0.6f; // 叩く所の足元からの高さ。
@@ -90,8 +92,9 @@ void HammerArm::Draw()
 {
 	const float pitch = m_Phase.GetPhase() == HAMMER_CHARGE ? RAISE_PITCH : SLAM_PITCH;
 	const VEC3 aim = ArmCalcPitchDirection(m_Direction, pitch);
-	const VEC3 armDirection = ArmCalcBlendDirection(GetRestDirection(), aim, m_Straighten);
-	const VEC3 headDirection = ArmCalcBlendDirection(ArmCalcPitchDirection(GetForward(), CARRY_PITCH), aim, m_Straighten);
+	VEC3 armDirection = ArmCalcBlendDirection(GetRestDirection(), aim, m_Straighten);
+	VEC3 headDirection = ArmCalcBlendDirection(ArmCalcPitchDirection(GetForward(), CARRY_PITCH), aim, m_Straighten);
+	BlendClipPose(armDirection, headDirection);
 	const XMFLOAT4 color = GetColor(!m_Phase.IsIdle());
 	const float scale = MODEL_SCALE * GetDrawScale();
 	const VEC3 hand = DrawAlong(m_ArmModel, GetDrawShoulder(), armDirection, ARM_LENGTH, scale, color);
@@ -102,6 +105,17 @@ void HammerArm::Draw()
 bool HammerArm::IsActive() const
 {
 	return !m_Phase.IsIdle();
+}
+
+ARM_BODY_CLIP HammerArm::GetBodyClip() const
+{
+	ARM_BODY_CLIP clip;
+	if (m_Phase.IsIdle()) return clip;
+	clip.Active = true;
+	clip.Kind = m_Wave ? ATTACK_CLIP::HammerSlam : ATTACK_CLIP::HammerTap;
+	clip.FullBody = m_Wave;
+	clip.Time = ArmCalcClipTime(m_Phase.GetPhase(), m_Phase.GetTime(), m_Wave ? WAVE_SECONDS : TAP_SECONDS, m_Wave ? WAVE_CLIP_SECONDS : TAP_CLIP_SECONDS);
+	return clip;
 }
 
 bool HammerArm::IsHolding() const

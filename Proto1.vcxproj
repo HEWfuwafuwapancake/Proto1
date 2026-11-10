@@ -182,6 +182,7 @@
     <ClCompile Include="src\physics\c4calc.cpp" />
     <ClCompile Include="src\physics\grapplecalc.cpp" />
     <ClCompile Include="src\physics\armcalc.cpp" />
+    <ClCompile Include="src\physics\delayedhitcalc.cpp" />
     <ClCompile Include="src\physics\armpresscalc.cpp" />
     <ClCompile Include="src\physics\breachcalc.cpp" />
     <ClCompile Include="src\physics\tentaclecalc.cpp" />
@@ -250,6 +251,7 @@
     <ClInclude Include="src\physics\c4calc.h" />
     <ClInclude Include="src\physics\grapplecalc.h" />
     <ClInclude Include="src\physics\armcalc.h" />
+    <ClInclude Include="src\physics\delayedhitcalc.h" />
     <ClInclude Include="src\physics\armpresscalc.h" />
     <ClInclude Include="src\physics\breachcalc.h" />
     <ClInclude Include="src\physics\tentaclecalc.h" />
