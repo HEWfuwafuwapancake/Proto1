@@ -137,6 +137,7 @@ void KatanaArm::SetBreach(BREACH_STATE state)
 
 void KatanaArm::StartIai()
 {
+	m_IaiConsumed = false;
 	GetFighters().ConsumeGuardedHit(GetSlot()); // 前の受け流しの記録を持ち越さない。
 	m_Countered = false;
 	m_Direction = GetAim(false);
@@ -177,7 +178,11 @@ void KatanaArm::StepDelayedHits(float dt)
 	const int count = m_Delayed.Step(dt, hits, DELAYED_HIT_MAX);
 	for (int i = 0; i < count; ++i) {
 		if (!GetFighters().GetTarget(hits[i].Target, GetSlot()).Available) continue;
-		GetFighters().Launch(hits[i].Target, GetSlot(), hits[i].Direction, hits[i].Damage, hits[i].Power);
+		const bool applied = GetFighters().Launch(hits[i].Target, GetSlot(), hits[i].Direction, hits[i].Damage, hits[i].Power);
+		if (applied && !m_IaiConsumed) {
+			ConsumeUse();
+			m_IaiConsumed = true;
+		}
 		m_SlashSeconds[hits[i].Target] = SLASH_SHOW_SECONDS;
 		Rumble(SLASH_RUMBLE_SMALL, SLASH_RUMBLE_LARGE, SLASH_RUMBLE_SECONDS);
 	}
@@ -231,6 +236,7 @@ void KatanaArm::StartDash()
 	m_Direction = ArmCalcBlendDirection(GetForward(), Vec3Sub(m_Landing, m_RiftStart), 1.0f);
 	SetBreach(BREACH_DASH);
 	GetPlayer().SetPulled(true);
+	ConsumeUse();
 	Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
 }
 
@@ -419,6 +425,20 @@ void KatanaArm::Draw()
 bool KatanaArm::IsActive() const
 {
 	return !m_Phase.IsIdle() || m_Breach != BREACH_NONE;
+}
+
+bool KatanaArm::IsBusy() const
+{
+	if (m_Delayed.GetCount() > 0) return true;
+	for (float seconds : m_SlashSeconds) {
+		if (seconds > 0.0f) return true;
+	}
+	return false;
+}
+
+bool KatanaArm::CanTakeTap() const
+{
+	return !IsActive() && (GetRemainingUses() < 0 || m_Delayed.GetCount() == 0);
 }
 
 bool KatanaArm::IsHolding() const

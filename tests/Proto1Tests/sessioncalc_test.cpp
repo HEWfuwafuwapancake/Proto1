@@ -190,12 +190,13 @@ namespace Proto1Tests
 		}
 	}
 
-	// JOIN と機器選択で自分の番号を送り、ホストの開始通知で全員分を受け取る。
-	TEST(SessionCalcTest, Characters_JoinReadyAndStartShareLobbyChoices)
+	// JOIN と機器選択で自分のキャラを送り、開始通知で全員のキャラとホストのルール・種を受け取る。
+	TEST(SessionCalcTest, State_SharesLobbyCharactersAndHostRuleAndSeed)
 	{
 		SessionCalc host, guest;
-		host.Initialize({ NET_MODE_HOST }, 100, CHARACTER_MEKA);
-		guest.Initialize({ NET_MODE_JOIN }, 101, CHARACTER_MEKAGIRL);
+		constexpr uint32_t hostNonce = 0x12345678;
+		host.Initialize({ NET_MODE_HOST }, hostNonce, CHARACTER_MEKA, GAME_RULE_GAME);
+		guest.Initialize({ NET_MODE_JOIN }, 101, CHARACTER_MEKAGIRL, GAME_RULE_DEBUG);
 
 		const auto join = guest.MakeControl();
 		std::vector<uint8_t> bytes;
@@ -220,6 +221,28 @@ namespace Proto1Tests
 		EXPECT_TRUE(guest.IsRunning());
 		EXPECT_EQ(CHARACTER_MEKA, guest.GetCharacter(0));
 		EXPECT_EQ(CHARACTER_MEKAGIRL, guest.GetCharacter(slot));
+		EXPECT_EQ(GAME_RULE_GAME, guest.GetRule());
+		EXPECT_EQ(hostNonce, guest.GetSeed());
+	}
+
+	// STATE のルールが範囲外なら受け付けず、ルール欄のない旧版には版の不一致を返せる。
+	TEST(SessionCalcTest, State_RejectsInvalidRuleAndRecognizesPreviousVersion)
+	{
+		SessionCalc host;
+		host.Initialize({ NET_MODE_HOST }, 100, CHARACTER_DEFAULT, GAME_RULE_GAME);
+		ASSERT_EQ(1, host.Join(101));
+		std::vector<uint8_t> bytes;
+		ASSERT_TRUE(SessionCalc::Encode(host.MakeControl(1), bytes));
+		const size_t ruleOffset = bytes.size() - sizeof(uint32_t) - 1;
+		bytes[ruleOffset] = GAME_RULE_COUNT;
+		SESSION_MESSAGE decoded;
+		EXPECT_FALSE(SessionCalc::Decode(bytes.data(), bytes.size(), decoded));
+
+		bytes.resize(ruleOffset);
+		EXPECT_FALSE(SessionCalc::Decode(bytes.data(), bytes.size(), decoded));
+		bytes[4] = 7; // 版7の STATE はキャラ番号まで。版は先頭の識別子4バイトの直後。
+		ASSERT_TRUE(SessionCalc::Decode(bytes.data(), bytes.size(), decoded));
+		EXPECT_EQ(SESSION_FAILURE_VERSION, SessionCalc::CheckCompatibility(decoded));
 	}
 
 	TEST(SessionCalcTest, Inputs_CompleteThroughWaitsForEveryPlayer)

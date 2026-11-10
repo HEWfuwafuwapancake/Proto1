@@ -91,8 +91,10 @@
     <ClCompile Include="..\..\src\physics\armcalc.cpp" />
     <ClCompile Include="..\..\src\physics\delayedhitcalc.cpp" />
     <ClCompile Include="..\..\src\physics\armpresscalc.cpp" />
+    <ClCompile Include="..\..\src\physics\armusecalc.cpp" />
     <ClCompile Include="..\..\src\physics\breachcalc.cpp" />
     <ClCompile Include="..\..\src\physics\collision.cpp" />
+    <ClCompile Include="..\..\src\physics\capsulecalc.cpp" />
     <ClCompile Include="..\..\src\physics\dummycalc.cpp" />
     <ClCompile Include="..\..\src\physics\knockbackcalc.cpp" />
     <ClCompile Include="..\..\src\physics\playercalc.cpp" />
@@ -111,6 +113,8 @@
     <ClCompile Include="gunlancecalc_test.cpp" />
     <ClCompile Include="c4calc_test.cpp" />
     <ClCompile Include="armpresscalc_test.cpp" />
+    <ClCompile Include="armusecalc_test.cpp" />
+    <ClCompile Include="capsulecalc_test.cpp" />
     <ClCompile Include="breachcalc_test.cpp" />
     <ClCompile Include="..\..\src\physics\guardcalc.cpp" />
     <ClCompile Include="..\..\src\physics\statuscalc.cpp" />
@@ -133,6 +137,10 @@
     <ClCompile Include="tentaclecalc_test.cpp" />
     <ClCompile Include="matchcalc_test.cpp" />
     <ClCompile Include="scenecalc_test.cpp" />
+    <ClCompile Include="randomcalc_test.cpp" />
+    <ClCompile Include="spawncalc_test.cpp" />
+    <ClCompile Include="..\..\src\physics\randomcalc.cpp" />
+    <ClCompile Include="..\..\src\physics\spawncalc.cpp" />
     <ClCompile Include="..\..\src\physics\scenecalc.cpp" />
     <ClCompile Include="..\..\src\physics\matchcalc.cpp" />
     <ClCompile Include="..\..\src\physics\tentaclecalc.cpp" />

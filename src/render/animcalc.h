@@ -29,6 +29,8 @@ enum class SKINNED_CLIP
 	KnucklePunchRight, ///< ナックルの殴り（右手）
 	KnuckleRushLeft, ///< ナックルの爆速突進（左手）
 	KnuckleRushRight, ///< ナックルの爆速突進（右手）
+	GunlanceImpaleLeft, ///< ガンランスの突き上げと撃ち込み（左手）
+	GunlanceImpaleRight, ///< ガンランスの突き上げと撃ち込み（右手）
 	Count ///< クリップの数
 };
 
@@ -43,6 +45,7 @@ enum class ATTACK_CLIP
 	GunlanceRush, ///< ガンランスの突進
 	KnucklePunch, ///< ナックルの殴り
 	KnuckleRush, ///< ナックルの爆速突進
+	GunlanceImpale, ///< ガンランスの突き上げと撃ち込み
 };
 
 /// @brief 攻撃の種類と手から、再生するクリップを求める

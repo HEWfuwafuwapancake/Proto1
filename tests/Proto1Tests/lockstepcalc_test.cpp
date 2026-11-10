@@ -149,9 +149,13 @@ namespace Proto1Tests
 				EXPECT_NE(original, LockstepCalc::CalculateChecksum(states));
 				*field = 0.0f;
 			}
-			states[slot].Score = 1;
-			EXPECT_NE(original, LockstepCalc::CalculateChecksum(states));
-			states[slot].Score = 0;
+			int32_t* words[] = { &states[slot].Score, &states[slot].ArmTypes[0], &states[slot].ArmTypes[1],
+				&states[slot].ArmUses[0], &states[slot].ArmUses[1] };
+			for (int32_t* word : words) {
+				*word = 1;
+				EXPECT_NE(original, LockstepCalc::CalculateChecksum(states));
+				*word = 0;
+			}
 		}
 	}
 }

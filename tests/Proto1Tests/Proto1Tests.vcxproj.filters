@@ -63,11 +63,19 @@
     <ClCompile Include="gunlancecalc_test.cpp" />
     <ClCompile Include="c4calc_test.cpp" />
     <ClCompile Include="armpresscalc_test.cpp" />
+    <ClCompile Include="armusecalc_test.cpp" />
+    <ClCompile Include="capsulecalc_test.cpp" />
     <ClCompile Include="breachcalc_test.cpp" />
     <ClCompile Include="..\..\src\physics\breachcalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\physics\armpresscalc.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\physics\armusecalc.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\physics\capsulecalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
     <ClCompile Include="framestats_test.cpp" />
@@ -89,6 +97,14 @@
       <Filter>src\net</Filter>
     </ClInclude>
     <ClCompile Include="scenecalc_test.cpp" />
+    <ClCompile Include="randomcalc_test.cpp" />
+    <ClCompile Include="spawncalc_test.cpp" />
+    <ClCompile Include="..\..\src\physics\randomcalc.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\physics\spawncalc.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\src\physics\scenecalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>

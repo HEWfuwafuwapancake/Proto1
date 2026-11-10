@@ -1,6 +1,8 @@
 ﻿#pragma once
 
 #include "game/fighter.h"
+#include "physics/scenecalc.h"
+#include "physics/spawncalc.h"
 
 /// @brief 4体の寿命・体当たり・攻撃と保持・KOの記録を管理する
 class FighterManager
@@ -16,6 +18,8 @@ public:
 	const VersusCalc& GetVersus() const { return m_Versus; }
 	/// @brief 人のスロットにカメラと腕をつなぐ（どちらのResetより前でもよい）
 	void BindPlayer(int slot, const Camera& camera, const ArmManager& arms);
+	/// @brief 試合のルールと、復活先を選ぶ乱数の種を設定する
+	void SetMatchSettings(GAME_RULE rule, uint32_t seed);
 	/// @brief 全員の体・攻撃記録・得点を戻す（割り当てはそのまま）
 	void Reset();
 	/// @brief 全員の体を更新し、場外の得点を記録してから体当たりを解く
@@ -56,7 +60,8 @@ public:
 	/// @brief 攻撃者を記録し、ダメージ%だけを足す（速度はそのまま）
 	void AddDamage(int index, int attacker, float damage);
 	/// @brief 攻撃者を記録し、ダメージを足して指定した3D方向へ吹っ飛ばす
-	void Launch(int index, int attacker, const VEC3& direction, float damage, float power);
+	/// @return 相手に効いたら true（ガードされた場合などは false）
+	bool Launch(int index, int attacker, const VEC3& direction, float damage, float power);
 	/// @brief 状態異常をかけて攻撃者を記録する（隠れるだけは自分にもかけられ、攻撃者を記録しない）
 	/// @return かけられたら true
 	bool ApplyStatus(int index, int attacker, STATUS_TYPE type, float seconds, float value);
@@ -78,9 +83,13 @@ private:
 	bool CanAttack(int index, int attacker);
 	bool m_GuardedHit[FIGHTER_COUNT] = {}; // ガードで攻撃を防いだか（ConsumeGuardedHit で読むまで残す）
 	void PushBodies();
+	void RespawnAtSafePoint(int slot);
 	SkinnedModel m_Models[CHARACTER_COUNT];
 	Fighter m_Fighters[FIGHTER_COUNT];
 	VersusCalc m_Versus;
+	const Stage* m_Stage = nullptr;
+	GAME_RULE m_Rule = GAME_RULE_DEBUG;
+	SpawnCalc m_Spawn;
 	const Camera* m_Cameras[FIGHTER_COUNT] = {};
 	const ArmManager* m_Arms[FIGHTER_COUNT] = {};
 };

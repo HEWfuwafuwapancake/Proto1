@@ -4,6 +4,7 @@
 #include "game/fightermanager.h"
 #include "game/camera.h"
 #include "game/arm.h"
+#include "game/armcapsule.h"
 #include "game/match.h"
 #include "game/hud.h"
 #include "physics/scenecalc.h"
@@ -33,17 +34,20 @@ public:
 	const ArmManager& GetArms(int slot) const { return m_Arms[slot]; }
 
 private:
-	void Restart();
+	void Restart(bool retry);
 	void ResetParticipants();
 	void UpdateMenu();
 	bool IsLobbyBack() const;
 	void ConfigurePlayers();
 	void UpdatePadLights() const;
 	VERSUS_VIEWPORT GetViewport(int index) const;
+	GAME_RULE GetRule() const;
+	uint32_t GetSeed() const;
 
 	Stage m_Stage;
 	VersusCalc m_Participants; // タイトルで決まる参加者。試合の得点はFighterManagerが持つ。
 	FighterManager m_Fighters;
+	ArmCapsule m_ArmCapsule;
 	std::array<CHARACTER_TYPE, FIGHTER_COUNT> m_LobbyCharacters{};
 	// カメラ・腕・HUD はスロット番号で持つ。使うのは人のスロットだけ。
 	Camera m_Cameras[FIGHTER_COUNT];
@@ -58,6 +62,8 @@ private:
 	SceneCalc m_Scene;
 	NetSession m_Net;
 	SessionAddressCalc m_JoinAddress;
+	uint32_t m_OfflineSeed = 0;
+	uint32_t m_MatchSeed = 0;
 	int m_MenuDevice = ACTION_DEVICE_KEYBOARD; // SOLO の決定を押した機器
 	bool m_Fullscreen = false;
 };

@@ -1,7 +1,9 @@
 ﻿#pragma once
 
 /// @file scenecalc.h
-/// @brief 起動・モード選択・IP 入力・ロビー・試合・結果の流れ（DirectX・Windows 不使用）
+/// @brief 起動・ルールとモードの選択・IP 入力・ロビー・試合・結果の流れ（DirectX・Windows 不使用）
+
+#include <cstdint>
 
 /// @brief キャラ選択・ロビーで使うキャラ番号
 enum CHARACTER_TYPE
@@ -14,6 +16,14 @@ enum CHARACTER_TYPE
 /// @brief 最初に選ばれているキャラ（ダミーもこのキャラで描く）
 static constexpr CHARACTER_TYPE CHARACTER_DEFAULT = CHARACTER_MEKAGIRL;
 
+/// @brief 試合のルール
+enum GAME_RULE : uint8_t
+{
+	GAME_RULE_GAME, ///< 通常の対戦
+	GAME_RULE_DEBUG, ///< 腕を自由に試せるデバッグ対戦
+	GAME_RULE_COUNT ///< ルールの数
+};
+
 /// @brief ゲームのシーン
 enum SCENE
 {
@@ -22,6 +32,7 @@ enum SCENE
 	SCENE_RESULT, ///< 結果
 	SCENE_GAME_START, ///< 起動時の GAME START
 	SCENE_CHARACTER_SELECT, ///< キャラの選択
+	SCENE_RULE_SELECT, ///< 試合のルールの選択
 	SCENE_MODE_SELECT, ///< 対戦方法の選択
 	SCENE_JOIN_ADDRESS, ///< 参加先の IPv4 入力
 };
@@ -85,16 +96,19 @@ public:
 	SCENE_EVENT Step(const SCENE_INPUT& input, bool matchFinished);
 	/// @brief 今のシーンを取得する
 	SCENE GetScene() const { return m_Scene; }
-	/// @brief モード選択・結果画面で選んでいる項目の番号を取得する
+	/// @brief ルール選択・モード選択・結果画面で選んでいる項目の番号を取得する
 	int GetCursor() const { return m_Cursor; }
 	/// @brief GAME START のあとに選んだキャラを取得する
 	CHARACTER_TYPE GetCharacter() const { return m_Character; }
+	/// @brief 決定した試合のルールを取得する
+	GAME_RULE GetRule() const { return m_Rule; }
 	/// @brief 左右の入力でキャラを一周させる（左 -1、右 +1、なし 0）
 	static CHARACTER_TYPE CycleCharacter(CHARACTER_TYPE character, int direction);
 
 private:
 	void MoveCursor(float moveY, int count);
 	CHARACTER_TYPE m_Character = CHARACTER_DEFAULT;
+	GAME_RULE m_Rule = GAME_RULE_GAME;
 	SCENE m_Scene = SCENE_GAME_START;
 	int m_Cursor = RESULT_ITEM_RETRY;
 	bool m_MenuReady = true;

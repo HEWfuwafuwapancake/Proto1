@@ -1,45 +1,54 @@
 ﻿#pragma once
 
+#include "physics/armphasecalc.h"
+
 /// @file gunlancecalc.h
-/// @brief ガンランスの段階のためと、突進で同じ相手に当てる間隔の計算（DirectX と Windows は使わない）
+/// @brief ガンランスの射撃と突き上げの時間の計算（DirectX と Windows は使わない）
 
-/// @brief ためられる段階の最大
-static constexpr int GUNLANCE_MAX_LEVEL = 3;
-
-/// @brief 相手ごとの間隔を覚えられる相手の番号の数（番号は 0 から）
-static constexpr int GUNLANCE_TARGET_MAX = 8;
-
-/// @brief ガンランスの調整値
-struct GUNLANCE_PARAMS
+/// @brief 1フレームの撃ち込みの結果
+struct GUNLANCE_STEP
 {
-	float WaitSeconds; ///< 最後に押してからこの秒数押さないと発射する
-	float RehitSeconds; ///< 同じ相手にもう一度当てられるまでの秒数
+	int Shots = 0; ///< このフレームに撃つ弾の数
+	bool Finished = false; ///< このフレームの最後の弾で撃ち込みが終わるか
 };
 
-/// @brief 段階のためと、相手ごとの当たる間隔を管理する
+/// @brief 単発射撃の間隔と、突進から撃ち込みまでの段階を管理する
 class GunlanceCalc
 {
 public:
-	/// @brief ためなしで初期化する
-	GunlanceCalc() = default;
-	/// @brief ためと相手ごとの間隔を消す
+	/// @brief 待機に戻し、射撃の間隔も消す
 	void Reset();
-	/// @brief 1フレーム進める。押すと1段階ため、最大の段階か、押さない時間が続くと発射する
-	/// @param tap 入力を設定する（true：このフレームに押した、false：押していない）
-	/// @param dt 1フレームの秒数
-	/// @param params 調整値
-	/// @return 発射した段階（1〜GUNLANCE_MAX_LEVEL）。発射しなければ 0
-	int Step(bool tap, float dt, const GUNLANCE_PARAMS& params);
-	/// @brief 相手に当ててよければ、間隔を始めて true を返す
-	/// @param target 相手の番号（0〜GUNLANCE_TARGET_MAX-1）
-	/// @param params 調整値
-	/// @return 当ててよければ true
-	bool TryHit(int target, const GUNLANCE_PARAMS& params);
-	/// @brief 今ためている段階を取得する（0 はためなし）
-	int GetLevel() const { return m_Level; }
+	/// @brief 今の突進・突き上げ・撃ち込みをやめて待機に戻す
+	void StopAction();
+	/// @brief このフレームに単発射撃ができるか調べる
+	/// @param dt 入力判定から発射までに進める秒数（すでに進めた場合は 0）
+	bool CanFire(float dt = 0.0f) const;
+	/// @brief 弾を1発出せたとき、次に単発射撃できるまでの間隔を始める
+	void RecordShot();
+	/// @brief 長押しの突進を始める
+	void StartRush();
+	/// @brief 突進で相手をつかんだあと、残弾の範囲で突き上げと撃ち込みを始める
+	/// @param remaining 1発以上の残弾（-1 は無制限）
+	void StartImpale(int remaining);
+	/// @brief 1フレーム進め、そのフレームに撃ち込む弾を返す
+	/// @param dt 進める秒数
+	/// @param pressed 長押しの状態を設定する（true：押している、false：離している）
+	GUNLANCE_STEP Step(float dt, bool pressed);
+	/// @brief 待機中なら true を返す
+	bool IsIdle() const { return m_Phase.IsIdle(); }
+	/// @brief 突進中なら true を返す
+	bool IsRushing() const { return m_Phase.GetPhase() == Rush; }
+	/// @brief 突き上げや撃ち込みで相手を保持する段階なら true を返す
+	bool IsHolding() const { return m_Phase.GetPhase() == Lift || m_Phase.GetPhase() == Burst; }
+	/// @brief 突進を始めてからの秒数を取得する（突進していないときは 0）
+	float GetRushTime() const { return IsRushing() ? m_Phase.GetTime() : 0.0f; }
+	/// @brief 突き上げ中の進み具合を 0〜1 で取得する（突き上げが済んだら 1）
+	float GetLiftProgress() const;
 
 private:
-	int m_Level = 0; ///< 今ためている段階
-	float m_Wait = 0.0f; ///< 最後に押してからの秒数
-	float m_Rehit[GUNLANCE_TARGET_MAX] = {}; ///< 相手ごとの、もう一度当てられるまでの残りの秒数
+	enum Phase { Rush, Lift, Burst, PhaseCount };
+
+	ArmPhaseCalc m_Phase;
+	float m_ShotCooldown = 0.0f;
+	int m_BurstRounds = 0;
 };

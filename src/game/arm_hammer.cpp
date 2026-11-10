@@ -61,14 +61,16 @@ void HammerArm::Impact()
 		: Vec3Add({ feet.x, feet.y + IMPACT_HEIGHT, feet.z }, Vec3Scale(m_Direction, IMPACT_FORWARD));
 	m_RangeSeconds = RANGE_SHOW_SECONDS;
 	bool hit = false;
+	bool affected = false;
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		const TENTACLE_TARGET target = GetFighters().GetTarget(i, GetSlot());
 		if (!target.Available || !CollisionSphereCapsule({ m_RangeCenter, m_RangeRadius }, target.Body).Hit) continue;
-		GetFighters().Launch(i, GetSlot(), AreaCalcRadialDirection(m_RangeCenter, target.Body, m_Wave ? WAVE_UP : IMPACT_UP, m_Direction),
-			m_Wave ? WAVE_DAMAGE : IMPACT_DAMAGE, m_Wave ? WAVE_POWER : IMPACT_POWER);
-		if (m_Wave) GetFighters().ApplyStatus(i, GetSlot(), STATUS_STUN, WAVE_STUN_SECONDS, 0.0f);
+		if (GetFighters().Launch(i, GetSlot(), AreaCalcRadialDirection(m_RangeCenter, target.Body, m_Wave ? WAVE_UP : IMPACT_UP, m_Direction),
+			m_Wave ? WAVE_DAMAGE : IMPACT_DAMAGE, m_Wave ? WAVE_POWER : IMPACT_POWER)) affected = true;
+		if (m_Wave && GetFighters().ApplyStatus(i, GetSlot(), STATUS_STUN, WAVE_STUN_SECONDS, 0.0f)) affected = true;
 		hit = true;
 	}
+	if (affected) ConsumeUse();
 	if (hit) Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
 }
 

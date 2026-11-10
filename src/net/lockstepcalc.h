@@ -9,7 +9,7 @@
 
 // 調整用の値（通信の版を変えるときは送受信側をそろえる）
 /// @brief 通信の版の番号
-static constexpr uint16_t LOCKSTEP_VERSION = 7;
+static constexpr uint16_t LOCKSTEP_VERSION = 8;
 /// @brief 指定がないときの入力の遅れ（フレーム）
 static constexpr int LOCKSTEP_DEFAULT_DELAY = 3;
 /// @brief 設定できる入力の遅れの上限（フレーム）
@@ -61,6 +61,8 @@ struct LOCKSTEP_STATE
 	VEC3 Position = {}; ///< 足元の位置
 	float Percent = 0.0f; ///< ダメージ%
 	int32_t Score = 0; ///< KO数
+	int32_t ArmTypes[2] = {}; ///< 左右の腕の種類（ゲーム側の装備番号）
+	int32_t ArmUses[2] = {}; ///< 左右の残り使用回数（無制限は -1）
 };
 
 /// @brief 入力の保管・遅延・再送・パケット変換を行う計算（Windows・DirectX・gameに依存しない）

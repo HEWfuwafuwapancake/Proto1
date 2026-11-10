@@ -4,6 +4,7 @@
 #include "input/pad.h"
 #include "render/number2d.h"
 #include "render/text2d.h"
+#include <chrono>
 #include <cmath>
 
 #ifdef _DEBUG
@@ -13,6 +14,9 @@
 
 // 調整用の値
 static constexpr XMFLOAT4 EMPTY_VIEW_COLOR = { 0.0f, 0.0f, 0.0f, 1.0f };	// 3人のときの空いた画面（黒）
+static constexpr uint32_t MATCH_SEED_STEP = 0x9e3779b9u;	// やり直すたびに試合の種へ足す値
+static constexpr uint32_t MATCH_ROUND_STEP = 0xc2b2ae35u;	// メニューやロビーから始め直すたびに種へ足す値
+static constexpr uint32_t CAPSULE_SEED_MASK = 0x85ebca6bu;	// 復活先とは別の乱数列にする
 
 VERSUS_VIEWPORT Game::GetViewport(int index) const
 {
@@ -21,6 +25,7 @@ VERSUS_VIEWPORT Game::GetViewport(int index) const
 
 bool Game::Initialize(const NET_OPTIONS& options)
 {
+	m_OfflineSeed = static_cast<uint32_t>(std::chrono::steady_clock::now().time_since_epoch().count());
 	// 相手への参照は先に渡せるが、Reset の中では初期化済みの相手だけを使う。
 	m_Stage.Initialize();
 	m_Participants.Reset();
@@ -30,6 +35,7 @@ bool Game::Initialize(const NET_OPTIONS& options)
 	m_LobbyCharacters.fill(CHARACTER_DEFAULT);
 	m_Fighters.LoadModels();
 	m_Fighters.Initialize(m_Stage, m_Participants);
+	m_ArmCapsule.Initialize(m_Stage);
 	// 腕のモデルは起動時に4枠分だけ読む。参加やTITLE・RETRYでは作り直さない。
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		m_Cameras[i].Initialize(m_Stage, m_Fighters, i, m_Arms[i], m_Match);
@@ -59,6 +65,7 @@ void Game::Finalize()
 		m_Arms[i].Finalize();
 		m_Cameras[i].Finalize();
 	}
+	m_ArmCapsule.Finalize();
 	m_Fighters.Finalize();
 	m_Stage.Finalize();
 }
@@ -102,16 +109,34 @@ void Game::UpdatePadLights() const
 	}
 }
 
-void Game::Restart()
+void Game::Restart(bool retry)
 {
+	// 試合中に引いた乱数の回数にかかわらず、やり直しでは全員が同じ種を使う。
+	const GAME_RULE rule = GetRule();
+	if (!retry && !m_Net.IsOnline()) m_OfflineSeed += MATCH_ROUND_STEP;
+	m_MatchSeed = retry ? m_MatchSeed + MATCH_SEED_STEP : GetSeed();
+	m_Match.SetRule(rule);
+	m_Fighters.SetMatchSettings(rule, m_MatchSeed);
+
 	// 敵を戻す前に腕を離し、プレイヤー・敵のあとにカメラを戻す。
-	for (int k = 0; k < m_HumanCount; ++k) m_Arms[m_Humans[k]].Reset();
+	for (int k = 0; k < m_HumanCount; ++k) m_Arms[m_Humans[k]].ResetForMatch(rule);
 	m_Fighters.Reset();
+	if (rule == GAME_RULE_GAME) m_ArmCapsule.Reset(m_MatchSeed ^ CAPSULE_SEED_MASK);
 	for (int k = 0; k < m_HumanCount; ++k) m_Cameras[m_Humans[k]].Reset();
 	m_Match.Reset();
 #ifdef _DEBUG
 	hal::dout << "試合：やり直し" << std::endl;
 #endif
+}
+
+GAME_RULE Game::GetRule() const
+{
+	return m_Net.IsOnline() ? m_Net.GetRule() : m_Scene.GetRule();
+}
+
+uint32_t Game::GetSeed() const
+{
+	return m_Net.IsOnline() ? m_Net.GetSeed() + m_Net.GetRound() * MATCH_ROUND_STEP : m_OfflineSeed;
 }
 
 void Game::ResetParticipants()
@@ -170,14 +195,14 @@ void Game::UpdateMenu()
 		m_Participants.AssignDevice(m_MenuDevice);
 		m_LobbyCharacters[0] = m_Scene.GetCharacter();
 		ConfigurePlayers();
-		Restart();
+		Restart(false);
 	}
 	else if (event == SCENE_EVENT_HOST || event == SCENE_EVENT_JOIN) {
 		NET_OPTIONS options;
 		options.Mode = event == SCENE_EVENT_HOST ? NET_MODE_HOST : NET_MODE_JOIN;
 		options.Host = m_JoinAddress.GetText();
 		options.Delay = LOCKSTEP_AUTO_DELAY;
-		if (m_Net.Initialize(options, m_Scene.GetCharacter())) m_Scene.OpenLobby();
+		if (m_Net.Initialize(options, m_Scene.GetCharacter(), m_Scene.GetRule())) m_Scene.OpenLobby();
 		else m_Scene.ShowModes(); // 理由は NetSession がタイトルバーへ残す。
 		ActionSetOnlineEquip(m_Net.IsOnline());
 		// オフラインで替えた装備が残ると、相手の画面と腕がずれて DESYNC になる。
@@ -200,7 +225,7 @@ void Game::Update()
 {
 	const SCENE oldScene = m_Scene.GetScene();
 	if (oldScene == SCENE_GAME_START || oldScene == SCENE_CHARACTER_SELECT
-		|| oldScene == SCENE_MODE_SELECT || oldScene == SCENE_JOIN_ADDRESS) {
+		|| oldScene == SCENE_RULE_SELECT || oldScene == SCENE_MODE_SELECT || oldScene == SCENE_JOIN_ADDRESS) {
 		UpdateMenu();
 		return;
 	}
@@ -270,21 +295,29 @@ void Game::Update()
 		ActionCalcPlayerTrigger(m_Inputs[0], m_PreviousInputs[0], ACTION_RESTART), ActionCalcPlayerMove(m_Inputs[0]).Y };
 	if (oldScene == SCENE_TITLE) input = { start, false, 0.0f };
 	if (oldScene == SCENE_MATCH) {
-		// 全員の体・体当たり → カメラ → キャラの向き → 腕の順を保つ。
+		// 全員の体・体当たり → カプセル → カメラ → キャラの向き → 腕の順を保つ。
 		m_Stage.Update();
 		if (m_Match.IsPlaying()) {
 			m_Fighters.Update();
+			if (GetRule() == GAME_RULE_GAME) {
+				// 復活した地点で拾った腕まで、あとから外さないようにする。
+				for (int k = 0; k < m_HumanCount; ++k) {
+					const int slot = m_Humans[k];
+					if (m_Fighters.GetFighter(slot).DidRespawn()) m_Arms[slot].ResetForMatch(GAME_RULE_GAME);
+				}
+				m_ArmCapsule.Update(m_Fighters, m_Arms);
+			}
 		}
 		for (int k = 0; k < m_HumanCount; ++k) m_Cameras[m_Humans[k]].Update();
 		if (m_Match.IsPlaying()) m_Fighters.UpdateFacing();
-		// 装備切り替えは時間切れのあとも受け付ける。
+		// DEBUG の装備切り替えは時間切れのあとも受け付ける。
 		for (int k = 0; k < m_HumanCount; ++k) m_Arms[m_Humans[k]].Update(m_Match.IsPlaying());
 		if (m_Match.IsPlaying()) m_Fighters.UpdateAnimation();
 	}
 	const SCENE_EVENT event = m_Scene.Step(input, m_Match.GetState() == MATCH_STATE_FINISHED);
 	if (event == SCENE_EVENT_START_MATCH) {
 		if (oldScene == SCENE_TITLE) ConfigurePlayers();
-		Restart();
+		Restart(oldScene != SCENE_TITLE);
 	}
 	else if (event == SCENE_EVENT_BACK_TITLE) {
 		if (m_Net.IsOnline()) {
@@ -309,7 +342,15 @@ void Game::Update()
 		for (int slot = 0; slot < FIGHTER_COUNT; ++slot) {
 			const Fighter& fighter = m_Fighters.GetFighter(slot);
 			const XMFLOAT3 position = fighter.GetPosition();
-			states[slot] = { { position.x, position.y, position.z }, fighter.GetPercent(), m_Fighters.GetScore(slot) };
+			const ArmManager& arms = m_Arms[slot];
+			states[slot] = { { position.x, position.y, position.z }, fighter.GetPercent(), m_Fighters.GetScore(slot),
+				{ ARM_TYPE_NONE, ARM_TYPE_NONE }, { 0, 0 } };
+			if (fighter.IsHuman()) {
+				for (int hand = 0; hand < 2; ++hand) {
+					states[slot].ArmTypes[hand] = arms.GetType(hand);
+					states[slot].ArmUses[hand] = arms.GetRemainingUses(hand);
+				}
+			}
 		}
 		m_Net.RecordChecksum(onlineFrame, states);
 	}
@@ -323,6 +364,8 @@ void Game::Draw() const
 	light.Diffuse = { 1.0f, 1.0f, 1.0f, 1.0f };
 	light.Ambient = { 0.3f, 0.3f, 0.3f, 1.0f };
 	light.Direction = { 0.5f, -1.0f, 0.8f, 0.0f };
+	const SCENE scene = m_Scene.GetScene();
+	const bool drawCapsules = GetRule() == GAME_RULE_GAME && (scene == SCENE_MATCH || scene == SCENE_RESULT);
 
 	// 人ごとに「ビューポート → そのカメラ → 3D → その人の HUD」の順に描く。
 	const int viewCount = m_Net.IsOnline() ? 1 : (m_HumanCount > 0 ? m_HumanCount : 1);
@@ -339,6 +382,7 @@ void Game::Draw() const
 		Shader_SetLight(light);
 
 		m_Stage.Draw();
+		if (drawCapsules) m_ArmCapsule.Draw();
 		m_Fighters.Draw(camera.GetTarget());
 		for (int j = 0; j < m_HumanCount; ++j) m_Arms[m_Humans[j]].Draw();
 

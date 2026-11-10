@@ -266,6 +266,10 @@ uint32_t LockstepCalc::CalculateChecksum(const LOCKSTEP_STATE (&states)[FIGHTER_
 		HashWord(hash, FloatBits(state.Position.Z));
 		HashWord(hash, FloatBits(state.Percent));
 		HashWord(hash, static_cast<uint32_t>(state.Score));
+		for (int hand = 0; hand < 2; ++hand) {
+			HashWord(hash, static_cast<uint32_t>(state.ArmTypes[hand]));
+			HashWord(hash, static_cast<uint32_t>(state.ArmUses[hand]));
+		}
 	}
 	return hash;
 }

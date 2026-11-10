@@ -26,6 +26,8 @@ public:
 	void Interrupt() override;
 	/// @brief 投げる動きの間なら true を返す
 	bool IsActive() const override;
+	/// @brief 爆発の表示または飛んでいる C4 が残っていれば true を返す
+	bool IsBusy() const override;
 	/// @brief 敵をつかまないので、常に false を返す
 	bool IsHolding() const override;
 	/// @brief 起爆は投げたあとの構えの間でもできるので、常に true を返す

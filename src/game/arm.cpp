@@ -2,6 +2,7 @@
 #include "game/fighter.h"
 #include "game/fightermanager.h"
 #include "core/gametime.h"
+#include "game/arm_bare.h"
 #include "game/arm_hammer.h"
 #include "game/arm_knuckle.h"
 #include "game/arm_c4.h"
@@ -34,8 +35,11 @@ static constexpr float STUB_RADIUS = 0.06f; // モデルのない腕の円柱の
 static constexpr int RANGE_RING_POINTS = 32; // 当たる範囲の円に並べる球の数。
 static constexpr float RANGE_RING_RADIUS = 0.08f; // 当たる範囲の円に並べる球の半径。
 static constexpr ACTION ARM_ACTIONS[] = { ACTION_ARM_LEFT, ACTION_ARM_RIGHT };
+// ARM_TYPE の順に、触手・ハンマー・ナックル・C4・ガンランス・刀・素手。
+static constexpr int ARM_MAX_USES[] = { 3, 2, 3, 2, 8, 3, 0 };
 
 static_assert(ARM_TYPE_COUNT <= ACTION_EQUIP_NUMBER_COUNT, "腕の番号は通信で送れる数までにする");
+static_assert(sizeof(ARM_MAX_USES) / sizeof(ARM_MAX_USES[0]) == ARM_TYPE_COUNT, "腕ごとに使用回数を設定する");
 
 template<class T>
 static std::unique_ptr<Arm> CreateArm(int hand, const ARM_LINKS& links)
@@ -53,9 +57,10 @@ static const ArmFactory ARM_FACTORIES[ARM_TYPE_COUNT] = {
 	CreateArm<C4Arm>, // C4
 	CreateArm<GunlanceArm>, // ガンランス
 	CreateArm<KatanaArm>, // 刀
+	CreateArm<BareArm>, // 素手
 };
 static const char* const ARM_NAMES[ARM_TYPE_COUNT] = {
-	"触手", "ハンマー", "ナックル", "C4", "ガンランス", "刀"
+	"触手", "ハンマー", "ナックル", "C4", "ガンランス", "刀", "素手"
 };
 
 void ArmManager::ChangeType(int hand, int next, int direction)
@@ -67,6 +72,7 @@ void ArmManager::ChangeType(int hand, int next, int direction)
 	// 前の装備で押し始めた入力は持ち越さない。
 	m_Presses[hand].Reset(player.IsPress(action) && !player.IsTrigger(action));
 	m_Types[hand] = (ARM_TYPE)next;
+	m_Uses[hand].Reset(ARM_MAX_USES[next]);
 	m_ChangeDirections[hand] = direction;
 #ifdef _DEBUG
 	hal::dout << "腕：" << (hand == 0 ? "左" : "右") << " → " << ArmGetName(m_Types[hand]) << std::endl;
@@ -75,7 +81,8 @@ void ArmManager::ChangeType(int hand, int next, int direction)
 
 void ArmManager::Initialize(const Stage& stage, FighterManager& fighters, int slot, const Camera& camera)
 {
-	m_Links = { &fighters, slot, &camera, &stage };
+	m_Links = { &fighters, slot, &camera, &stage, this };
+	m_Rule = GAME_RULE_DEBUG;
 	m_Types[0] = m_Types[1] = ARM_TYPE_TENTACLE;
 	m_SelectedHand = 0;
 	m_ChangeDirections[0] = m_ChangeDirections[1] = 1;
@@ -100,9 +107,20 @@ void ArmManager::Reset(void)
 	const Fighter& player = m_Links.Fighters->GetFighter(m_Links.Slot);
 	for (int hand = 0; hand < 2; ++hand) {
 		m_Arms[hand][m_Types[hand]]->Reset();
+		BreakExhaustedArm(hand);
 		m_Presses[hand].Reset(player.IsPress(ARM_ACTIONS[hand]));
 	}
 	m_LastActiveHand = -1;
+}
+
+void ArmManager::ResetForMatch(GAME_RULE rule)
+{
+	m_Rule = rule;
+	for (int hand = 0; hand < 2; ++hand) {
+		if (m_Rule == GAME_RULE_GAME) ChangeType(hand, ARM_TYPE_NONE);
+		else if (m_Types[hand] == ARM_TYPE_NONE) ChangeType(hand, ARM_TYPE_TENTACLE);
+	}
+	Reset();
 }
 
 void ArmManager::ResetEquip(void)
@@ -111,11 +129,22 @@ void ArmManager::ResetEquip(void)
 	m_SelectedHand = 0;
 }
 
-void ArmManager::Update(bool playing)
+bool ArmManager::TryEquipPickup(ARM_TYPE type)
+{
+	if (m_Rule != GAME_RULE_GAME || type < 0 || type >= ARM_TYPE_NONE || ARM_FACTORIES[type] == nullptr) return false;
+	for (int hand = 0; hand < 2; ++hand) {
+		if (m_Types[hand] != ARM_TYPE_NONE) continue;
+		ChangeType(hand, type);
+		return true;
+	}
+	return false;
+}
+
+void ArmManager::UpdateEquip(const Fighter& player)
 {
 	bool available[ARM_TYPE_COUNT];
 	for (int type = 0; type < ARM_TYPE_COUNT; ++type) available[type] = ARM_FACTORIES[type] != nullptr;
-	const Fighter& player = m_Links.Fighters->GetFighter(m_Links.Slot);
+	available[ARM_TYPE_NONE] = false;
 	if (player.IsTrigger(ACTION_EQUIP_HAND_LEFT)) m_SelectedHand = 0;
 	if (player.IsTrigger(ACTION_EQUIP_HAND_RIGHT)) m_SelectedHand = 1;
 	const int direction = int(player.IsTrigger(ACTION_EQUIP_NEXT)) - int(player.IsTrigger(ACTION_EQUIP_PREV));
@@ -127,22 +156,46 @@ void ArmManager::Update(bool playing)
 	for (int hand = 0; hand < 2; ++hand) {
 		if (key.Hand == hand) ChangeType(hand, direct);
 	}
+}
+
+void ArmManager::BreakExhaustedArm(int hand)
+{
+	if (m_Rule != GAME_RULE_GAME || m_Types[hand] == ARM_TYPE_NONE || !m_Uses[hand].IsExhausted()) return;
+	const Arm& arm = *m_Arms[hand][m_Types[hand]];
+	if (!arm.IsActive() && !arm.IsBusy()) ChangeType(hand, ARM_TYPE_NONE);
+}
+
+void ArmManager::Update(bool playing)
+{
+	const Fighter& player = m_Links.Fighters->GetFighter(m_Links.Slot);
+	if (m_Rule == GAME_RULE_DEBUG) UpdateEquip(player);
 	if (!playing) return;
+	// GAME の復活時の装備リセットは、カプセルの取得前に Game が済ませる。
+	if (m_Rule == GAME_RULE_GAME && player.DidRespawn()) return;
 	// 中断中に押していた入力は、使えるようになっても一度離すまで引き継がない。
-	if (!player.CanUseArms() || player.DidRespawn() || player.IsStatus(STATUS_STUN)) {
-		for (int hand = 0; hand < 2; ++hand) {
-			m_Arms[hand][m_Types[hand]]->Interrupt();
-			m_Presses[hand].Reset(player.IsPress(ARM_ACTIONS[hand]));
-		}
-		m_LastActiveHand = -1;
-		return;
-	}
+	const bool interrupted = !player.CanUseArms() || player.DidRespawn() || player.IsStatus(STATUS_STUN);
+	if (interrupted) m_LastActiveHand = -1;
 	const float dt = GameTimeGetDeltaTime();
 	for (int hand = 0; hand < 2; ++hand) {
 		Arm& arm = *m_Arms[hand][m_Types[hand]];
-		const bool wasActive = arm.IsActive();
-		arm.Update(m_Presses[hand].Step(player.IsPress(ARM_ACTIONS[hand]), dt, arm.CanTakeTap(), arm.CanTakeHold()));
-		if (!wasActive && arm.IsActive()) m_LastActiveHand = hand;
+		const bool pressed = player.IsPress(ARM_ACTIONS[hand]);
+		if (interrupted) {
+			arm.Interrupt();
+			m_Presses[hand].Reset(pressed);
+		}
+		else {
+			const bool wasActive = arm.IsActive();
+			ARM_INPUT input{};
+			if (m_Rule == GAME_RULE_DEBUG || !m_Uses[hand].IsExhausted() || arm.IsHolding()) { // 最後の1回でつかんだ相手も投げられるようにする。
+				input = m_Presses[hand].Step(pressed, dt, arm.CanTakeTap(), arm.CanTakeHold());
+			}
+			else m_Presses[hand].Reset(pressed);
+			arm.Update(input);
+			if (!wasActive && arm.IsActive()) m_LastActiveHand = hand;
+		}
+		m_Uses[hand].Consume(arm.m_Used);
+		arm.m_Used = 0;
+		BreakExhaustedArm(hand);
 	}
 }
 
@@ -187,6 +240,12 @@ ARM_TYPE ArmManager::GetType(int hand) const
 	return hand >= 0 && hand < 2 ? m_Types[hand] : ARM_TYPE_COUNT;
 }
 
+int ArmManager::GetRemainingUses(int hand) const
+{
+	if (hand < 0 || hand >= 2) return 0;
+	return m_Rule == GAME_RULE_DEBUG ? -1 : m_Uses[hand].GetRemaining();
+}
+
 int ArmManager::GetChangeDirection(int hand) const
 {
 	return hand == 0 || hand == 1 ? m_ChangeDirections[hand] : 1;
@@ -214,6 +273,16 @@ VEC3 ArmManager::GetRushVelocity() const
 const char* ArmGetName(ARM_TYPE type)
 {
 	return type >= 0 && type < ARM_TYPE_COUNT ? ARM_NAMES[type] : "不明";
+}
+
+void Arm::ConsumeUse(int count)
+{
+	if (GetRemainingUses() >= 0) m_Used += count;
+}
+
+int Arm::GetRemainingUses() const
+{
+	return m_Links.Arms->GetRemainingUses(m_Hand);
 }
 
 Fighter& Arm::GetPlayer() const
@@ -312,13 +381,14 @@ VEC3 Arm::DrawStubArm(const VEC3& direction, float length, const XMFLOAT4& color
 	return hand;
 }
 
-int Arm::Explode(const VEC3& center, float radius, float damage, float power, float up) const
+int Arm::Explode(const VEC3& center, float radius, float damage, float power, float up, int* affected) const
 {
 	int hits = 0;
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		const TENTACLE_TARGET target = GetFighters().GetTarget(i, GetSlot());
 		if (!target.Available || !CollisionSphereCapsule({ center, radius }, target.Body).Hit) continue;
-		GetFighters().Launch(i, GetSlot(), AreaCalcRadialDirection(center, target.Body, up, GetForward()), damage, power);
+		const bool applied = GetFighters().Launch(i, GetSlot(), AreaCalcRadialDirection(center, target.Body, up, GetForward()), damage, power);
+		if (applied && affected != nullptr) ++*affected;
 		++hits;
 	}
 	return hits;
