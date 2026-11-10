@@ -4,14 +4,14 @@
 タスクの状態は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）、決まったことは [decisions.md](decisions.md)。
 必要なときだけ読むもの：腕の書き方と共通の部品は [dev/01_DX11基盤の構成.md](dev/01_DX11基盤の構成.md) の「腕の共通の仕組み・腕の足し方」と「腕の書き方」、腕の操作と効き方は [plan/03_新しいアームの仕様.md](plan/03_新しいアームの仕様.md)、腕のモデルは [dev/02_腕のモデル.md](dev/02_腕のモデル.md)、画面を撮る方法は [dev/04_画面確認の方法.md](dev/04_画面確認の方法.md)。
 
-- 最終更新：2026-11-10（Claude。Shota の Proto1、Visual Studio Community の PC。ゲーム本体のプランを管理者の確認どおりに修正）
+- 最終更新：2026-11-10（Claude。Shota の Proto1、Visual Studio Community の PC。ゲーム本体のプランを確定し、Codex へのプロンプトを追加）
 
 ---
 
 ## 1. 今の状態
 
 - No.106 まで完了。腕6本（触手・ハンマー・ナックル・C4・ガンランス・刀）と高台4つ、操作感の見直し、フリーカメラ、武器の攻撃アニメが develop に入っている。
-- **ゲーム本体（No.107〜111）のプランは管理者が確認した（2026-11-10）**。実装はまだ始めていない。
+- **ゲーム本体（No.107〜111）のプランは管理者が確認した（2026-11-10）**。実装はまだ始めていない。Codex が段階1〜5を順に実装し、終わったら Claude がまとめて確認する（プロンプトは 2.4）。
 - これまでの細かい記録と実機確認の見どころは [archive/handoff_2026-11.md](archive/handoff_2026-11.md) の「2026-11-10 に handoff.md から移したこと」。
 
 ## 2. 次にやること
@@ -91,7 +91,116 @@
 
 **終わったら**：`docs/plan/01_企画の要点.md`（プロトのルール）と `docs/plan/03_新しいアームの仕様.md`（「腕カプセルは作らない」の行とガンランス）を直す。
 
-### 2.4 残っていること（管理者）
+### 2.4 Codex に渡すプロンプト（段階1〜5）と、最後の Claude のチェック
+
+進め方：管理者が段階ごとに Codex の新しいセッションを始め、下のプロンプトを1つずつ貼る。5段階とも同じブランチ `feature/game-foundation-plan` に1段階1コミットで積み、途中で PR は出さない（段階が前の段階の上に重なるため）。5段階が終わったら、管理者が Claude に「最後のチェック」のプロンプトを貼り、Claude が確かめて1つの PR にする。
+
+**共通の決まり（どの段階でも守る）**
+- 始める前に `CLAUDE.md`・`AGENTS.md`・この handoff の 2.1〜2.3 を読み、Notion の「Proto1 開発ログ」の「タイトル」「要点」「対応モジュール」を読む。
+- `git status` を見て、自分のものでない変更があれば止めて管理者に聞く。問題なければ `.\tools\start-work.ps1 game-foundation-plan` で作業ブランチに入る。
+- **その段階の分だけ**作る。次の段階を先回りしない。
+- DEBUG の動きは変えない（段階5のガンランスだけ DEBUG にも入る。回数は減らない）。
+- 乱数は `RandomCalc` だけを使う（`rand()`・時刻をゲームの計算に使わない）。計算に描画専用の値（`GetDrawShoulder`・アニメの骨・`GameTimeGetElapsed`）を使わない。オンラインは全員の PC で同じ計算になる必要がある。
+- ゲームの計算は `src/physics` の DirectX なしのクラスに置く。名前は `〇〇Calc`、メンバーは `private` で `m_`、公開するものは Doxygen 形式の日本語コメント（bool は「〜を設定する（true：〜、false：〜）」）。調整する値は各ファイルの上の「調整用の値」に `static constexpr` で置く。`#include` は `src` からのパス。
+- C++ は BOM付きUTF-8・CRLF。ファイルを足したら `Proto1.vcxproj` と `.filters` に、テスト用の `.cpp` は `tests/Proto1Tests` のプロジェクトにも足す。
+- テストのコードは書く（主な動きだけ）。**確かめるのは Debug のビルドだけ**（MSBuild は `vswhere.exe` で探す。警告 0）。`run-tests.ps1`・Release・わざと壊す確認・ゲームの起動・画面確認は Claude が最後にまとめて行うのでしない。
+- 終わったら `tasks.md` のその No. を 🔄 にし、handoff の「今の状態」に「段階N（No.〇）は Codex が実装。Claude の確認待ち」を1行足す。プランとプロンプトは消さない。`.\tools\save-work.ps1 "No.〇 やったこと"` で保存して止まる。PR は出さない。Notion は触らない。
+- プランと今のコードが食い違うとき、プランで足りないことがあるときは、勝手に仕様を決めず handoff の「今の状態」に書いて管理者に伝える。
+
+#### 段階1（No.107 GAME / DEBUG の選択）
+
+```text
+Proto1 の No.107 を実装してください。docs/handoff.md の 2.4「共通の決まり」と 2.3「No.107」に従います。
+
+作るもの：
+- physics/scenecalc に enum GAME_RULE（GAME_RULE_GAME / GAME_RULE_DEBUG）と SCENE_RULE_SELECT を足す。流れは GAME START → キャラ選択 → GAME / DEBUG → モード選択。キャラ選択の決定で RULE_SELECT へ入る。RULE_SELECT の戻るはキャラ選択へ。GetRule() で読める。切断などで使う ShowModes とモード選択の戻る先は今のまま。項目を選ぶ入力は MoveCursor を使い、入った瞬間の倒しっぱなしでカーソルが動かないようにする。
+- game.cpp の Update で UpdateMenu に回すシーンの一覧に RULE_SELECT を足す。hud.cpp の DrawScene に GAME / DEBUG の画面を足す（英字は 5×7 のドットで、足りない文字があれば足す）。
+- オンライン：ホストのルールと乱数の種を net/sessioncalc の STATE に足し、参加側はそれを使う。読み込みでは範囲外のルールを断る（HasCharacters の Characters の扱いを読んで同じ形にする）。LOCKSTEP_VERSION を 8 にする。種はホストだけが決められる値（Initialize の nonce など）から作る。
+- Game に今のルールと種を読む private の関数を足す。オンラインは NetSession の値、オフラインはメニューの選択と時刻から作った種を使う。起動の引数 --host・--join で選択を通らないときは DEBUG。
+- この段階ではルールを読むだけで、GAME の中身はまだ DEBUG と同じでよい。
+
+テスト：今の scenecalc のテストのうちキャラ選択のあとの流れを直し、RULE_SELECT の決定・戻る・選択が残ることを足す。sessioncalc のテストに STATE のルールの読み書きを足す。
+```
+
+#### 段階2（No.108 3分・ランダムな復活）
+
+```text
+Proto1 の No.108 を実装してください。docs/handoff.md の 2.4「共通の決まり」と 2.3「No.108」に従います。段階1（No.107）は済んでいます。
+
+作るもの：
+- 新しい physics/randomcalc（class RandomCalc）：整数だけの xorshift32。SetSeed（0 は別の値に置きかえる）、NextInt(n)、範囲を指定する float。後の段階のカプセルでも使う。
+- 新しい physics/spawncalc：候補の点と相手の位置・数を受け取り、すべての相手から安全な距離以上離れた点の中から RandomCalc で選ぶ。なければ、いちばん近い相手がいちばん遠い点を返す。
+- fightermanager.cpp：「調整用の値」に浮島の候補8か所（案：(0,±11)・(±11,0)・(±11,±11)）と SPAWN_SAFE_DISTANCE = 10.0f を置き、高台の4点は STAGE の Platforms の中心と TopY から作る。ルールと種を受け取る関数を足す。GAME のときだけ、Update のループで DUMMY_EVENT_RESPAWN を受けたら、生きている自分以外の体の位置で点を選んで Fighter::Teleport で移す（Fighter::Update の中で今の PlaceAtSpawn が先に呼ばれているので、0% などのリセットはそのまま）。DEBUG は移さない。
+- Match：制限時間を GAME 180 秒、DEBUG 90 秒にする。MATCH_SECONDS の Reset で使っているので、ルールは Reset より前に渡す。
+- game.cpp の Restart の最初で、Match・FighterManager にルールと種を渡す。RETRY のたびに種を決まった計算で進める（オンラインの全員で同じになるように）。
+
+テスト：randomcalc（同じ種で同じ並び、範囲内）と spawncalc（近い点を選ばない、全部近いときは最も遠い点）。
+```
+
+#### 段階3（No.109 素手・使用回数・崩壊）
+
+```text
+Proto1 の No.109 を実装してください。docs/handoff.md の 2.4「共通の決まり」と 2.3「No.109」に従います。段階1・2 は済んでいます。カプセルは次の段階なので、この段階の GAME は素手のままで構いません。
+
+作るもの：
+- ARM_TYPE_NONE を ARM_TYPE_COUNT の直前に足し、名前は「素手」。新しい game/arm_bare の BareArm（何もしない・描かない・IsActive と IsHolding は false）を ARM_FACTORIES に入れる。ArmManager::Update の available[ARM_TYPE_NONE] は false にして、DEBUG の切り替えで選べないようにする。
+- 新しい physics/armusecalc（class ArmUseCalc）：手ごとの残り回数、消費（0 より下にしない）、使い切ったか。ARM_TYPE は game 側なので、最大回数は引数で受ける。回数の表は arm.cpp の「調整用の値」に 2.3 の値で置く。
+- Arm に protected の ConsumeUse(int count = 1) を足す。ArmManager が腕の Update のあとに受け取って残り回数を減らす。残り回数は腕から読めるようにする（段階5で使う。DEBUG は無限とみなす）。
+- 2.3 の表のとおりに各腕から呼ぶ。1回の攻撃で何人に当たっても1回。触手は Grab が成功したとき・event.Anchored・回転が当たったとき。C4 は Detonate で hits > 0 のとき。今のガンランスは発射したときに撃った段階の数だけ（段階5で作り直す）。刀は居合が当たったときとワープで飛び始めるとき。
+- Arm に virtual の IsBusy を足す（基本は false）。ガンランスは飛んでいる弾、C4 は爆発の表示や飛んでいる爆弾、刀は遅れて入る居合が残っている間 true。残り回数が 0 の手には新しい入力を渡さず、IsActive と IsBusy が両方 false になったら素手へ替える。ArmManager::Update の Interrupt で return する道でも崩壊の判定が通るようにする。
+- GAME：試合の始めと DidRespawn のときに両手を素手にし、装備切り替えの入力を無視する。**GAME の試合のあと DEBUG を選んだとき、手が素手のままにならないように、DEBUG の試合の始めに素手の手は触手へ戻す。** DEBUG はそれ以外は今のまま（RETRY で装備を残す）。ルールは ArmManager に渡し、game.cpp の Restart で呼ぶ。
+- hud.cpp：GAME のとき、腕の名前の横に残り回数を出す（素手は出さない）。
+- LOCKSTEP_STATE に左右の腕の種類と残り回数を足す（構造体とチェックサムの計算を読み、game.cpp の RecordChecksum の呼び出しも直す）。
+
+テスト：armusecalc（消費・0 で止まる・使い切り）。
+```
+
+#### 段階4（No.110 腕カプセル）
+
+```text
+Proto1 の No.110 を実装してください。docs/handoff.md の 2.4「共通の決まり」と 2.3「No.110」に従います。段階1〜3 は済んでいます。
+
+作るもの：
+- 新しい physics/capsulecalc（class ArmCapsuleCalc）：カプセルの一覧（位置・種類の番号・有効か）、Start（種を受け取り最初の8個を置く）、Step（1.5 秒ごとに1個、最大16個）、体の CAPSULE と触れたカプセルを探す関数、取り除く関数。種類は「0〜5 を1巡ずつシャッフルした袋」から引く（RandomCalc を使う）。場所は STAGE を受け取り、4分の1は高台の上、残りは浮島の上（ふちから内側へ「調整用の値」の分だけ離す）。ほかのカプセルと近すぎる場所は何回か引き直す。physics は game を使わないので、種類は int で持つ。
+- 新しい game/armcapsule（class ArmCapsule）：Game が持ち、Initialize / Reset / Finalize / Update / Draw で動かす。Update は GAME の試合中だけ。人のスロットを若い順に見て、CanUseArms の人が触れたら ArmManager の新しい関数（空いている手へ左 → 右の順に装備して残り回数を入れる。素手でない手・崩壊待ちの手には入れない。付けられなければ false）を呼び、付いたらカプセルを取り除く。両手がふさがっていたらカプセルは残す。
+- Draw は GAME のときだけ。ShapeDrawCapsule で種類ごとの色（調整用の値）、上下の揺れは描画だけ（計算に入れない）。
+- game.cpp：Restart で Reset（種は復活の点と別の値にする）。Update は m_Fighters.Update() のあと・カメラの前に呼ぶ。Draw はステージのあと。
+
+テスト：capsulecalc（最初の6個で全種類が出る、最大数を超えない、すべて足場の上に置かれる、触れたら見つかる）。
+```
+
+#### 段階5（No.111 ガンランスの作り直し）
+
+```text
+Proto1 の No.111 を実装してください。docs/handoff.md の 2.4「共通の決まり」と 2.3「No.111」に従います。段階1〜4 は済んでいます。この変更は DEBUG にも入ります（回数は減らない）。
+
+作るもの：
+- physics/gunlancecalc を作り直す（ためと段階をなくす）：待機 → 突進 → 突き上げ → 撃ち込み → 待機の段階と、単押しの間隔、撃った数を扱う。既存の physics/armphasecalc で書けるなら読んで使う。テストも作り直す。
+- arm_gunlance.cpp：単押しは弾を1発（+6%・強さ 1.0・間隔 0.25 秒）。爆発・範囲の表示・ためのランプ・m_ShotLevels を消す。1発ごとに ConsumeUse。残り回数が 0 なら撃てない。
+- 長押し：今の StepRush のとおり突進する（離す・時間切れで終わる）。当たったら FighterManager::Grab。失敗（ガードなど）なら突進を止める。成功したら +6% を足し、弾の数を「3 と残り回数の小さいほう」に決めて突き上げへ。空振りでは回数を減らさない。
+- 演出：相手を MoveHeld で動かす（**GetShoulder と向きから計算する。GetDrawShoulder は使わない**）。約 0.35 秒で持ち上げ、0.2 秒おきに撃つ（+8%・+8%。AddDamage。1発ごとに ConsumeUse）。最後の1発は Release(throwTarget=true) で上向きに吹っ飛ばす（+12%・強さ 3.0）。弾が1発しかないときは、その1発が最後の1発になる。
+- 演出の間：IsActive と IsHolding は true、GetRushVelocity はゼロ、GetMoveScale は 0。CanTakeTap / CanTakeHold は false。Interrupt と Reset では相手をダメージなしで離す（今の Interrupt は保持を考えていないので足す）。相手が IsHeldBy でなくなったら演出を終える（触手の cancel と同じ）。
+- IsBusy は飛んでいる弾が残っている間 true。
+- 見た目：突き上げのクリップ gunlance_impale（左右の手）を tools/maya/build_weapon_clips.py の CLIPS / LEFT_CLIPS に足して build → export で作り、render/animcalc.h の ATTACK_CLIP と左右のクリップの一覧、モデルの読み込みの一覧に足す。Maya の骨の向きは子の translate から求める（開発ログ参照）。mayapy で作れないときは無理をせず、今の突進クリップと槍の上向きのブレンドで代わりに描いて、handoff の「今の状態」に書く。GetBodyClip も作り直す。
+- docs/plan/01_企画の要点.md（プロトのルール）と docs/plan/03_新しいアームの仕様.md（「腕カプセルは作らない」の行とガンランス）を今の仕様に直す。
+
+テスト：gunlancecalc（単押しの間隔、突き上げから3発で終わる、弾が少ないときはその数で終わる）。
+```
+
+#### 最後のチェック（Claude。おすすめは Opus 5.5）
+
+```text
+Proto1 の No.107〜111 を Codex が feature/game-foundation-plan に実装しました。CLAUDE.md の手順でセッションを始め、docs/handoff.md の 2.1〜2.4 を読んで確認してください。
+
+1. プランとコードを段階ごとに照らし合わせる（特に DEBUG が変わっていないこと、rand や描画専用の値を計算に使っていないこと、崩壊を待つ処理、Interrupt で相手を離すこと）。
+2. Debug / Release のビルドが警告 0。run-tests.ps1 を Debug と -Release で全部通す。
+3. 新しい計算のファイル（randomcalc・spawncalc・armusecalc・capsulecalc・gunlancecalc）をまとめて1回わざと壊し、テストが落ちることを確かめて戻す（先に保存する）。
+4. 画面確認：GAME / DEBUG の選択と戻る、GAME の3分と敵から離れた復活、カプセルを拾う → 空振りで減らない → 使い切ると素手、両手がふさがると拾えない、復活で素手に戻る、GAME のあと DEBUG で触手に戻る、ガンランスの単押し・突き刺し・突き上げと3発。127.0.0.1 の2つ起動で GAME のオンラインに DESYNC が出ないこと。
+5. 見つけた問題は同じブランチで直す。Codex のミスは Notion の開発ログに1行足す。
+6. tasks.md の No.107〜111 を ✅、Notion を完了と PR のリンクにし、handoff を書き直して（使い終わったプランとプロンプトは消す）submit-pr.ps1 で1つの PR にし、テストとビルドが通っていればマージする。
+```
+
+### 2.5 残っていること（管理者）
 
 - `GuardCalc`・`StatusCalc` のしびれ以外・Q / E の段の切り替えを、残すか消すかを決める。
 - 使わなくなった OBJ（磁石・グラップリング・盾の板・ハサミの残り）を消すか決める。
