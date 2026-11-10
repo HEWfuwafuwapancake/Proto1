@@ -42,6 +42,9 @@ public:
 	/// @brief ロックオンのカメラに戻す（オンラインを始めるとき。相手とカメラの状態をそろえる）
 	void ResetFreeLook(void) { m_FreeLook = false; }
 
+	/// @brief フリーカメラか取得する（true：フリーカメラ、false：ロックオン）
+	bool IsFreeLook(void) const { return m_FreeLook; }
+
 	/// @brief カメラの終了処理（今は何もしない）
 	void Finalize(void);
 
