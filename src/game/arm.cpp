@@ -243,10 +243,18 @@ VEC3 Arm::GetDrawShoulder() const
 void Arm::BlendClipPose(VEC3& arm, VEC3& weapon) const
 {
 	VEC3 clipArm, clipWeapon;
-	const float weight = GetPlayer().GetAttackArm(GetHand(), clipArm, clipWeapon);
+	bool own = false;
+	const float weight = GetPlayer().GetAttackArm(GetHand(), clipArm, clipWeapon, own);
 	if (weight <= 0.0f) return;
-	arm = ArmCalcBlendDirection(arm, clipArm, weight);
-	weapon = ArmCalcBlendDirection(weapon, clipWeapon, weight);
+	if (own) {
+		arm = ArmCalcBlendDirection(arm, clipArm, weight);
+		weapon = ArmCalcBlendDirection(weapon, clipWeapon, weight);
+		return;
+	}
+	// もう一方の手の攻撃につられるときは、武器は今の持ち方のまま腕の動いた分だけ向きを変える。
+	const VEC3 movedArm = ArmCalcBlendDirection(arm, clipArm, weight);
+	weapon = ArmCalcBlendDirection(weapon, Vec3Add(weapon, Vec3Sub(movedArm, arm)), 1.0f);
+	arm = movedArm;
 }
 
 float Arm::GetDrawScale() const

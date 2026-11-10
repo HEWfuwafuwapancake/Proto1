@@ -5,9 +5,11 @@
   mayapy tools/maya/build_weapon_clips.py <mekagirl_motion.mb> build
   mayapy tools/maya/build_weapon_clips.py <mekagirl_motion.mb> export <assets/models>
 
-右手用を CLIPS に書き、左手用は鏡写しで作る。フレームは右手が 1001 から、左手が 2001 から
+右手の動きを CLIPS に、左手の動きを LEFT_CLIPS に書く（左手は別の振り方。LEFT_CLIPS は右手として
+書いた形を左右反転して左手のクリップにする）。フレームは右手が 1001 から、左手が 2001 から
 （1クリップ 100 フレームずつ）。ゲームの段階とクリップの区切りの対応は、各腕の .cpp の
-「調整用の値」の CLIP_SECONDS にそろえる。
+「調整用の値」の CLIP_SECONDS にそろえる（左右で区切りは同じにする）。
+off は攻撃していない方の腕の向き（省略すると体のひねりと逆に振る）。
 
 向きはモデルの空間で書く：+Z が前、-X がキャラの右、+Y が上。腕は肩→手、武器は手→手先の向き。
 体の値は待機の姿勢に足す度数（rx +：前へ倒す、ry +：左へ回す、rz +：右へ倒す）。
@@ -26,11 +28,11 @@ CLIP_GAP = 100
 ROOT_CHAIN = {
     'pelvis': 'root', 'spine_01': 'pelvis', 'spine_02': 'spine_01', 'chest': 'spine_02',
     'clavicle_r': 'chest', 'upperarm_r': 'clavicle_r', 'lowerarm_r': 'upperarm_r', 'hand_r': 'lowerarm_r',
+    'clavicle_l': 'chest', 'upperarm_l': 'clavicle_l', 'lowerarm_l': 'upperarm_l', 'hand_l': 'lowerarm_l',
     'thigh_r': 'pelvis', 'knee_upper_r': 'thigh_r', 'knee_lower_r': 'knee_upper_r', 'foot_r': 'knee_lower_r',
     'thigh_l': 'pelvis', 'knee_upper_l': 'thigh_l', 'knee_lower_l': 'knee_upper_l', 'foot_l': 'knee_lower_l',
 }
-ARM_JOINTS = ('upperarm_r', 'lowerarm_r')
-CHILD = {'upperarm_r': 'lowerarm_r', 'lowerarm_r': 'hand_r'}
+CHILD = {'upperarm_r': 'lowerarm_r', 'lowerarm_r': 'hand_r', 'upperarm_l': 'lowerarm_l', 'lowerarm_l': 'hand_l'}
 
 
 # 足首を待機の位置からずらす量（cm。右足 (x, y, z)・左足 (x, y, z)）。腰の位置から IK で脚を解く。
@@ -39,11 +41,20 @@ STANCES = {
     'lunge': ((-1, 0, 16), (1, 0, -20)),  # 右足を前、左足を後ろへ踏み込む
     'deep': ((-2, 0, 25), (2, 0, -32)),  # 深く踏み込む
     'sprint': ((-1, 5, 24), (1, 14, -40)),  # 前へ飛び出す（後ろの足は浮かせる）
+    'hop': ((-1, 16, 6), (1, 12, -8)),  # 跳び上がる（両足を浮かせる）
 }
 RIG = {}  # build() で、骨の親からの位置と待機の足首の位置を入れる。
 
 
-def pose(torso=(0, 0, 0), hips=(0, 0, 0), ty=0.0, tz=0.0, stance=None, arm=None, weapon=None):
+def counter_arm(torso, stance):
+    """攻撃していない腕の向きを、体のひねりと逆へ振った形で求める。"""
+    if stance == 'sprint':
+        return (0.38, -0.3, -0.88)  # 飛び出す間は後ろへ流す
+    twist = torso[1]
+    return (0.32 + abs(twist) * 0.004, -0.9 + abs(twist) * 0.012, 0.18 - twist * 0.02)
+
+
+def pose(torso=(0, 0, 0), hips=(0, 0, 0), ty=0.0, tz=0.0, stance=None, arm=None, weapon=None, off=None):
     """1つのキーの姿勢を作る。"""
     joints = {}
     joints['pelvis'] = hips
@@ -52,7 +63,8 @@ def pose(torso=(0, 0, 0), hips=(0, 0, 0), ty=0.0, tz=0.0, stance=None, arm=None,
     # 顔は正面に残す（体のひねり・倒れの半分だけ戻す）。
     joints['neck'] = (-torso[0] * 0.3, -torso[1] * 0.3, -torso[2] * 0.3)
     joints['head'] = (-torso[0] * 0.2, -torso[1] * 0.2, -torso[2] * 0.2)
-    return {'joints': joints, 'ty': ty, 'tz': tz, 'stance': stance, 'arm': arm, 'weapon': weapon}
+    return {'joints': joints, 'ty': ty, 'tz': tz, 'stance': stance, 'arm': arm, 'weapon': weapon,
+            'off': off or counter_arm(torso, stance)}
 
 
 # 垂らした腕（攻撃の前後のつなぎ）
@@ -145,6 +157,95 @@ CLIPS = [
 ]
 
 
+# 左手の振り方（右手として書く。書き出すときに左右反転する）。区切りのフレームは CLIPS と同じ。
+HANG = (-0.2, -0.3, 0.93)
+LEFT_CLIPS = {
+    # 逆手で腰から斬り上げる居合
+    'katana_iai': [
+        (0, pose(arm=DOWN, weapon=HANG)),
+        (6, pose(torso=(10, -16, 2), hips=(0, -10, 0), ty=-8, stance='lunge', arm=(-0.72, -0.66, -0.2), weapon=(-0.25, -0.5, -0.83))),
+        (8, pose(torso=(12, -20, 2), hips=(0, -12, 0), ty=-9, stance='lunge', arm=(-0.74, -0.64, -0.2), weapon=(-0.25, -0.46, -0.85))),
+        (10, pose(torso=(12, -4, 0), ty=-10, tz=4, stance='deep', arm=(-0.52, -0.62, 0.59), weapon=(-0.82, -0.55, 0.15)), 'lin'),
+        (12, pose(torso=(10, 16, -2), hips=(0, 8, 0), ty=-11, tz=7, stance='deep', arm=(0.1, -0.22, 0.97), weapon=(0.35, -0.2, 0.92)), 'lin'),
+        (14, pose(torso=(6, 36, -4), hips=(0, 18, 0), ty=-10, tz=8, stance='deep', arm=(0.66, 0.32, 0.68), weapon=(0.72, 0.66, 0.2)), 'lin'),
+        (20, pose(torso=(4, 32, -4), hips=(0, 16, 0), ty=-8, tz=6, stance='deep', arm=(0.6, 0.26, 0.75), weapon=(0.7, 0.6, 0.38))),
+        (26, pose(torso=(4, -6, 0), ty=-2, stance='low', arm=(-0.62, -0.72, 0.3), weapon=(-0.35, -0.45, -0.82))),
+    ],
+    # 下段に構えて、下から空間を斬り上げる
+    'katana_assault': [
+        (0, pose(arm=DOWN, weapon=HANG)),
+        (5, pose(torso=(6, 18, 0), hips=(0, 8, 0), ty=-6, stance='lunge', arm=(0.34, -0.62, 0.7), weapon=(0.18, -0.86, -0.47))),
+        (8, pose(torso=(10, 24, 0), hips=(0, 12, 0), ty=-8, stance='lunge', arm=(0.4, -0.7, 0.59), weapon=(0.25, -0.85, -0.46))),
+        (11, pose(torso=(12, 26, 0), hips=(0, 14, 0), ty=-9, stance='lunge', arm=(0.46, -0.74, 0.49), weapon=(0.35, -0.86, -0.36))),
+        (14, pose(torso=(4, 6, 0), ty=-9, tz=3, stance='deep', arm=(0.18, -0.24, 0.95), weapon=(0.28, -0.62, 0.73)), 'lin'),
+        (16, pose(torso=(-6, -12, 0), hips=(0, -6, 0), ty=-7, tz=6, stance='deep', arm=(-0.18, 0.24, 0.95), weapon=(-0.34, 0.4, 0.85)), 'lin'),
+        (18, pose(torso=(-12, -26, 0), hips=(0, -12, 0), ty=-5, tz=7, stance='deep', arm=(-0.46, 0.58, 0.67), weapon=(-0.6, 0.76, 0.25)), 'lin'),
+        (20, pose(torso=(-12, -28, 0), hips=(0, -12, 0), ty=-5, tz=7, stance='deep', arm=(-0.5, 0.62, 0.6), weapon=(-0.62, 0.76, 0.18))),
+        (24, pose(torso=(46, 0, 0), ty=-10, tz=8, stance='sprint', arm=(-0.2, -0.46, 0.86), weapon=(-0.12, -0.22, -0.97))),
+        (28, pose(torso=(22, 6, 0), ty=-12, tz=2, stance='low', arm=(-0.34, -0.62, 0.7), weapon=(-0.6, -0.3, 0.74))),
+        (34, pose(torso=(4, 0, 0), ty=-2, stance='low', arm=DOWN, weapon=HANG)),
+    ],
+    # 体の横から振り抜く横殴り
+    'hammer_tap': [
+        (0, pose(arm=DOWN, weapon=(-0.1, 0.4, 0.91))),
+        (6, pose(torso=(2, -16, 0), arm=(-0.72, 0.02, -0.1), weapon=(-0.6, 0.5, -0.62))),
+        (14, pose(torso=(4, -38, 2), arm=(-0.82, 0.22, -0.52), weapon=(-0.5, 0.38, -0.78))),
+        (16, pose(torso=(4, -42, 2), arm=(-0.8, 0.24, -0.55), weapon=(-0.46, 0.36, -0.81))),
+        (18, pose(torso=(8, -6, 0), arm=(-0.35, 0.0, 0.94), weapon=(-0.82, 0.02, 0.57)), 'lin'),
+        (20, pose(torso=(16, 26, -2), arm=(0.4, -0.1, 0.91), weapon=(0.75, -0.02, 0.66)), 'lin'),
+        (24, pose(torso=(14, 34, -2), arm=(0.55, -0.16, 0.82), weapon=(0.86, -0.08, 0.5))),
+        (30, pose(torso=(4, 0, 0), arm=DOWN, weapon=(-0.1, 0.4, 0.91))),
+    ],
+    # 跳び上がって叩きつける
+    'hammer_slam': [
+        (0, pose(arm=DOWN, weapon=(-0.1, 0.4, 0.91))),
+        (8, pose(torso=(16, -6, 0), ty=-13, stance='low', arm=(-0.25, -0.5, 0.82), weapon=(-0.1, -0.2, 0.97))),
+        (18, pose(torso=(-22, 8, 0), ty=12, stance='hop', arm=(-0.1, 0.92, 0.38), weapon=(0.0, 0.72, -0.69))),
+        (22, pose(torso=(-28, 10, 0), ty=16, stance='hop', arm=(-0.08, 0.94, 0.33), weapon=(0.02, 0.6, -0.8))),
+        (24, pose(torso=(10, 2, 0), ty=2, stance='low', arm=(-0.06, 0.2, 0.98), weapon=(-0.03, 0.4, 0.92)), 'lin'),
+        (26, pose(torso=(56, -6, 2), hips=(12, 0, 0), ty=-22, tz=6, stance='deep', arm=(-0.04, -0.84, 0.54), weapon=(-0.01, -0.98, 0.2)), 'lin'),
+        (32, pose(torso=(50, -6, 2), hips=(10, 0, 0), ty=-20, tz=5, stance='deep', arm=(-0.06, -0.84, 0.54), weapon=(-0.02, -0.98, 0.2))),
+        (40, pose(torso=(6, 0, 0), ty=-3, stance='low', arm=DOWN, weapon=(-0.1, 0.4, 0.91))),
+    ],
+    # 腰だめで撃つ
+    'gunlance_shot': [
+        (0, pose(arm=DOWN, weapon=(-0.05, 0.26, 0.96))),
+        (4, pose(torso=(8, -10, 2), arm=(-0.14, -0.66, 0.74), weapon=(-0.02, -0.02, 1.0))),
+        (6, pose(torso=(10, -12, 2), arm=(-0.12, -0.62, 0.78), weapon=(-0.02, -0.02, 1.0))),
+        (8, pose(torso=(-8, -18, 4), arm=(-0.14, -0.74, 0.66), weapon=(-0.02, 0.34, 0.94)), 'lin'),
+        (11, pose(torso=(2, -14, 2), arm=(-0.13, -0.68, 0.72), weapon=(-0.02, 0.14, 0.99))),
+        (14, pose(torso=(10, -12, 2), arm=(-0.12, -0.62, 0.78), weapon=(-0.02, -0.02, 1.0))),
+    ],
+    # 槍を何度も突き出しながら進む
+    'gunlance_rush': [
+        (0, pose(arm=DOWN, weapon=(-0.05, 0.26, 0.96))),
+        (5, pose(torso=(18, -6, 0), arm=(-0.06, -0.34, 0.94), weapon=(-0.01, 0.02, 1.0))),
+        (8, pose(torso=(30, 12, -2), arm=(-0.02, -0.08, 1.0), weapon=(0.0, 0.04, 1.0))),
+        (11, pose(torso=(16, -8, 0), arm=(-0.14, -0.5, 0.85), weapon=(-0.03, 0.0, 1.0))),
+        (14, pose(torso=(30, 12, -2), arm=(-0.02, -0.08, 1.0), weapon=(0.0, 0.04, 1.0))),
+        (17, pose(torso=(18, -6, 0), arm=(-0.06, -0.34, 0.94), weapon=(-0.01, 0.02, 1.0))),
+    ],
+    # 下から打ち上げるアッパー
+    'knuckle_punch': [
+        (0, pose(arm=DOWN)),
+        (4, pose(torso=(10, -20, 2), arm=(-0.3, -0.92, -0.25))),
+        (6, pose(torso=(6, 0, 0), arm=(-0.2, -0.4, 0.89)), 'lin'),
+        (7, pose(torso=(-8, 18, -2), arm=(-0.05, 0.6, 0.8)), 'lin'),
+        (12, pose(torso=(2, 4, 0), arm=(-0.22, -0.66, 0.72))),
+    ],
+    # 低く沈んでから斜め上へ打ち上げて飛ぶ
+    'knuckle_rush': [
+        (0, pose(arm=DOWN)),
+        (6, pose(torso=(30, -18, 2), hips=(0, -8, 0), ty=-16, stance='lunge', arm=(-0.42, -0.84, -0.34))),
+        (10, pose(torso=(38, -24, 2), hips=(4, -12, 0), ty=-20, stance='deep', arm=(-0.46, -0.84, -0.3))),
+        (12, pose(torso=(30, 16, -2), hips=(6, 6, 0), ty=-8, tz=8, stance='sprint', arm=(-0.06, 0.34, 0.94)), 'lin'),
+        (18, pose(torso=(26, 22, -2), hips=(4, 8, 0), ty=-6, tz=9, stance='sprint', arm=(0.0, 0.5, 0.86))),
+        (22, pose(torso=(16, 8, 0), ty=-12, tz=2, stance='low', arm=(-0.1, -0.3, 0.95))),
+        (26, pose(torso=(4, 0, 0), ty=-2, stance='low', arm=DOWN)),
+    ],
+}
+
+
 def quat_from_rotate(values):
     return om.MEulerRotation([om.MAngle(v, om.MAngle.kDegrees).asRadians() for v in values], om.MEulerRotation.kXYZ).asQuaternion()
 
@@ -206,15 +307,18 @@ def solve_pose(p, idle, pelvis_t):
         offsets = STANCES[p['stance']]
         solve_leg('r', offsets[0], p, local, world, pelvis_t)
         solve_leg('l', offsets[1], p, local, world, pelvis_t)
-    if p['arm']:
-        for joint in ARM_JOINTS:
-            parent = ROOT_CHAIN[joint]
-            target = unit(p['arm']).rotateBy(world(parent).inverse())
+    def solve_arm(side, arm, weapon):
+        upper, lower, hand = ['%s_%s' % (n, side) for n in ('upperarm', 'lowerarm', 'hand')]
+        for joint in (upper, lower):
+            target = unit(arm).rotateBy(world(ROOT_CHAIN[joint]).inverse())
             # 骨は軸に沿っていないので、子の骨への実際の向きを合わせる。
             local[joint] = om.MVector(RIG['t'][CHILD[joint]]).normal().rotateTo(target)
-    if p['weapon'] or p['arm']:
-        target = unit(p['weapon'] or p['arm']).rotateBy(world('lowerarm_r').inverse())
-        local['hand_r'] = om.MVector(RIG['t']['hand_end_r']).normal().rotateTo(target)
+        target = unit(weapon or arm).rotateBy(world(lower).inverse())
+        local[hand] = om.MVector(RIG['t']['hand_end_' + side]).normal().rotateTo(target)
+
+    if p['arm']:
+        solve_arm('r', p['arm'], p['weapon'])
+    solve_arm('l', p['off'], None)
     return local
 
 
@@ -296,11 +400,13 @@ def build(path):
     RIG['t'] = {j: tuple(cmds.getAttr(j + '.translate', time=1)[0]) for j in joints}
     RIG['ankle'] = {j: tuple(cmds.xform(j, q=True, ws=True, t=True)) for j in ('foot_r', 'foot_l')}
     moved = {'pelvis', 'spine_01', 'spine_02', 'chest', 'neck', 'head', 'upperarm_r', 'lowerarm_r', 'hand_r',
-             'thigh_r', 'thigh_l', 'knee_upper_r', 'knee_upper_l', 'knee_lower_r', 'knee_lower_l', 'foot_r', 'foot_l'}
+             'upperarm_l', 'lowerarm_l', 'hand_l', 'thigh_r', 'thigh_l', 'knee_upper_r', 'knee_upper_l', 'knee_lower_r', 'knee_lower_l', 'foot_r', 'foot_l'}
     for index, (name, full, keys) in enumerate(CLIPS):
-        frames = sample_clip(keys, idle, pelvis_t)
-        write_clip(frames, RIGHT_START + CLIP_GAP * index, False, idle, moved)
-        write_clip(frames, LEFT_START + CLIP_GAP * index, True, idle, moved)
+        left_keys = LEFT_CLIPS[name]
+        if left_keys[-1][0] != keys[-1][0]:
+            raise RuntimeError('左右のクリップの長さがちがいます: ' + name)
+        write_clip(sample_clip(keys, idle, pelvis_t), RIGHT_START + CLIP_GAP * index, False, idle, moved)
+        write_clip(sample_clip(left_keys, idle, pelvis_t), LEFT_START + CLIP_GAP * index, True, idle, moved)
         print('built', name, keys[-1][0])
     cmds.file(save=True, type='mayaBinary', force=True)
     print('saved', path)

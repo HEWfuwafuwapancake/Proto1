@@ -18,7 +18,7 @@ static constexpr CHARACTER_DATA CHARACTERS[CHARACTER_COUNT] = {
 		"assets/models/mekagirl_atk_gunlance_rush_l.fbx", "assets/models/mekagirl_atk_gunlance_rush_r.fbx",
 		"assets/models/mekagirl_atk_knuckle_punch_l.fbx", "assets/models/mekagirl_atk_knuckle_punch_r.fbx",
 		"assets/models/mekagirl_atk_knuckle_rush_l.fbx", "assets/models/mekagirl_atk_knuckle_rush_r.fbx" },
-		{ "spine_01", { "spine_01", "spine_02", "chest" } },
+		{ "spine_01", { "spine_01", "spine_02", "chest" }, { "upperarm_l", "upperarm_r" } },
 		110.76f, 0.0f, XM_PI, { 0.22f, 1.28f, 0.0f },
 		{ { { "upperarm_l", "lowerarm_l", "hand_l", "hand_end_l" }, { "upperarm_r", "lowerarm_r", "hand_r", "hand_end_r" } } },
 		0.6f, 0.08f }, // 触腕は体に見合った大きさ。付け根は肩の骨より 0.08m 外（肩幅）
