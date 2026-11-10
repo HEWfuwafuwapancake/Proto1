@@ -47,6 +47,8 @@ public:
 	GAME_RULE GetRule() const { return m_Calc.GetRule(); }
 	/// @brief ホストが配った乱数の種を取得する
 	uint32_t GetSeed() const { return m_Calc.GetSeed(); }
+	/// @brief 全員で共有している今の試合の番号を取得する
+	uint32_t GetRound() const { return m_Calc.GetRound(); }
 	/// @brief タイトルバーに表示する接続状態を取得する
 	std::string GetStatusText() const;
 	/// @brief VS の版の違い・ずれ（DESYNC）の表示を取得する（タイトルバーの先頭に出す。どちらもなしは空）

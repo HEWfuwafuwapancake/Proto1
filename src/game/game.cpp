@@ -15,6 +15,7 @@
 // 調整用の値
 static constexpr XMFLOAT4 EMPTY_VIEW_COLOR = { 0.0f, 0.0f, 0.0f, 1.0f };	// 3人のときの空いた画面（黒）
 static constexpr uint32_t MATCH_SEED_STEP = 0x9e3779b9u;	// やり直すたびに試合の種へ足す値
+static constexpr uint32_t MATCH_ROUND_STEP = 0xc2b2ae35u;	// メニューやロビーから始め直すたびに種へ足す値
 static constexpr uint32_t CAPSULE_SEED_MASK = 0x85ebca6bu;	// 復活先とは別の乱数列にする
 
 VERSUS_VIEWPORT Game::GetViewport(int index) const
@@ -112,6 +113,7 @@ void Game::Restart(bool retry)
 {
 	// 試合中に引いた乱数の回数にかかわらず、やり直しでは全員が同じ種を使う。
 	const GAME_RULE rule = GetRule();
+	if (!retry && !m_Net.IsOnline()) m_OfflineSeed += MATCH_ROUND_STEP;
 	m_MatchSeed = retry ? m_MatchSeed + MATCH_SEED_STEP : GetSeed();
 	m_Match.SetRule(rule);
 	m_Fighters.SetMatchSettings(rule, m_MatchSeed);
@@ -134,7 +136,7 @@ GAME_RULE Game::GetRule() const
 
 uint32_t Game::GetSeed() const
 {
-	return m_Net.IsOnline() ? m_Net.GetSeed() : m_OfflineSeed;
+	return m_Net.IsOnline() ? m_Net.GetSeed() + m_Net.GetRound() * MATCH_ROUND_STEP : m_OfflineSeed;
 }
 
 void Game::ResetParticipants()

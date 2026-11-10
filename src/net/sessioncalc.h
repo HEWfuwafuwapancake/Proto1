@@ -192,6 +192,8 @@ public:
 	GAME_RULE GetRule() const { return m_Rule; }
 	/// @brief ホストが配った乱数の種を取得する
 	uint32_t GetSeed() const { return m_Seed; }
+	/// @brief 全員で共有している今の試合の番号を取得する
+	uint32_t GetRound() const { return m_Round; }
 	/// @brief ホストが配った入力遅延を取得する
 	int GetDelay() const { return m_Delay; }
 	/// @brief ホストが入力の遅れを ping から自動で決めるか取得する（参加側は常にfalse）

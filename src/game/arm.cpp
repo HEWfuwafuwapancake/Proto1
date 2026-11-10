@@ -186,7 +186,7 @@ void ArmManager::Update(bool playing)
 		else {
 			const bool wasActive = arm.IsActive();
 			ARM_INPUT input{};
-			if (m_Rule == GAME_RULE_DEBUG || !m_Uses[hand].IsExhausted()) {
+			if (m_Rule == GAME_RULE_DEBUG || !m_Uses[hand].IsExhausted() || arm.IsHolding()) { // 最後の1回でつかんだ相手も投げられるようにする。
 				input = m_Presses[hand].Step(pressed, dt, arm.CanTakeTap(), arm.CanTakeHold());
 			}
 			else m_Presses[hand].Reset(pressed);
