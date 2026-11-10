@@ -9,6 +9,7 @@ struct SKINNED_BONES_DESC
 {
 	const char* UpperRoot; ///< 上半身の根元の骨（この骨と子孫だけに腕のクリップを重ねる。nullptr なら重ねない）
 	std::array<const char*, 3> Twist; ///< 上半身のねじれを分けて足す骨（腰に近い順。使わない欄は nullptr）
+	std::array<const char*, 2> ArmRoots; ///< 左手・右手の腕の根元の骨（両手で同時に攻撃するとき、この骨と子孫に別のクリップを重ねる。nullptr なら重ねない）
 };
 
 /// @brief 1フレーム分の再生の指定
@@ -19,6 +20,9 @@ struct SKINNED_REQUEST
 	SKINNED_CLIP Upper = SKINNED_CLIP::Count; ///< 上半身に重ねるクリップ（Count なら重ねない）
 	float UpperTime = -1.0f; ///< 上半身のクリップの再生位置の秒（負なら経過時間でループ再生する）
 	bool UpperFull = false; ///< 重ねる範囲を設定する（true：全身に重ねる、false：上半身だけに重ねる）
+	SKINNED_CLIP Off = SKINNED_CLIP::Count; ///< もう一方の腕だけに重ねる攻撃クリップ（Count なら重ねない）
+	float OffTime = 0.0f; ///< もう一方の腕のクリップの再生位置の秒
+	int OffHand = 0; ///< もう一方の腕（左 0・右 1）
 	float Twist = 0.0f; ///< 上半身のねじれ（ラジアン。XMMatrixRotationY と同じ向き）
 };
 
@@ -32,6 +36,10 @@ struct SKINNED_POSE
 	float UpperTime = 0.0f; ///< 上半身のクリップ内の秒
 	float UpperWeight = 0.0f; ///< 上半身のクリップの重み（0〜1）
 	bool UpperFull = false; ///< 重ねている範囲（true：全身、false：上半身だけ）
+	SKINNED_CLIP Off = SKINNED_CLIP::Count; ///< もう一方の腕に重ねているクリップ（Count ならなし）
+	float OffTime = 0.0f; ///< もう一方の腕のクリップ内の秒
+	float OffWeight = 0.0f; ///< もう一方の腕のクリップの重み（0〜1）
+	int OffHand = 0; ///< もう一方の腕（左 0・右 1）
 	float Twist = 0.0f; ///< 上半身のねじれ（ラジアン）
 	std::vector<ANIM_TRANSFORM> Local; ///< 現在の各ノードの姿勢
 	std::vector<ANIM_TRANSFORM> BlendFrom; ///< 切り替え直前に描いていた姿勢
@@ -125,4 +133,5 @@ private:
 	std::array<Clip, static_cast<size_t>(SKINNED_CLIP::Count)> m_Clips;
 	std::vector<bool> m_UpperMask; // 上半身の骨か（ノードの番号順）
 	std::vector<size_t> m_TwistNodes; // ねじる骨のノード番号
+	std::array<std::vector<bool>, 2> m_ArmMasks; // 左手・右手の腕の骨か（ノードの番号順）
 };

@@ -234,6 +234,14 @@ void Fighter::UpdateAnimation(const ArmManager* arms, float dt)
 			m_AttackHand = hand;
 		}
 		else request.Upper = hand == 0 ? SKINNED_CLIP::Left : SKINNED_CLIP::Right;
+		// もう一方の手も攻撃していれば、その腕だけ自分のクリップで動かす。
+		const int other = 1 - hand;
+		const ARM_BODY_CLIP otherAttack = arms->GetBodyClip(other);
+		if (otherAttack.Active) {
+			request.Off = AnimCalcAttackClip(otherAttack.Kind, other);
+			request.OffTime = otherAttack.Time;
+			request.OffHand = other;
+		}
 	}
 	m_Models[m_Character].Update(m_Pose, request, dt, ANIMATION_BLEND_SECONDS);
 }
@@ -274,10 +282,14 @@ XMMATRIX Fighter::GetModelWorld() const
 		* XMMatrixRotationY(m_Motion.GetLegYaw()) * XMMatrixTranslation(p.x, p.y, p.z);
 }
 
-float Fighter::GetAttackArm(int hand, VEC3& arm, VEC3& weapon) const
+float Fighter::GetAttackArm(int hand, VEC3& arm, VEC3& weapon, bool& own) const
 {
-	if (hand != m_AttackHand || hand < 0 || hand > 1 || !m_Models || !m_Models[m_Character].IsLoaded()) return 0.0f;
-	if (!AnimCalcIsAttackClip(m_Pose.Upper) || m_Pose.UpperWeight <= 0.0f) return 0.0f;
+	if (hand < 0 || hand > 1 || !m_Models || !m_Models[m_Character].IsLoaded()) return 0.0f;
+	const bool mainClip = AnimCalcIsAttackClip(m_Pose.Upper) && m_Pose.UpperWeight > 0.0f;
+	const bool offClip = m_Pose.Off != SKINNED_CLIP::Count && m_Pose.OffWeight > 0.0f && m_Pose.OffHand == hand;
+	if (!mainClip && !offClip) return 0.0f;
+	own = offClip || hand == m_AttackHand;
+	const float weight = offClip ? m_Pose.OffWeight : m_Pose.UpperWeight;
 	const SkinnedModel& model = m_Models[m_Character];
 	const auto& chain = CHARACTER_DATA::Get(m_Character).ArmChains[hand];
 	const XMMATRIX world = GetModelWorld();
@@ -295,7 +307,7 @@ float Fighter::GetAttackArm(int hand, VEC3& arm, VEC3& weapon) const
 	XMStoreFloat3(&b, XMVector3Normalize(toEnd));
 	arm = { a.x, a.y, a.z };
 	weapon = { b.x, b.y, b.z };
-	return m_Pose.UpperWeight;
+	return weight;
 }
 
 bool Fighter::GetArmBone(int hand, VEC3& shoulder, VEC3& direction, float& length) const

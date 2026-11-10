@@ -53,8 +53,9 @@ public:
 	/// @param hand 0：左手、1：右手
 	/// @param arm 肩から手首への単位方向を入れる先
 	/// @param weapon 手首から手先への単位方向を入れる先
-	/// @return クリップの重み（0〜1。その手の攻撃クリップを再生していない・骨がないなら 0）
-	float GetAttackArm(int hand, VEC3& arm, VEC3& weapon) const;
+	/// @param own その手が攻撃しているかを入れる先（true：その手の攻撃クリップ、false：もう一方の手の攻撃につられて動いている）
+	/// @return クリップの重み（0〜1。攻撃クリップを再生していない・骨がないなら 0）
+	float GetAttackArm(int hand, VEC3& arm, VEC3& weapon, bool& own) const;
 	/// @brief 描画の上半身の向き（狙いの向きと、走りの傾き）を、直交する単位方向で取得する（描画だけに使う）
 	/// @param up 上半身の上の方向を入れる先
 	/// @param forward 上半身の前の方向を入れる先

@@ -17,7 +17,7 @@ static constexpr float IAI_SECONDS[] = { 0.3f, 0.12f, 0.3f }; // 納刀の構え
 static constexpr float IAI_CLIP_SECONDS[] = { 8.0f / 24.0f, 6.0f / 24.0f, 12.0f / 24.0f }; // クリップの区切り（katana_iai）
 static constexpr float IAI_PARRY_SECONDS = 0.2f; // 構えの出だしで攻撃を受け流せる秒数。
 static constexpr float IAI_MOVE_SCALE = 0.3f; // 居合の間の歩く速さの倍率。
-static constexpr float IAI_STEP_SPEED = 20.0f; // 一閃で前へ踏み込む速さ。
+static constexpr float IAI_STEP_SPEED = 45.0f; // 一閃で前へ踏み込む速さ（一閃は 0.12 秒なので約 5.4 進む）。
 static constexpr float IAI_RADIUS = 3.0f;
 static constexpr float IAI_HALF_ANGLE = XMConvertToRadians(60.0f);
 static constexpr float IAI_HALF_HEIGHT = 1.5f; // 肩の高さから上下それぞれの当たる幅。
@@ -334,12 +334,14 @@ void KatanaArm::DrawCutRift() const
 {
 	const float open = m_Breach == BREACH_CUT ? fminf(1.0f, m_BreachTime / BREACH_CUT_SECONDS) : 1.0f;
 	const float length = CUT_HALF_LENGTH * open;
-	const VEC3 top = Vec3Add(m_CutCenter, Vec3Scale(m_CutAxis, CUT_HALF_LENGTH));
-	const VEC3 bottom = Vec3Add(top, Vec3Scale(m_CutAxis, -2.0f * length));
+	// 右手は上から斬り下ろし、左手は下から斬り上げるので、伸び始める端を変える。
+	const VEC3 axis = GetHand() == 0 ? Vec3Scale(m_CutAxis, -1.0f) : m_CutAxis;
+	const VEC3 top = Vec3Add(m_CutCenter, Vec3Scale(axis, CUT_HALF_LENGTH));
+	const VEC3 bottom = Vec3Add(top, Vec3Scale(axis, -2.0f * length));
 	ShapeDrawCylinder({ top.X, top.Y, top.Z }, { bottom.X, bottom.Y, bottom.Z }, CUT_RADIUS * open, RIFT_COLOR);
-	const VEC3 middle = Vec3Add(top, Vec3Scale(m_CutAxis, -length));
-	const VEC3 coreTop = Vec3Add(middle, Vec3Scale(m_CutAxis, length * CUT_CORE_RATE));
-	const VEC3 coreBottom = Vec3Add(middle, Vec3Scale(m_CutAxis, -length * CUT_CORE_RATE));
+	const VEC3 middle = Vec3Add(top, Vec3Scale(axis, -length));
+	const VEC3 coreTop = Vec3Add(middle, Vec3Scale(axis, length * CUT_CORE_RATE));
+	const VEC3 coreBottom = Vec3Add(middle, Vec3Scale(axis, -length * CUT_CORE_RATE));
 	ShapeDrawCylinder({ coreTop.X, coreTop.Y, coreTop.Z }, { coreBottom.X, coreBottom.Y, coreBottom.Z }, CUT_CORE_RADIUS * open, RIFT_CORE_COLOR);
 }
 

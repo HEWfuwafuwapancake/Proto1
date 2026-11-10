@@ -185,6 +185,16 @@ void SkinnedModel::ReadBones(const NodeNames& names, const SKINNED_BONES_DESC& b
 	} else if (bones.UpperRoot) {
 		hal::dout << "SkinnedModel: upper root not found: " << bones.UpperRoot << std::endl;
 	}
+	for (size_t hand = 0; hand < m_ArmMasks.size(); ++hand) {
+		m_ArmMasks[hand].clear();
+		const auto root = bones.ArmRoots[hand] ? names.find(bones.ArmRoots[hand]) : names.end();
+		if (root == names.end()) continue;
+		m_ArmMasks[hand].resize(m_Nodes.size());
+		for (size_t i = 0; i < m_Nodes.size(); ++i) {
+			const int parent = m_Nodes[i].Parent;
+			m_ArmMasks[hand][i] = i == root->second || (parent >= 0 && m_ArmMasks[hand][parent]);
+		}
+	}
 	for (const char* name : bones.Twist) {
 		if (!name) continue;
 		const auto node = names.find(name);
@@ -248,6 +258,7 @@ void SkinnedModel::Finalize()
 	m_Clips = {};
 	m_UpperMask.clear();
 	m_TwistNodes.clear();
+	for (std::vector<bool>& mask : m_ArmMasks) mask.clear();
 	m_NodeNames.clear();
 }
 
@@ -276,6 +287,7 @@ ANIM_TRANSFORM SkinnedModel::SampleClip(SKINNED_CLIP clip, float time, size_t no
 void SkinnedModel::SamplePose(SKINNED_POSE& pose, float blend) const
 {
 	const bool upper = pose.Upper != SKINNED_CLIP::Count && pose.UpperWeight > 0.0f && !m_UpperMask.empty();
+	const bool off = pose.Off != SKINNED_CLIP::Count && pose.OffWeight > 0.0f && !m_ArmMasks[pose.OffHand].empty();
 	const float twist = m_TwistNodes.empty() ? 0.0f : pose.Twist / static_cast<float>(m_TwistNodes.size());
 	for (size_t i = 0; i < m_Nodes.size(); ++i) {
 		const Node& node = m_Nodes[i];
@@ -283,6 +295,8 @@ void SkinnedModel::SamplePose(SKINNED_POSE& pose, float blend) const
 		ANIM_TRANSFORM local = blend < 1.0f ? AnimCalcBlend(pose.BlendFrom[i], next, blend) : next;
 		// 上半身の骨だけ、腕のクリップを重みの分だけ重ねる（脚は走りなどのまま）。
 		if (upper && (pose.UpperFull || m_UpperMask[i])) local = AnimCalcBlend(local, SampleClip(pose.Upper, pose.UpperTime, i), pose.UpperWeight);
+		// 両手で攻撃しているときは、もう一方の腕だけ自分のクリップで動かす。
+		if (off && m_ArmMasks[pose.OffHand][i]) local = AnimCalcBlend(local, SampleClip(pose.Off, pose.OffTime, i), pose.OffWeight);
 		pose.Local[i] = local;
 		const ANIM_MATRIX matrix = AnimCalcMatrix(local);
 		pose.Global[i] = node.Parent < 0 ? matrix : AnimCalcCompose(matrix, pose.Global[node.Parent]);
@@ -302,6 +316,9 @@ void SkinnedModel::Reset(SKINNED_POSE& pose) const
 	pose.UpperTime = 0.0f;
 	pose.UpperWeight = 0.0f;
 	pose.UpperFull = false;
+	pose.Off = SKINNED_CLIP::Count;
+	pose.OffTime = 0.0f;
+	pose.OffWeight = 0.0f;
 	pose.Twist = 0.0f;
 	pose.BlendFrom.clear();
 	pose.Local.resize(m_Nodes.size());
@@ -342,6 +359,16 @@ void SkinnedModel::Update(SKINNED_POSE& pose, const SKINNED_REQUEST& request, fl
 		if (wantUpper && request.UpperTime >= 0.0f) pose.UpperTime = std::min(request.UpperTime, GetClip(pose.Upper).LoopSeconds);
 		else if (!AnimCalcIsAttackClip(pose.Upper)) pose.UpperTime = AnimCalcLoopTime(pose.UpperTime + dt, GetClip(pose.Upper).LoopSeconds);
 	}
+	// もう一方の腕のクリップも同じように出し入れする。
+	const bool wantOff = request.Off != SKINNED_CLIP::Count && !m_ArmMasks[request.OffHand].empty();
+	if (wantOff) {
+		pose.Off = request.Off;
+		pose.OffHand = request.OffHand;
+		pose.OffTime = std::min(request.OffTime, GetClip(pose.Off).LoopSeconds);
+	}
+	const float offStep = dt / ATTACK_BLEND_SECONDS;
+	pose.OffWeight = wantOff ? std::min(1.0f, pose.OffWeight + offStep) : std::max(0.0f, pose.OffWeight - offStep);
+	if (pose.OffWeight <= 0.0f) pose.Off = SKINNED_CLIP::Count;
 	pose.Twist = request.Twist;
 	float blend = 1.0f;
 	if (!pose.BlendFrom.empty()) {

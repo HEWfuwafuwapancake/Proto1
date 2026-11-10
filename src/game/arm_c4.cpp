@@ -118,7 +118,9 @@ void C4Arm::DrawBomb(const VEC3& feet, const XMFLOAT4& color) const
 void C4Arm::Draw()
 {
 	const VEC3 aim = ArmCalcPitchDirection(m_Direction, THROW_PITCH);
-	const VEC3 direction = ArmCalcBlendDirection(GetRestDirection(), aim, m_Straighten);
+	VEC3 direction = ArmCalcBlendDirection(GetRestDirection(), aim, m_Straighten);
+	VEC3 unusedWeapon = direction; // 爆弾は腕の向きのまま描くので、武器の向きは使わない。
+	BlendClipPose(direction, unusedWeapon);
 	const XMFLOAT4 color = GetColor(!m_Phase.IsIdle());
 	const float scale = MODEL_SCALE * GetDrawScale();
 	const VEC3 hand = DrawAlong(m_ArmModel, GetDrawShoulder(), direction, ARM_LENGTH, scale, color);
