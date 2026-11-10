@@ -141,7 +141,7 @@ void ArmManager::Update(bool playing)
 	for (int hand = 0; hand < 2; ++hand) {
 		Arm& arm = *m_Arms[hand][m_Types[hand]];
 		const bool wasActive = arm.IsActive();
-		arm.Update(m_Presses[hand].Step(player.IsPress(ARM_ACTIONS[hand]), dt));
+		arm.Update(m_Presses[hand].Step(player.IsPress(ARM_ACTIONS[hand]), dt, arm.CanTakeTap(), arm.CanTakeHold()));
 		if (!wasActive && arm.IsActive()) m_LastActiveHand = hand;
 	}
 }

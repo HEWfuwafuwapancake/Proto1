@@ -18,7 +18,7 @@ static constexpr float BLAST_FORWARD = 1.5f; // 肩から爆心までの前へ�
 static constexpr float BLAST_RADIUS = 2.0f;
 static constexpr float BLAST_UP = 0.6f;
 static constexpr float SHOT_UP = 0.4f;
-static constexpr float RUSH_SPEED = 4.0f;
+static constexpr float RUSH_SPEED = 8.0f;
 static constexpr float RUSH_SECONDS = 2.0f; // 突進を続けられる秒数。
 static constexpr float RUSH_REACH = 1.6f; // 突進の当たりの、肩から前への距離。
 static constexpr float RUSH_RADIUS = 0.35f;
@@ -163,6 +163,16 @@ void GunlanceArm::Draw()
 bool GunlanceArm::IsActive() const
 {
 	return m_Rushing || m_Calc.GetLevel() > 0 || m_PoseSeconds > 0.0f;
+}
+
+bool GunlanceArm::CanTakeTap() const
+{
+	return !m_Rushing;
+}
+
+bool GunlanceArm::CanTakeHold() const
+{
+	return !m_Rushing && m_Calc.GetLevel() == 0;
 }
 
 bool GunlanceArm::IsHolding() const

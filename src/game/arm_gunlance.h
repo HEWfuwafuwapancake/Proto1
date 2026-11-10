@@ -28,6 +28,10 @@ public:
 	bool IsActive() const override;
 	/// @brief 敵をつかまないので、常に false を返す
 	bool IsHolding() const override;
+	/// @brief 突進の間を除いて単押しを受け付ける（ためている間も段階を足せる）
+	bool CanTakeTap() const override;
+	/// @brief 突進しておらず、ためてもいないなら true を返す
+	bool CanTakeHold() const override;
 	/// @brief 突進の間のワールド速度を取得する
 	VEC3 GetRushVelocity() const override;
 

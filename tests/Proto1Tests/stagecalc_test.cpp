@@ -85,6 +85,16 @@ namespace Proto1Tests
 		EXPECT_NEAR(10.0f, grip.Surface.CenterZ, 0.001f);
 	}
 
+	// 見上げているときは、近い高台ではなく見ている先の高台を選ぶ
+	TEST(StageCalcTest, FindGrip_LookingUpChoosesRimInView)
+	{
+		const STAGE stage = MakeGripStage();
+		STAGE_GRIP grip{};
+		const VEC3 toFar = Vec3Sub({ 0.0f, 4.0f, 14.0f }, GRIP_ORIGIN);
+		ASSERT_TRUE(StageCalcFindGrip(stage, GRIP_ORIGIN, GRIP_FEET, toFar, GRIP_RANGE, GRIP_HALF_ANGLE, grip));
+		EXPECT_NEAR(14.0f, grip.Surface.CenterZ, 0.001f);
+	}
+
 	// 後ろの高台と、遠すぎる高台は選ばない
 	TEST(StageCalcTest, FindGrip_IgnoresBehindAndTooFar)
 	{

@@ -183,6 +183,7 @@
     <ClCompile Include="src\physics\grapplecalc.cpp" />
     <ClCompile Include="src\physics\armcalc.cpp" />
     <ClCompile Include="src\physics\armpresscalc.cpp" />
+    <ClCompile Include="src\physics\breachcalc.cpp" />
     <ClCompile Include="src\physics\tentaclecalc.cpp" />
     <ClCompile Include="src\game\match.cpp" />
     <ClCompile Include="src\physics\matchcalc.cpp" />
@@ -250,6 +251,7 @@
     <ClInclude Include="src\physics\grapplecalc.h" />
     <ClInclude Include="src\physics\armcalc.h" />
     <ClInclude Include="src\physics\armpresscalc.h" />
+    <ClInclude Include="src\physics\breachcalc.h" />
     <ClInclude Include="src\physics\tentaclecalc.h" />
     <ClInclude Include="src\game\match.h" />
     <ClInclude Include="src\physics\matchcalc.h" />

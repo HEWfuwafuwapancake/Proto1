@@ -53,6 +53,10 @@ public:
 	virtual bool IsActive() const = 0;
 	/// @brief 敵をつかんでいる間だけ true を返す
 	virtual bool IsHolding() const = 0;
+	/// @brief 単押しをすぐ受け付けられるなら true を返す（false の間の単押しは少しの間覚えておく。基本は待機中だけ）
+	virtual bool CanTakeTap() const { return !IsActive(); }
+	/// @brief 長押しをすぐ始められるなら true を返す（false の間は押し続けていれば待つ。基本は待機中だけ）
+	virtual bool CanTakeHold() const { return !IsActive(); }
 	/// @brief 歩く速さの倍率を取得する（基本は 1.0、派生クラスで変更できる）
 	virtual float GetMoveScale() const { return 1.0f; }
 	/// @brief 突進のワールド速度を取得する（水平のみ。突進していなければゼロ）

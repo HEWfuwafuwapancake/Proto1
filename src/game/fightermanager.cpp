@@ -52,6 +52,7 @@ void FighterManager::Reset()
 	m_Versus.ResetMatch();
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		m_Fighters[i].Reset();
+		m_GuardedHit[i] = false;
 	}
 }
 
@@ -130,10 +131,23 @@ TENTACLE_TARGET FighterManager::GetTarget(int index, int self) const
 	return { fighter.GetBody(), !fighter.IsHeld() };
 }
 
-bool FighterManager::CanAttack(int index, int attacker) const
+bool FighterManager::CanAttack(int index, int attacker)
 {
+	if (!m_Versus.IsOpponent(attacker, index) || !IsActive(attacker) || !IsActive(index)) return false;
 	// ガードされた攻撃は効かない（No.80）。燃える % と投げ（Release）はここを通らない。
-	return m_Versus.IsOpponent(attacker, index) && IsActive(attacker) && IsActive(index) && !IsGuarded(index, attacker);
+	if (IsGuarded(index, attacker)) {
+		m_GuardedHit[index] = true;
+		return false;
+	}
+	return true;
+}
+
+bool FighterManager::ConsumeGuardedHit(int index)
+{
+	if (index < 0 || index >= FIGHTER_COUNT) return false;
+	const bool guarded = m_GuardedHit[index];
+	m_GuardedHit[index] = false;
+	return guarded;
 }
 
 bool FighterManager::IsGuarded(int index, int attacker) const

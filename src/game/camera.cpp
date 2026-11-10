@@ -27,7 +27,7 @@ static constexpr float FOLLOW_TURN_SPEED = XMConvertToRadians(90.0f);	// 横移�
 static constexpr float MANUAL_PAUSE = 0.5f;							// 自分でカメラを回したあと、横移動について回るのを止める秒数
 static constexpr float STAGE_MARGIN = 0.3f;							// 浮島の面から、カメラをこれだけ離す（めり込んで見えないように）
 static constexpr float PITCH_MIN = XMConvertToRadians(-35.0f);		// いちばん下を向いたとき（上から見下ろす）
-static constexpr float PITCH_MAX = XMConvertToRadians(0.0f);		// いちばん上を向いたとき（水平まで）
+static constexpr float PITCH_MAX = XMConvertToRadians(50.0f);		// いちばん上を向いたとき（見上げる。高台を狙える）
 static constexpr float START_PITCH = XMConvertToRadians(-12.0f);	// 最初の上下の向き（少し見下ろす）
 static constexpr float SWITCH_SMOOTH_TIME = 0.06f;					// 切り替え直後の角度のバネ
 static constexpr float SWITCH_TIME = 0.3f;							// 角度のバネを速める秒数
@@ -83,6 +83,20 @@ VEC3 Camera::LockFocusPoint(const VEC3& player, const CAMERA_FOCUS_TARGET* targe
 void Camera::UpdateLockTarget(const CAMERA_FOCUS_TARGET* targets)
 {
 	const bool holding = m_Arms->IsHolding();
+	if (m_Player->IsTrigger(ACTION_CAMERA_TOGGLE)) {
+		m_FreeLook = !m_FreeLook;
+		m_SavedTarget = -1;
+	}
+	// フリーカメラの間はロックオンせず、戻すときは下の処理が正面の相手を選び直す。
+	if (m_FreeLook) {
+		if (m_LockTarget >= 0) {
+			m_LockTarget = -1;
+			m_YawGoal = m_Yaw;
+			m_SwitchRemaining = 0.0f;
+		}
+		m_WasHolding = holding;
+		return;
+	}
 	if (holding) {
 		if (!m_WasHolding) {
 			m_SavedTarget = m_LockTarget;
@@ -140,7 +154,7 @@ void Camera::SnapToPlayer(void)
 	m_Pitch = m_PitchGoal;
 	CAMERA_FOCUS_TARGET targets[FIGHTER_COUNT];
 	CollectTargets(targets);
-	m_LockTarget = PickFrontTarget(targets);
+	m_LockTarget = m_FreeLook ? -1 : PickFrontTarget(targets);
 	m_SavedTarget = -1;
 	m_WasHolding = false;
 	m_SwitchRemaining = 0.0f;
@@ -198,7 +212,7 @@ void Camera::Update(void)
 	else if (m_ManualPause > 0.0f) {
 		m_ManualPause = fmaxf(0.0f, m_ManualPause - dt);
 	}
-	else if (m_LockTarget < 0 && m_Match->IsPlaying()) {
+	else if (m_LockTarget < 0 && !m_FreeLook && m_Match->IsPlaying()) {
 		m_YawGoal += m_Player->GetMoveInput().X * FOLLOW_TURN_SPEED * dt;
 	}
 	// 長く回し続けても、角度が大きくなり続けないようにする。

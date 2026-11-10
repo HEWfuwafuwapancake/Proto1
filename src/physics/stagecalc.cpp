@@ -13,7 +13,7 @@ static bool IsInsideSurface(const STAGE_PLATFORM& surface, float x, float z)
 }
 
 static void SearchRim(const STAGE_PLATFORM& surface, const VEC3& origin, const VEC3& forward, float cosine,
-	float maxDistance, bool& found, float& best, STAGE_GRIP& grip)
+	float maxDistance, bool lookingUp, bool& found, float& best, STAGE_GRIP& grip)
 {
 	const float corners[4][2] = {
 		{ surface.CenterX - surface.HalfWidth, surface.CenterZ - surface.HalfDepth },
@@ -32,11 +32,15 @@ static void SearchRim(const STAGE_PLATFORM& surface, const VEC3& origin, const V
 			const float flatX = point.X - origin.X;
 			const float flatZ = point.Z - origin.Z;
 			const float flat = sqrtf(flatX * flatX + flatZ * flatZ);
-			if (flat < GRIP_MIN_HORIZONTAL || (flatX * forward.X + flatZ * forward.Z) / flat < cosine) continue;
 			const float distance = Vec3Length(Vec3Sub(point, origin));
-			if (distance > maxDistance || (found && distance >= best)) continue;
+			if (distance > maxDistance || flat < GRIP_MIN_HORIZONTAL) continue;
+			// 見上げているときは上下も含めて比べ、画面の中央にいちばん近いふちを選ぶ。それ以外は水平に比べ、いちばん近いふちを選ぶ。
+			const float alignment = lookingUp ? Vec3Dot(Vec3Sub(point, origin), forward) / distance
+				: (flatX * forward.X + flatZ * forward.Z) / flat;
+			const float score = lookingUp ? alignment : -distance;
+			if (alignment < cosine || (found && score <= best)) continue;
 			found = true;
-			best = distance;
+			best = score;
 			grip = { point, surface };
 		}
 	}
@@ -82,18 +86,19 @@ bool StageCalcFindGrip(const STAGE& stage, const VEC3& origin, const VEC3& feet,
 {
 	const float flat = sqrtf(forward.X * forward.X + forward.Z * forward.Z);
 	if (flat < GRIP_MIN_HORIZONTAL) return false;
-	const VEC3 unit{ forward.X / flat, 0.0f, forward.Z / flat };
+	const bool lookingUp = forward.Y > 0.0f;
+	const VEC3 unit = lookingUp ? Vec3Scale(forward, 1.0f / Vec3Length(forward)) : VEC3{ forward.X / flat, 0.0f, forward.Z / flat };
 	const float cosine = cosf(halfAngle);
 	bool found = false;
 	float best = 0.0f;
 	for (int i = 0; i < stage.PlatformCount; ++i) {
 		const STAGE_PLATFORM& platform = stage.Platforms[i];
 		if (fabsf(feet.Y - platform.TopY) <= STANDING_TOLERANCE && IsInsideSurface(platform, feet.X, feet.Z)) continue;
-		SearchRim(platform, origin, unit, cosine, maxDistance, found, best, grip);
+		SearchRim(platform, origin, unit, cosine, maxDistance, lookingUp, found, best, grip);
 	}
 	// 浮島の上にいるときは、浮島のふちへ伸ばしても意味がない。
 	if (!StageCalcIsOnPlatform(stage, feet.X, feet.Z) || feet.Y < stage.TopY - STANDING_TOLERANCE) {
-		SearchRim(StageCalcIslandSurface(stage), origin, unit, cosine, maxDistance, found, best, grip);
+		SearchRim(StageCalcIslandSurface(stage), origin, unit, cosine, maxDistance, lookingUp, found, best, grip);
 	}
 	return found;
 }
