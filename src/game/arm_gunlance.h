@@ -32,6 +32,8 @@ public:
 	bool CanTakeTap() const override;
 	/// @brief 突進しておらず、ためてもいないなら true を返す
 	bool CanTakeHold() const override;
+	/// @brief 射撃と突進の上半身の攻撃クリップを取得する
+	ARM_BODY_CLIP GetBodyClip() const override;
 	/// @brief 突進の間のワールド速度を取得する
 	VEC3 GetRushVelocity() const override;
 

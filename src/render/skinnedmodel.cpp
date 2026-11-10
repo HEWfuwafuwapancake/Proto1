@@ -8,18 +8,24 @@
 #include <algorithm>
 #include <cstring>
 
+static constexpr float ATTACK_BLEND_SECONDS = 0.06f; // 攻撃クリップを出し入れするときにつなぐ秒数。
 static constexpr unsigned WEIGHTS_PER_VERTEX = 4;
 static constexpr size_t REQUIRED_CLIPS = static_cast<size_t>(SKINNED_CLIP::RunBack); // 待機・走り・左腕・右腕
 
 // ループしないクリップ（最後の姿勢で止める）
 static bool IsLoopClip(SKINNED_CLIP clip)
 {
-	return clip != SKINNED_CLIP::Jump && clip != SKINNED_CLIP::Land;
+	return clip != SKINNED_CLIP::Jump && clip != SKINNED_CLIP::Land && !AnimCalcIsAttackClip(clip);
 }
 
 // ファイルがないクリップの代わり
 static SKINNED_CLIP FallbackClip(SKINNED_CLIP clip)
 {
+	if (AnimCalcIsAttackClip(clip)) {
+		// 攻撃クリップのないキャラは、その手を前に出すクリップで動かす。
+		const bool left = (static_cast<int>(clip) - static_cast<int>(SKINNED_CLIP::KatanaIaiLeft)) % 2 == 0;
+		return left ? SKINNED_CLIP::Left : SKINNED_CLIP::Right;
+	}
 	return clip == SKINNED_CLIP::RunBack ? SKINNED_CLIP::Run : SKINNED_CLIP::Idle;
 }
 static constexpr unsigned IMPORT_FLAGS = aiProcess_ConvertToLeftHanded | aiProcess_LimitBoneWeights
@@ -276,7 +282,7 @@ void SkinnedModel::SamplePose(SKINNED_POSE& pose, float blend) const
 		const ANIM_TRANSFORM next = SampleClip(pose.Clip, pose.Time, i);
 		ANIM_TRANSFORM local = blend < 1.0f ? AnimCalcBlend(pose.BlendFrom[i], next, blend) : next;
 		// 上半身の骨だけ、腕のクリップを重みの分だけ重ねる（脚は走りなどのまま）。
-		if (upper && m_UpperMask[i]) local = AnimCalcBlend(local, SampleClip(pose.Upper, pose.UpperTime, i), pose.UpperWeight);
+		if (upper && (pose.UpperFull || m_UpperMask[i])) local = AnimCalcBlend(local, SampleClip(pose.Upper, pose.UpperTime, i), pose.UpperWeight);
 		pose.Local[i] = local;
 		const ANIM_MATRIX matrix = AnimCalcMatrix(local);
 		pose.Global[i] = node.Parent < 0 ? matrix : AnimCalcCompose(matrix, pose.Global[node.Parent]);
@@ -295,6 +301,7 @@ void SkinnedModel::Reset(SKINNED_POSE& pose) const
 	pose.Upper = SKINNED_CLIP::Count;
 	pose.UpperTime = 0.0f;
 	pose.UpperWeight = 0.0f;
+	pose.UpperFull = false;
 	pose.Twist = 0.0f;
 	pose.BlendFrom.clear();
 	pose.Local.resize(m_Nodes.size());
@@ -324,11 +331,16 @@ void SkinnedModel::Update(SKINNED_POSE& pose, const SKINNED_REQUEST& request, fl
 		pose.Upper = request.Upper;
 		pose.UpperTime = 0.0f;
 	}
-	const float step = blendSeconds > 0.0f ? dt / blendSeconds : 1.0f;
+	if (wantUpper) pose.UpperFull = request.UpperFull;
+	const bool attack = (wantUpper && AnimCalcIsAttackClip(request.Upper)) || (pose.Upper != SKINNED_CLIP::Count && AnimCalcIsAttackClip(pose.Upper));
+	const float upperBlend = attack ? ATTACK_BLEND_SECONDS : blendSeconds;
+	const float step = upperBlend > 0.0f ? dt / upperBlend : 1.0f;
 	pose.UpperWeight = wantUpper ? std::min(1.0f, pose.UpperWeight + step) : std::max(0.0f, pose.UpperWeight - step);
 	if (pose.UpperWeight <= 0.0f) pose.Upper = SKINNED_CLIP::Count;
 	if (pose.Upper != SKINNED_CLIP::Count) {
-		pose.UpperTime = AnimCalcLoopTime(pose.UpperTime + dt, GetClip(pose.Upper).LoopSeconds);
+		// 攻撃クリップは腕の段階が決めた位置を見せ、抜けるあいだは最後の位置で止める。
+		if (wantUpper && request.UpperTime >= 0.0f) pose.UpperTime = std::min(request.UpperTime, GetClip(pose.Upper).LoopSeconds);
+		else if (!AnimCalcIsAttackClip(pose.Upper)) pose.UpperTime = AnimCalcLoopTime(pose.UpperTime + dt, GetClip(pose.Upper).LoopSeconds);
 	}
 	pose.Twist = request.Twist;
 	float blend = 1.0f;

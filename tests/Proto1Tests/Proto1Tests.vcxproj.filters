@@ -59,6 +59,7 @@
     <ClCompile Include="projectilecalc_test.cpp" />
     <ClCompile Include="areacalc_test.cpp" />
     <ClCompile Include="armphasecalc_test.cpp" />
+    <ClCompile Include="delayedhitcalc_test.cpp" />
     <ClCompile Include="gunlancecalc_test.cpp" />
     <ClCompile Include="c4calc_test.cpp" />
     <ClCompile Include="armpresscalc_test.cpp" />
@@ -104,6 +105,9 @@
       <Filter>src\physics</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\physics\armphasecalc.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\physics\delayedhitcalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\physics\gunlancecalc.cpp">

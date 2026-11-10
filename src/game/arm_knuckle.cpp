@@ -9,6 +9,8 @@
 // 調整用の値
 static constexpr float PUNCH_SECONDS[] = { 0.15f, 0.1f, 0.2f }; // 単押し：ため・殴り・休み
 static constexpr float RUSH_SECONDS[] = { 0.4f, 0.35f, 0.3f }; // 長押し：ため・突進・休み
+static constexpr float PUNCH_CLIP_SECONDS[] = { 4.0f / 24.0f, 3.0f / 24.0f, 5.0f / 24.0f }; // 単押しのクリップの区切り（knuckle_punch）
+static constexpr float RUSH_CLIP_SECONDS[] = { 10.0f / 24.0f, 8.0f / 24.0f, 8.0f / 24.0f }; // 長押しのクリップの区切り（knuckle_rush）
 static constexpr float PUNCH_REACH = 1.6f; // 肩から殴りの届く距離。
 static constexpr float PUNCH_RADIUS = 0.4f;
 static constexpr float PUNCH_DAMAGE = 10.0f;
@@ -96,7 +98,9 @@ void KnuckleArm::Draw()
 {
 	const bool striking = m_Phase.GetPhase() == KNUCKLE_STRIKE;
 	const VEC3 aim = striking ? m_Direction : ArmCalcPitchDirection(m_Direction, RAISE_PITCH);
-	const VEC3 direction = ArmCalcBlendDirection(GetRestDirection(), aim, m_Straighten);
+	VEC3 direction = ArmCalcBlendDirection(GetRestDirection(), aim, m_Straighten);
+	VEC3 unusedWeapon = direction; // 拳は腕の向きのまま描くので、武器の向きは使わない。
+	BlendClipPose(direction, unusedWeapon);
 	const XMFLOAT4 color = GetColor(!m_Phase.IsIdle());
 	const float scale = MODEL_SCALE * GetDrawScale();
 	const float fistLength = FIST_LENGTH * scale * FIST_SIZE;
@@ -110,6 +114,17 @@ void KnuckleArm::Draw()
 bool KnuckleArm::IsActive() const
 {
 	return !m_Phase.IsIdle();
+}
+
+ARM_BODY_CLIP KnuckleArm::GetBodyClip() const
+{
+	ARM_BODY_CLIP clip;
+	if (m_Phase.IsIdle()) return clip;
+	clip.Active = true;
+	clip.Kind = m_Rush ? ATTACK_CLIP::KnuckleRush : ATTACK_CLIP::KnucklePunch;
+	clip.FullBody = m_Rush;
+	clip.Time = ArmCalcClipTime(m_Phase.GetPhase(), m_Phase.GetTime(), m_Rush ? RUSH_SECONDS : PUNCH_SECONDS, m_Rush ? RUSH_CLIP_SECONDS : PUNCH_CLIP_SECONDS);
+	return clip;
 }
 
 bool KnuckleArm::IsHolding() const

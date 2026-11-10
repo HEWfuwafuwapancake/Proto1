@@ -89,6 +89,7 @@
     <ClCompile Include="..\..\src\input\padcalc.cpp" />
     <ClCompile Include="..\..\src\physics\cameracalc.cpp" />
     <ClCompile Include="..\..\src\physics\armcalc.cpp" />
+    <ClCompile Include="..\..\src\physics\delayedhitcalc.cpp" />
     <ClCompile Include="..\..\src\physics\armpresscalc.cpp" />
     <ClCompile Include="..\..\src\physics\breachcalc.cpp" />
     <ClCompile Include="..\..\src\physics\collision.cpp" />
@@ -100,6 +101,7 @@
     <ClCompile Include="..\..\src\physics\stagecalc.cpp" />
     <ClCompile Include="actioncalc_test.cpp" />
     <ClCompile Include="armcalc_test.cpp" />
+    <ClCompile Include="delayedhitcalc_test.cpp" />
     <ClCompile Include="grapplecalc_test.cpp" />
     <ClCompile Include="guardcalc_test.cpp" />
     <ClCompile Include="statuscalc_test.cpp" />

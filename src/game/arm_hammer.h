@@ -25,6 +25,8 @@ public:
 	bool IsActive() const override;
 	/// @brief 敵をつかまないので、常に false を返す
 	bool IsHolding() const override;
+	/// @brief 単押しは上半身、長押しは全身の攻撃クリップを取得する
+	ARM_BODY_CLIP GetBodyClip() const override;
 	/// @brief ため・叩き・休みの間だけ歩く速さを下げる
 	float GetMoveScale() const override;
 

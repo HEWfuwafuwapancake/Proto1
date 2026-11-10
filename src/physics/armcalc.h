@@ -51,6 +51,14 @@ VEC3 ArmCalcPitchDirection(const VEC3& forward, float pitch);
 /// @return まぜた単位方向。長さがほぼ 0 なら b を正規化し、b もほぼ 0 なら +Z
 VEC3 ArmCalcBlendDirection(const VEC3& a, const VEC3& b, float ratio);
 
+/// @brief 腕の段階の進み具合から、攻撃クリップの再生位置を求める
+/// @param phase 今の段階の番号（0 始まり）
+/// @param phaseTime 今の段階に入ってからの秒
+/// @param phaseSeconds 段階ごとのゲームの秒数
+/// @param clipSeconds 段階ごとのクリップの秒数
+/// @return クリップの再生位置の秒（段階の終わりで止まる）
+float ArmCalcClipTime(int phase, float phaseTime, const float* phaseSeconds, const float* clipSeconds);
+
 /// @brief 腕の長さ方向を保ち、X・Z 軸をひねる（X' = X cosθ + Z sinθ、Z' = Z cosθ - X sinθ）
 /// @param axes ひねる前の直交単位軸
 /// @param roll ひねりの角度（ラジアン。0 なら元の軸をそのまま返す）

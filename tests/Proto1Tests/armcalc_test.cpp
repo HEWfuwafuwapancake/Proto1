@@ -15,6 +15,16 @@ namespace Proto1Tests
 		EXPECT_EQ(3, ArmCalcCycle(0, -1, available, 4));
 	}
 
+	// 段階の進みをクリップの区切りへ写し、段階の終わりでは次の段階の手前で止まる。
+	TEST(ArmCalcTest, ClipTime_MapsPhaseProgressToClipSegments)
+	{
+		const float phaseSeconds[] = { 0.3f, 0.12f, 0.3f };
+		const float clipSeconds[] = { 0.5f, 0.25f, 0.5f };
+		EXPECT_NEAR(0.25f, ArmCalcClipTime(0, 0.15f, phaseSeconds, clipSeconds), 0.0001f);
+		EXPECT_NEAR(0.625f, ArmCalcClipTime(1, 0.06f, phaseSeconds, clipSeconds), 0.0001f);
+		EXPECT_NEAR(1.25f, ArmCalcClipTime(2, 10.0f, phaseSeconds, clipSeconds), 0.0001f);
+	}
+
 	TEST(ArmCalcTest, Shoulder_BothHandsAreBehindAndSymmetricAtSameHeight)
 	{
 		const VEC3 position{ 3, 4, 5 };

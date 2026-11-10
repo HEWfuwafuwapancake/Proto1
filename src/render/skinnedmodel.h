@@ -17,6 +17,8 @@ struct SKINNED_REQUEST
 	SKINNED_CLIP Clip = SKINNED_CLIP::Idle; ///< 全身（下半身）で再生するクリップ
 	float Speed = 1.0f; ///< 全身のクリップの再生速度の倍率
 	SKINNED_CLIP Upper = SKINNED_CLIP::Count; ///< 上半身に重ねるクリップ（Count なら重ねない）
+	float UpperTime = -1.0f; ///< 上半身のクリップの再生位置の秒（負なら経過時間でループ再生する）
+	bool UpperFull = false; ///< 重ねる範囲を設定する（true：全身に重ねる、false：上半身だけに重ねる）
 	float Twist = 0.0f; ///< 上半身のねじれ（ラジアン。XMMatrixRotationY と同じ向き）
 };
 
@@ -29,6 +31,7 @@ struct SKINNED_POSE
 	SKINNED_CLIP Upper = SKINNED_CLIP::Count; ///< 上半身に重ねているクリップ（Count ならなし）
 	float UpperTime = 0.0f; ///< 上半身のクリップ内の秒
 	float UpperWeight = 0.0f; ///< 上半身のクリップの重み（0〜1）
+	bool UpperFull = false; ///< 重ねている範囲（true：全身、false：上半身だけ）
 	float Twist = 0.0f; ///< 上半身のねじれ（ラジアン）
 	std::vector<ANIM_TRANSFORM> Local; ///< 現在の各ノードの姿勢
 	std::vector<ANIM_TRANSFORM> BlendFrom; ///< 切り替え直前に描いていた姿勢

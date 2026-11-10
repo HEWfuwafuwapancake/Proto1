@@ -3,6 +3,7 @@
 #include "core/dx11.h"
 #include "physics/armpresscalc.h"
 #include "physics/guardcalc.h"
+#include "render/animcalc.h"
 #include "physics/vec3.h"
 #include <memory>
 
@@ -30,6 +31,15 @@ struct ARM_LINKS
 	int Slot; ///< 自分のスロット番号（0〜3。相手の候補から除く）
 	const Camera* CameraObject; ///< 狙いと投げる向きを読むカメラ
 	const Stage* StageObject; ///< 浮島と場外の線を読むステージ
+};
+
+/// @brief 腕が今の動作で体に見せる攻撃クリップ
+struct ARM_BODY_CLIP
+{
+	bool Active = false; ///< 攻撃クリップを使うかを設定する（true：使う、false：使わない）
+	ATTACK_CLIP Kind = ATTACK_CLIP::KatanaIai; ///< 攻撃の種類
+	float Time = 0.0f; ///< クリップの再生位置の秒
+	bool FullBody = false; ///< 重ねる範囲を設定する（true：全身、false：上半身だけ）
 };
 
 /// @brief 片手の腕の基本クラス。左 0・右 1 を1インスタンスずつ受け持つ
@@ -63,6 +73,8 @@ public:
 	virtual VEC3 GetRushVelocity() const { return {}; }
 	/// @brief 今のガードを取得する（基本はガードなし）
 	virtual GUARD GetGuard() const { return {}; }
+	/// @brief 今の動作で体に見せる攻撃クリップを取得する（基本は使わない）
+	virtual ARM_BODY_CLIP GetBodyClip() const { return {}; }
 	/// @brief 受け持つ手（左 0・右 1）を取得する
 	int GetHand() const { return m_Hand; }
 
@@ -99,6 +111,10 @@ protected:
 	VEC3 GetAim(bool keepHeight) const;
 	/// @brief ロックオン中の相手のスロット番号を取得する（なし・つかめない相手は -1）
 	int GetAimTarget() const;
+	/// @brief 攻撃クリップを再生している間、腕と武器の向きをアニメの骨の向きへ寄せる（描画だけ）
+	/// @param arm 腕の単位方向（コードで決めた向きを渡し、結果を受け取る）
+	/// @param weapon 武器の単位方向（コードで決めた向きを渡し、結果を受け取る）
+	void BlendClipPose(VEC3& arm, VEC3& weapon) const;
 	/// @brief モデルのない腕の仮の形として、肩から円柱を描く
 	/// @param direction 腕の単位方向
 	/// @param length 腕の長さ
@@ -168,6 +184,10 @@ public:
 	bool IsActive(void) const;
 	/// @brief 今使っている手を取得する（左 0・右 1・なし -1。両手なら後から使った手）
 	int GetActiveHand() const;
+	/// @brief 片手の装備が体に見せる攻撃クリップを取得する
+	/// @param hand 左 0・右 1
+	/// @return 攻撃クリップの指定（手が範囲外なら使わない指定）
+	ARM_BODY_CLIP GetBodyClip(int hand) const;
 	/// @brief どちらかの腕が敵をつかんでいるか（保持中なら true）
 	bool IsHolding(void) const;
 	/// @brief 左右の装備している腕のガードの強いほうを取得する

@@ -24,6 +24,10 @@ static constexpr float RUSH_REACH = 1.6f; // 突進の当たりの、肩から�
 static constexpr float RUSH_RADIUS = 0.35f;
 static constexpr float RUSH_DAMAGE = 6.0f;
 static constexpr float POSE_SECONDS = 0.2f; // 発射のあと構えを保つ秒数。
+static constexpr float SHOT_AIM_CLIP_SECONDS = 6.0f / 24.0f; // 射撃のクリップの、構え終わるまで（gunlance_shot）。
+static constexpr float SHOT_RECOIL_CLIP_SECONDS = 8.0f / 24.0f; // 射撃のクリップの、反動の長さ。
+static constexpr float RUSH_ENTER_CLIP_SECONDS = 5.0f / 24.0f; // 突進のクリップの、構え終わるまで（gunlance_rush）。
+static constexpr float RUSH_LOOP_CLIP_SECONDS = 12.0f / 24.0f; // 突進のクリップの、くり返す長さ。
 static constexpr float RANGE_SHOW_SECONDS = 0.2f; // 爆発の範囲を見せる秒数。
 static constexpr float STRAIGHTEN_SECONDS = 0.1f;
 static constexpr float CARRY_PITCH = XMConvertToRadians(15.0f); // 待機のときの槍の上下の向き。
@@ -141,8 +145,9 @@ void GunlanceArm::Update(const ARM_INPUT& input)
 
 void GunlanceArm::Draw()
 {
-	const VEC3 armDirection = ArmCalcBlendDirection(GetRestDirection(), m_Direction, m_Straighten);
-	const VEC3 lanceDirection = ArmCalcBlendDirection(ArmCalcPitchDirection(GetForward(), CARRY_PITCH), m_Direction, m_Straighten);
+	VEC3 armDirection = ArmCalcBlendDirection(GetRestDirection(), m_Direction, m_Straighten);
+	VEC3 lanceDirection = ArmCalcBlendDirection(ArmCalcPitchDirection(GetForward(), CARRY_PITCH), m_Direction, m_Straighten);
+	BlendClipPose(armDirection, lanceDirection);
 	const XMFLOAT4 color = GetColor(IsActive());
 	const float scale = MODEL_SCALE * GetDrawScale();
 	const VEC3 hand = DrawAlong(m_ArmModel, GetDrawShoulder(), armDirection, ARM_LENGTH, scale, color, ARM_ROLL);
@@ -163,6 +168,23 @@ void GunlanceArm::Draw()
 bool GunlanceArm::IsActive() const
 {
 	return m_Rushing || m_Calc.GetLevel() > 0 || m_PoseSeconds > 0.0f;
+}
+
+ARM_BODY_CLIP GunlanceArm::GetBodyClip() const
+{
+	ARM_BODY_CLIP clip;
+	if (!IsActive()) return clip;
+	clip.Active = true;
+	if (m_Rushing) {
+		clip.Kind = ATTACK_CLIP::GunlanceRush;
+		clip.Time = m_RushTime < RUSH_ENTER_CLIP_SECONDS ? m_RushTime
+			: RUSH_ENTER_CLIP_SECONDS + fmodf(m_RushTime - RUSH_ENTER_CLIP_SECONDS, RUSH_LOOP_CLIP_SECONDS);
+		return clip;
+	}
+	clip.Kind = ATTACK_CLIP::GunlanceShot;
+	clip.Time = m_PoseSeconds > 0.0f ? SHOT_AIM_CLIP_SECONDS + SHOT_RECOIL_CLIP_SECONDS * (1.0f - m_PoseSeconds / POSE_SECONDS)
+		: SHOT_AIM_CLIP_SECONDS * m_Straighten; // ためている間は構え終わりで止める。
+	return clip;
 }
 
 bool GunlanceArm::CanTakeTap() const
