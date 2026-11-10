@@ -191,6 +191,8 @@ public:
 	void ResetForMatch(GAME_RULE rule);
 	/// @brief 両手を触手に戻し、十字キーの手の選択も左手に戻す（オンラインを始めるとき。相手と装備をそろえる）
 	void ResetEquip(void);
+	/// @brief 拾った腕を空いている左手、次に右手へ装備し、使用回数を入れる（装備できたら true）
+	bool TryEquipPickup(ARM_TYPE type);
 	/// @brief DEBUG では装備を切り替え、試合中は左手・右手の順に更新する（カメラとキャラの向きの更新後）
 	/// @param playing 腕の更新を設定する（true：試合中として更新、false：装備切り替えだけ）
 	void Update(bool playing);

@@ -4,6 +4,7 @@
 #include "game/fightermanager.h"
 #include "game/camera.h"
 #include "game/arm.h"
+#include "game/armcapsule.h"
 #include "game/match.h"
 #include "game/hud.h"
 #include "physics/scenecalc.h"
@@ -46,6 +47,7 @@ private:
 	Stage m_Stage;
 	VersusCalc m_Participants; // タイトルで決まる参加者。試合の得点はFighterManagerが持つ。
 	FighterManager m_Fighters;
+	ArmCapsule m_ArmCapsule;
 	std::array<CHARACTER_TYPE, FIGHTER_COUNT> m_LobbyCharacters{};
 	// カメラ・腕・HUD はスロット番号で持つ。使うのは人のスロットだけ。
 	Camera m_Cameras[FIGHTER_COUNT];

@@ -129,6 +129,17 @@ void ArmManager::ResetEquip(void)
 	m_SelectedHand = 0;
 }
 
+bool ArmManager::TryEquipPickup(ARM_TYPE type)
+{
+	if (m_Rule != GAME_RULE_GAME || type < 0 || type >= ARM_TYPE_NONE || ARM_FACTORIES[type] == nullptr) return false;
+	for (int hand = 0; hand < 2; ++hand) {
+		if (m_Types[hand] != ARM_TYPE_NONE) continue;
+		ChangeType(hand, type);
+		return true;
+	}
+	return false;
+}
+
 void ArmManager::UpdateEquip(const Fighter& player)
 {
 	bool available[ARM_TYPE_COUNT];
@@ -159,10 +170,8 @@ void ArmManager::Update(bool playing)
 	const Fighter& player = m_Links.Fighters->GetFighter(m_Links.Slot);
 	if (m_Rule == GAME_RULE_DEBUG) UpdateEquip(player);
 	if (!playing) return;
-	if (m_Rule == GAME_RULE_GAME && player.DidRespawn()) {
-		ResetForMatch(m_Rule);
-		return;
-	}
+	// GAME の復活時の装備リセットは、カプセルの取得前に Game が済ませる。
+	if (m_Rule == GAME_RULE_GAME && player.DidRespawn()) return;
 	// 中断中に押していた入力は、使えるようになっても一度離すまで引き継がない。
 	const bool interrupted = !player.CanUseArms() || player.DidRespawn() || player.IsStatus(STATUS_STUN);
 	if (interrupted) m_LastActiveHand = -1;

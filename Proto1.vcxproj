@@ -163,11 +163,13 @@
     <ClCompile Include="src\physics\tentacleropecalc.cpp" />
     <ClCompile Include="src\physics\cameracalc.cpp" />
     <ClCompile Include="src\physics\collision.cpp" />
+    <ClCompile Include="src\physics\capsulecalc.cpp" />
     <ClCompile Include="src\physics\dummycalc.cpp" />
     <ClCompile Include="src\physics\knockbackcalc.cpp" />
     <ClCompile Include="src\game\fightermanager.cpp" />
     <ClCompile Include="src\game\tentacle.cpp" />
     <ClCompile Include="src\game\arm.cpp" />
+    <ClCompile Include="src\game\armcapsule.cpp" />
     <ClCompile Include="src\physics\guardcalc.cpp" />
     <ClCompile Include="src\physics\statuscalc.cpp" />
     <ClCompile Include="src\physics\projectilecalc.cpp" />
@@ -235,11 +237,13 @@
     <ClInclude Include="src\physics\tentacleropecalc.h" />
     <ClInclude Include="src\physics\cameracalc.h" />
     <ClInclude Include="src\physics\collision.h" />
+    <ClInclude Include="src\physics\capsulecalc.h" />
     <ClInclude Include="src\physics\dummycalc.h" />
     <ClInclude Include="src\physics\knockbackcalc.h" />
     <ClInclude Include="src\game\fightermanager.h" />
     <ClInclude Include="src\game\tentacle.h" />
     <ClInclude Include="src\game\arm.h" />
+    <ClInclude Include="src\game\armcapsule.h" />
     <ClInclude Include="src\physics\guardcalc.h" />
     <ClInclude Include="src\physics\statuscalc.h" />
     <ClInclude Include="src\physics\projectilecalc.h" />

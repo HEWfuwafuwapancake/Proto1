@@ -84,6 +84,9 @@
     <ClCompile Include="src\physics\collision.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
+    <ClCompile Include="src\physics\capsulecalc.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
     <ClCompile Include="src\physics\dummycalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
@@ -212,6 +215,9 @@
     <ClInclude Include="src\physics\collision.h">
       <Filter>src\physics</Filter>
     </ClInclude>
+    <ClInclude Include="src\physics\capsulecalc.h">
+      <Filter>src\physics</Filter>
+    </ClInclude>
     <ClInclude Include="src\physics\dummycalc.h">
       <Filter>src\physics</Filter>
     </ClInclude>
@@ -314,6 +320,9 @@
     <ClCompile Include="src\game\arm.cpp">
       <Filter>src\game</Filter>
     </ClCompile>
+    <ClCompile Include="src\game\armcapsule.cpp">
+      <Filter>src\game</Filter>
+    </ClCompile>
     <ClCompile Include="src\physics\guardcalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
@@ -393,6 +402,9 @@
       <Filter>src\game</Filter>
     </ClInclude>
     <ClInclude Include="src\game\arm.h">
+      <Filter>src\game</Filter>
+    </ClInclude>
+    <ClInclude Include="src\game\armcapsule.h">
       <Filter>src\game</Filter>
     </ClInclude>
     <ClInclude Include="src\physics\guardcalc.h">
