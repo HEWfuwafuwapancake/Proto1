@@ -88,6 +88,15 @@ VEC3 TentacleCalcAim(const VEC3& origin, const VEC3& target, bool hasTarget, con
 /// @brief 浮島を通過しないところまで移動する。半径と半高で移動する物の大きさを指定する
 VEC3 TentacleCalcClip(const VEC3& from, const VEC3& to, const STAGE& stage, float radius, float halfHeight);
 
+/// @brief 触手で足場に付いてよいか調べる（フリーカメラの間と、浮島の外で宙にいる復帰の間だけ付ける）
+/// @param freeLook カメラの状態を設定する（true：フリーカメラ、false：ロックオン）
+/// @param onGround 足元の状態を設定する（true：足場に立っている、false：宙にいる）
+/// @param stage ステージ
+/// @param x 足元の X
+/// @param z 足元の Z
+/// @return 付いてよいなら true
+bool TentacleCalcCanAnchor(bool freeLook, bool onGround, const STAGE& stage, float x, float z);
+
 /// @brief 片腕の計算状態
 class TentacleCalc
 {

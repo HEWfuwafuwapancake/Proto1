@@ -44,6 +44,7 @@ protected:
 private:
 	VEC3 HoldPosition(float side, float forward, float height) const;
 	void StepRope(const VEC3& origin, float idleLength, float modelScale);
+	bool CanAnchor() const;
 	void StartReach(const TENTACLE_TARGET* targets, const VEC3& origin, const VEC3& cameraForward, VEC3& aim, STAGE_GRIP& grip, bool& hasGrip) const;
 	void StopPulling();
 	void StepPull(const TENTACLE_EVENT& event, float dt);

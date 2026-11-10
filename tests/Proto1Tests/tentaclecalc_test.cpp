@@ -295,6 +295,15 @@ namespace Proto1Tests
 		EXPECT_EQ((int)TENTACLE_RETURNING, (int)arm.GetState());
 	}
 
+	// 足場に付けるのはフリーカメラの間と、ロックオンでも浮島の外で宙にいる復帰の間だけ
+	TEST(TentacleCalcTest, CanAnchor_FreeLookOrRecoveringOffStage)
+	{
+		EXPECT_TRUE(TentacleCalcCanAnchor(true, true, stage, 0, 0));
+		EXPECT_TRUE(TentacleCalcCanAnchor(false, false, stage, 20, 0));
+		EXPECT_FALSE(TentacleCalcCanAnchor(false, false, stage, 0, 0));
+		EXPECT_FALSE(TentacleCalcCanAnchor(false, true, stage, 20, 0));
+	}
+
 	// 引っぱりは少しずつ近づき、到着したら終わって腕が戻る
 	TEST(TentacleCalcTest, Pull_MovesThenArrives)
 	{

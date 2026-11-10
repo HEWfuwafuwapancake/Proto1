@@ -215,6 +215,11 @@ TENTACLE_EVENT TentacleCalc::Step(const VEC3& origin, const VEC3& aim,
 	return event;
 }
 
+bool TentacleCalcCanAnchor(bool freeLook, bool onGround, const STAGE& stage, float x, float z)
+{
+	return freeLook || (!onGround && !StageCalcIsOnPlatform(stage, x, z));
+}
+
 void TentacleCalc::Anchor(const VEC3& point, const STAGE_PLATFORM& surface, TENTACLE_EVENT& event)
 {
 	m_Tip = point;
