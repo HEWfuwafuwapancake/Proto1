@@ -83,6 +83,20 @@ VEC3 Camera::LockFocusPoint(const VEC3& player, const CAMERA_FOCUS_TARGET* targe
 void Camera::UpdateLockTarget(const CAMERA_FOCUS_TARGET* targets)
 {
 	const bool holding = m_Arms->IsHolding();
+	if (m_Player->IsTrigger(ACTION_CAMERA_TOGGLE)) {
+		m_FreeLook = !m_FreeLook;
+		m_SavedTarget = -1;
+	}
+	// フリーカメラの間はロックオンせず、戻すときは下の処理が正面の相手を選び直す。
+	if (m_FreeLook) {
+		if (m_LockTarget >= 0) {
+			m_LockTarget = -1;
+			m_YawGoal = m_Yaw;
+			m_SwitchRemaining = 0.0f;
+		}
+		m_WasHolding = holding;
+		return;
+	}
 	if (holding) {
 		if (!m_WasHolding) {
 			m_SavedTarget = m_LockTarget;
@@ -140,7 +154,7 @@ void Camera::SnapToPlayer(void)
 	m_Pitch = m_PitchGoal;
 	CAMERA_FOCUS_TARGET targets[FIGHTER_COUNT];
 	CollectTargets(targets);
-	m_LockTarget = PickFrontTarget(targets);
+	m_LockTarget = m_FreeLook ? -1 : PickFrontTarget(targets);
 	m_SavedTarget = -1;
 	m_WasHolding = false;
 	m_SwitchRemaining = 0.0f;
@@ -198,7 +212,7 @@ void Camera::Update(void)
 	else if (m_ManualPause > 0.0f) {
 		m_ManualPause = fmaxf(0.0f, m_ManualPause - dt);
 	}
-	else if (m_LockTarget < 0 && m_Match->IsPlaying()) {
+	else if (m_LockTarget < 0 && !m_FreeLook && m_Match->IsPlaying()) {
 		m_YawGoal += m_Player->GetMoveInput().X * FOLLOW_TURN_SPEED * dt;
 	}
 	// 長く回し続けても、角度が大きくなり続けないようにする。

@@ -39,6 +39,9 @@ public:
 	/// @brief 状態を最初に戻す（参照はそのまま）
 	void Reset(void);
 
+	/// @brief ロックオンのカメラに戻す（オンラインを始めるとき。相手とカメラの状態をそろえる）
+	void ResetFreeLook(void) { m_FreeLook = false; }
+
 	/// @brief カメラの終了処理（今は何もしない）
 	void Finalize(void);
 
@@ -92,6 +95,7 @@ private:
 	float m_DistanceVelocity = {};	// 距離のバネの速度
 	float m_ManualPause = {};		// 横移動について回るのを止める残り秒数
 	VEC3 m_PlayerGoal = {};			// 自由カメラ用の遊び・最後に立っていた高さ（敵の注視点と分ける）
+	bool m_FreeLook = false;	// true：フリーカメラ（ロックオンしない）、false：ロックオン
 	int m_LockTarget = -1;		// 現在ロックオンしている相手のスロット番号
 	int m_SavedTarget = -1;	// つかむ前のターゲット番号
 	bool m_WasHolding = false;	// 1つ前のフレームで敵をつかんでいたか

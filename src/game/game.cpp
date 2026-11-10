@@ -181,7 +181,11 @@ void Game::UpdateMenu()
 		else m_Scene.ShowModes(); // 理由は NetSession がタイトルバーへ残す。
 		ActionSetOnlineEquip(m_Net.IsOnline());
 		// オフラインで替えた装備が残ると、相手の画面と腕がずれて DESYNC になる。
-		for (int i = 0; i < FIGHTER_COUNT; ++i) m_Arms[i].ResetEquip();
+		// フリーカメラの切り替えも同じなので、ロックオンにそろえる。
+		for (int i = 0; i < FIGHTER_COUNT; ++i) {
+			m_Arms[i].ResetEquip();
+			m_Cameras[i].ResetFreeLook();
+		}
 		ResetParticipants();
 	}
 	else if (oldScene == SCENE_MODE_SELECT && m_Scene.GetScene() == SCENE_TITLE) {

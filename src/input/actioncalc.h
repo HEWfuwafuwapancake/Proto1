@@ -11,6 +11,7 @@ enum ACTION
 	ACTION_RESTART, ///< やり直し
 	ACTION_RUMBLE_TOGGLE, ///< 振動の切り替え
 	ACTION_DECIDE, ///< 決定
+	ACTION_CAMERA_TOGGLE, ///< ロックオンとフリーカメラの切り替え
 	ACTION_TARGET_LEFT, ///< 左の敵への切り替え（1フレームのイベント）
 	ACTION_TARGET_RIGHT, ///< 右の敵への切り替え（1フレームのイベント）
 	ACTION_EQUIP_HAND_LEFT, ///< 装備を切り替える手に左手を選ぶ
