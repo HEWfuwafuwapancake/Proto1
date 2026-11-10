@@ -104,6 +104,14 @@ ARMS = {
                 "parts": ("blade_guard", "blade_body"),
                 "origin": ("pivot", "blade_guard"), "rotate_x": 0.0,
             },
+            "arm_katana_grip.obj": {
+                "parts": ("katana_grip", "katana_pommel"),
+                "origin": ("pivot", "katana_grip"), "rotate_x": 0.0,
+            },
+            "arm_katana_sheath.obj": {
+                "parts": ("katana_sheath",),
+                "origin": ("pivot", "katana_sheath"), "rotate_x": 0.0,
+            },
         },
     },
     "hasami": {

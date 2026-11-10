@@ -77,6 +77,13 @@ def build_blade():
     return [guard, blade]
 
 
+def build_katana_fittings():
+    # 原点はつば（刀身と同じ）。+Y へつかと柄頭、-Y へ刀身を包む鞘。
+    return [cylinder("katana_grip", 1.1, 9.0, (0, 4.5, 0)),
+            cylinder("katana_pommel", 1.4, 0.8, (0, 9.4, 0)),
+            cube("katana_sheath", 1.6, 39.0, 4.4, (0, -19.6, 0))]
+
+
 def main():
     if len(sys.argv) != 2:
         raise RuntimeError("保存先の .mb を指定してください")
@@ -85,7 +92,7 @@ def main():
         cmds.file(new=True, force=True)
         cmds.currentUnit(linear="cm")
         group = cmds.group(empty=True, name=ROOT, world=True)
-        for node in build_hammer() + build_fist() + build_c4() + build_barrel() + build_blade():
+        for node in build_hammer() + build_fist() + build_c4() + build_barrel() + build_blade() + build_katana_fittings():
             # 書き出しの原点は pivot なので、全部品の pivot をワールドの原点にそろえる。
             cmds.xform(node, worldSpace=True, pivots=(0, 0, 0))
             cmds.parent(node, group)

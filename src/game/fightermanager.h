@@ -62,6 +62,10 @@ public:
 	bool ApplyStatus(int index, int attacker, STATUS_TYPE type, float seconds, float value);
 	/// @brief 相手が攻撃した人の側をガードしているか取得する（攻撃が来た位置は攻撃した人の体の中心とみなす）
 	bool IsGuarded(int index, int attacker) const;
+	/// @brief 前に読んでからガードで攻撃を防いだかを取得し、記録を消す（刀の居合の返し）
+	/// @param index スロット番号（0〜3）
+	/// @return 防いでいたら true
+	bool ConsumeGuardedHit(int index);
 	/// @brief ガードを無視してしびれとダメージ%を与え、攻撃者を記録する（しびれで腕が戻り、ガードが解ける。アックス）
 	/// @return 与えられたら true
 	bool BreakGuard(int index, int attacker, float seconds, float damage);
@@ -71,7 +75,8 @@ public:
 	void Push(int index, int attacker, const VEC3& velocity);
 
 private:
-	bool CanAttack(int index, int attacker) const;
+	bool CanAttack(int index, int attacker);
+	bool m_GuardedHit[FIGHTER_COUNT] = {}; // ガードで攻撃を防いだか（ConsumeGuardedHit で読むまで残す）
 	void PushBodies();
 	SkinnedModel m_Models[CHARACTER_COUNT];
 	Fighter m_Fighters[FIGHTER_COUNT];

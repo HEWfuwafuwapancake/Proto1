@@ -32,6 +32,10 @@ public:
 	bool IsActive() const override;
 	/// @brief 保持中なら true を返す
 	bool IsHolding() const override;
+	/// @brief 腕を戻している間と回転中を除いて単押しを受け付ける（つかんでいる間は投げ、引っぱり中は取りやめになる）
+	bool CanTakeTap() const override;
+	/// @brief 腕が待機で回転もしていないなら true を返す
+	bool CanTakeHold() const override;
 
 protected:
 	/// @brief 付け根の箱の中央が体の取付口に来るよう、取付位置を上げる

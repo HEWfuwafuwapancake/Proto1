@@ -73,14 +73,14 @@ struct STAGE_GRIP
 /// @return 浮島の中心・半幅・半奥行き・上の面の高さ・厚さ
 STAGE_PLATFORM StageCalcIslandSurface(const STAGE& stage);
 
-/// @brief 正面の水平の扇の中で、いちばん近い足場のふちを探す
+/// @brief 正面の足場のふちを探す（水平か見下ろしなら水平の扇でいちばん近いふち、見上げていれば向きにいちばん近いふち）
 /// @details 立っている高台は選ばない。浮島は、浮島の上に立っていないとき（場外・浮島より下）だけ選ぶ
 /// @param stage ステージ
 /// @param origin 距離と向きを測る点（肩）
 /// @param feet 足元の位置（立っている足場を除くのに使う）
-/// @param forward 扇の中心の向き（上下は使わない）
+/// @param forward 探す中心の向き（Y が正なら上下も含めて比べる。0 以下なら上下は使わない）
 /// @param maxDistance 上下も含めて、これより遠いふちは選ばない
-/// @param halfAngle 扇の左右それぞれの開き（ラジアン）
+/// @param halfAngle 中心の向きからの開き（ラジアン）
 /// @param grip 見つかったときに書き込むふち
 /// @return 見つかったら true
 bool StageCalcFindGrip(const STAGE& stage, const VEC3& origin, const VEC3& feet, const VEC3& forward,

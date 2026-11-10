@@ -28,6 +28,8 @@ public:
 	bool IsActive() const override;
 	/// @brief 敵をつかまないので、常に false を返す
 	bool IsHolding() const override;
+	/// @brief 起爆は投げたあとの構えの間でもできるので、常に true を返す
+	bool CanTakeTap() const override { return true; }
 
 private:
 	void ThrowBomb();
