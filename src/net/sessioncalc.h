@@ -121,6 +121,8 @@ struct SESSION_MESSAGE
 	uint32_t Checksum = 0; ///< CheckFrameの全4体のチェックサム
 	int32_t CheckAck = -1; ///< 相手のチェックサムを比較できた最後のフレーム
 	std::array<uint8_t, FIGHTER_COUNT> Characters{}; ///< JOIN・READY の自分と STATE の全員のキャラ番号
+	GAME_RULE Rule = GAME_RULE_DEBUG; ///< STATE でホストが配る試合のルール
+	uint32_t Seed = 0; ///< STATE でホストが配る乱数の種
 	LOCKSTEP_PACKET Packet; ///< SESSION_INPUTSだけで使う入力と方向別ACK
 };
 
@@ -128,8 +130,9 @@ struct SESSION_MESSAGE
 class SessionCalc
 {
 public:
-	/// @brief 起動設定と0以外の起動番号で初期化する
-	void Initialize(const NET_OPTIONS& options, uint32_t nonce, CHARACTER_TYPE character = CHARACTER_DEFAULT);
+	/// @brief 起動設定・起動番号・キャラで初期化し、ホストなら試合のルールを設定する
+	void Initialize(const NET_OPTIONS& options, uint32_t nonce, CHARACTER_TYPE character = CHARACTER_DEFAULT,
+		GAME_RULE rule = GAME_RULE_DEBUG);
 	/// @brief ホストが参加を受け付け、スロットを返す（満員・開始後の新規参加は-1）
 	int Join(uint32_t nonce, uint16_t version = LOCKSTEP_VERSION, LOCKSTEP_BUILD build = LOCKSTEP_CURRENT_BUILD,
 		uint32_t program = SessionCalcGetProgram(), CHARACTER_TYPE character = CHARACTER_DEFAULT);
@@ -185,6 +188,10 @@ public:
 	uint8_t GetReadyMask() const { return m_Ready; }
 	/// @brief ロビーで共有したキャラをスロット番号で取得する（0〜3）
 	CHARACTER_TYPE GetCharacter(int slot) const { return static_cast<CHARACTER_TYPE>(m_Characters[slot]); }
+	/// @brief ホストが選んだ試合のルールを取得する
+	GAME_RULE GetRule() const { return m_Rule; }
+	/// @brief ホストが配った乱数の種を取得する
+	uint32_t GetSeed() const { return m_Seed; }
 	/// @brief ホストが配った入力遅延を取得する
 	int GetDelay() const { return m_Delay; }
 	/// @brief ホストが入力の遅れを ping から自動で決めるか取得する（参加側は常にfalse）
@@ -219,6 +226,8 @@ private:
 	uint8_t m_Ready = 0;
 	CHARACTER_TYPE m_LocalCharacter = CHARACTER_DEFAULT;
 	std::array<uint8_t, FIGHTER_COUNT> m_Characters{};
+	GAME_RULE m_Rule = GAME_RULE_DEBUG;
+	uint32_t m_Seed = 0;
 	uint32_t m_Nonce = 0;
 	uint32_t m_Session = 0;
 	uint32_t m_Round = 0;

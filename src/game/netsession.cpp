@@ -12,7 +12,7 @@ static constexpr uint16_t SESSION_PORT = 27026;
 static constexpr int MAX_RECEIVE_PER_UPDATE = 64;
 static constexpr size_t RECEIVE_BYTES = 1024;
 
-bool NetSession::Initialize(const NET_OPTIONS& options, CHARACTER_TYPE character)
+bool NetSession::Initialize(const NET_OPTIONS& options, CHARACTER_TYPE character, GAME_RULE rule)
 {
 	Finalize();
 	m_Options = options;
@@ -32,7 +32,7 @@ bool NetSession::Initialize(const NET_OPTIONS& options, CHARACTER_TYPE character
 		return false;
 	}
 	std::random_device random;
-	m_Calc.Initialize(options, random(), character);
+	m_Calc.Initialize(options, random(), character, rule);
 	m_Addresses = options.Mode == NET_MODE_HOST ? NetSocket::GetLocalAddresses() : options.Host;
 	return true;
 }

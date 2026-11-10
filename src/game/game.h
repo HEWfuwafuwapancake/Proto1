@@ -40,6 +40,8 @@ private:
 	void ConfigurePlayers();
 	void UpdatePadLights() const;
 	VERSUS_VIEWPORT GetViewport(int index) const;
+	GAME_RULE GetRule() const;
+	uint32_t GetSeed() const;
 
 	Stage m_Stage;
 	VersusCalc m_Participants; // タイトルで決まる参加者。試合の得点はFighterManagerが持つ。
@@ -58,6 +60,7 @@ private:
 	SceneCalc m_Scene;
 	NetSession m_Net;
 	SessionAddressCalc m_JoinAddress;
+	uint32_t m_OfflineSeed = 0;
 	int m_MenuDevice = ACTION_DEVICE_KEYBOARD; // SOLO の決定を押した機器
 	bool m_Fullscreen = false;
 };

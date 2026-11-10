@@ -4,6 +4,7 @@
 #include "input/pad.h"
 #include "render/number2d.h"
 #include "render/text2d.h"
+#include <chrono>
 #include <cmath>
 
 #ifdef _DEBUG
@@ -21,6 +22,7 @@ VERSUS_VIEWPORT Game::GetViewport(int index) const
 
 bool Game::Initialize(const NET_OPTIONS& options)
 {
+	m_OfflineSeed = static_cast<uint32_t>(std::chrono::steady_clock::now().time_since_epoch().count());
 	// 相手への参照は先に渡せるが、Reset の中では初期化済みの相手だけを使う。
 	m_Stage.Initialize();
 	m_Participants.Reset();
@@ -114,6 +116,16 @@ void Game::Restart()
 #endif
 }
 
+GAME_RULE Game::GetRule() const
+{
+	return m_Net.IsOnline() ? m_Net.GetRule() : m_Scene.GetRule();
+}
+
+uint32_t Game::GetSeed() const
+{
+	return m_Net.IsOnline() ? m_Net.GetSeed() : m_OfflineSeed;
+}
+
 void Game::ResetParticipants()
 {
 	m_Participants.Reset();
@@ -177,7 +189,7 @@ void Game::UpdateMenu()
 		options.Mode = event == SCENE_EVENT_HOST ? NET_MODE_HOST : NET_MODE_JOIN;
 		options.Host = m_JoinAddress.GetText();
 		options.Delay = LOCKSTEP_AUTO_DELAY;
-		if (m_Net.Initialize(options, m_Scene.GetCharacter())) m_Scene.OpenLobby();
+		if (m_Net.Initialize(options, m_Scene.GetCharacter(), m_Scene.GetRule())) m_Scene.OpenLobby();
 		else m_Scene.ShowModes(); // 理由は NetSession がタイトルバーへ残す。
 		ActionSetOnlineEquip(m_Net.IsOnline());
 		// オフラインで替えた装備が残ると、相手の画面と腕がずれて DESYNC になる。
@@ -200,7 +212,7 @@ void Game::Update()
 {
 	const SCENE oldScene = m_Scene.GetScene();
 	if (oldScene == SCENE_GAME_START || oldScene == SCENE_CHARACTER_SELECT
-		|| oldScene == SCENE_MODE_SELECT || oldScene == SCENE_JOIN_ADDRESS) {
+		|| oldScene == SCENE_RULE_SELECT || oldScene == SCENE_MODE_SELECT || oldScene == SCENE_JOIN_ADDRESS) {
 		UpdateMenu();
 		return;
 	}

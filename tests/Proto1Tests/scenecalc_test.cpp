@@ -17,6 +17,7 @@ namespace Proto1Tests
 		SceneCalc scene;
 		scene.Start(true);
 		EXPECT_EQ((int)SCENE_TITLE, (int)scene.GetScene());
+		EXPECT_EQ(GAME_RULE_DEBUG, scene.GetRule());
 		EXPECT_EQ((int)SCENE_EVENT_NONE, (int)scene.Step({ false, false, 0 }, false));
 		EXPECT_EQ((int)SCENE_EVENT_START_MATCH, (int)scene.Step({ true, false, 0 }, false));
 		EXPECT_EQ((int)SCENE_MATCH, (int)scene.GetScene());
@@ -93,6 +94,9 @@ namespace Proto1Tests
 		EXPECT_EQ(CHARACTER_DEFAULT, scene.GetCharacter());
 		scene.Step({ true, false, 0, false, false, 1 }, false);
 		EXPECT_EQ(CHARACTER_MEKA, scene.GetCharacter());
+		EXPECT_EQ(SCENE_RULE_SELECT, scene.GetScene());
+		scene.Step({ true, false, 0 }, false);
+		EXPECT_EQ(GAME_RULE_GAME, scene.GetRule());
 		EXPECT_EQ(SCENE_MODE_SELECT, scene.GetScene());
 		EXPECT_EQ(SCENE_EVENT_START_MATCH, scene.Step({ true, false, 0 }, false));
 		scene.Step({ true, false, 0 }, true);
@@ -100,6 +104,30 @@ namespace Proto1Tests
 		EXPECT_EQ((int)SCENE_EVENT_BACK_TITLE, (int)scene.Step({ true, false, 0 }, true));
 		EXPECT_EQ(SCENE_GAME_START, scene.GetScene());
 		EXPECT_EQ(CHARACTER_MEKA, scene.GetCharacter());
+	}
+
+	// 倒しっぱなしでは選択を動かさず、戻るとキャラ選択を表示する。決定したルールは RETRY でも使う。
+	TEST(SceneCalcTest, RuleSelect_WaitsForNeutralGoesBackAndKeepsChoiceOnRetry)
+	{
+		SceneCalc scene;
+		scene.Start();
+		scene.Step({ true, false, 0 }, false);
+		scene.Step({ true, false, -1 }, false);
+		ASSERT_EQ(SCENE_RULE_SELECT, scene.GetScene());
+		scene.Step({ false, false, -1 }, false);
+		EXPECT_EQ(GAME_RULE_GAME, scene.GetCursor());
+		scene.Step({ false, false, 0, true }, false);
+		ASSERT_EQ(SCENE_CHARACTER_SELECT, scene.GetScene());
+		scene.Step({ true, false, 0 }, false);
+		scene.Step({ false, false, -1 }, false);
+		EXPECT_EQ(GAME_RULE_DEBUG, scene.GetCursor());
+		scene.Step({ true, false, -1 }, false);
+		ASSERT_EQ(SCENE_MODE_SELECT, scene.GetScene());
+		EXPECT_EQ(GAME_RULE_DEBUG, scene.GetRule());
+		ASSERT_EQ(SCENE_EVENT_START_MATCH, scene.Step({ true, false, 0 }, false));
+		ASSERT_EQ(SCENE_EVENT_SHOW_RESULT, scene.Step({ true, false, 0 }, true));
+		EXPECT_EQ(SCENE_EVENT_START_MATCH, scene.Step({ true, false, 0 }, true));
+		EXPECT_EQ(GAME_RULE_DEBUG, scene.GetRule());
 	}
 
 	// 左右で両端をまたぎ、戻ると GAME START を表示する。

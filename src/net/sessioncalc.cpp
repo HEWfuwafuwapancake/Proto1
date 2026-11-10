@@ -5,6 +5,7 @@
 // 調整用の値（入力のP1N1と区別するP1S1）
 static constexpr uint32_t SESSION_MAGIC = 0x31533150;
 static constexpr size_t SESSION_HEADER_BYTES = 58;
+static constexpr size_t SESSION_RULE_BYTES = 5; // ルール1バイトと乱数の種4バイト（STATE のみ）。
 
 static uint32_t s_Program = 0; // この実行ファイルの識別番号（main.cpp がソースの中身から作った SOURCE_ID を設定する）。
 
@@ -132,7 +133,7 @@ int SessionCalcAutoDelay(int pingMilliseconds)
 	return (std::max)(AUTO_DELAY_MIN, (std::min)(AUTO_DELAY_MAX, frames));
 }
 
-void SessionCalc::Initialize(const NET_OPTIONS& options, uint32_t nonce, CHARACTER_TYPE character)
+void SessionCalc::Initialize(const NET_OPTIONS& options, uint32_t nonce, CHARACTER_TYPE character, GAME_RULE rule)
 {
 	*this = SessionCalc{};
 	m_Host = options.Mode == NET_MODE_HOST;
@@ -142,6 +143,8 @@ void SessionCalc::Initialize(const NET_OPTIONS& options, uint32_t nonce, CHARACT
 	m_Delay = m_AutoDelay ? LOCKSTEP_DEFAULT_DELAY : options.Delay;
 	if (m_Host) {
 		m_Session = m_Nonce;
+		m_Rule = rule;
+		m_Seed = m_Nonce;
 		m_Slot = 0;
 		m_Mask = 1;
 		m_Characters[0] = static_cast<uint8_t>(m_LocalCharacter);
@@ -267,6 +270,8 @@ void SessionCalc::Receive(int peer, const SESSION_MESSAGE& message)
 			m_Mask = message.Mask;
 			m_Ready = message.Ready;
 			m_Characters = message.Characters;
+			m_Rule = message.Rule;
+			m_Seed = message.Seed;
 			m_Delay = message.Delay;
 			if (message.Running && m_Ready == m_Mask) BeginRound(message.Round);
 			return;
@@ -300,7 +305,11 @@ SESSION_MESSAGE SessionCalc::MakeControl(int peer) const
 	message.Ready = m_Ready;
 	message.Delay = m_Delay;
 	message.Running = m_Running;
-	if (m_Host) message.Characters = m_Characters;
+	if (m_Host) {
+		message.Characters = m_Characters;
+		message.Rule = m_Rule;
+		message.Seed = m_Seed;
+	}
 	else message.Characters[message.Slot] = static_cast<uint8_t>(m_LocalCharacter);
 	if (peer >= 0 && peer < FIGHTER_COUNT) {
 		message.Stamp = static_cast<uint32_t>(m_Now);
@@ -532,6 +541,7 @@ static bool HasCharacters(SESSION_MESSAGE_TYPE type)
 
 static bool ValidMessage(const SESSION_MESSAGE& message)
 {
+	if (message.Type == SESSION_STATE && message.Rule >= GAME_RULE_COUNT) return false;
 	if (HasCharacters(message.Type)) {
 		for (uint8_t character : message.Characters) {
 			if (character >= CHARACTER_COUNT) return false;
@@ -573,6 +583,10 @@ bool SessionCalc::Encode(const SESSION_MESSAGE& message, std::vector<uint8_t>& b
 	WriteWord(bytes, message.Hold, 4);
 	WriteWord(bytes, message.Compiler, 4);
 	if (HasCharacters(message.Type)) bytes.insert(bytes.end(), message.Characters.begin(), message.Characters.end());
+	if (message.Type == SESSION_STATE) {
+		WriteWord(bytes, message.Rule, 1);
+		WriteWord(bytes, message.Seed, 4);
+	}
 	bytes.insert(bytes.end(), payload.begin(), payload.end());
 	return true;
 }
@@ -608,9 +622,15 @@ bool SessionCalc::Decode(const uint8_t* bytes, size_t size, SESSION_MESSAGE& res
 	message.CheckAck = checkAck == UINT32_MAX ? -1 : static_cast<int32_t>(checkAck);
 	// 旧版の制御通知も、ヘッダーが読めれば版の不一致として扱える。
 	if (HasCharacters(message.Type) && (message.Version == LOCKSTEP_VERSION || size != SESSION_HEADER_BYTES)) {
-		if (size != SESSION_HEADER_BYTES + FIGHTER_COUNT) return false;
+		if (size < SESSION_HEADER_BYTES + FIGHTER_COUNT) return false;
 		for (auto& character : message.Characters) character = *bytes++;
 		size -= FIGHTER_COUNT;
+	}
+	if (message.Type == SESSION_STATE && (message.Version == LOCKSTEP_VERSION || size != SESSION_HEADER_BYTES)) {
+		if (size != SESSION_HEADER_BYTES + SESSION_RULE_BYTES) return false;
+		message.Rule = static_cast<GAME_RULE>(ReadWord(bytes, 1));
+		message.Seed = ReadWord(bytes, 4);
+		size -= SESSION_RULE_BYTES;
 	}
 	if (!ValidMessage(message)) return false;
 	if (message.Type == SESSION_INPUTS) {
