@@ -11,16 +11,16 @@
 static constexpr PROJECTILE_PARAMS SHOT_PARAMS{ 0.2f, 0.0f, 0.8f, 0.0f, false };
 static constexpr float SHOT_SPEED = 30.0f;
 static constexpr float MUZZLE_FORWARD = 1.4f; // 肩から弾を出す所までの距離。
-static constexpr float SHOT_DAMAGE = 6.0f;
-static constexpr float SHOT_POWER = 1.0f;
+static constexpr float SHOT_DAMAGE = 3.0f;
+static constexpr float SHOT_POWER = 0.5f;
 static constexpr float SHOT_UP = 0.4f;
 static constexpr float RUSH_SPEED = 8.0f;
 static constexpr float RUSH_REACH = 1.6f; // 突進の当たりの、肩から前への距離。
 static constexpr float RUSH_RADIUS = 0.35f;
-static constexpr float IMPALE_DAMAGE = 6.0f;
-static constexpr float BURST_DAMAGE = 8.0f;
-static constexpr float FINISH_DAMAGE = 12.0f;
-static constexpr float FINISH_POWER = 3.0f;
+static constexpr float IMPALE_DAMAGE = 3.0f;
+static constexpr float BURST_DAMAGE = 4.0f;
+static constexpr float FINISH_DAMAGE = 6.0f;
+static constexpr float FINISH_POWER = 1.5f;
 static constexpr float FINISH_UP = 1.0f; // 最後の1発で飛ばす向きの、前 1 に足す上の量（1.0 で約45°。大きいほど真上に近い）。
 static constexpr float LIFT_FORWARD = 1.2f; // 持ち上げ終わった相手の肩から前への距離。
 static constexpr float LIFT_HEIGHT = 1.6f;
