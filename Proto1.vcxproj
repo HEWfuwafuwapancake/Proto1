@@ -136,7 +136,6 @@
     <ClCompile Include="src\core\debug_ostream.cpp" />
     <ClCompile Include="src\core\debugwindow.cpp" />
     <ClCompile Include="src\core\dx11.cpp" />
-    <ClCompile Include="src\game\field.cpp" />
     <ClCompile Include="src\core\gametime.cpp" />
     <ClCompile Include="src\core\framestats.cpp" />
     <ClCompile Include="src\core\letterboxcalc.cpp" />
@@ -208,7 +207,6 @@
     <ClInclude Include="src\core\debug_ostream.h" />
     <ClInclude Include="src\core\debugwindow.h" />
     <ClInclude Include="src\core\dx11.h" />
-    <ClInclude Include="src\game\field.h" />
     <ClInclude Include="src\core\gametime.h" />
     <ClInclude Include="src\core\framestats.h" />
     <ClInclude Include="src\core\letterboxcalc.h" />
