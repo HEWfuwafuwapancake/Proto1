@@ -456,7 +456,7 @@ bool Fighter::Release(int holder)
 
 void Fighter::AddDamage(float damage)
 {
-	if (IsActive()) m_Percent = KnockbackCalcAddDamage(m_Percent, damage);
+	if (IsActive()) m_Percent = KnockbackCalcAddDamage(m_Percent, damage * m_DamageScale);
 }
 
 void Fighter::Heal(float amount)
@@ -490,7 +490,7 @@ void Fighter::Hit(const VEC3& direction, float damage, float power)
 	if (!IsActive()) return;
 	AddDamage(damage);
 	const KNOCKBACK_PARAMS params = KnockbackParams();
-	const float speed = KnockbackCalcSpeed(m_Percent, power, params);
+	const float speed = KnockbackCalcSpeed(m_Percent, power, params) * m_KnockbackScale;
 	SetLaunchVelocity(KnockbackCalcVelocity(direction, speed, params));
 }
 
@@ -498,7 +498,7 @@ void Fighter::Launch(const VEC3& direction, float damage, float power)
 {
 	if (!IsActive()) return;
 	AddDamage(damage);
-	const float speed = KnockbackCalcSpeed(m_Percent, power, KnockbackParams());
+	const float speed = KnockbackCalcSpeed(m_Percent, power, KnockbackParams()) * m_KnockbackScale;
 	SetLaunchVelocity(KnockbackCalcDirectedVelocity(direction, speed));
 }
 

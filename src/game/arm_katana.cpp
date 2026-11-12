@@ -246,11 +246,12 @@ void KatanaArm::UpdateLanding()
 	const XMFLOAT3 p = GetPlayer().GetPosition();
 	const XMFLOAT3 view = GetCamera().GetDirection();
 	const STAGE& stage = GetStage().GetStage();
+	const float range = BREACH_RANGE * TuningCalcValue(GetTuning(), TUNING_RUSH_DISTANCE);
 	m_HasLanding = BreachCalcFindLanding(stage, { p.x, p.y + GetPlayer().GetHeight() * BREACH_EYE_RATE, p.z },
-		{ view.x, view.y, view.z }, BREACH_RANGE, m_Landing);
+		{ view.x, view.y, view.z }, range, m_Landing);
 	// 場外に落ちている間は、狙いが外れていても、いちばん近い足場の上へ戻れる。
 	if (!m_HasLanding && !GetPlayer().IsOnGround() && p.y < stage.TopY) {
-		m_HasLanding = RiseCalcNearestLanding(stage, { p.x, p.y, p.z }, RETURN_INSET, BREACH_RANGE, m_Landing);
+		m_HasLanding = RiseCalcNearestLanding(stage, { p.x, p.y, p.z }, RETURN_INSET, range, m_Landing);
 	}
 }
 

@@ -84,6 +84,9 @@
     <ClCompile Include="src\physics\capsulecalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
+    <ClCompile Include="src\physics\tuningcalc.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
     <ClCompile Include="src\physics\dummycalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
@@ -210,6 +213,9 @@
       <Filter>src\physics</Filter>
     </ClInclude>
     <ClInclude Include="src\physics\capsulecalc.h">
+      <Filter>src\physics</Filter>
+    </ClInclude>
+    <ClInclude Include="src\physics\tuningcalc.h">
       <Filter>src\physics</Filter>
     </ClInclude>
     <ClInclude Include="src\physics\dummycalc.h">

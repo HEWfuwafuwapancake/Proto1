@@ -84,7 +84,7 @@ void ArmManager::ChangeType(int hand, int next, int direction)
 	// 前の装備で押し始めた入力は持ち越さない。
 	m_Presses[hand].Reset(player.IsPress(action) && !player.IsTrigger(action));
 	m_Types[hand] = (ARM_TYPE)next;
-	m_Uses[hand].Reset(ARM_MAX_USES[next]);
+	m_Uses[hand].Reset(TuningCalcArmUses(ARM_MAX_USES[next], m_Tuning));
 	m_ChangeDirections[hand] = direction;
 #ifdef _DEBUG
 	hal::dout << "腕：" << (hand == 0 ? "左" : "右") << " → " << ArmGetName(m_Types[hand]) << std::endl;
@@ -127,9 +127,10 @@ void ArmManager::Reset(void)
 	m_GuardHand = -1;
 }
 
-void ArmManager::ResetForMatch(GAME_RULE rule)
+void ArmManager::ResetForMatch(GAME_RULE rule, const MATCH_TUNING& tuning)
 {
 	m_Rule = rule;
+	m_Tuning = tuning;
 	for (int hand = 0; hand < 2; ++hand) {
 		if (m_Rule == GAME_RULE_GAME) ChangeType(hand, ARM_TYPE_NONE);
 		else if (m_Types[hand] == ARM_TYPE_NONE) ChangeType(hand, ARM_TYPE_TENTACLE);
@@ -172,9 +173,14 @@ void ArmManager::UpdateEquip(const Fighter& player)
 	}
 }
 
+bool ArmManager::HasUnlimitedUses() const
+{
+	return m_Rule == GAME_RULE_DEBUG || TuningCalcIsUnlimitedUses(m_Tuning);
+}
+
 void ArmManager::BreakExhaustedArm(int hand)
 {
-	if (m_Rule != GAME_RULE_GAME || m_Types[hand] == ARM_TYPE_NONE || !m_Uses[hand].IsExhausted()) return;
+	if (HasUnlimitedUses() || m_Types[hand] == ARM_TYPE_NONE || !m_Uses[hand].IsExhausted()) return;
 	const Arm& arm = *m_Arms[hand][m_Types[hand]];
 	if (!arm.IsActive() && !arm.IsBusy()) ChangeType(hand, ARM_TYPE_NONE);
 }
@@ -188,7 +194,7 @@ void ArmManager::UpdateGuards(const Fighter& player, float dt, bool interrupted)
 		const PARRY_RESULT result = m_Guards[hand].OnHit(true);
 		Arm& arm = *m_Arms[hand][m_Types[hand]];
 		if (result == PARRY_SUCCESS) arm.Rumble(PARRY_RUMBLE, PARRY_RUMBLE, PARRY_RUMBLE_SECONDS);
-		else if (result == PARRY_BREAK_ARM && m_Rule == GAME_RULE_GAME) {
+		else if (result == PARRY_BREAK_ARM && !HasUnlimitedUses()) {
 			arm.Rumble(BREAK_RUMBLE, BREAK_RUMBLE, BREAK_RUMBLE_SECONDS);
 			ChangeType(hand, ARM_TYPE_NONE);
 		}
@@ -234,14 +240,14 @@ void ArmManager::Update(bool playing)
 			const bool wasActive = arm.IsActive();
 			ARM_INPUT input{};
 			if (m_Guards[hand].IsGuarding()) m_Presses[hand].Reset(pressed);
-			else if (m_Rule == GAME_RULE_DEBUG || !m_Uses[hand].IsExhausted() || arm.IsHolding()) { // 最後の1回でつかんだ相手も投げられるようにする。
+			else if (HasUnlimitedUses() || !m_Uses[hand].IsExhausted() || arm.IsHolding()) { // 最後の1回でつかんだ相手も投げられるようにする。
 				input = m_Presses[hand].Step(pressed, dt, arm.CanTakeTap(), arm.CanTakeHold());
 			}
 			else m_Presses[hand].Reset(pressed);
 			arm.Update(input);
 			if (!wasActive && arm.IsActive()) m_LastActiveHand = hand;
 		}
-		m_Uses[hand].Consume(arm.m_Used);
+		if (!HasUnlimitedUses()) m_Uses[hand].Consume(arm.m_Used);
 		arm.m_Used = 0;
 		BreakExhaustedArm(hand);
 	}
@@ -299,7 +305,7 @@ ARM_TYPE ArmManager::GetType(int hand) const
 int ArmManager::GetRemainingUses(int hand) const
 {
 	if (hand < 0 || hand >= 2) return 0;
-	return m_Rule == GAME_RULE_DEBUG ? -1 : m_Uses[hand].GetRemaining();
+	return HasUnlimitedUses() ? -1 : m_Uses[hand].GetRemaining();
 }
 
 int ArmManager::GetChangeDirection(int hand) const
@@ -347,6 +353,11 @@ void Arm::ConsumeUse(int count)
 int Arm::GetRemainingUses() const
 {
 	return m_Links.Arms->GetRemainingUses(m_Hand);
+}
+
+const MATCH_TUNING& Arm::GetTuning() const
+{
+	return m_Links.Arms->GetTuning();
 }
 
 Fighter& Arm::GetPlayer() const
