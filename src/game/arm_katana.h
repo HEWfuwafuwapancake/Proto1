@@ -51,6 +51,7 @@ private:
 	void BeginDraw();
 	void SlashTargets();
 	void IaiTargets();
+	void DashTargets(const VEC3& from, const VEC3& to);
 	void StepIai(float dt);
 	void StepBreach(const ARM_INPUT& input, float dt);
 	void StepDelayedHits(float dt);

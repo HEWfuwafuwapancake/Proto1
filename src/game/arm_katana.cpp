@@ -44,6 +44,10 @@ static constexpr float SLASH_RUMBLE_LARGE = 1.0f;
 static constexpr float SLASH_RUMBLE_SECONDS = 0.2f;
 // 長押し：構えて、離すと空間を斬って狙った場所へ一直線に飛ぶ（アサルト）
 static constexpr float BREACH_RANGE = 25.0f; // 狙える距離。
+static constexpr float DASH_HIT_RADIUS = 0.9f;
+static constexpr float DASH_DAMAGE = 6.0f;
+static constexpr float DASH_POWER = 1.4f;
+static constexpr float DASH_UP = 0.6f;
 static constexpr float BREACH_SPEED = 60.0f; // 飛ぶ速さ。
 static constexpr float BREACH_ARRIVE_DISTANCE = 0.5f; // これより近づいたら着いたことにする。
 static constexpr float BREACH_RAISE_SECONDS = 0.25f; // 刀を構えるまでの秒数。
@@ -194,6 +198,24 @@ void KatanaArm::IaiTargets()
 	if (hit) Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
 }
 
+// 飛んだ通り道をまとめて調べ、高速移動でも相手を通り抜けて見逃さない。
+void KatanaArm::DashTargets(const VEC3& from, const VEC3& to)
+{
+	const VEC3 height{ 0.0f, GetPlayer().GetHeight() * 0.5f, 0.0f };
+	const CAPSULE path{ Vec3Add(from, height), Vec3Add(to, height), DASH_HIT_RADIUS };
+	const VEC3 flat = ArmCalcPitchDirection(m_Direction, 0.0f);
+	bool hit = false;
+	for (int i = 0; i < FIGHTER_COUNT; ++i) {
+		const TENTACLE_TARGET target = GetFighters().GetTarget(i, GetSlot());
+		if (!target.Available || !CollisionCapsuleCapsule(path, target.Body).Hit || !m_Hits.TryAdd(i)) continue;
+		GetFighters().Launch(i, GetSlot(), AreaCalcLaunchDirection(flat, DASH_UP), DASH_DAMAGE, DASH_POWER);
+		m_SlashDirections[i] = flat;
+		m_SlashSeconds[i] = SLASH_SHOW_SECONDS;
+		hit = true;
+	}
+	if (hit) Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
+}
+
 void KatanaArm::StepDelayedHits(float dt)
 {
 	DELAYED_HIT hits[DELAYED_HIT_MAX];
@@ -260,6 +282,7 @@ void KatanaArm::StartDash()
 	m_RiftSeconds = RIFT_SECONDS;
 	m_Direction = ArmCalcBlendDirection(GetForward(), Vec3Sub(m_Landing, m_RiftStart), 1.0f);
 	SetBreach(BREACH_DASH);
+	m_Hits.Clear();
 	GetPlayer().SetPulled(true);
 	m_OwnPull = true;
 	ConsumeUse();
@@ -300,12 +323,12 @@ void KatanaArm::StepBreach(const ARM_INPUT& input, float dt)
 		const bool arrived = GrappleCalcPull(feet, m_Landing, BREACH_SPEED, BREACH_ARRIVE_DISTANCE, dt);
 		const VEC3 next = arrived ? m_Landing : feet;
 		GetPlayer().SetPosition({ next.X, next.Y, next.Z });
+		DashTargets({ p.x, p.y, p.z }, next);
 		if (arrived) {
 			ReleasePull();
 			SetBreach(BREACH_RECOVER);
 			// 着いた瞬間に、飛んだ向きを前として居合の一閃を出す。
 			m_IaiDirection = ArmCalcPitchDirection(m_Direction, 0.0f);
-			m_Hits.Clear();
 			IaiTargets();
 		}
 		return;
