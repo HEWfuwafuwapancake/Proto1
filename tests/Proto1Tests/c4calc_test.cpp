@@ -1,4 +1,4 @@
-﻿// physics/c4calc.h（C4 の投げた弾・落ちる弾・設置済み）の単体テスト
+﻿// physics/c4calc.h（着弾した瞬間に爆発する C4）の単体テスト
 #include <gtest/gtest.h>
 #include "physics/c4calc.h"
 
@@ -6,79 +6,64 @@ namespace Proto1Tests
 {
 	static const STAGE C4_STAGE{ 0.0f, 0.0f, 15.0f, 15.0f, 0.0f, 2.0f, -15.0f };
 	static const PROJECTILE_PARAMS C4_PARAMS{ 0.2f, 20.0f, 5.0f, 0.0f, false };
-	static const float C4_DT = 1.0f / 60.0f;
+	static constexpr float C4_DT = 1.0f / 60.0f;
 
-	static void StepUntilPlaced(C4Calc& bombs, int placed, TENTACLE_TARGET* targets = nullptr, int count = 0)
-	{
-		for (int i = 0; i < 300 && bombs.GetPlacedCount() != placed; ++i) {
-			bombs.Step(C4_DT, targets, count, C4_STAGE, C4_PARAMS);
-		}
-	}
-
-	// 真上から落として、(x, 0) に設置する。
-	static void DropAt(C4Calc& bombs, float x, int placedAfter)
-	{
-		bombs.Throw({ x, 1.0f, 0.0f }, {}, C4_PARAMS);
-		StepUntilPlaced(bombs, placedAfter);
-	}
-
-	// 投げた C4 は足場に着いたら、その場所に設置される
-	TEST(C4CalcTest, Thrown_PlacedWhereItLands)
+	// 足場に着いたフレームだけ場所を返し、弾を消す。
+	TEST(C4CalcTest, StageImpactReturnsPositionAndRemovesBomb)
 	{
 		C4Calc bombs;
-		bombs.Throw({ 0.0f, 1.0f, 0.0f }, { 0.0f, 4.0f, 5.0f }, C4_PARAMS);
-		StepUntilPlaced(bombs, 1);
-		ASSERT_EQ(1, bombs.GetPlacedCount());
-		EXPECT_NEAR(C4_STAGE.TopY, bombs.GetPlaced(0).Y, 0.001f);
-		EXPECT_GT(bombs.GetPlaced(0).Z, 1.0f);
+		ASSERT_TRUE(bombs.Throw({ 2.0f, 1.0f, 0.0f }, {}, C4_PARAMS, false));
+		C4_IMPACT impacts[PROJECTILE_MAX];
+		int count = 0;
+		for (int i = 0; i < 120 && count == 0; ++i) count = bombs.Step(C4_DT, nullptr, 0, C4_STAGE, C4_PARAMS, impacts, PROJECTILE_MAX);
+		ASSERT_EQ(1, count);
+		EXPECT_NEAR(2.0f, impacts[0].Position.X, 0.001f);
+		EXPECT_NEAR(0.0f, impacts[0].Position.Y, 0.001f);
 		EXPECT_EQ(0, bombs.GetThrown().GetCount());
+		EXPECT_EQ(0, bombs.Step(C4_DT, nullptr, 0, C4_STAGE, C4_PARAMS, impacts, PROJECTILE_MAX));
 	}
 
-	// 4個目を置くと、いちばん古いものが消える
-	TEST(C4CalcTest, FourthReplacesOldest)
+	// 空中の相手に当たったら、その空中の位置ですぐ着弾を返す（地面まで落とさない）。
+	TEST(C4CalcTest, FighterImpactExplodesInAir)
 	{
 		C4Calc bombs;
-		DropAt(bombs, 1.0f, 1);
-		DropAt(bombs, 2.0f, 2);
-		DropAt(bombs, 3.0f, 3);
-		bombs.Throw({ 4.0f, 1.0f, 0.0f }, {}, C4_PARAMS);
-		for (int i = 0; i < 300 && bombs.GetThrown().GetCount() > 0; ++i) {
-			bombs.Step(C4_DT, nullptr, 0, C4_STAGE, C4_PARAMS);
-		}
-		ASSERT_EQ(C4_MAX, bombs.GetPlacedCount());
-		EXPECT_NEAR(2.0f, bombs.GetPlaced(0).X, 0.001f);
-		EXPECT_NEAR(3.0f, bombs.GetPlaced(1).X, 0.001f);
-		EXPECT_NEAR(4.0f, bombs.GetPlaced(2).X, 0.001f);
-	}
-
-	// 空中の敵に当たると、飛んでいた向きへは進まず、その場に落ちて設置される
-	TEST(C4CalcTest, HittingAirborneEnemy_DropsStraightDown)
-	{
-		C4Calc bombs;
-		TENTACLE_TARGET enemy{ { { 0.0f, 3.0f, 4.0f }, { 0.0f, 4.0f, 4.0f }, 0.5f }, true };
+		const TENTACLE_TARGET enemy{ { { 0.0f, 3.0f, 4.0f }, { 0.0f, 4.0f, 4.0f }, 0.5f }, true };
 		const PROJECTILE_PARAMS straight{ 0.2f, 0.0f, 5.0f, 0.0f, false };
-		bombs.Throw({ 0.0f, 3.5f, 0.0f }, { 0.0f, 0.0f, 12.0f }, straight);
-		for (int i = 0; i < 120 && bombs.GetFalling().GetCount() == 0; ++i) {
-			bombs.Step(C4_DT, &enemy, 1, C4_STAGE, straight);
-		}
-		EXPECT_EQ(1, bombs.GetFalling().GetCount());
+		ASSERT_TRUE(bombs.Throw({ 0.0f, 3.5f, 0.0f }, { 0.0f, 0.0f, 12.0f }, straight, false));
+		C4_IMPACT impacts[PROJECTILE_MAX];
+		int count = 0;
+		for (int i = 0; i < 120 && count == 0; ++i) count = bombs.Step(C4_DT, &enemy, 1, C4_STAGE, straight, impacts, PROJECTILE_MAX);
+		ASSERT_EQ(1, count);
+		EXPECT_NEAR(3.5f, impacts[0].Position.Y, 0.001f);
+		EXPECT_NEAR(3.4f, impacts[0].Position.Z, 0.3f);
 		EXPECT_EQ(0, bombs.GetThrown().GetCount());
-		StepUntilPlaced(bombs, 1, &enemy, 1);
-		ASSERT_EQ(1, bombs.GetPlacedCount());
-		EXPECT_NEAR(C4_STAGE.TopY, bombs.GetPlaced(0).Y, 0.001f);
-		EXPECT_NEAR(3.4f, bombs.GetPlaced(0).Z, 0.3f);
 	}
 
-	// 起爆すると設置済みの位置を返して空になる
-	TEST(C4CalcTest, Detonate_ReturnsPlacedAndClears)
+	// 浮島の外へ落ちた弾は爆発を返さず消える。
+	TEST(C4CalcTest, FallingOutDisappearsWithoutExplosion)
 	{
 		C4Calc bombs;
-		DropAt(bombs, 1.0f, 1);
-		DropAt(bombs, 2.0f, 2);
-		VEC3 positions[C4_MAX];
-		ASSERT_EQ(2, bombs.Detonate(positions));
-		EXPECT_NEAR(1.0f, positions[0].X, 0.001f);
-		EXPECT_NEAR(2.0f, positions[1].X, 0.001f);
-		EXPECT_EQ(0, bombs.GetPlacedCount());
+		ASSERT_TRUE(bombs.Throw({ 30.0f, 1.0f, 0.0f }, {}, C4_PARAMS, false));
+		C4_IMPACT impacts[PROJECTILE_MAX];
+		int count = 0;
+		for (int i = 0; i < 300 && bombs.GetThrown().GetCount() > 0; ++i) count += bombs.Step(C4_DT, nullptr, 0, C4_STAGE, C4_PARAMS, impacts, PROJECTILE_MAX);
+		EXPECT_EQ(0, bombs.GetThrown().GetCount());
+		EXPECT_EQ(0, count);
+	}
+
+	// 同時に飛んでいる通常と大型の弾は、着弾時にも大きさを区別できる。
+	TEST(C4CalcTest, SimultaneousBombsKeepTheirSizes)
+	{
+		C4Calc bombs;
+		ASSERT_TRUE(bombs.Throw({ -2.0f, 1.0f, 0.0f }, {}, C4_PARAMS, false));
+		ASSERT_TRUE(bombs.Throw({ 2.0f, 1.0f, 0.0f }, {}, C4_PARAMS, true));
+		C4_IMPACT impacts[PROJECTILE_MAX];
+		int count = 0;
+		for (int i = 0; i < 120 && count == 0; ++i) count = bombs.Step(C4_DT, nullptr, 0, C4_STAGE, C4_PARAMS, impacts, PROJECTILE_MAX);
+		ASSERT_EQ(2, count);
+		EXPECT_FALSE(impacts[0].Large);
+		EXPECT_TRUE(impacts[1].Large);
+		EXPECT_NEAR(-2.0f, impacts[0].Position.X, 0.001f);
+		EXPECT_NEAR(2.0f, impacts[1].Position.X, 0.001f);
 	}
 }
