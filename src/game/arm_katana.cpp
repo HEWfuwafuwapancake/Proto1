@@ -9,24 +9,29 @@
 #include "physics/armcalc.h"
 #include "physics/breachcalc.h"
 #include "physics/grapplecalc.h"
+#include "physics/risecalc.h"
 #include "render/shape.h"
 
 // 調整用の値
-// 単押し：居合
-static constexpr float IAI_SECONDS[] = { 0.3f, 0.12f, 0.3f }; // 納刀の構え・一閃・残心
-static constexpr float IAI_CLIP_SECONDS[] = { 8.0f / 24.0f, 6.0f / 24.0f, 12.0f / 24.0f }; // クリップの区切り（katana_iai）
-static constexpr float IAI_PARRY_SECONDS = 0.2f; // 構えの出だしで攻撃を受け流せる秒数。
-static constexpr float IAI_MOVE_SCALE = 0.3f; // 居合の間の歩く速さの倍率。
-static constexpr float IAI_STEP_SPEED = 45.0f; // 一閃で前へ踏み込む速さ（一閃は 0.12 秒なので約 5.4 進む）。
+// 単押し：ただの斬撃（押したらすぐ振る。当たった瞬間にダメージ）
+static constexpr float IAI_SECONDS[] = { 0.1f, 0.1f, 0.25f }; // 振りかぶり・斬る・休み
+static constexpr float IAI_CLIP_SECONDS[] = { 8.0f / 24.0f, 6.0f / 24.0f, 12.0f / 24.0f }; // クリップの区切り（katana_iai の抜いて斬る動きを使う）
+static constexpr float TAP_MOVE_SCALE = 0.6f; // 斬撃の間の歩く速さの倍率。
+static constexpr float TAP_RADIUS = 2.2f;
+static constexpr float TAP_HALF_ANGLE = XMConvertToRadians(60.0f);
+static constexpr float TAP_DAMAGE = 8.0f;
+static constexpr float TAP_POWER = 1.6f;
+// 長押しで飛んで着いた瞬間の、居合の一閃（少しあとからダメージが入る）
+static constexpr float IAI_ARRIVE_SECONDS = 0.12f; // 着いてから一閃の当たりを調べる秒数。
 static constexpr float IAI_RADIUS = 3.0f;
 static constexpr float IAI_HALF_ANGLE = XMConvertToRadians(60.0f);
 static constexpr float IAI_HALF_HEIGHT = 1.5f; // 肩の高さから上下それぞれの当たる幅。
 static constexpr float IAI_DAMAGE = 12.0f;
 static constexpr float IAI_POWER = 2.4f;
-static constexpr float IAI_COUNTER_DAMAGE = 20.0f; // 受け流したあとの一閃のダメージ %。
-static constexpr float IAI_COUNTER_POWER = 3.2f;
 static constexpr float IAI_UP = 0.6f; // 水平の単位方向に足す上向きの量。
 static constexpr float IAI_DELAY_SECONDS = 0.4f; // 一閃が当たってから斬撃のダメージが入るまでの秒数。
+// 場外から戻る：狙いに着地点がなければ、いちばん近い足場の上へ飛ぶ
+static constexpr float RETURN_INSET = 1.0f; // 足場のふちから内側へ入れる距離。
 static constexpr float IAI_SHEATH_RATE = 0.6f; // 残心のこの割合から鞘を見せる（納刀）。
 static constexpr float SLASH_SHOW_SECONDS = 0.25f; // 斬撃の線を見せる秒数。
 static constexpr float SLASH_LENGTH = 1.1f; // 斬撃の線の中心から端までの長さ。
@@ -91,7 +96,6 @@ static constexpr float DASH_SWORD_PITCH = XMConvertToRadians(-10.0f); // 飛ん�
 static constexpr float HIT_RUMBLE_SMALL = 0.6f;
 static constexpr float HIT_RUMBLE_LARGE = 0.6f;
 static constexpr float HIT_RUMBLE_SECONDS = 0.12f;
-static constexpr float COUNTER_RUMBLE_SECONDS = 0.2f;
 
 enum IAI_PHASE { IAI_STANCE, IAI_DRAW, IAI_RECOVER, IAI_PHASE_COUNT };
 
@@ -107,10 +111,9 @@ KatanaArm::KatanaArm(int hand, const ARM_LINKS& links) : Arm(hand, links)
 
 void KatanaArm::CancelMotion()
 {
-	StopDash();
+	ReleasePull();
 	m_Phase.Reset();
 	m_Breach = BREACH_NONE;
-	m_Countered = false;
 	m_HasLanding = false;
 	m_Straighten = 0.0f;
 	m_RiftSeconds = 0.0f;
@@ -138,8 +141,6 @@ void KatanaArm::SetBreach(BREACH_STATE state)
 void KatanaArm::StartIai()
 {
 	m_IaiConsumed = false;
-	GetFighters().ConsumeGuardedHit(GetSlot()); // 前の受け流しの記録を持ち越さない。
-	m_Countered = false;
 	m_Direction = GetAim(false);
 	m_Phase.Start(IAI_STANCE);
 }
@@ -150,23 +151,44 @@ void KatanaArm::BeginDraw()
 	m_Hits.Clear();
 }
 
+// 単押しの斬撃：前の扇の相手に、当たった瞬間にダメージを入れる。
 void KatanaArm::SlashTargets()
 {
 	bool hit = false;
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		const TENTACLE_TARGET target = GetFighters().GetTarget(i, GetSlot());
 		if (!target.Available || m_Hits.Contains(i)
-			|| !AreaCalcInSector(GetShoulder(), m_Direction, 0.0f, IAI_RADIUS, IAI_HALF_ANGLE, IAI_HALF_HEIGHT, target.Body)) continue;
+			|| !AreaCalcInSector(GetShoulder(), m_Direction, 0.0f, TAP_RADIUS, TAP_HALF_ANGLE, IAI_HALF_HEIGHT, target.Body)) continue;
 		m_Hits.TryAdd(i);
-		// ここでは当たったことだけを覚え、納刀のころに斬撃としてダメージを入れる。
+		const bool applied = GetFighters().Launch(i, GetSlot(), AreaCalcLaunchDirection(m_Direction, IAI_UP), TAP_DAMAGE, TAP_POWER);
+		if (applied && !m_IaiConsumed) {
+			ConsumeUse();
+			m_IaiConsumed = true;
+		}
+		m_SlashDirections[i] = m_Direction;
+		m_SlashSeconds[i] = SLASH_SHOW_SECONDS;
+		hit = true;
+	}
+	if (hit) Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
+}
+
+// 長押しで飛んで着いたときの居合の一閃：当たったことだけを覚え、少しあとから斬撃としてダメージを入れる。
+void KatanaArm::IaiTargets()
+{
+	bool hit = false;
+	for (int i = 0; i < FIGHTER_COUNT; ++i) {
+		const TENTACLE_TARGET target = GetFighters().GetTarget(i, GetSlot());
+		if (!target.Available || m_Hits.Contains(i)
+			|| !AreaCalcInSector(GetShoulder(), m_IaiDirection, 0.0f, IAI_RADIUS, IAI_HALF_ANGLE, IAI_HALF_HEIGHT, target.Body)) continue;
+		m_Hits.TryAdd(i);
 		DELAYED_HIT slash;
 		slash.Target = i;
-		slash.Direction = AreaCalcLaunchDirection(m_Direction, IAI_UP);
-		slash.Damage = m_Countered ? IAI_COUNTER_DAMAGE : IAI_DAMAGE;
-		slash.Power = m_Countered ? IAI_COUNTER_POWER : IAI_POWER;
+		slash.Direction = AreaCalcLaunchDirection(m_IaiDirection, IAI_UP);
+		slash.Damage = IAI_DAMAGE;
+		slash.Power = IAI_POWER;
 		slash.Seconds = IAI_DELAY_SECONDS;
 		m_Delayed.Add(slash);
-		m_SlashDirections[i] = m_Direction;
+		m_SlashDirections[i] = m_IaiDirection;
 		hit = true;
 	}
 	if (hit) Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
@@ -192,13 +214,6 @@ void KatanaArm::StepDelayedHits(float dt)
 void KatanaArm::StepIai(float dt)
 {
 	if (m_Phase.IsIdle()) return;
-	// 構えの出だしで攻撃を防いだら、すぐに強い一閃を返す。
-	if (m_Phase.GetPhase() == IAI_STANCE && GetFighters().ConsumeGuardedHit(GetSlot())) {
-		m_Countered = true;
-		Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, COUNTER_RUMBLE_SECONDS);
-		m_Phase.Start(IAI_DRAW);
-		BeginDraw();
-	}
 	const ARM_PHASE_STEP step = m_Phase.Step(dt, IAI_SECONDS, IAI_PHASE_COUNT);
 	if (step.Entered == IAI_DRAW) BeginDraw();
 	if (m_Phase.GetPhase() == IAI_DRAW) SlashTargets();
@@ -208,8 +223,13 @@ void KatanaArm::UpdateLanding()
 {
 	const XMFLOAT3 p = GetPlayer().GetPosition();
 	const XMFLOAT3 view = GetCamera().GetDirection();
-	m_HasLanding = BreachCalcFindLanding(GetStage().GetStage(), { p.x, p.y + GetPlayer().GetHeight() * BREACH_EYE_RATE, p.z },
+	const STAGE& stage = GetStage().GetStage();
+	m_HasLanding = BreachCalcFindLanding(stage, { p.x, p.y + GetPlayer().GetHeight() * BREACH_EYE_RATE, p.z },
 		{ view.x, view.y, view.z }, BREACH_RANGE, m_Landing);
+	// 場外に落ちている間は、狙いが外れていても、いちばん近い足場の上へ戻れる。
+	if (!m_HasLanding && !GetPlayer().IsOnGround() && p.y < stage.TopY) {
+		m_HasLanding = RiseCalcNearestLanding(stage, { p.x, p.y, p.z }, RETURN_INSET, BREACH_RANGE, m_Landing);
+	}
 }
 
 void KatanaArm::StartCut()
@@ -225,6 +245,11 @@ void KatanaArm::StartCut()
 	m_CutAxis = Vec3Scale(axis, 1.0f / Vec3Length(axis));
 	m_CutCenter = Vec3Add({ p.x, p.y + GetPlayer().GetHeight() * CUT_HEIGHT_RATE, p.z }, Vec3Scale(flat, CUT_FORWARD));
 	SetBreach(BREACH_CUT);
+	// 空中で斬り始めたら、斬っている間は落ちない（場外から戻れるように）。
+	if (!GetPlayer().IsOnGround()) {
+		GetPlayer().SetPulled(true);
+		m_OwnPull = true;
+	}
 }
 
 void KatanaArm::StartDash()
@@ -236,14 +261,17 @@ void KatanaArm::StartDash()
 	m_Direction = ArmCalcBlendDirection(GetForward(), Vec3Sub(m_Landing, m_RiftStart), 1.0f);
 	SetBreach(BREACH_DASH);
 	GetPlayer().SetPulled(true);
+	m_OwnPull = true;
 	ConsumeUse();
+	m_IaiConsumed = true; // 使用回数は飛んだときに減らし、着いたあとの一閃では減らさない。
 	Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
 }
 
-void KatanaArm::StopDash()
+// 自分が止めていた体の計算を、ふつうに戻す。
+void KatanaArm::ReleasePull()
 {
-	if (m_Breach != BREACH_DASH) return;
-	m_Breach = BREACH_NONE;
+	if (!m_OwnPull) return;
+	m_OwnPull = false;
 	GetPlayer().SetPulled(false);
 }
 
@@ -261,7 +289,8 @@ void KatanaArm::StepBreach(const ARM_INPUT& input, float dt)
 	}
 	if (m_Breach == BREACH_CUT) {
 		if (m_BreachTime < BREACH_CUT_SECONDS) return;
-		if (GetPlayer().IsPulled()) SetBreach(BREACH_NONE);
+		// もう一方の手や触手が体を動かしている間は飛ばない（自分が空中で止めているだけなら飛ぶ）。
+		if (GetPlayer().IsPulled() && !m_OwnPull) SetBreach(BREACH_NONE);
 		else StartDash();
 		return;
 	}
@@ -272,12 +301,18 @@ void KatanaArm::StepBreach(const ARM_INPUT& input, float dt)
 		const VEC3 next = arrived ? m_Landing : feet;
 		GetPlayer().SetPosition({ next.X, next.Y, next.Z });
 		if (arrived) {
-			StopDash();
+			ReleasePull();
 			SetBreach(BREACH_RECOVER);
+			// 着いた瞬間に、飛んだ向きを前として居合の一閃を出す。
+			m_IaiDirection = ArmCalcPitchDirection(m_Direction, 0.0f);
+			m_Hits.Clear();
 		}
 		return;
 	}
-	if (m_Breach == BREACH_RECOVER && m_BreachTime >= BREACH_RECOVER_SECONDS) SetBreach(BREACH_NONE);
+	if (m_Breach == BREACH_RECOVER) {
+		if (m_BreachTime < IAI_ARRIVE_SECONDS) IaiTargets();
+		if (m_BreachTime >= BREACH_RECOVER_SECONDS) SetBreach(BREACH_NONE);
+	}
 }
 
 void KatanaArm::Update(const ARM_INPUT& input)
@@ -449,18 +484,12 @@ bool KatanaArm::IsHolding() const
 float KatanaArm::GetMoveScale() const
 {
 	if (m_Breach == BREACH_CUT) return 0.0f;
-	return m_Phase.IsIdle() ? 1.0f : IAI_MOVE_SCALE;
-}
-
-VEC3 KatanaArm::GetRushVelocity() const
-{
-	return m_Phase.GetPhase() == IAI_DRAW ? Vec3Scale(m_Direction, IAI_STEP_SPEED) : VEC3{};
+	return m_Phase.IsIdle() ? 1.0f : TAP_MOVE_SCALE;
 }
 
 GUARD KatanaArm::GetGuard() const
 {
-	const bool parry = m_Phase.GetPhase() == IAI_STANCE && m_Phase.GetTime() < IAI_PARRY_SECONDS;
-	if (!parry && m_Breach != BREACH_DASH) return {};
+	if (m_Breach != BREACH_DASH) return {};
 	GUARD guard;
 	guard.Kind = GUARD_ALL;
 	return guard;

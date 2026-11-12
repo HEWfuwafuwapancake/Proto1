@@ -22,6 +22,7 @@ static constexpr float RUSH_RADIUS = 0.5f;
 static constexpr float RUSH_DAMAGE = 10.0f;
 static constexpr float RUSH_POWER = 2.2f;
 static constexpr float RUSH_UP = 0.6f;
+static constexpr float AIR_RUSH_PITCH = XMConvertToRadians(40.0f); // 空中の突進で、狙いの向きを上へ傾ける角度（場外から戻る）。
 static constexpr float CHARGE_MOVE_SCALE = 0.5f; // 突進のためと休みの間の歩く速さの倍率。
 static constexpr float RAISE_PITCH = XMConvertToRadians(-15.0f); // 構えの間の腕の上下の角度。
 static constexpr float STRAIGHTEN_SECONDS = 0.1f;
@@ -43,8 +44,18 @@ KnuckleArm::KnuckleArm(int hand, const ARM_LINKS& links) : Arm(hand, links)
 	Reset();
 }
 
+// 空中の突進で止めていた体の計算を、ふつうに戻す。
+void KnuckleArm::StopAirRush()
+{
+	if (!m_AirRush) return;
+	m_AirRush = false;
+	m_Rise.Reset();
+	GetPlayer().SetPulled(false);
+}
+
 void KnuckleArm::Reset()
 {
+	StopAirRush();
 	m_Phase.Reset();
 	m_Rush = false;
 	m_Straighten = 0.0f;
@@ -60,7 +71,11 @@ int KnuckleArm::FindTarget(float reach, float radius) const
 
 void KnuckleArm::Strike(int target, float up, float damage, float power)
 {
-	if (GetFighters().Launch(target, GetSlot(), AreaCalcLaunchDirection(m_Direction, up), damage, power)) ConsumeUse();
+	// 空中の突進で使用回数を減らしていたら、当たっても重ねて減らさない。
+	if (GetFighters().Launch(target, GetSlot(), AreaCalcLaunchDirection(m_Direction, up), damage, power) && !m_UseConsumed) {
+		ConsumeUse();
+		m_UseConsumed = true;
+	}
 	Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
 }
 
@@ -70,6 +85,7 @@ void KnuckleArm::Update(const ARM_INPUT& input)
 	if (GetPlayer().DidRespawn()) Reset();
 	if (m_Phase.IsIdle() && (input.Tap || input.HoldStarted)) {
 		m_Rush = input.HoldStarted;
+		m_UseConsumed = false;
 		m_Direction = GetAim(false);
 		m_Phase.Start(KNUCKLE_CHARGE);
 	}
@@ -80,12 +96,30 @@ void KnuckleArm::Update(const ARM_INPUT& input)
 			const int target = FindTarget(PUNCH_REACH, PUNCH_RADIUS);
 			if (target >= 0) Strike(target, PUNCH_UP, PUNCH_DAMAGE, PUNCH_POWER);
 		}
+		else if (!GetPlayer().IsOnGround() && !GetPlayer().IsPulled()) {
+			// 空中の突進は前斜め上へ進む（場外から戻れる）。水平の速度しか体に伝わらないので、自分で体を動かす。
+			const XMFLOAT3 feet = GetPlayer().GetPosition();
+			const float distance = RUSH_SPEED * RUSH_SECONDS[KNUCKLE_STRIKE];
+			m_Rise.Start({ feet.x, feet.y, feet.z }, RiseCalcSlopeOffset(m_Direction, AIR_RUSH_PITCH, distance), RUSH_SECONDS[KNUCKLE_STRIKE], false);
+			m_AirRush = true;
+			GetPlayer().SetPulled(true);
+			ConsumeUse(); // 復帰に使ったら、当たらなくても1回減る。
+			m_UseConsumed = true;
+		}
+	}
+	if (m_AirRush) {
+		if (m_Phase.GetPhase() == KNUCKLE_STRIKE && m_Rise.IsActive()) {
+			const VEC3 next = m_Rise.Step(dt);
+			GetPlayer().SetPosition({ next.X, next.Y, next.Z });
+		}
+		else StopAirRush();
 	}
 	if (m_Rush && m_Phase.GetPhase() == KNUCKLE_STRIKE) {
 		const int target = FindTarget(RUSH_REACH, RUSH_RADIUS);
 		if (target >= 0) {
 			Strike(target, RUSH_UP, RUSH_DAMAGE, RUSH_POWER);
 			m_Phase.Start(KNUCKLE_RECOVER); // 当たったら止まる。
+			StopAirRush();
 		}
 	}
 	const float speed = dt / STRAIGHTEN_SECONDS;
@@ -139,6 +173,6 @@ float KnuckleArm::GetMoveScale() const
 
 VEC3 KnuckleArm::GetRushVelocity() const
 {
-	if (!m_Rush || m_Phase.GetPhase() != KNUCKLE_STRIKE) return {};
+	if (!m_Rush || m_AirRush || m_Phase.GetPhase() != KNUCKLE_STRIKE) return {};
 	return Vec3Scale(m_Direction, RUSH_SPEED);
 }

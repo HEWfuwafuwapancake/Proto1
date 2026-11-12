@@ -1,6 +1,7 @@
 ﻿#include "game/arm_hammer.h"
 #include "game/fightermanager.h"
 #include "game/fighter.h"
+#include "game/camera.h"
 #include "core/gametime.h"
 #include "physics/areacalc.h"
 #include "physics/armcalc.h"
@@ -11,6 +12,10 @@ static constexpr float TAP_SECONDS[] = { 0.9f, 0.1f, 0.4f }; // 単押し：た�
 static constexpr float WAVE_SECONDS[] = { 1.2f, 0.1f, 0.5f }; // 長押し：ため・叩き・休み
 static constexpr float TAP_CLIP_SECONDS[] = { 16.0f / 24.0f, 4.0f / 24.0f, 10.0f / 24.0f }; // 単押しのクリップの区切り（hammer_tap）
 static constexpr float WAVE_CLIP_SECONDS[] = { 22.0f / 24.0f, 4.0f / 24.0f, 14.0f / 24.0f }; // 長押しのクリップの区切り（hammer_slam）
+static constexpr float AIR_TAP_SECONDS[] = { 0.3f, 0.1f, 0.4f }; // 空中の単押し：短いため・叩き・休み
+static constexpr float HOP_HEIGHT = 4.0f; // 空中の単押しで上へ跳ねる高さ（場外から戻る）。
+static constexpr float HOP_SIDE = 2.0f; // 跳ねる間に、移動の入力の向きへ進む距離。
+static constexpr float HOP_SECONDS = 0.3f; // 跳ね上がるのにかける秒数。
 static constexpr float MOVE_SCALE = 0.5f;
 static constexpr float IMPACT_FORWARD = 1.6f; // 足元から叩く所までの前への距離。
 static constexpr float IMPACT_HEIGHT = 0.6f; // 叩く所の足元からの高さ。
@@ -46,8 +51,42 @@ HammerArm::HammerArm(int hand, const ARM_LINKS& links) : Arm(hand, links)
 	Reset();
 }
 
+// 今の動作の、段階ごとの秒数の並びを返す。
+const float* HammerArm::GetSeconds() const
+{
+	return m_Wave ? WAVE_SECONDS : (m_AirTap ? AIR_TAP_SECONDS : TAP_SECONDS);
+}
+
+// 跳ねるために止めていた体の計算を、ふつうに戻す。
+void HammerArm::StopHop()
+{
+	if (!m_Hopping) return;
+	m_Hopping = false;
+	m_Rise.Reset();
+	GetPlayer().SetPulled(false);
+}
+
+// 空中の単押し：振った瞬間に上へ跳ねる。水平の速度しか体に伝わらないので、自分で体を動かす。
+void HammerArm::StartHop()
+{
+	if (GetPlayer().IsOnGround() || GetPlayer().IsPulled()) return;
+	const XMFLOAT3 feet = GetPlayer().GetPosition();
+	const ACTION_AXIS move = GetPlayer().GetMoveInput();
+	const float yaw = GetCamera().GetYaw();
+	const VEC3 offset{ (cosf(yaw) * move.X + sinf(yaw) * move.Y) * HOP_SIDE, HOP_HEIGHT, (-sinf(yaw) * move.X + cosf(yaw) * move.Y) * HOP_SIDE };
+	m_Rise.Start({ feet.x, feet.y, feet.z }, offset, HOP_SECONDS, true);
+	m_Hopping = true;
+	GetPlayer().SetPulled(true);
+	// 復帰に使ったら、当たらなくても1回減る（叩きが当たっていたら、重ねて減らさない）。
+	if (!m_UseConsumed) {
+		ConsumeUse();
+		m_UseConsumed = true;
+	}
+}
+
 void HammerArm::Reset()
 {
+	StopHop();
 	m_Phase.Reset();
 	m_Straighten = 0.0f;
 	m_RangeSeconds = 0.0f;
@@ -70,7 +109,10 @@ void HammerArm::Impact()
 		if (m_Wave && GetFighters().ApplyStatus(i, GetSlot(), STATUS_STUN, WAVE_STUN_SECONDS, 0.0f)) affected = true;
 		hit = true;
 	}
-	if (affected) ConsumeUse();
+	if (affected && !m_UseConsumed) {
+		ConsumeUse();
+		m_UseConsumed = true;
+	}
 	if (hit) Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
 }
 
@@ -80,11 +122,24 @@ void HammerArm::Update(const ARM_INPUT& input)
 	if (GetPlayer().DidRespawn()) Reset();
 	if (m_Phase.IsIdle() && (input.Tap || input.HoldStarted)) {
 		m_Wave = input.HoldStarted;
+		// 空中の単押しは、ためを短くして、振った瞬間に上へ跳ねる。
+		m_AirTap = !m_Wave && !GetPlayer().IsOnGround();
+		m_UseConsumed = false;
 		m_Direction = GetAim(false);
 		m_Phase.Start(HAMMER_CHARGE);
 	}
-	const ARM_PHASE_STEP step = m_Phase.Step(dt, m_Wave ? WAVE_SECONDS : TAP_SECONDS, HAMMER_PHASE_COUNT);
-	if (step.Entered == HAMMER_SLAM) Impact();
+	const ARM_PHASE_STEP step = m_Phase.Step(dt, GetSeconds(), HAMMER_PHASE_COUNT);
+	if (step.Entered == HAMMER_SLAM) {
+		Impact();
+		if (m_AirTap) StartHop();
+	}
+	if (m_Hopping) {
+		if (!m_Phase.IsIdle() && m_Rise.IsActive()) {
+			const VEC3 next = m_Rise.Step(dt);
+			GetPlayer().SetPosition({ next.X, next.Y, next.Z });
+		}
+		else StopHop();
+	}
 	m_RangeSeconds = fmaxf(0.0f, m_RangeSeconds - dt);
 	const float speed = dt / STRAIGHTEN_SECONDS;
 	m_Straighten = m_Phase.IsIdle() ? fmaxf(0.0f, m_Straighten - speed) : fminf(1.0f, m_Straighten + speed);
@@ -116,7 +171,7 @@ ARM_BODY_CLIP HammerArm::GetBodyClip() const
 	clip.Active = true;
 	clip.Kind = m_Wave ? ATTACK_CLIP::HammerSlam : ATTACK_CLIP::HammerTap;
 	clip.FullBody = m_Wave;
-	clip.Time = ArmCalcClipTime(m_Phase.GetPhase(), m_Phase.GetTime(), m_Wave ? WAVE_SECONDS : TAP_SECONDS, m_Wave ? WAVE_CLIP_SECONDS : TAP_CLIP_SECONDS);
+	clip.Time = ArmCalcClipTime(m_Phase.GetPhase(), m_Phase.GetTime(), GetSeconds(), m_Wave ? WAVE_CLIP_SECONDS : TAP_CLIP_SECONDS);
 	return clip;
 }
 

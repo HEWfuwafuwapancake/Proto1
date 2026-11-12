@@ -2,11 +2,12 @@
 
 #include "game/arm.h"
 #include "physics/armphasecalc.h"
+#include "physics/risecalc.h"
 
 /// @file arm_hammer.h
 /// @brief 片手のハンマーの入力・叩きつけ・衝撃波と描画
 
-/// @brief 単押しで前を強く叩き、長押しで長くためて衝撃波としびれを出す腕
+/// @brief 単押しで前を強く叩き、長押しで長くためて衝撃波としびれを出す腕（空中の単押しは短いためで振り、上へ跳ねて場外から戻れる）
 class HammerArm : public Arm
 {
 public:
@@ -19,7 +20,7 @@ public:
 	void Update(const ARM_INPUT& input) override;
 	/// @brief 腕とハンマーを、ため・叩きに合わせて上下させて描画する
 	void Draw() override;
-	/// @brief 待機へ戻す
+	/// @brief 待機へ戻す（跳ねている途中なら、止めていた体の計算も戻す）
 	void Reset() override;
 	/// @brief 待機以外なら true を返す
 	bool IsActive() const override;
@@ -32,7 +33,14 @@ public:
 
 private:
 	void Impact();
+	const float* GetSeconds() const;
+	void StartHop();
+	void StopHop();
 	ArmPhaseCalc m_Phase;
+	RiseCalc m_Rise; // 空中の単押しで体を上へ動かす計算
+	bool m_AirTap = false; // true：空中で始めた単押し（短いため。振った瞬間に跳ねる）
+	bool m_Hopping = false; // true：跳ねるために体を自分で動かしている
+	bool m_UseConsumed = false; // 今の動作で使用回数を消費したか
 	int m_ArmModel = -1;
 	int m_HeadModel = -1;
 	bool m_Wave = false; // true：長押しの衝撃波、false：単押しの強打

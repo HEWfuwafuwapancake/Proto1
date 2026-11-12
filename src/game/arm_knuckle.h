@@ -2,11 +2,12 @@
 
 #include "game/arm.h"
 #include "physics/armphasecalc.h"
+#include "physics/risecalc.h"
 
 /// @file arm_knuckle.h
 /// @brief 片手のナックルの入力・殴り・突進と描画
 
-/// @brief 単押しで短くためて殴り、長押しでためて前へ突進する腕
+/// @brief 単押しで短くためて殴り、長押しでためて前へ突進する腕（空中の突進は前斜め上へ進み、場外から戻れる）
 class KnuckleArm : public Arm
 {
 public:
@@ -19,7 +20,7 @@ public:
 	void Update(const ARM_INPUT& input) override;
 	/// @brief 腕と拳を描画する（殴る間は腕を伸ばす）
 	void Draw() override;
-	/// @brief 待機へ戻す
+	/// @brief 待機へ戻す（空中の突進の途中なら、止めていた体の計算も戻す）
 	void Reset() override;
 	/// @brief 待機以外なら true を返す
 	bool IsActive() const override;
@@ -29,13 +30,17 @@ public:
 	ARM_BODY_CLIP GetBodyClip() const override;
 	/// @brief 突進のためと休みの間だけ歩く速さを下げる
 	float GetMoveScale() const override;
-	/// @brief 突進の間のワールド速度を取得する
+	/// @brief 地上の突進の間のワールド速度を取得する（空中の突進は自分で体を動かすのでゼロ）
 	VEC3 GetRushVelocity() const override;
 
 private:
 	int FindTarget(float reach, float radius) const;
 	void Strike(int target, float up, float damage, float power);
+	void StopAirRush();
 	ArmPhaseCalc m_Phase;
+	RiseCalc m_Rise; // 空中の突進で体を動かす計算
+	bool m_AirRush = false; // true：空中の突進で体を自分で動かしている
+	bool m_UseConsumed = false; // 今の動作で使用回数を消費したか
 	int m_ArmModel = -1;
 	int m_FistModel = -1;
 	bool m_Rush = false; // true：長押しの突進、false：単押しの殴り
