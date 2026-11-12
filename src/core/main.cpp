@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <sstream>
+#include <string>
 #include "core/debugwindow.h"
 #include "core/dx11.h"
 #include "core/framestats.h"
@@ -45,6 +46,52 @@ static constexpr float RUMBLE_ON_NOTICE_SECONDS = 0.2f;
 LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 static Game g_Game;
+
+// 調整用の表示名（値と段の数は tuningcalc を使う）。
+static constexpr const char* TUNING_LABELS[] = {
+	"長押しの移動距離", "吹っ飛び力", "ハンマーのしびれ", "ダメージ", "マップの広さ", "カプセルの出現量", "腕の使用回数"
+};
+static constexpr const char* CAPSULE_LABELS[] = { "少ない", "ふつう", "多い", "とても多い" };
+static constexpr int TUNING_MAX_LEVELS = 7;
+
+static void InitializeTuningChoices()
+{
+	for (int row = 0; row < TUNING_ITEM_COUNT; ++row) {
+		const auto item = static_cast<TUNING_ITEM>(row);
+		const int count = TuningCalcLevelCount(item);
+		std::string labels[TUNING_MAX_LEVELS];
+		const char* options[TUNING_MAX_LEVELS]{};
+		for (int level = 0; level < count; ++level) {
+			MATCH_TUNING tuning = TuningCalcDefault();
+			tuning.Levels[row] = static_cast<uint8_t>(level);
+			std::ostringstream label;
+			if (item == TUNING_CAPSULES) label << CAPSULE_LABELS[level];
+			else if (item == TUNING_ARM_USES && TuningCalcIsUnlimitedUses(tuning)) label << "無制限";
+			else if (item == TUNING_HAMMER_STUN) label << TuningCalcValue(tuning, item) << "秒";
+			else label << static_cast<int>(lroundf(TuningCalcValue(tuning, item) * 100.0f)) << "%";
+			labels[level] = label.str();
+			options[level] = labels[level].c_str();
+		}
+		DebugWindowSetChoices(row, TUNING_LABELS[row], options, count);
+		DebugWindowSetSelection(row, g_Game.GetTuning().Levels[row]);
+	}
+}
+
+static void UpdateTuningChoices()
+{
+	const bool enabled = g_Game.CanEditTuning();
+	DebugWindowSetChoicesEnabled(enabled);
+	MATCH_TUNING tuning = g_Game.GetTuning();
+	const bool reset = DebugWindowTakeReset();
+	if (enabled && reset) tuning = TuningCalcDefault();
+	for (int row = 0; row < TUNING_ITEM_COUNT; ++row) {
+		int level = 0;
+		// 編集できない間の古い通知も読み捨て、あとから適用しない。
+		if (DebugWindowTakeSelection(row, level) && enabled && !reset) tuning.Levels[row] = static_cast<uint8_t>(level);
+	}
+	if (enabled) g_Game.SetTuning(tuning);
+	for (int row = 0; row < TUNING_ITEM_COUNT; ++row) DebugWindowSetSelection(row, g_Game.GetTuning().Levels[row]);
+}
 
 static DWORD g_Fps = 0;	// 直近1秒の FPS
 static FRAME_STATS_RESULT g_FrameStats{}; // 直近1秒の最大間隔・平均処理時間・カクつき
@@ -199,6 +246,7 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
 		DestroyWindow(hWnd);
 		return -1;
 	}
+	InitializeTuningChoices();
 	RefreshTitle(hWnd);
 	ShowWindow(hWnd, fullscreen || windowed ? nCmdShow : SW_SHOWMAXIMIZED);
 	UpdateWindow(hWnd);
@@ -493,6 +541,7 @@ void Update(void)
 		}
 	}
 
+	UpdateTuningChoices();
 	g_Game.Update();
 }
 
