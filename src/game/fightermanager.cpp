@@ -3,6 +3,7 @@
 #include "game/stage.h"
 #include "game/camera.h"
 #include "game/arm.h"
+#include <math.h>
 
 #ifdef _DEBUG
 #include "core/debug_ostream.h"
@@ -44,6 +45,7 @@ void FighterManager::Initialize(const Stage& stage, const VersusCalc& participan
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		m_Cameras[i] = nullptr;
 		m_Arms[i] = nullptr;
+		m_Escapes[i].Reset();
 		m_Fighters[i].Initialize(stage, i, m_Versus.GetDevice(i),
 			{ platform.CenterX + SPAWN_X[i], platform.TopY, platform.CenterZ + SPAWN_Z[i] }, m_Models);
 	}
@@ -69,6 +71,7 @@ void FighterManager::Reset()
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		m_Fighters[i].Reset();
 		m_GuardedHit[i] = false;
+		m_Escapes[i].Reset();
 	}
 }
 
@@ -84,6 +87,7 @@ void FighterManager::Update()
 		}
 #endif
 	}
+	UpdateEscape();
 	// 燃えた分の % は、燃やした人の攻撃として記録する（場外にしたらその人の得点）。
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		const STATUS_STEP status = m_Fighters[i].StepStatus(GameTimeGetDeltaTime());
@@ -92,6 +96,29 @@ void FighterManager::Update()
 		if (status.Attacker >= 0 && m_Versus.IsOpponent(status.Attacker, i)) m_Versus.RecordAttack(status.Attacker, i);
 	}
 	PushBodies();
+}
+
+// 体の更新後、掴まれている人の入力だけを使って連打を数える。
+void FighterManager::UpdateEscape()
+{
+	for (int i = 0; i < FIGHTER_COUNT; ++i) {
+		Fighter& fighter = m_Fighters[i];
+		if (!fighter.IsHeld()) {
+			m_Escapes[i].Reset();
+			continue;
+		}
+		const int presses = int(fighter.IsTrigger(ACTION_JUMP)) + int(fighter.IsTrigger(ACTION_ARM_LEFT))
+			+ int(fighter.IsTrigger(ACTION_ARM_RIGHT)) + int(fighter.IsTrigger(ACTION_DASH));
+		const ACTION_AXIS move = fighter.GetMoveInput();
+		if (!m_Escapes[i].Step(presses, sqrtf(move.X * move.X + move.Y * move.Y), fighter.GetPercent())) continue;
+		for (int holder = 0; holder < FIGHTER_COUNT; ++holder) {
+			if (fighter.IsHeldBy(holder)) {
+				fighter.Release(holder); // ダメージも吹っ飛びも足さず、その場で離す。
+				m_Escapes[i].Reset();
+				break;
+			}
+		}
+	}
 }
 
 void FighterManager::RespawnAtSafePoint(int slot)
@@ -212,6 +239,7 @@ bool FighterManager::BreakGuard(int index, int attacker, float seconds, float da
 bool FighterManager::Grab(int index, int attacker)
 {
 	if (!CanAttack(index, attacker) || !m_Fighters[index].Grab(attacker)) return false;
+	m_Escapes[index].Reset(); // 同じフレームで掴まれ直した場合も前の回数を引き継がない。
 	m_Versus.RecordAttack(attacker, index);
 	return true;
 }

@@ -3,6 +3,7 @@
 #include "game/fighter.h"
 #include "physics/scenecalc.h"
 #include "physics/spawncalc.h"
+#include "physics/escapecalc.h"
 
 /// @brief 4体の寿命・体当たり・攻撃と保持・KOの記録を管理する
 class FighterManager
@@ -84,6 +85,8 @@ private:
 	bool m_GuardedHit[FIGHTER_COUNT] = {}; // ガードで攻撃を防いだか（ConsumeGuardedHit で読むまで残す）
 	void PushBodies();
 	void RespawnAtSafePoint(int slot);
+	void UpdateEscape();
+	EscapeCalc m_Escapes[FIGHTER_COUNT];
 	SkinnedModel m_Models[CHARACTER_COUNT];
 	Fighter m_Fighters[FIGHTER_COUNT];
 	VersusCalc m_Versus;
