@@ -3,6 +3,7 @@
 #include "core/dx11.h"
 #include "physics/armpresscalc.h"
 #include "physics/armusecalc.h"
+#include "physics/parrycalc.h"
 #include "physics/guardcalc.h"
 #include "physics/scenecalc.h"
 #include "render/animcalc.h"
@@ -230,6 +231,7 @@ private:
 	void ChangeType(int hand, int next, int direction = 1);
 	void UpdateEquip(const Fighter& player);
 	void BreakExhaustedArm(int hand);
+	void UpdateGuards(const Fighter& player, float dt, bool interrupted);
 	ARM_LINKS m_Links = {};
 	GAME_RULE m_Rule = GAME_RULE_DEBUG;
 	int m_SelectedHand = 0;
@@ -240,6 +242,8 @@ private:
 	std::unique_ptr<Arm> m_Arms[2][ARM_TYPE_COUNT];
 	ArmPressCalc m_Presses[2];
 	ArmUseCalc m_Uses[2];
+	ParryCalc m_Guards[2];
+	int m_GuardHand = -1; // 両手なら後から構えた手で受ける
 };
 
 /// @brief 腕の日本語名を取得する（範囲外は「不明」）

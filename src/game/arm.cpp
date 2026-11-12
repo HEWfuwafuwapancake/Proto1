@@ -35,6 +35,17 @@ static constexpr float STUB_RADIUS = 0.06f; // モデルのない腕の円柱の
 static constexpr int RANGE_RING_POINTS = 32; // 当たる範囲の円に並べる球の数。
 static constexpr float RANGE_RING_RADIUS = 0.08f; // 当たる範囲の円に並べる球の半径。
 static constexpr ACTION ARM_ACTIONS[] = { ACTION_ARM_LEFT, ACTION_ARM_RIGHT };
+static constexpr ACTION GUARD_ACTIONS[] = { ACTION_GUARD_LEFT, ACTION_GUARD_RIGHT };
+static constexpr float GUARD_HALF_ANGLE = XMConvertToRadians(80.0f); // 前の左右それぞれの角度
+static constexpr float GUARD_MOVE_SCALE = 0.5f; // 構えている間の歩く速さ
+static constexpr float GUARD_MARKER_FORWARD = 0.5f; // 肩の前に球を出す距離
+static constexpr float GUARD_MARKER_RADIUS = 0.2f;
+static constexpr XMFLOAT4 GUARD_COLOR{ 0.3f, 0.6f, 0.9f, 0.8f };
+static constexpr XMFLOAT4 PARRY_COLOR{ 1.0f, 1.0f, 0.6f, 1.0f };
+static constexpr float PARRY_RUMBLE = 1.0f;
+static constexpr float PARRY_RUMBLE_SECONDS = 0.1f;
+static constexpr float BREAK_RUMBLE = 0.8f;
+static constexpr float BREAK_RUMBLE_SECONDS = 0.3f;
 // ARM_TYPE の順に、触手・ハンマー・ナックル・C4・ガンランス・刀・素手。
 static constexpr int ARM_MAX_USES[] = { 3, 2, 3, 2, 8, 3, 0 };
 
@@ -67,6 +78,7 @@ void ArmManager::ChangeType(int hand, int next, int direction)
 {
 	if (next < 0 || next >= ARM_TYPE_COUNT || ARM_FACTORIES[next] == nullptr || next == m_Types[hand]) return;
 	m_Arms[hand][m_Types[hand]]->Reset();
+	m_Guards[hand].Step(false, 0.0f);
 	const Fighter& player = m_Links.Fighters->GetFighter(m_Links.Slot);
 	const ACTION action = ARM_ACTIONS[hand];
 	// 前の装備で押し始めた入力は持ち越さない。
@@ -109,8 +121,10 @@ void ArmManager::Reset(void)
 		m_Arms[hand][m_Types[hand]]->Reset();
 		BreakExhaustedArm(hand);
 		m_Presses[hand].Reset(player.IsPress(ARM_ACTIONS[hand]));
+		m_Guards[hand].Reset();
 	}
 	m_LastActiveHand = -1;
+	m_GuardHand = -1;
 }
 
 void ArmManager::ResetForMatch(GAME_RULE rule)
@@ -165,6 +179,38 @@ void ArmManager::BreakExhaustedArm(int hand)
 	if (!arm.IsActive() && !arm.IsBusy()) ChangeType(hand, ARM_TYPE_NONE);
 }
 
+// 前の更新から防いだ攻撃を処理してから、このフレームの構えを決める。
+void ArmManager::UpdateGuards(const Fighter& player, float dt, bool interrupted)
+{
+	const bool hadGuard = m_GuardHand >= 0 && m_Guards[m_GuardHand].IsGuarding();
+	if (hadGuard && m_Links.Fighters->ConsumeGuardedHit(m_Links.Slot)) {
+		const int hand = m_GuardHand;
+		const PARRY_RESULT result = m_Guards[hand].OnHit(true);
+		Arm& arm = *m_Arms[hand][m_Types[hand]];
+		if (result == PARRY_SUCCESS) arm.Rumble(PARRY_RUMBLE, PARRY_RUMBLE, PARRY_RUMBLE_SECONDS);
+		else if (result == PARRY_BREAK_ARM && m_Rule == GAME_RULE_GAME) {
+			arm.Rumble(BREAK_RUMBLE, BREAK_RUMBLE, BREAK_RUMBLE_SECONDS);
+			ChangeType(hand, ARM_TYPE_NONE);
+		}
+	}
+	bool any = false;
+	for (int hand = 0; hand < 2; ++hand) {
+		const Arm& arm = *m_Arms[hand][m_Types[hand]];
+		const bool wasGuarding = m_Guards[hand].IsGuarding();
+		const bool guarding = !interrupted && player.IsPress(GUARD_ACTIONS[hand])
+			&& m_Types[hand] != ARM_TYPE_NONE && !arm.IsActive() && !arm.IsBusy();
+		m_Guards[hand].Step(guarding, dt);
+		if (guarding && !wasGuarding) {
+			// 刀の無敵など、構える前に防いだ記録を今回のガードへ持ち越さない。
+			if (!hadGuard && !any) m_Links.Fighters->ConsumeGuardedHit(m_Links.Slot);
+			m_GuardHand = hand;
+		}
+		any = any || guarding;
+	}
+	if (!any) m_GuardHand = -1;
+	else if (m_GuardHand < 0 || !m_Guards[m_GuardHand].IsGuarding()) m_GuardHand = m_Guards[1].IsGuarding() ? 1 : 0;
+}
+
 void ArmManager::Update(bool playing)
 {
 	const Fighter& player = m_Links.Fighters->GetFighter(m_Links.Slot);
@@ -176,6 +222,7 @@ void ArmManager::Update(bool playing)
 	const bool interrupted = !player.CanUseArms() || player.DidRespawn() || player.IsStatus(STATUS_STUN);
 	if (interrupted) m_LastActiveHand = -1;
 	const float dt = GameTimeGetDeltaTime();
+	UpdateGuards(player, dt, interrupted);
 	for (int hand = 0; hand < 2; ++hand) {
 		Arm& arm = *m_Arms[hand][m_Types[hand]];
 		const bool pressed = player.IsPress(ARM_ACTIONS[hand]);
@@ -186,7 +233,8 @@ void ArmManager::Update(bool playing)
 		else {
 			const bool wasActive = arm.IsActive();
 			ARM_INPUT input{};
-			if (m_Rule == GAME_RULE_DEBUG || !m_Uses[hand].IsExhausted() || arm.IsHolding()) { // 最後の1回でつかんだ相手も投げられるようにする。
+			if (m_Guards[hand].IsGuarding()) m_Presses[hand].Reset(pressed);
+			else if (m_Rule == GAME_RULE_DEBUG || !m_Uses[hand].IsExhausted() || arm.IsHolding()) { // 最後の1回でつかんだ相手も投げられるようにする。
 				input = m_Presses[hand].Step(pressed, dt, arm.CanTakeTap(), arm.CanTakeHold());
 			}
 			else m_Presses[hand].Reset(pressed);
@@ -203,6 +251,14 @@ void ArmManager::Draw(void) const
 {
 	if (!m_Links.Fighters->IsActive(m_Links.Slot)) return;
 	for (int hand = 0; hand < 2; ++hand) m_Arms[hand][m_Types[hand]]->Draw();
+	const Fighter& player = m_Links.Fighters->GetFighter(m_Links.Slot);
+	for (int hand = 0; hand < 2; ++hand) {
+		if (!m_Guards[hand].IsGuarding()) continue;
+		const VEC3 shoulder = m_Arms[hand][m_Types[hand]]->GetDrawShoulder();
+		ShapeDrawSphere({ shoulder.X + sinf(player.GetYaw()) * GUARD_MARKER_FORWARD, shoulder.Y,
+			shoulder.Z + cosf(player.GetYaw()) * GUARD_MARKER_FORWARD }, GUARD_MARKER_RADIUS,
+			m_Guards[hand].IsParryWindow() ? PARRY_COLOR : GUARD_COLOR);
+	}
 }
 
 bool ArmManager::IsActive(void) const
@@ -253,12 +309,20 @@ int ArmManager::GetChangeDirection(int hand) const
 
 float ArmManager::GetMoveScale() const
 {
-	return fminf(m_Arms[0][m_Types[0]]->GetMoveScale(), m_Arms[1][m_Types[1]]->GetMoveScale());
+	const float scale = fminf(m_Arms[0][m_Types[0]]->GetMoveScale(), m_Arms[1][m_Types[1]]->GetMoveScale());
+	return m_GuardHand >= 0 ? fminf(scale, GUARD_MOVE_SCALE) : scale;
 }
 
 GUARD ArmManager::GetGuard() const
 {
-	return GuardCalcStronger(m_Arms[0][m_Types[0]]->GetGuard(), m_Arms[1][m_Types[1]]->GetGuard());
+	const GUARD native = GuardCalcStronger(m_Arms[0][m_Types[0]]->GetGuard(), m_Arms[1][m_Types[1]]->GetGuard());
+	const Fighter& player = m_Links.Fighters->GetFighter(m_Links.Slot);
+	if (m_GuardHand < 0 || !player.CanUseArms() || player.IsStatus(STATUS_STUN)) return native;
+	GUARD guard;
+	guard.Kind = GUARD_FRONT;
+	guard.Forward = { sinf(player.GetYaw()), 0.0f, cosf(player.GetYaw()) };
+	guard.HalfAngle = GUARD_HALF_ANGLE;
+	return GuardCalcStronger(native, guard);
 }
 
 VEC3 ArmManager::GetRushVelocity() const
