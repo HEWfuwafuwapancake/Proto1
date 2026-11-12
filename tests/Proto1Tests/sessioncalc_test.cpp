@@ -225,6 +225,74 @@ namespace Proto1Tests
 		EXPECT_EQ(hostNonce, guest.GetSeed());
 	}
 
+	// ロビーのホストが選んだ7項目はバイト列を通して届き、参加側は上書きできない。
+	TEST(SessionCalcTest, State_SharesHostTuningAndLobbyChanges)
+	{
+		SessionCalc host, guest;
+		host.Initialize({ NET_MODE_HOST }, 100);
+		guest.Initialize({ NET_MODE_JOIN }, 101);
+		ASSERT_EQ(1, host.Join(101));
+		MATCH_TUNING tuning = TuningCalcDefault();
+		for (int i = 0; i < TUNING_ITEM_COUNT; ++i) {
+			tuning.Levels[i] = static_cast<uint8_t>((tuning.Levels[i] + 1) % TuningCalcLevelCount(static_cast<TUNING_ITEM>(i)));
+		}
+		host.SetTuning(tuning);
+		Deliver(guest, 0, host.MakeControl(1));
+		EXPECT_EQ(tuning.Levels, guest.GetTuning().Levels);
+		guest.SetTuning(TuningCalcDefault());
+		EXPECT_EQ(tuning.Levels, guest.GetTuning().Levels);
+
+		tuning.Levels[TUNING_ARM_USES] = 4; // ロビー中にもう一度変更し、無制限の段も配る。
+		host.SetTuning(tuning);
+		Deliver(guest, 0, host.MakeControl(1));
+		EXPECT_EQ(tuning.Levels, guest.GetTuning().Levels);
+		EXPECT_TRUE(TuningCalcIsUnlimitedUses(guest.GetTuning()));
+
+		guest.Decide();
+		Deliver(host, 1, guest.MakeControl());
+		host.Decide();
+		host.Decide();
+		Deliver(guest, 0, host.MakeControl(1));
+		ASSERT_TRUE(host.IsRunning());
+		ASSERT_TRUE(guest.IsRunning());
+		EXPECT_EQ(tuning.Levels, guest.GetTuning().Levels);
+	}
+
+	// 開始後のホストは変更できず、ロビーへ戻ると次の試合の設定を変更できる。
+	TEST(SessionCalcTest, TuningStaysFixedUntilReturningToLobby)
+	{
+		SessionNetwork network(2, 0);
+		auto& host = network.Nodes[0];
+		auto& guest = network.Nodes[1];
+		ASSERT_TRUE(host.IsRunning());
+		ASSERT_TRUE(guest.IsRunning());
+		const MATCH_TUNING original = host.GetTuning();
+		MATCH_TUNING changed = original;
+		changed.Levels[TUNING_DAMAGE] = 5;
+		host.SetTuning(changed);
+		EXPECT_EQ(original.Levels, host.GetTuning().Levels);
+
+		host.ReturnToLobby();
+		guest.ReturnToLobby();
+		host.SetTuning(changed);
+		Deliver(guest, 0, host.MakeControl(1));
+		EXPECT_EQ(changed.Levels, host.GetTuning().Levels);
+		EXPECT_EQ(changed.Levels, guest.GetTuning().Levels);
+	}
+
+	// 受信したSTATEの段が範囲外なら、その通知を受け付けない。
+	TEST(SessionCalcTest, State_RejectsInvalidTuningLevel)
+	{
+		SessionCalc host;
+		host.Initialize({ NET_MODE_HOST }, 100);
+		ASSERT_EQ(1, host.Join(101));
+		std::vector<uint8_t> bytes;
+		ASSERT_TRUE(SessionCalc::Encode(host.MakeControl(1), bytes));
+		bytes.back() = static_cast<uint8_t>(TuningCalcLevelCount(TUNING_ARM_USES));
+		SESSION_MESSAGE decoded;
+		EXPECT_FALSE(SessionCalc::Decode(bytes.data(), bytes.size(), decoded));
+	}
+
 	// STATE のルールが範囲外なら受け付けず、ルール欄のない旧版には版の不一致を返せる。
 	TEST(SessionCalcTest, State_RejectsInvalidRuleAndRecognizesPreviousVersion)
 	{
@@ -233,7 +301,7 @@ namespace Proto1Tests
 		ASSERT_EQ(1, host.Join(101));
 		std::vector<uint8_t> bytes;
 		ASSERT_TRUE(SessionCalc::Encode(host.MakeControl(1), bytes));
-		const size_t ruleOffset = bytes.size() - sizeof(uint32_t) - 1;
+		const size_t ruleOffset = bytes.size() - TUNING_ITEM_COUNT - sizeof(uint32_t) - 1;
 		bytes[ruleOffset] = GAME_RULE_COUNT;
 		SESSION_MESSAGE decoded;
 		EXPECT_FALSE(SessionCalc::Decode(bytes.data(), bytes.size(), decoded));

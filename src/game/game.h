@@ -33,7 +33,7 @@ public:
 	/// @param slot スロット番号（0〜3）
 	const ArmManager& GetArms(int slot) const { return m_Arms[slot]; }
 	/// @brief 次の試合開始時に適用する設定を取得する
-	const MATCH_TUNING& GetTuning() const { return m_Tuning; }
+	const MATCH_TUNING& GetTuning() const;
 	/// @brief 編集可能なときだけ次の試合の設定を変更する（範囲外は無視）
 	void SetTuning(const MATCH_TUNING& tuning);
 	/// @brief オフライン、または試合中でないオンラインのホストならtrueを返す
