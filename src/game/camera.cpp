@@ -21,7 +21,9 @@ static constexpr float YAW_SMOOTH_TIME = 0.12f;						// 左右の角度が目標
 static constexpr float PITCH_SMOOTH_TIME = 0.12f;					// 上下の角度が目標へ追いつくまでのおよその秒数
 static constexpr float DISTANCE_SMOOTH_TIME = 0.3f;					// 障害物から離れたとき、元の距離へ戻るまでのおよその秒数
 static constexpr float LOOK_SMOOTH_TIME = 0.15f;						// 見ている点の左右（XZ）が追いつくまでのおよその秒数
-static constexpr float LOOK_HEIGHT_SMOOTH_TIME = 0.5f;				// 見ている点の高さが追いつくまでのおよその秒数
+static constexpr float LOOK_HEIGHT_SMOOTH_TIME = 0.15f;				// 見ている点の高さが追いつくまでのおよその秒数
+static constexpr float LOOK_HEIGHT_DEADZONE_UP = 0.6f;				// 空中で、見ている点の高さの目標より上にこれだけ離れたら追い始める（小さいジャンプでは揺らさない）
+static constexpr float LOOK_HEIGHT_DEADZONE_DOWN = 0.3f;			// 空中で、見ている点の高さの目標より下にこれだけ離れたら追い始める
 static constexpr float LOOK_DEADZONE = 0.3f;							// 見ている点の左右（XZ）の遊び。この距離を超えた分だけ目標を動かす
 static constexpr float FOLLOW_TURN_SPEED = XMConvertToRadians(90.0f);	// 横移動について回る速さ（1秒に回る角度。入力の大きさに比例）
 static constexpr float MANUAL_PAUSE = 0.5f;							// 自分でカメラを回したあと、横移動について回るのを止める秒数
@@ -232,9 +234,16 @@ void Camera::Update(void)
 	if (length > LOOK_DEADZONE) {
 		m_PlayerGoal = Vec3Add(m_PlayerGoal, Vec3Scale(horizontal, (length - LOOK_DEADZONE) / length));
 	}
-	// ジャンプ中は最後に立っていた高さを保つ。浮島の上面より下へ落ちたら、その先まで追う。
+	// 地上と、浮島の上面より下へ落ちたときは高さをそのまま追う。
+	// 空中では上下の遊びを超えた分だけ追う（高く飛んでも頭が画面から外れないように）。
 	if (m_Player->IsOnGround() || m_Player->GetPosition().y < m_Stage->GetStage().TopY) {
 		m_PlayerGoal.Y = head.Y;
+	}
+	else if (head.Y > m_PlayerGoal.Y + LOOK_HEIGHT_DEADZONE_UP) {
+		m_PlayerGoal.Y = head.Y - LOOK_HEIGHT_DEADZONE_UP;
+	}
+	else if (head.Y < m_PlayerGoal.Y - LOOK_HEIGHT_DEADZONE_DOWN) {
+		m_PlayerGoal.Y = head.Y + LOOK_HEIGHT_DEADZONE_DOWN;
 	}
 	const VEC3 lockHead{ head.X, m_PlayerGoal.Y, head.Z };
 	m_TargetGoal = m_LockTarget >= 0 ? LockFocusPoint(lockHead, targets) : m_PlayerGoal;
