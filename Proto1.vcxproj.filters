@@ -66,9 +66,6 @@
     <ClCompile Include="src\game\camera.cpp">
       <Filter>src\game</Filter>
     </ClCompile>
-    <ClCompile Include="src\game\field.cpp">
-      <Filter>src\game</Filter>
-    </ClCompile>
     <ClCompile Include="src\game\character.cpp">
       <Filter>src\game</Filter>
     </ClCompile>
@@ -195,9 +192,6 @@
       <Filter>src\game</Filter>
     </ClInclude>
     <ClInclude Include="src\game\camera.h">
-      <Filter>src\game</Filter>
-    </ClInclude>
-    <ClInclude Include="src\game\field.h">
       <Filter>src\game</Filter>
     </ClInclude>
     <ClInclude Include="src\game\character.h">
