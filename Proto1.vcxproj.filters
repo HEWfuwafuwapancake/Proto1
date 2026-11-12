@@ -392,6 +392,18 @@
     <ClCompile Include="src\physics\spawncalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
+    <ClCompile Include="src\physics\dashcalc.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\physics\risecalc.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\physics\escapecalc.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\physics\parrycalc.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
     <ClInclude Include="src\game\tentacle.h">
       <Filter>src\game</Filter>
     </ClInclude>
@@ -471,6 +483,18 @@
       <Filter>src\physics</Filter>
     </ClInclude>
     <ClInclude Include="src\physics\spawncalc.h">
+      <Filter>src\physics</Filter>
+    </ClInclude>
+    <ClInclude Include="src\physics\dashcalc.h">
+      <Filter>src\physics</Filter>
+    </ClInclude>
+    <ClInclude Include="src\physics\risecalc.h">
+      <Filter>src\physics</Filter>
+    </ClInclude>
+    <ClInclude Include="src\physics\escapecalc.h">
+      <Filter>src\physics</Filter>
+    </ClInclude>
+    <ClInclude Include="src\physics\parrycalc.h">
       <Filter>src\physics</Filter>
     </ClInclude>
   </ItemGroup>

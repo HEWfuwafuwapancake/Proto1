@@ -41,6 +41,18 @@ namespace Proto1Tests
 		EXPECT_FALSE(ActionCalcPlayerPress(PLAYER_INPUT{}, ACTION_ARM_RIGHT));
 	}
 
+	// ダッシュとガード（左・右）のビットも、押下と押した瞬間を読める。
+	TEST(ActionCalcTest, PlayerInput_ReadsDashAndGuardButtons)
+	{
+		PLAYER_INPUT released;
+		PLAYER_INPUT held;
+		held.Buttons = static_cast<uint16_t>((1u << ACTION_DASH) | (1u << ACTION_GUARD_RIGHT));
+		EXPECT_TRUE(ActionCalcPlayerTrigger(held, released, ACTION_DASH));
+		EXPECT_TRUE(ActionCalcPlayerPress(held, ACTION_GUARD_RIGHT));
+		EXPECT_FALSE(ActionCalcPlayerPress(held, ACTION_GUARD_LEFT));
+		EXPECT_FALSE(ActionCalcPlayerTrigger(held, held, ACTION_DASH));
+	}
+
 	// 押し始め・長押し・離す・押し直し。ターゲットのイベントは連続でも落とさない。
 	TEST(ActionCalcTest, PlayerInput_TriggersFromPreviousFrame)
 	{
