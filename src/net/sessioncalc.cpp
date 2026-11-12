@@ -5,7 +5,7 @@
 // 調整用の値（入力のP1N1と区別するP1S1）
 static constexpr uint32_t SESSION_MAGIC = 0x31533150;
 static constexpr size_t SESSION_HEADER_BYTES = 58;
-static constexpr size_t SESSION_RULE_BYTES = 5; // ルール1バイトと乱数の種4バイト（STATE のみ）。
+static constexpr size_t SESSION_STATE_BYTES = 5 + TUNING_ITEM_COUNT; // ルール1・乱数の種4・設定7バイト（STATEのみ）。
 
 static uint32_t s_Program = 0; // この実行ファイルの識別番号（main.cpp がソースの中身から作った SOURCE_ID を設定する）。
 
@@ -151,6 +151,11 @@ void SessionCalc::Initialize(const NET_OPTIONS& options, uint32_t nonce, CHARACT
 	}
 }
 
+void SessionCalc::SetTuning(const MATCH_TUNING& tuning)
+{
+	if (m_Host && !m_Running && TuningCalcIsValid(tuning)) m_Tuning = tuning;
+}
+
 SESSION_FAILURE SessionCalc::CheckCompatibility(const SESSION_MESSAGE& message)
 {
 	if (message.Version != LOCKSTEP_VERSION) return SESSION_FAILURE_VERSION;
@@ -272,6 +277,7 @@ void SessionCalc::Receive(int peer, const SESSION_MESSAGE& message)
 			m_Characters = message.Characters;
 			m_Rule = message.Rule;
 			m_Seed = message.Seed;
+			m_Tuning = message.Tuning;
 			m_Delay = message.Delay;
 			if (message.Running && m_Ready == m_Mask) BeginRound(message.Round);
 			return;
@@ -309,6 +315,7 @@ SESSION_MESSAGE SessionCalc::MakeControl(int peer) const
 		message.Characters = m_Characters;
 		message.Rule = m_Rule;
 		message.Seed = m_Seed;
+		message.Tuning = m_Tuning;
 	}
 	else message.Characters[message.Slot] = static_cast<uint8_t>(m_LocalCharacter);
 	if (peer >= 0 && peer < FIGHTER_COUNT) {
@@ -541,7 +548,7 @@ static bool HasCharacters(SESSION_MESSAGE_TYPE type)
 
 static bool ValidMessage(const SESSION_MESSAGE& message)
 {
-	if (message.Type == SESSION_STATE && message.Rule >= GAME_RULE_COUNT) return false;
+	if (message.Type == SESSION_STATE && (message.Rule >= GAME_RULE_COUNT || !TuningCalcIsValid(message.Tuning))) return false;
 	if (HasCharacters(message.Type)) {
 		for (uint8_t character : message.Characters) {
 			if (character >= CHARACTER_COUNT) return false;
@@ -586,6 +593,7 @@ bool SessionCalc::Encode(const SESSION_MESSAGE& message, std::vector<uint8_t>& b
 	if (message.Type == SESSION_STATE) {
 		WriteWord(bytes, message.Rule, 1);
 		WriteWord(bytes, message.Seed, 4);
+		bytes.insert(bytes.end(), message.Tuning.Levels.begin(), message.Tuning.Levels.end());
 	}
 	bytes.insert(bytes.end(), payload.begin(), payload.end());
 	return true;
@@ -627,10 +635,11 @@ bool SessionCalc::Decode(const uint8_t* bytes, size_t size, SESSION_MESSAGE& res
 		size -= FIGHTER_COUNT;
 	}
 	if (message.Type == SESSION_STATE && (message.Version == LOCKSTEP_VERSION || size != SESSION_HEADER_BYTES)) {
-		if (size != SESSION_HEADER_BYTES + SESSION_RULE_BYTES) return false;
+		if (size != SESSION_HEADER_BYTES + SESSION_STATE_BYTES) return false;
 		message.Rule = static_cast<GAME_RULE>(ReadWord(bytes, 1));
 		message.Seed = ReadWord(bytes, 4);
-		size -= SESSION_RULE_BYTES;
+		for (auto& level : message.Tuning.Levels) level = *bytes++;
+		size -= SESSION_STATE_BYTES;
 	}
 	if (!ValidMessage(message)) return false;
 	if (message.Type == SESSION_INPUTS) {

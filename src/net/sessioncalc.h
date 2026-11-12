@@ -2,6 +2,7 @@
 
 #include "net/lockstepcalc.h"
 #include "physics/scenecalc.h"
+#include "physics/tuningcalc.h"
 #include <array>
 #include <deque>
 #include <string>
@@ -123,6 +124,7 @@ struct SESSION_MESSAGE
 	std::array<uint8_t, FIGHTER_COUNT> Characters{}; ///< JOIN・READY の自分と STATE の全員のキャラ番号
 	GAME_RULE Rule = GAME_RULE_DEBUG; ///< STATE でホストが配る試合のルール
 	uint32_t Seed = 0; ///< STATE でホストが配る乱数の種
+	MATCH_TUNING Tuning = TuningCalcDefault(); ///< STATE でホストが配る試合の設定
 	LOCKSTEP_PACKET Packet; ///< SESSION_INPUTSだけで使う入力と方向別ACK
 };
 
@@ -190,6 +192,10 @@ public:
 	CHARACTER_TYPE GetCharacter(int slot) const { return static_cast<CHARACTER_TYPE>(m_Characters[slot]); }
 	/// @brief ホストが選んだ試合のルールを取得する
 	GAME_RULE GetRule() const { return m_Rule; }
+	/// @brief ホストが決め、STATEで全員に配る試合の設定を取得する
+	const MATCH_TUNING& GetTuning() const { return m_Tuning; }
+	/// @brief ホストのロビーでだけ試合の設定を変更する（範囲外は無視）
+	void SetTuning(const MATCH_TUNING& tuning);
 	/// @brief ホストが配った乱数の種を取得する
 	uint32_t GetSeed() const { return m_Seed; }
 	/// @brief 全員で共有している今の試合の番号を取得する
@@ -229,6 +235,7 @@ private:
 	CHARACTER_TYPE m_LocalCharacter = CHARACTER_DEFAULT;
 	std::array<uint8_t, FIGHTER_COUNT> m_Characters{};
 	GAME_RULE m_Rule = GAME_RULE_DEBUG;
+	MATCH_TUNING m_Tuning = TuningCalcDefault();
 	uint32_t m_Seed = 0;
 	uint32_t m_Nonce = 0;
 	uint32_t m_Session = 0;

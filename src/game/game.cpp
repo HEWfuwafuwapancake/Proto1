@@ -47,6 +47,7 @@ bool Game::Initialize(const NET_OPTIONS& options)
 	}
 	ConfigurePlayers();
 	const bool connected = m_Net.Initialize(options);
+	if (connected && m_Net.IsHost()) m_Net.SetTuning(m_Tuning);
 	m_Scene.Start(m_Net.IsOnline());
 	ActionSetOnlineEquip(m_Net.IsOnline());
 	UpdatePadLights();
@@ -137,14 +138,21 @@ GAME_RULE Game::GetRule() const
 	return m_Net.IsOnline() ? m_Net.GetRule() : m_Scene.GetRule();
 }
 
+const MATCH_TUNING& Game::GetTuning() const
+{
+	return m_Net.IsOnline() ? m_Net.GetTuning() : m_Tuning;
+}
+
 bool Game::CanEditTuning() const
 {
-	return !m_Net.IsOnline() || (m_Net.IsHost() && m_Scene.GetScene() != SCENE_MATCH);
+	return !m_Net.IsOnline() || (m_Net.IsHost() && !m_Net.IsRunning() && m_Scene.GetScene() != SCENE_MATCH);
 }
 
 void Game::SetTuning(const MATCH_TUNING& tuning)
 {
-	if (CanEditTuning() && TuningCalcIsValid(tuning)) m_Tuning = tuning;
+	if (!CanEditTuning() || !TuningCalcIsValid(tuning)) return;
+	if (m_Net.IsOnline()) m_Net.SetTuning(tuning);
+	else m_Tuning = tuning;
 }
 
 uint32_t Game::GetSeed() const
@@ -215,7 +223,10 @@ void Game::UpdateMenu()
 		options.Mode = event == SCENE_EVENT_HOST ? NET_MODE_HOST : NET_MODE_JOIN;
 		options.Host = m_JoinAddress.GetText();
 		options.Delay = LOCKSTEP_AUTO_DELAY;
-		if (m_Net.Initialize(options, m_Scene.GetCharacter(), m_Scene.GetRule())) m_Scene.OpenLobby();
+		if (m_Net.Initialize(options, m_Scene.GetCharacter(), m_Scene.GetRule())) {
+			if (m_Net.IsHost()) m_Net.SetTuning(m_Tuning);
+			m_Scene.OpenLobby();
+		}
 		else m_Scene.ShowModes(); // 理由は NetSession がタイトルバーへ残す。
 		ActionSetOnlineEquip(m_Net.IsOnline());
 		// オフラインで替えた装備が残ると、相手の画面と腕がずれて DESYNC になる。

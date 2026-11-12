@@ -45,6 +45,10 @@ public:
 	CHARACTER_TYPE GetCharacter(int slot) const { return m_Calc.GetCharacter(slot); }
 	/// @brief ホストが選んだ試合のルールを取得する
 	GAME_RULE GetRule() const { return m_Calc.GetRule(); }
+	/// @brief ホストから共有された試合の設定を取得する
+	const MATCH_TUNING& GetTuning() const { return m_Calc.GetTuning(); }
+	/// @brief ホストのロビーでだけ次の試合の設定を変更する（範囲外は無視）
+	void SetTuning(const MATCH_TUNING& tuning) { m_Calc.SetTuning(tuning); }
 	/// @brief ホストが配った乱数の種を取得する
 	uint32_t GetSeed() const { return m_Calc.GetSeed(); }
 	/// @brief 全員で共有している今の試合の番号を取得する
