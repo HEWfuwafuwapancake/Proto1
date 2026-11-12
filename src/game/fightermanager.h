@@ -59,7 +59,8 @@ public:
 	/// @brief 自分のダメージ%を減らす（無効な番号・復活待ちは無視。リペア）
 	void Heal(int index, float amount);
 	/// @brief 攻撃者を記録し、ダメージ%だけを足す（速度はそのまま）
-	void AddDamage(int index, int attacker, float damage);
+	/// @return 相手に効いたら true（ガードされた場合などは false）
+	bool AddDamage(int index, int attacker, float damage);
 	/// @brief 攻撃者を記録し、ダメージを足して指定した3D方向へ吹っ飛ばす
 	/// @return 相手に効いたら true（ガードされた場合などは false）
 	bool Launch(int index, int attacker, const VEC3& direction, float damage, float power);

@@ -12,8 +12,6 @@ static constexpr PROJECTILE_PARAMS SHOT_PARAMS{ 0.2f, 0.0f, 0.8f, 0.0f, false };
 static constexpr float SHOT_SPEED = 30.0f;
 static constexpr float MUZZLE_FORWARD = 1.4f; // 肩から弾を出す所までの距離。
 static constexpr float SHOT_DAMAGE = 3.0f;
-static constexpr float SHOT_POWER = 0.5f;
-static constexpr float SHOT_UP = 0.4f;
 static constexpr float RUSH_SPEED = 8.0f;
 static constexpr float RUSH_REACH = 1.6f; // 突進の当たりの、肩から前への距離。
 static constexpr float RUSH_RADIUS = 0.35f;
@@ -152,7 +150,7 @@ void GunlanceArm::StepShots(float dt)
 	const int written = m_Shots.Step(dt, targets, FIGHTER_COUNT, GetStage().GetStage(), SHOT_PARAMS, events, PROJECTILE_MAX);
 	for (int i = 0; i < written; ++i) {
 		if (events[i].Type != PROJECTILE_HIT_FIGHTER) continue;
-		if (GetFighters().Launch(events[i].Target, GetSlot(), AreaCalcLaunchDirection(events[i].Direction, SHOT_UP), SHOT_DAMAGE, SHOT_POWER)) {
+		if (GetFighters().AddDamage(events[i].Target, GetSlot(), SHOT_DAMAGE)) {
 			Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
 		}
 	}
