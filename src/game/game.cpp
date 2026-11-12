@@ -137,6 +137,16 @@ GAME_RULE Game::GetRule() const
 	return m_Net.IsOnline() ? m_Net.GetRule() : m_Scene.GetRule();
 }
 
+bool Game::CanEditTuning() const
+{
+	return !m_Net.IsOnline() || (m_Net.IsHost() && m_Scene.GetScene() != SCENE_MATCH);
+}
+
+void Game::SetTuning(const MATCH_TUNING& tuning)
+{
+	if (CanEditTuning() && TuningCalcIsValid(tuning)) m_Tuning = tuning;
+}
+
 uint32_t Game::GetSeed() const
 {
 	return m_Net.IsOnline() ? m_Net.GetSeed() + m_Net.GetRound() * MATCH_ROUND_STEP : m_OfflineSeed;
