@@ -21,7 +21,6 @@ static constexpr float THROW_POWER = 1.5f;
 static constexpr float GRIP_RANGE = 16.0f; // 足場のふちへ伸ばせる距離（上下も含む）
 static constexpr float GRIP_HALF_ANGLE = XMConvertToRadians(40.0f); // 足場のふちを探す画面の正面の開き（見上げているときは上下も含む）
 static constexpr float LOOK_UP_SINE = 0.09f; // カメラの向きの Y がこれより大きいと「見上げている」（約 5°）
-static constexpr float LOOK_TARGET_HALF_ANGLE = XMConvertToRadians(20.0f); // 見上げているとき、ロックオンの敵を狙う画面の中央からの開き
 static constexpr TENTACLE_PULL_PARAMS PULL_PARAMS{ 20.0f, 0.8f, 1.5f };
 static constexpr float LANDING_INSET = 0.8f; // 足場のふちから内側へ寄せて着地する距離
 static constexpr float SPIN_PHASE_SECONDS[] = { 0.25f, 0.4f, 0.2f }; // 溜め・回転・休み
@@ -142,20 +141,17 @@ bool TentacleArm::CanAnchor() const
 }
 
 // 伸ばす先を決める：届く距離のロックオン中の敵 → 画面の正面の足場のふち（CanAnchor のときだけ。復帰は敵より足場を優先） → 画面の正面。
-// 見上げているときだけ上下も含めて狙い、画面の中央から外れたロックオンの敵より見ている先を優先する。
+// 見上げているときだけ上下も含めて狙う。
 void TentacleArm::StartReach(const TENTACLE_TARGET* targets, const VEC3& origin, const VEC3& cameraForward,
 	VEC3& aim, STAGE_GRIP& grip, bool& hasGrip) const
 {
 	const XMFLOAT3 view = GetCamera().GetDirection();
 	const bool lookingUp = view.y > LOOK_UP_SINE;
 	const VEC3 viewForward = lookingUp ? VEC3{ view.x, view.y, view.z } : cameraForward;
-	int target = GetAimTarget();
+	// ロックオン中は、見上げていても敵へ伸ばす（足場のふちは場外から戻るときか、敵が届かないときだけ）。
+	const int target = GetAimTarget();
 	const VEC3 center = target >= 0
 		? Vec3Scale(Vec3Add(targets[target].Body.Start, targets[target].Body.End), 0.5f) : VEC3{};
-	if (target >= 0 && lookingUp) {
-		const VEC3 toTarget = Vec3Sub(center, origin);
-		if (Vec3Dot(toTarget, viewForward) < Vec3Length(toTarget) * cosf(LOOK_TARGET_HALF_ANGLE)) target = -1;
-	}
 	const XMFLOAT3 p = GetPlayer().GetPosition();
 	// ロックオン中は敵をつかむ操作に絞る。場外から戻るときだけは敵より足場を優先する。
 	const bool recovering = !GetCamera().IsFreeLook() && CanAnchor();

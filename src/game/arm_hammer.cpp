@@ -103,9 +103,9 @@ void HammerArm::Impact()
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		const TENTACLE_TARGET target = GetFighters().GetTarget(i, GetSlot());
 		if (!target.Available || !CollisionSphereCapsule({ m_RangeCenter, m_RangeRadius }, target.Body).Hit) continue;
-		// 衝撃波はまわりへ押し出し、単押しは叩いた相手をプレイヤーが向いている方向へ飛ばす。
+		// 衝撃波はまわりへ押し出し、単押しは叩いた相手を叩いた向きへ飛ばす。
 		const VEC3 launch = m_Wave ? AreaCalcRadialDirection(m_RangeCenter, target.Body, WAVE_UP, m_Direction)
-			: AreaCalcLaunchDirection(GetForward(), IMPACT_UP);
+			: AreaCalcLaunchDirection(m_Direction, IMPACT_UP);
 		if (GetFighters().Launch(i, GetSlot(), launch,
 			m_Wave ? WAVE_DAMAGE : IMPACT_DAMAGE, m_Wave ? WAVE_POWER : IMPACT_POWER)) affected = true;
 		const float stunSeconds = TuningCalcValue(GetTuning(), TUNING_HAMMER_STUN);
@@ -131,8 +131,11 @@ void HammerArm::Update(const ARM_INPUT& input)
 		m_Direction = GetAim(false);
 		m_Phase.Start(HAMMER_CHARGE);
 	}
+	// ためている間は狙いを追い続け、叩く瞬間の向き（ロックオン中は相手の方）に叩く。
+	if (m_Phase.GetPhase() == HAMMER_CHARGE) m_Direction = GetAim(false);
 	const ARM_PHASE_STEP step = m_Phase.Step(dt, GetSeconds(), HAMMER_PHASE_COUNT);
 	if (step.Entered == HAMMER_SLAM) {
+		m_Direction = GetAim(false);
 		Impact();
 		if (m_AirTap) StartHop();
 	}
