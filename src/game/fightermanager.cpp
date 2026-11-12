@@ -285,11 +285,12 @@ void FighterManager::Heal(int index, float amount)
 	if (IsActive(index)) m_Fighters[index].Heal(amount);
 }
 
-void FighterManager::AddDamage(int index, int attacker, float damage)
+bool FighterManager::AddDamage(int index, int attacker, float damage)
 {
-	if (!CanAttack(index, attacker)) return;
+	if (!CanAttack(index, attacker)) return false;
 	m_Fighters[index].AddDamage(damage);
 	m_Versus.RecordAttack(attacker, index);
+	return true;
 }
 
 void FighterManager::Hit(int index, int attacker, const XMFLOAT3& direction, float damage, float power)
