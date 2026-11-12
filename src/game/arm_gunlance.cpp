@@ -11,16 +11,17 @@
 static constexpr PROJECTILE_PARAMS SHOT_PARAMS{ 0.2f, 0.0f, 0.8f, 0.0f, false };
 static constexpr float SHOT_SPEED = 30.0f;
 static constexpr float MUZZLE_FORWARD = 1.4f; // 肩から弾を出す所までの距離。
-static constexpr float SHOT_DAMAGE = 6.0f;
-static constexpr float SHOT_POWER = 1.0f;
+static constexpr float SHOT_DAMAGE = 3.0f;
+static constexpr float SHOT_POWER = 0.5f;
 static constexpr float SHOT_UP = 0.4f;
 static constexpr float RUSH_SPEED = 8.0f;
 static constexpr float RUSH_REACH = 1.6f; // 突進の当たりの、肩から前への距離。
 static constexpr float RUSH_RADIUS = 0.35f;
-static constexpr float IMPALE_DAMAGE = 6.0f;
-static constexpr float BURST_DAMAGE = 8.0f;
-static constexpr float FINISH_DAMAGE = 12.0f;
-static constexpr float FINISH_POWER = 3.0f;
+static constexpr float IMPALE_DAMAGE = 3.0f;
+static constexpr float BURST_DAMAGE = 4.0f;
+static constexpr float FINISH_DAMAGE = 6.0f;
+static constexpr float FINISH_POWER = 1.5f;
+static constexpr float FINISH_UP = 1.0f; // 最後の1発で飛ばす向きの、前 1 に足す上の量（1.0 で約45°。大きいほど真上に近い）。
 static constexpr float LIFT_FORWARD = 1.2f; // 持ち上げ終わった相手の肩から前への距離。
 static constexpr float LIFT_HEIGHT = 1.6f;
 static constexpr float POSE_SECONDS = 0.2f; // 発射のあと構えを保つ秒数。
@@ -136,7 +137,7 @@ void GunlanceArm::StepImpale(const GUNLANCE_STEP& step)
 		m_RecoilSeconds = RECOIL_SECONDS;
 		Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
 		if (step.Finished && i + 1 == step.Shots) {
-			fighters.Release(m_HeldTarget, GetSlot(), true, { 0.0f, 1.0f, 0.0f }, FINISH_DAMAGE, FINISH_POWER);
+			fighters.Release(m_HeldTarget, GetSlot(), true, AreaCalcLaunchDirection(m_Direction, FINISH_UP), FINISH_DAMAGE, FINISH_POWER);
 			m_HeldTarget = -1;
 		}
 		else fighters.AddDamage(m_HeldTarget, GetSlot(), BURST_DAMAGE);
