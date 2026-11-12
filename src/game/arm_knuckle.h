@@ -35,6 +35,7 @@ public:
 
 private:
 	int FindTarget(float reach, float radius) const;
+	bool IsOffStage() const;
 	void Strike(int target, float up, float damage, float power);
 	void StopAirRush();
 	ArmPhaseCalc m_Phase;
