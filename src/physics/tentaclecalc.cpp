@@ -155,9 +155,10 @@ TENTACLE_EVENT TentacleCalc::Step(const VEC3& origin, const VEC3& aim,
 	}
 	else if (m_State == TENTACLE_HOLDING) {
 		m_HoldTime += dt;
-		if (trigger || m_HoldTime >= params.HoldSeconds) {
+		const bool autoThrow = params.ThrowSeconds > 0.0f && m_HoldTime >= params.ThrowSeconds;
+		if (trigger || autoThrow || m_HoldTime >= params.HoldSeconds) {
 			event.Released = m_Target;
-			event.Throw = trigger;
+			event.Throw = trigger || autoThrow;
 			m_Target = -1;
 			m_State = TENTACLE_RETURNING;
 			return event;

@@ -155,6 +155,24 @@ namespace Proto1Tests
 		EXPECT_EQ(-1, Step(arm, true, 0.01f, &target, 1).Released);
 	}
 
+	// つかんで0.3秒では保持し、0.35秒に達すると追加入力なしで投げる（60fps）。
+	TEST(TentacleCalcTest, HoldingAutomaticallyThrowsAfterDelay)
+	{
+		TentacleCalc arm; arm.Reset();
+		TENTACLE_PARAMS automatic = params;
+		automatic.ThrowSeconds = 0.35f;
+		TENTACLE_TARGET target = Target(6);
+		EXPECT_EQ(0, arm.Step(origin, aim, hold, true, false, 0.3f, automatic, &target, 1, stage).Grabbed);
+		target.Available = false;
+		for (int frame = 0; frame < 20; ++frame) {
+			EXPECT_EQ(-1, arm.Step(origin, aim, hold, false, false, 1.0f / 60.0f, automatic, &target, 1, stage).Released);
+		}
+		const auto event = arm.Step(origin, aim, hold, false, false, 1.0f / 60.0f, automatic, &target, 1, stage);
+		EXPECT_EQ(0, event.Released);
+		EXPECT_TRUE(event.Throw);
+		EXPECT_EQ(-1, arm.GetTarget());
+	}
+
 	TEST(TentacleCalcTest, Timeout_ReleasesWithoutDamage)
 	{
 		TentacleCalc arm; arm.Reset();
