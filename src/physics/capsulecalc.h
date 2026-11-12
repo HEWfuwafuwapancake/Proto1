@@ -21,6 +21,8 @@ public:
 	static constexpr int CAPACITY = 16;
 	/// @brief 袋に入れる腕の種類の数
 	static constexpr int TYPE_COUNT = 6;
+	/// @brief 最初の個数と出現間隔を設定する（個数は0〜最大数、秒数は正の値。配置は次のStartで戻す）
+	void SetAmount(int initialCount, double spawnSeconds);
 
 	/// @brief 種とステージを受け取り、試合開始時のカプセルを配置する
 	void Start(const STAGE& stage, uint32_t seed);
@@ -44,4 +46,6 @@ private:
 	int m_Bag[TYPE_COUNT]{};
 	int m_NextType = TYPE_COUNT;
 	double m_SpawnElapsed = 0.0;
+	int m_InitialCount = 8;
+	double m_SpawnSeconds = 1.5;
 };

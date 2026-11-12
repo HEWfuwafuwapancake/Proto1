@@ -32,6 +32,8 @@ public:
 	/// @brief タイトルバーに表示する左右の装備を読む（ダミーのスロットは装備を変えられない）
 	/// @param slot スロット番号（0〜3）
 	const ArmManager& GetArms(int slot) const { return m_Arms[slot]; }
+	/// @brief 次の試合開始時に適用する設定を取得する
+	const MATCH_TUNING& GetTuning() const { return m_Tuning; }
 
 private:
 	void Restart(bool retry);
@@ -45,6 +47,7 @@ private:
 	uint32_t GetSeed() const;
 
 	Stage m_Stage;
+	MATCH_TUNING m_Tuning = TuningCalcDefault();
 	VersusCalc m_Participants; // タイトルで決まる参加者。試合の得点はFighterManagerが持つ。
 	FighterManager m_Fighters;
 	ArmCapsule m_ArmCapsule;

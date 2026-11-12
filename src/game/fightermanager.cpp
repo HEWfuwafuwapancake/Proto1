@@ -47,7 +47,7 @@ void FighterManager::Initialize(const Stage& stage, const VersusCalc& participan
 		m_Arms[i] = nullptr;
 		m_Escapes[i].Reset();
 		m_Fighters[i].Initialize(stage, i, m_Versus.GetDevice(i),
-			{ platform.CenterX + SPAWN_X[i], platform.TopY, platform.CenterZ + SPAWN_Z[i] }, m_Models);
+			{ platform.CenterX + SPAWN_X[i] * m_MapScale, platform.TopY, platform.CenterZ + SPAWN_Z[i] * m_MapScale }, m_Models);
 	}
 }
 
@@ -58,10 +58,16 @@ void FighterManager::BindPlayer(int slot, const Camera& camera, const ArmManager
 	m_Arms[slot] = &arms;
 }
 
-void FighterManager::SetMatchSettings(GAME_RULE rule, uint32_t seed)
+void FighterManager::SetMatchSettings(GAME_RULE rule, uint32_t seed, const MATCH_TUNING& tuning)
 {
 	m_Rule = rule;
 	m_Spawn.SetSeed(seed);
+	m_MapScale = TuningCalcValue(tuning, TUNING_MAP_SIZE);
+	const STAGE& stage = m_Stage->GetStage();
+	for (int i = 0; i < FIGHTER_COUNT; ++i) {
+		m_Fighters[i].SetTuningScales(TuningCalcValue(tuning, TUNING_DAMAGE), TuningCalcValue(tuning, TUNING_KNOCKBACK));
+		m_Fighters[i].SetSpawn({ stage.CenterX + SPAWN_X[i] * m_MapScale, stage.TopY, stage.CenterZ + SPAWN_Z[i] * m_MapScale });
+	}
 }
 
 void FighterManager::Reset()
@@ -127,7 +133,7 @@ void FighterManager::RespawnAtSafePoint(int slot)
 	const VEC3 center{ stage.CenterX, stage.TopY, stage.CenterZ };
 	VEC3 points[ISLAND_RESPAWN_COUNT + STAGE_PLATFORM_MAX];
 	int pointCount = 0;
-	for (const VEC3& offset : ISLAND_RESPAWN_OFFSETS) points[pointCount++] = Vec3Add(center, offset);
+	for (const VEC3& offset : ISLAND_RESPAWN_OFFSETS) points[pointCount++] = Vec3Add(center, Vec3Scale(offset, m_MapScale));
 	for (int i = 0; i < stage.PlatformCount; ++i) {
 		const STAGE_PLATFORM& platform = stage.Platforms[i];
 		points[pointCount++] = { platform.CenterX, platform.TopY, platform.CenterZ };

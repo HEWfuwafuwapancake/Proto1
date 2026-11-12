@@ -31,6 +31,10 @@ public:
 	static XMFLOAT4 GetPlayerColor(int slot);
 	/// @brief 最初の位置・0%・生存状態に戻す（機器の割り当てはそのまま）
 	void Reset();
+	/// @brief 次のリセットと復活で使う最初の足元位置を設定する（今の位置は動かさない）
+	void SetSpawn(const VEC3& spawn) { m_Spawn = spawn; }
+	/// @brief ダメージと吹っ飛び速度の倍率を試合開始時に設定する
+	void SetTuningScales(float damage, float knockback) { m_DamageScale = damage; m_KnockbackScale = knockback; }
 	/// @brief 体を1フレーム進める（人だけカメラ・腕を渡す。ダミーはnullptr）
 	/// @return このフレームの場外・復活イベント
 	DUMMY_EVENT Update(const Camera* camera, const ArmManager* arms);
@@ -148,6 +152,8 @@ private:
 	DummyLifeCalc m_Life;
 	VEC3 m_Spawn = {};
 	float m_Percent = 0.0f;
+	float m_DamageScale = 1.0f;
+	float m_KnockbackScale = 1.0f;
 	float m_Yaw = 0.0f;
 	bool m_Launched = false;
 	int m_FlinchFrames = 0; // 吹っ飛ばされた直後に腕を使えないフレーム数（出していた腕を中断させる）

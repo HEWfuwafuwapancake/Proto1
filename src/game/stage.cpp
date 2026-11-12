@@ -36,6 +36,17 @@ void Stage::Reset(void)
 	}
 }
 
+void Stage::SetSizeScale(float scale)
+{
+	Reset();
+	m_Stage.HalfWidth *= scale;
+	m_Stage.HalfDepth *= scale;
+	for (int i = 0; i < m_Stage.PlatformCount; ++i) {
+		m_Stage.Platforms[i].CenterX *= scale;
+		m_Stage.Platforms[i].CenterZ *= scale;
+	}
+}
+
 void Stage::Finalize(void)
 {
 

@@ -65,6 +65,10 @@
     <ClCompile Include="armpresscalc_test.cpp" />
     <ClCompile Include="armusecalc_test.cpp" />
     <ClCompile Include="capsulecalc_test.cpp" />
+    <ClCompile Include="tuningcalc_test.cpp" />
+    <ClInclude Include="..\..\src\physics\tuningcalc.h">
+      <Filter>src\physics</Filter>
+    </ClInclude>
     <ClCompile Include="breachcalc_test.cpp" />
     <ClCompile Include="..\..\src\physics\breachcalc.cpp">
       <Filter>src\physics</Filter>
@@ -76,6 +80,9 @@
       <Filter>src\physics</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\physics\capsulecalc.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\physics\tuningcalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
     <ClCompile Include="framestats_test.cpp" />

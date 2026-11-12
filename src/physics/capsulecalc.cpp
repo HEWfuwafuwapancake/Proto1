@@ -3,8 +3,6 @@
 #include <limits>
 
 // 調整用の値
-static constexpr int INITIAL_CAPSULE_COUNT = 8;
-static constexpr double CAPSULE_SPAWN_SECONDS = 1.5;
 static constexpr int PLATFORM_CHANCE_DIVISOR = 4; // 高台を選ぶのは4回に1回の確率
 static constexpr float CAPSULE_EDGE_MARGIN = 1.25f;
 static constexpr float CAPSULE_SPACING = 2.0f;
@@ -12,20 +10,26 @@ static constexpr int POSITION_ATTEMPTS = 8;
 static constexpr float PICKUP_RADIUS = 0.65f;
 static constexpr float PICKUP_CENTER_HEIGHT = 0.7f;
 
+void ArmCapsuleCalc::SetAmount(int initialCount, double spawnSeconds)
+{
+	m_InitialCount = (std::max)(0, (std::min)(CAPACITY, initialCount));
+	if (spawnSeconds > 0.0) m_SpawnSeconds = spawnSeconds;
+}
+
 void ArmCapsuleCalc::Start(const STAGE& stage, uint32_t seed)
 {
 	m_Items = {};
 	m_Random.SetSeed(seed);
 	m_NextType = TYPE_COUNT;
 	m_SpawnElapsed = 0.0;
-	for (int i = 0; i < INITIAL_CAPSULE_COUNT; ++i) Spawn(stage);
+	for (int i = 0; i < m_InitialCount; ++i) Spawn(stage);
 }
 
 void ArmCapsuleCalc::Step(const STAGE& stage, float dt)
 {
 	m_SpawnElapsed += dt;
-	while (m_SpawnElapsed >= CAPSULE_SPAWN_SECONDS) {
-		m_SpawnElapsed -= CAPSULE_SPAWN_SECONDS;
+	while (m_SpawnElapsed >= m_SpawnSeconds) {
+		m_SpawnElapsed -= m_SpawnSeconds;
 		Spawn(stage);
 	}
 }

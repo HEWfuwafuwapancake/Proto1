@@ -17,6 +17,8 @@ public:
 
 	/// @brief 状態を最初に戻す（参照はそのまま）
 	void Reset(void);
+	/// @brief 浮島の幅・奥行きと高台の配置を元の値から指定倍率にする（高さと高台の大きさはそのまま）
+	void SetSizeScale(float scale);
 
 	/// @brief ステージの終了処理（今は何もしない）
 	void Finalize(void);

@@ -28,7 +28,6 @@ static constexpr float WAVE_RADIUS = 4.5f;
 static constexpr float WAVE_DAMAGE = 18.0f;
 static constexpr float WAVE_POWER = 2.4f;
 static constexpr float WAVE_UP = 0.8f;
-static constexpr float WAVE_STUN_SECONDS = 1.2f;
 static constexpr float RANGE_SHOW_SECONDS = 0.2f; // 当たる範囲を見せる秒数。
 static constexpr float RAISE_PITCH = XMConvertToRadians(60.0f);
 static constexpr float SLAM_PITCH = XMConvertToRadians(-30.0f);
@@ -106,7 +105,8 @@ void HammerArm::Impact()
 		if (!target.Available || !CollisionSphereCapsule({ m_RangeCenter, m_RangeRadius }, target.Body).Hit) continue;
 		if (GetFighters().Launch(i, GetSlot(), AreaCalcRadialDirection(m_RangeCenter, target.Body, m_Wave ? WAVE_UP : IMPACT_UP, m_Direction),
 			m_Wave ? WAVE_DAMAGE : IMPACT_DAMAGE, m_Wave ? WAVE_POWER : IMPACT_POWER)) affected = true;
-		if (m_Wave && GetFighters().ApplyStatus(i, GetSlot(), STATUS_STUN, WAVE_STUN_SECONDS, 0.0f)) affected = true;
+		const float stunSeconds = TuningCalcValue(GetTuning(), TUNING_HAMMER_STUN);
+		if (m_Wave && stunSeconds > 0.0f && GetFighters().ApplyStatus(i, GetSlot(), STATUS_STUN, stunSeconds, 0.0f)) affected = true;
 		hit = true;
 	}
 	if (affected && !m_UseConsumed) {

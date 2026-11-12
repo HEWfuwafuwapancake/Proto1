@@ -116,10 +116,13 @@ void Game::Restart(bool retry)
 	if (!retry && !m_Net.IsOnline()) m_OfflineSeed += MATCH_ROUND_STEP;
 	m_MatchSeed = retry ? m_MatchSeed + MATCH_SEED_STEP : GetSeed();
 	m_Match.SetRule(rule);
-	m_Fighters.SetMatchSettings(rule, m_MatchSeed);
+	const MATCH_TUNING& tuning = GetTuning();
+	m_Stage.SetSizeScale(TuningCalcValue(tuning, TUNING_MAP_SIZE));
+	m_Fighters.SetMatchSettings(rule, m_MatchSeed, tuning);
+	m_ArmCapsule.SetAmount(TuningCalcCapsuleCount(tuning), TuningCalcCapsuleSeconds(tuning));
 
 	// 敵を戻す前に腕を離し、プレイヤー・敵のあとにカメラを戻す。
-	for (int k = 0; k < m_HumanCount; ++k) m_Arms[m_Humans[k]].ResetForMatch(rule);
+	for (int k = 0; k < m_HumanCount; ++k) m_Arms[m_Humans[k]].ResetForMatch(rule, tuning);
 	m_Fighters.Reset();
 	if (rule == GAME_RULE_GAME) m_ArmCapsule.Reset(m_MatchSeed ^ CAPSULE_SEED_MASK);
 	for (int k = 0; k < m_HumanCount; ++k) m_Cameras[m_Humans[k]].Reset();
@@ -303,7 +306,7 @@ void Game::Update()
 				// 復活した地点で拾った腕まで、あとから外さないようにする。
 				for (int k = 0; k < m_HumanCount; ++k) {
 					const int slot = m_Humans[k];
-					if (m_Fighters.GetFighter(slot).DidRespawn()) m_Arms[slot].ResetForMatch(GAME_RULE_GAME);
+					if (m_Fighters.GetFighter(slot).DidRespawn()) m_Arms[slot].ResetForMatch(GAME_RULE_GAME, m_Arms[slot].GetTuning());
 				}
 				m_ArmCapsule.Update(m_Fighters, m_Arms);
 			}

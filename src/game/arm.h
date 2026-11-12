@@ -6,6 +6,7 @@
 #include "physics/parrycalc.h"
 #include "physics/guardcalc.h"
 #include "physics/scenecalc.h"
+#include "physics/tuningcalc.h"
 #include "render/animcalc.h"
 #include "physics/vec3.h"
 #include <memory>
@@ -94,6 +95,8 @@ protected:
 	void ConsumeUse(int count = 1);
 	/// @brief 残り使用回数を取得する（DEBUG の無制限は -1）
 	int GetRemainingUses() const;
+	/// @brief 今の試合に適用済みの設定を取得する
+	const MATCH_TUNING& GetTuning() const;
 	/// @brief プレイヤーへの参照を取得する
 	Fighter& GetPlayer() const;
 	/// @brief 全員の体の管理への参照を取得する
@@ -189,7 +192,9 @@ public:
 	/// @brief 左右の腕を待機に戻す（装備はそのまま。時間切れ・やり直し用）
 	void Reset(void);
 	/// @brief 試合開始や復活に備えて腕を戻す（GAME は素手、DEBUG は素手だけ触手にする）
-	void ResetForMatch(GAME_RULE rule);
+	void ResetForMatch(GAME_RULE rule, const MATCH_TUNING& tuning);
+	/// @brief 今の試合に適用済みの設定を取得する
+	const MATCH_TUNING& GetTuning() const { return m_Tuning; }
 	/// @brief 両手を触手に戻し、十字キーの手の選択も左手に戻す（オンラインを始めるとき。相手と装備をそろえる）
 	void ResetEquip(void);
 	/// @brief 拾った腕を空いている左手、次に右手へ装備し、使用回数を入れる（装備できたら true）
@@ -229,11 +234,13 @@ public:
 
 private:
 	void ChangeType(int hand, int next, int direction = 1);
+	bool HasUnlimitedUses() const;
 	void UpdateEquip(const Fighter& player);
 	void BreakExhaustedArm(int hand);
 	void UpdateGuards(const Fighter& player, float dt, bool interrupted);
 	ARM_LINKS m_Links = {};
 	GAME_RULE m_Rule = GAME_RULE_DEBUG;
+	MATCH_TUNING m_Tuning = TuningCalcDefault();
 	int m_SelectedHand = 0;
 	int m_LastActiveHand = -1;
 	int m_ChangeDirections[2] = { 1, 1 };

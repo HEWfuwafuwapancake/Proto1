@@ -99,7 +99,7 @@ void KnuckleArm::Update(const ARM_INPUT& input)
 		else if (!GetPlayer().IsOnGround() && !GetPlayer().IsPulled()) {
 			// 空中の突進は前斜め上へ進む（場外から戻れる）。水平の速度しか体に伝わらないので、自分で体を動かす。
 			const XMFLOAT3 feet = GetPlayer().GetPosition();
-			const float distance = RUSH_SPEED * RUSH_SECONDS[KNUCKLE_STRIKE];
+			const float distance = RUSH_SPEED * RUSH_SECONDS[KNUCKLE_STRIKE] * TuningCalcValue(GetTuning(), TUNING_RUSH_DISTANCE);
 			m_Rise.Start({ feet.x, feet.y, feet.z }, RiseCalcSlopeOffset(m_Direction, AIR_RUSH_PITCH, distance), RUSH_SECONDS[KNUCKLE_STRIKE], false);
 			m_AirRush = true;
 			GetPlayer().SetPulled(true);
@@ -174,5 +174,5 @@ float KnuckleArm::GetMoveScale() const
 VEC3 KnuckleArm::GetRushVelocity() const
 {
 	if (!m_Rush || m_AirRush || m_Phase.GetPhase() != KNUCKLE_STRIKE) return {};
-	return Vec3Scale(m_Direction, RUSH_SPEED);
+	return Vec3Scale(m_Direction, RUSH_SPEED * TuningCalcValue(GetTuning(), TUNING_RUSH_DISTANCE));
 }

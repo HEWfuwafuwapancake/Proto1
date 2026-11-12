@@ -14,6 +14,8 @@ public:
 	void Initialize(const Stage& stage);
 	/// @brief 試合の種を受け取り、カプセルを最初の配置に戻す
 	void Reset(uint32_t seed);
+	/// @brief 次の試合の最初の個数と出現間隔の秒を設定する
+	void SetAmount(int initialCount, double spawnSeconds) { m_Calc.SetAmount(initialCount, spawnSeconds); }
 	/// @brief 配置を消し、ステージの参照を外す
 	void Finalize();
 	/// @brief カプセルを出現させ、触れた人の空いている手に腕を装備する

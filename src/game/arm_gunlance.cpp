@@ -261,5 +261,5 @@ float GunlanceArm::GetMoveScale() const
 
 VEC3 GunlanceArm::GetRushVelocity() const
 {
-	return m_Calc.IsRushing() ? Vec3Scale(m_Direction, RUSH_SPEED) : VEC3{};
+	return m_Calc.IsRushing() ? Vec3Scale(m_Direction, RUSH_SPEED * TuningCalcValue(GetTuning(), TUNING_RUSH_DISTANCE)) : VEC3{};
 }
