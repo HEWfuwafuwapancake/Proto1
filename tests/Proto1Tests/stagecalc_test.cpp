@@ -114,6 +114,17 @@ namespace Proto1Tests
 		EXPECT_NEAR(14.0f, grip.Surface.CenterZ, 0.001f);
 	}
 
+	// 高台の下で起きた爆発は、高台の上の相手に届かない。高台の外へずれた所や、同じ面の上どうしは届く
+	TEST(StageCalcTest, IsBlocked_PlatformBetween)
+	{
+		STAGE stage = MakeStage();
+		stage.Platforms[0] = { 0.0f, 0.0f, 2.0f, 2.0f, 4.0f, 0.5f };
+		stage.PlatformCount = 1;
+		EXPECT_TRUE(StageCalcIsBlocked(stage, { 0.0f, 0.3f, 0.0f }, { 0.0f, 5.0f, 0.0f }));
+		EXPECT_FALSE(StageCalcIsBlocked(stage, { 6.0f, 0.3f, 0.0f }, { 6.0f, 5.0f, 0.0f }));
+		EXPECT_FALSE(StageCalcIsBlocked(stage, { 0.0f, 0.3f, 0.0f }, { 3.0f, 1.0f, 0.0f }));
+	}
+
 	// 浮島のふちは、場外にいるときだけ選ぶ
 	TEST(StageCalcTest, FindGrip_MainIslandOnlyWhenOffIt)
 	{

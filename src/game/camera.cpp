@@ -213,7 +213,8 @@ void Camera::Update(void)
 		m_ManualPause = fmaxf(0.0f, m_ManualPause - dt);
 	}
 	else if (m_LockTarget < 0 && !m_FreeLook && m_Match->IsPlaying()) {
-		m_YawGoal += m_Player->GetMoveInput().X * FOLLOW_TURN_SPEED * dt;
+		// 腕で体が動けない間（ガンランスで突き刺している間など）は、移動の入力で視界を回さない。
+		m_YawGoal += m_Player->GetMoveInput().X * m_Arms->GetMoveScale() * FOLLOW_TURN_SPEED * dt;
 	}
 	// 長く回し続けても、角度が大きくなり続けないようにする。
 	m_YawGoal = atan2f(sinf(m_YawGoal), cosf(m_YawGoal));

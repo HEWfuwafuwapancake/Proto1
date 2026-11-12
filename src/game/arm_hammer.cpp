@@ -103,7 +103,10 @@ void HammerArm::Impact()
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		const TENTACLE_TARGET target = GetFighters().GetTarget(i, GetSlot());
 		if (!target.Available || !CollisionSphereCapsule({ m_RangeCenter, m_RangeRadius }, target.Body).Hit) continue;
-		if (GetFighters().Launch(i, GetSlot(), AreaCalcRadialDirection(m_RangeCenter, target.Body, m_Wave ? WAVE_UP : IMPACT_UP, m_Direction),
+		// 衝撃波はまわりへ押し出し、単押しは叩いた相手をプレイヤーが向いている方向へ飛ばす。
+		const VEC3 launch = m_Wave ? AreaCalcRadialDirection(m_RangeCenter, target.Body, WAVE_UP, m_Direction)
+			: AreaCalcLaunchDirection(GetForward(), IMPACT_UP);
+		if (GetFighters().Launch(i, GetSlot(), launch,
 			m_Wave ? WAVE_DAMAGE : IMPACT_DAMAGE, m_Wave ? WAVE_POWER : IMPACT_POWER)) affected = true;
 		const float stunSeconds = TuningCalcValue(GetTuning(), TUNING_HAMMER_STUN);
 		if (m_Wave && stunSeconds > 0.0f && GetFighters().ApplyStatus(i, GetSlot(), STATUS_STUN, stunSeconds, 0.0f)) affected = true;
