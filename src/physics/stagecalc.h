@@ -86,6 +86,13 @@ STAGE_PLATFORM StageCalcIslandSurface(const STAGE& stage);
 bool StageCalcFindGrip(const STAGE& stage, const VEC3& origin, const VEC3& feet, const VEC3& forward,
 	float maxDistance, float halfAngle, STAGE_GRIP& grip);
 
+/// @brief 2点を結ぶ線が、浮島か高台の上の面を上下に通り抜けるか調べる（爆発が足場の向こうへ届かないようにする）
+/// @param stage ステージ
+/// @param from 始まりの点（爆心など）
+/// @param to 終わりの点（相手の体の中心など）
+/// @return 上の面の高さをまたぎ、またぐ所がその足場の範囲の中なら true（ちょうど面の高さの点はまたがない）
+bool StageCalcIsBlocked(const STAGE& stage, const VEC3& from, const VEC3& to);
+
 /// @brief 場外の下の線より下に落ちたか調べる
 /// @param stage ステージ
 /// @param y 調べる高さ

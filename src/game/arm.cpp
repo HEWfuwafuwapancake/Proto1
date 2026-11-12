@@ -11,6 +11,7 @@
 #include "game/tentacle.h"
 #include "input/pad.h"
 #include "game/camera.h"
+#include "game/stage.h"
 #include "physics/areacalc.h"
 #include "physics/armcalc.h"
 #include "physics/grapplecalc.h"
@@ -462,6 +463,9 @@ int Arm::Explode(const VEC3& center, float radius, float damage, float power, fl
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		const TENTACLE_TARGET target = GetFighters().GetTarget(i, GetSlot());
 		if (!target.Available || !CollisionSphereCapsule({ center, radius }, target.Body).Hit) continue;
+		// 浮島や高台をはさんだ向こう（高台の下で爆発したときの上の相手など）には届かない。
+		const VEC3 bodyCenter = Vec3Scale(Vec3Add(target.Body.Start, target.Body.End), 0.5f);
+		if (StageCalcIsBlocked(GetStage().GetStage(), center, bodyCenter)) continue;
 		const bool applied = GetFighters().Launch(i, GetSlot(), AreaCalcRadialDirection(center, target.Body, up, GetForward()), damage, power);
 		if (applied && affected != nullptr) ++*affected;
 		++hits;

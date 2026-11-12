@@ -7,7 +7,7 @@
 #include "render/shape.h"
 
 // 調整用の値
-static constexpr float C4_SECONDS[] = { 0.5f, 0.3f }; // 大型のため・投げたあとの構え
+static constexpr float C4_SECONDS[] = { 1.0f, 0.3f }; // 大型のため・投げたあとの構え（ハンマーの強攻撃より速く強くならないようにする）
 static constexpr PROJECTILE_PARAMS BOMB_PARAMS{ 0.2f, 20.0f, 5.0f, 0.0f, false };
 static constexpr float THROW_SPEED = 12.0f;
 static constexpr float THROW_RANGE = 10.0f;
@@ -20,8 +20,8 @@ static constexpr float BLAST_DAMAGE = 15.0f;
 static constexpr float BLAST_POWER = 2.4f;
 static constexpr float BLAST_UP = 0.8f;
 static constexpr float LARGE_BLAST_RADIUS = 5.0f;
-static constexpr float LARGE_BLAST_DAMAGE = 22.0f;
-static constexpr float LARGE_BLAST_POWER = 3.2f;
+static constexpr float LARGE_BLAST_DAMAGE = 18.0f;
+static constexpr float LARGE_BLAST_POWER = 2.3f; // ハンマーの長押し（2.4）・単押し（2.8）より弱く
 static constexpr float LARGE_BLAST_UP = 1.0f;
 static constexpr float BLAST_HEIGHT = 0.3f;
 static constexpr float RANGE_SHOW_SECONDS = 0.2f;

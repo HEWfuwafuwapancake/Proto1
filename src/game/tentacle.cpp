@@ -32,6 +32,7 @@ static constexpr float SPIN_UP = 0.6f; // 外への水平の単位方向に足�
 static constexpr float SPIN_HALF_HEIGHT = 1.5f; // 肩の高さから上下それぞれの当たる幅
 static constexpr float SPIN_MARGIN = XMConvertToRadians(2.0f); // 1フレーム分の扇に足す角度（つなぎ目の取りこぼし防止）
 static constexpr float SPIN_FULL_TURN = XMConvertToRadians(360.0f);
+static constexpr float SPIN_START_ANGLE = XMConvertToRadians(45.0f); // 回し始めの、正面から腕の側への角度（左腕なら左前から右へ振る）
 static constexpr float SPIN_RUMBLE_SMALL = 0.6f;
 static constexpr float SPIN_RUMBLE_LARGE = 0.6f;
 static constexpr float SPIN_RUMBLE_SECONDS = 0.15f;
@@ -196,7 +197,8 @@ void TentacleArm::StepPull(const TENTACLE_EVENT& event, float dt)
 VEC3 TentacleArm::GetSpinTip() const
 {
 	const float side = GetHand() == 0 ? -1.0f : 1.0f;
-	return Vec3Add(GetShoulder(), Vec3Scale(AreaCalcRotateYaw(m_SpinForward, side * m_SpinAngle), SPIN_RADIUS));
+	// 腕の側の斜め前から、反対の側へ向かって回す。
+	return Vec3Add(GetShoulder(), Vec3Scale(AreaCalcRotateYaw(m_SpinForward, side * (SPIN_START_ANGLE - m_SpinAngle)), SPIN_RADIUS));
 }
 
 void TentacleArm::StepSpin(const ARM_INPUT& input, float dt)
@@ -214,7 +216,7 @@ void TentacleArm::StepSpin(const ARM_INPUT& input, float dt)
 	const float angle = step.Entered == SPIN_RECOVER ? SPIN_FULL_TURN
 		: SPIN_FULL_TURN * fminf(1.0f, m_Spin.GetTime() / SPIN_PHASE_SECONDS[SPIN_SWING]);
 	const float side = GetHand() == 0 ? -1.0f : 1.0f;
-	const VEC3 middle = AreaCalcRotateYaw(m_SpinForward, side * (m_SpinAngle + angle) * 0.5f);
+	const VEC3 middle = AreaCalcRotateYaw(m_SpinForward, side * (SPIN_START_ANGLE - (m_SpinAngle + angle) * 0.5f));
 	const float halfAngle = (angle - m_SpinAngle) * 0.5f + SPIN_MARGIN;
 	const XMFLOAT3 p = GetPlayer().GetPosition();
 	const VEC3 center{ p.x, GetShoulder().Y, p.z };

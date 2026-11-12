@@ -103,6 +103,27 @@ bool StageCalcFindGrip(const STAGE& stage, const VEC3& origin, const VEC3& feet,
 	return found;
 }
 
+// 線が1つの足場の上の面を上下に通り抜けるか調べる。
+static bool CrossesSurface(const STAGE_PLATFORM& surface, const VEC3& from, const VEC3& to)
+{
+	const float low = fminf(from.Y, to.Y);
+	const float high = fmaxf(from.Y, to.Y);
+	if (!(low < surface.TopY && surface.TopY < high)) return false;
+	const float t = (surface.TopY - from.Y) / (to.Y - from.Y);
+	const float x = from.X + (to.X - from.X) * t;
+	const float z = from.Z + (to.Z - from.Z) * t;
+	return fabsf(x - surface.CenterX) <= surface.HalfWidth && fabsf(z - surface.CenterZ) <= surface.HalfDepth;
+}
+
+bool StageCalcIsBlocked(const STAGE& stage, const VEC3& from, const VEC3& to)
+{
+	if (CrossesSurface(StageCalcIslandSurface(stage), from, to)) return true;
+	for (int i = 0; i < stage.PlatformCount; ++i) {
+		if (CrossesSurface(stage.Platforms[i], from, to)) return true;
+	}
+	return false;
+}
+
 bool StageCalcIsOut(const STAGE& stage, float y)
 {
 	return y < stage.OutY;
