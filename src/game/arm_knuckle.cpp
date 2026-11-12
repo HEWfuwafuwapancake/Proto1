@@ -1,6 +1,7 @@
 ﻿#include "game/arm_knuckle.h"
 #include "game/fightermanager.h"
 #include "game/fighter.h"
+#include "game/stage.h"
 #include "core/gametime.h"
 #include "core/mathutil.h"
 #include "physics/areacalc.h"
@@ -69,6 +70,14 @@ int KnuckleArm::FindTarget(float reach, float radius) const
 	return AreaCalcFirstOnRay(GetShoulder(), m_Direction, reach, radius, targets, FIGHTER_COUNT, nullptr);
 }
 
+// 浮島の外にいるか、浮島の上面より下にいるなら場外とみなす。
+bool KnuckleArm::IsOffStage() const
+{
+	const XMFLOAT3 feet = GetPlayer().GetPosition();
+	const STAGE& stage = GetStage().GetStage();
+	return feet.y < stage.TopY || !StageCalcIsOnPlatform(stage, feet.x, feet.z);
+}
+
 void KnuckleArm::Strike(int target, float up, float damage, float power)
 {
 	// 空中の突進で使用回数を減らしていたら、当たっても重ねて減らさない。
@@ -96,8 +105,9 @@ void KnuckleArm::Update(const ARM_INPUT& input)
 			const int target = FindTarget(PUNCH_REACH, PUNCH_RADIUS);
 			if (target >= 0) Strike(target, PUNCH_UP, PUNCH_DAMAGE, PUNCH_POWER);
 		}
-		else if (!GetPlayer().IsOnGround() && !GetPlayer().IsPulled()) {
-			// 空中の突進は前斜め上へ進む（場外から戻れる）。水平の速度しか体に伝わらないので、自分で体を動かす。
+		else if (!GetPlayer().IsOnGround() && !GetPlayer().IsPulled() && IsOffStage()) {
+			// 場外の空中の突進は前斜め上へ進む（場外から戻れる）。水平の速度しか体に伝わらないので、自分で体を動かす。
+			// 浮島の上でジャンプしているだけのときは、地上と同じく水平に突進する。
 			const XMFLOAT3 feet = GetPlayer().GetPosition();
 			const float distance = RUSH_SPEED * RUSH_SECONDS[KNUCKLE_STRIKE] * TuningCalcValue(GetTuning(), TUNING_RUSH_DISTANCE);
 			m_Rise.Start({ feet.x, feet.y, feet.z }, RiseCalcSlopeOffset(m_Direction, AIR_RUSH_PITCH, distance), RUSH_SECONDS[KNUCKLE_STRIKE], false);
