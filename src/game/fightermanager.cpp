@@ -124,7 +124,7 @@ void FighterManager::PushBodies()
 		for (int j = i + 1; j < FIGHTER_COUNT; ++j) {
 			Fighter& a = m_Fighters[i];
 			Fighter& b = m_Fighters[j];
-			if (!a.CanUseArms() || !b.CanUseArms() || a.IsPulled() || b.IsPulled()) continue;
+			if (!a.CanPushBodies() || !b.CanPushBodies() || a.IsPulled() || b.IsPulled()) continue;
 			const XMFLOAT3 pa = a.GetPosition(), pb = b.GetPosition();
 			VEC3 first{ pa.x, pa.y, pa.z }, second{ pb.x, pb.y, pb.z };
 			if (VersusCalcPushBodies(first, second, a.IsHuman(), b.IsHuman(), a.GetBody().Radius, a.GetHeight())) {

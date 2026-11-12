@@ -269,4 +269,49 @@ namespace Proto1Tests
 		EXPECT_FALSE(body.GetOnGround());
 		EXPECT_TRUE(body.GetY() > -0.5f);
 	}
+
+	// 長く落ちても、落ちる速さは上限を超えない。ふつうのジャンプの高さは上限があっても変わらない
+	TEST(PlayerCalcTest, Step_FallSpeedStopsAtLimit)
+	{
+		PLAYER_PARAMS params = MakeParams();
+		params.MaxFallSpeed = 12.0f;
+		PlayerBodyCalc falling{};
+		falling.SetPosition({ 100.0f, 50.0f, 0.0f }); // 浮島の外
+		for (int i = 0; i < 120; i++) falling.Step(0.0f, 0.0f, false, PLAYER_DT, params, MakePlayerStage());
+		EXPECT_NEAR(-12.0f, falling.GetVelocityY(), PLAYER_EPSILON);
+
+		float peaks[2] = {};
+		for (int limited = 0; limited < 2; ++limited) {
+			PlayerBodyCalc body = MakeStandingBody(0.0f, 0.0f);
+			const PLAYER_PARAMS jumpParams = limited ? params : MakeParams();
+			body.Step(0.0f, 0.0f, true, PLAYER_DT, jumpParams, MakePlayerStage());
+			for (int i = 0; i < 120 && !body.GetOnGround(); i++) {
+				if (body.GetY() > peaks[limited]) peaks[limited] = body.GetY();
+				body.Step(0.0f, 0.0f, false, PLAYER_DT, jumpParams, MakePlayerStage());
+			}
+			EXPECT_TRUE(body.GetOnGround());
+		}
+		EXPECT_NEAR(peaks[0], peaks[1], PLAYER_EPSILON);
+	}
+
+	// 空中で1回だけジャンプでき、2回目は出せない。着地すると戻る
+	TEST(PlayerCalcTest, Step_AirJumpOnceUntilLanding)
+	{
+		PLAYER_PARAMS params = MakeParams();
+		params.AirJumps = 1;
+		const STAGE stage = MakePlayerStage();
+		PlayerBodyCalc body = MakeStandingBody(0.0f, 0.0f);
+		body.Step(0.0f, 0.0f, true, PLAYER_DT, params, stage);
+		for (int i = 0; i < 30; i++) body.Step(0.0f, 0.0f, false, PLAYER_DT, params, stage);
+		EXPECT_TRUE(body.GetVelocityY() < 0.0f); // 落ち始めている
+		body.Step(0.0f, 0.0f, true, PLAYER_DT, params, stage);
+		EXPECT_TRUE(body.GetVelocityY() > 8.0f); // 空中ジャンプで上向きに戻る
+		for (int i = 0; i < 30; i++) body.Step(0.0f, 0.0f, false, PLAYER_DT, params, stage);
+		const float falling = body.GetVelocityY();
+		body.Step(0.0f, 0.0f, true, PLAYER_DT, params, stage);
+		EXPECT_TRUE(body.GetVelocityY() < falling); // 2回目は出ず、落ち続ける
+		for (int i = 0; i < 240 && !body.GetOnGround(); i++) body.Step(0.0f, 0.0f, false, PLAYER_DT, params, stage);
+		EXPECT_TRUE(body.GetOnGround());
+		EXPECT_EQ(0, body.GetAirJumpsUsed());
+	}
 }

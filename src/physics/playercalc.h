@@ -13,7 +13,18 @@ struct PLAYER_PARAMS
 	float MoveSpeed;	///< 歩く速さ（1秒に進む距離）
 	float JumpSpeed;	///< ジャンプした瞬間の上向きの速さ（1秒に進む距離）
 	float Gravity;		///< 重力（1秒ごとに下向きの速さがこれだけ増える）
+	float MaxFallSpeed = 0.0f;	///< 重力で落ちる速さの上限（1秒に進む距離。0 以下なら上限なし）
+	int AirJumps = 0;	///< 空中でジャンプできる回数（着地で戻る）
 };
+
+/// @brief 重力で上下の速さを1フレーム分変える（落ちる速さの上限つき）
+/// @details 上限より速く落ちているとき（下へ強く吹っ飛ばされたときなど）は、それ以上速くしないだけで遅くはしない
+/// @param velocityY 今の上下の速さ（上がプラス）
+/// @param gravity 重力（1秒ごとに下向きの速さがこれだけ増える）
+/// @param maxFallSpeed 重力で落ちる速さの上限（0 以下なら上限なし）
+/// @param dt 1フレームの秒数
+/// @return 更新後の上下の速さ
+float PlayerCalcFall(float velocityY, float gravity, float maxFallSpeed, float dt);
 
 /// @brief ターゲット、なければ歩く方向へ速さの上限つきで向く（腕の操作中は画面の正面へ即座に向く）
 /// @param current 今の左右の向き（ラジアン。0で+Z方向、プラスで右回り）
@@ -36,7 +47,7 @@ public:
 	/// @brief プレイヤーの体を1フレーム分動かす
 	/// @details 次の順に計算する：
 	///          1. 横の速度は、突進速度または移動の向き × 歩く速さ（向きの長さは 1 までに縮める）
-	///          2. 足元に足場があるときにジャンプを押したら、上向きの速さを与える
+	///          2. 足元に足場があるときにジャンプを押したら、上向きの速さを与える。空中では params.AirJumps 回まで出せる
 	///          3. 立っていなければ重力で下向きの速さを増やし、位置を動かす
 	///          4. 足場から出たら立っていない状態にする。上から足場の上面を通り過ぎたら、その上面に着地する
 	/// @param moveX 移動の向きの X（ワールドの向き。-1〜1）
@@ -78,8 +89,20 @@ public:
 	/// @param velocity 1秒あたりの移動量
 	void SetVelocity(const VEC3& velocity) { m_VelocityX = velocity.X; m_VelocityY = velocity.Y; m_VelocityZ = velocity.Z; }
 
-	/// @brief 着地状態を設定する（true：足場の上、false：空中）
-	void SetOnGround(bool onGround) { m_OnGround = onGround; }
+	/// @brief 着地状態を設定する（true：足場の上。空中ジャンプの回数も戻す、false：空中）
+	void SetOnGround(bool onGround) { m_OnGround = onGround; if (onGround) m_AirJumpsUsed = 0; }
+
+	/// @brief ジャンプする（足場の上ならふつうのジャンプ、空中なら残りがあれば空中ジャンプ。横の速さは変えない）
+	/// @param jumpSpeed ジャンプした瞬間の上向きの速さ
+	/// @param airJumps 空中でジャンプできる回数
+	/// @return ジャンプできたら true
+	bool Jump(float jumpSpeed, int airJumps);
+
+	/// @brief 空中ジャンプの回数を戻す（掴まれたときなど）
+	void ResetAirJumps() { m_AirJumpsUsed = 0; }
+
+	/// @brief 空中ジャンプを使った回数を取得する
+	int GetAirJumpsUsed() const { return m_AirJumpsUsed; }
 
 private:
 	float m_X{}; ///< 足元の X
@@ -88,5 +111,6 @@ private:
 	float m_VelocityX{}; ///< 速度の X（1秒に進む距離）
 	float m_VelocityY{}; ///< 速度の Y（上がプラス）
 	float m_VelocityZ{}; ///< 速度の Z
-	bool m_OnGround{}; ///< 足場の上に立っているか（立っているときだけジャンプできる）
+	bool m_OnGround{}; ///< 足場の上に立っているか
+	int m_AirJumpsUsed{}; ///< 着地してから空中ジャンプを使った回数
 };

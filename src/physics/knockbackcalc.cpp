@@ -32,7 +32,8 @@ VEC3 KnockbackCalcVelocity(const VEC3& direction, float speed, const KNOCKBACK_P
 	return { direction.X / horizontal * side, up, direction.Z / horizontal * side };
 }
 
-bool KnockbackCalcStep(PlayerBodyCalc& body, float dt, const KNOCKBACK_PARAMS& params, const STAGE& stage)
+bool KnockbackCalcStep(PlayerBodyCalc& body, float dt, const KNOCKBACK_PARAMS& params, const STAGE& stage,
+	float moveX, float moveZ)
 {
 	float X = body.GetX();
 	float Y = body.GetY();
@@ -68,7 +69,22 @@ bool KnockbackCalcStep(PlayerBodyCalc& body, float dt, const KNOCKBACK_PARAMS& p
 		const float drag = expf(-params.AirDrag * dt);
 		VelocityX *= drag;
 		VelocityZ *= drag;
-		VelocityY -= params.Gravity * dt;
+		VelocityY = PlayerCalcFall(VelocityY, params.Gravity, params.MaxFallSpeed, dt);
+		// 移動の入力：入力の向きの速さが上限に届くまで、少しずつ足す（吹っ飛びの速度は消さない）
+		const float input = sqrtf(moveX * moveX + moveZ * moveZ);
+		if (input > MIN_HORIZONTAL && params.AirControl > 0.0f) {
+			const float scale = input > 1.0f ? 1.0f : input;
+			const float directionX = moveX / input;
+			const float directionZ = moveZ / input;
+			const float along = VelocityX * directionX + VelocityZ * directionZ;
+			const float room = params.ControlSpeed * scale - along;
+			if (room > 0.0f) {
+				const float gain = params.AirControl * scale * dt;
+				const float add = gain < room ? gain : room;
+				VelocityX += directionX * add;
+				VelocityZ += directionZ * add;
+			}
+		}
 	}
 
 	const float previousY = Y;

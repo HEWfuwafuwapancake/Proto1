@@ -31,21 +31,19 @@ void PlayerBodyCalc::Step(float moveX, float moveZ, bool jump, float dt,
 		m_VelocityZ = moveZ * params.MoveSpeed;
 	}
 
-	// 2. 足元の高さに足場があるときだけジャンプできる
+	// 2. 足元の高さに足場があればふつうのジャンプ、空中では残りがあれば空中ジャンプ
 	if (m_OnGround && !StageCalcHasSupport(stage, m_X, m_Y, m_Z)) {
 		m_OnGround = false;
 	}
-	if (m_OnGround && jump) {
-		m_VelocityY = params.JumpSpeed;
-		m_OnGround = false;
-	}
+	if (m_OnGround) m_AirJumpsUsed = 0;
+	if (jump) Jump(params.JumpSpeed, params.AirJumps);
 
 	// 3. 重力と移動
 	const float previousY = m_Y;
 	if (m_OnGround) {
 		m_VelocityY = 0.0f;
 	} else {
-		m_VelocityY -= params.Gravity * dt;
+		m_VelocityY = PlayerCalcFall(m_VelocityY, params.Gravity, params.MaxFallSpeed, dt);
 	}
 	m_X += m_VelocityX * dt;
 	m_Y += m_VelocityY * dt;
@@ -59,5 +57,26 @@ void PlayerBodyCalc::Step(float moveX, float moveZ, bool jump, float dt,
 		m_Y = landingY;
 		m_VelocityY = 0.0f;
 		m_OnGround = true;
+		m_AirJumpsUsed = 0;
 	}
+}
+
+float PlayerCalcFall(float velocityY, float gravity, float maxFallSpeed, float dt)
+{
+	const float next = velocityY - gravity * dt;
+	if (maxFallSpeed <= 0.0f) return next;
+	// もう上限より速く落ちているなら、そのままにする（重力では加速しない）。
+	if (velocityY <= -maxFallSpeed) return velocityY;
+	return fmaxf(next, -maxFallSpeed);
+}
+
+bool PlayerBodyCalc::Jump(float jumpSpeed, int airJumps)
+{
+	if (!m_OnGround) {
+		if (m_AirJumpsUsed >= airJumps) return false;
+		++m_AirJumpsUsed;
+	}
+	m_VelocityY = jumpSpeed;
+	m_OnGround = false;
+	return true;
 }
