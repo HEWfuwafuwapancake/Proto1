@@ -52,7 +52,7 @@ static constexpr XMFLOAT4 STATUS_COLORS[STATUS_COUNT] = {
 	{ 1.0f, 0.95f, 0.2f, 1.0f }, { 0.5f, 0.85f, 1.0f, 1.0f }, { 1.0f, 0.45f, 0.1f, 1.0f }, { 0.6f, 0.6f, 0.6f, 1.0f }
 }; // しびれ・遅い・燃える・隠れる（隠れるは描かない）
 static constexpr float KNOCKBACK_BASE_SPEED = 4.0f;
-static constexpr float KNOCKBACK_GROWTH = 0.12f;
+static constexpr float KNOCKBACK_GROWTH = 0.06f; // 100% で今までの 50% と同じ速さ（2026-11-12、管理者）
 static constexpr float KNOCKBACK_ANGLE = XMConvertToRadians(30.0f);
 static constexpr float KNOCKBACK_AIR_DRAG = 0.5f;
 static constexpr float KNOCKBACK_FRICTION = 20.0f;
