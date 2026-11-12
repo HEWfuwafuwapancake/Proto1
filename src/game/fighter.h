@@ -3,6 +3,7 @@
 #include "core/dx11.h"
 #include "input/actioncalc.h"
 #include "physics/playercalc.h"
+#include "physics/dashcalc.h"
 #include "physics/dummycalc.h"
 #include "physics/knockbackcalc.h"
 #include "physics/statuscalc.h"
@@ -83,8 +84,12 @@ public:
 	bool IsHeldBy(int holder) const { return IsActive() && IsHeld() && m_HeldBy == holder; }
 	/// @brief グラップリングで引っぱられているか取得する
 	bool IsPulled() const { return m_Pulled; }
-	/// @brief 腕を操作できる状態か取得する
-	bool CanUseArms() const { return IsActive() && !IsHeld() && !m_Launched; }
+	/// @brief 腕を操作できる状態か取得する（吹っ飛び中も使える。吹っ飛ばされた直後の一瞬だけ使えず、出していた腕が中断される）
+	bool CanUseArms() const { return IsActive() && !IsHeld() && m_FlinchFrames <= 0; }
+	/// @brief 体当たりで押し合える状態か取得する（吹っ飛び中・保持中・復活待ちは押し合わない）
+	bool CanPushBodies() const { return IsActive() && !IsHeld() && !m_Launched; }
+	/// @brief 吹っ飛ばされている途中か取得する
+	bool IsLaunched() const { return m_Launched; }
 	/// @brief 浮島に立っているか取得する
 	bool IsOnGround() const { return m_Body.GetOnGround(); }
 	/// @brief 人の体か取得する
@@ -145,6 +150,8 @@ private:
 	float m_Percent = 0.0f;
 	float m_Yaw = 0.0f;
 	bool m_Launched = false;
+	int m_FlinchFrames = 0; // 吹っ飛ばされた直後に腕を使えないフレーム数（出していた腕を中断させる）
+	DashCalc m_Dash;
 	int m_HeldBy = -1;
 	bool m_Pulled = false;
 	bool m_Respawned = false;

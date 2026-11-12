@@ -12,6 +12,13 @@ static constexpr float MOVE_SPEED = 6.0f;
 static constexpr float TURN_SPEED = XMConvertToRadians(720.0f);
 static constexpr float JUMP_SPEED = 9.0f;
 static constexpr float GRAVITY = 25.0f;
+static constexpr float MAX_FALL_SPEED = 12.0f; // 重力で落ちる速さの上限（ふつうのジャンプの着地は約 9 なので、ジャンプの感触は変わらない）
+static constexpr int AIR_JUMPS = 1; // 空中でジャンプできる回数（着地で戻る）
+static constexpr float AIR_CONTROL = 12.0f; // 吹っ飛び中に、移動の入力の向きへ1秒ごとに足せる横の速さ
+static constexpr float DASH_SPEED = 18.0f; // ダッシュの速さ
+static constexpr float DASH_SECONDS = 0.2f; // ダッシュで進み続ける秒数（約 3.6 進む）
+static constexpr float DASH_COOLDOWN = 0.6f; // ダッシュが終わってから次を出せるまでの秒数
+static constexpr int FLINCH_FRAMES = 2; // 吹っ飛ばされた直後に腕を使えないフレーム数（出していた腕を中断させるため。次のフレームから動ける）
 static constexpr float BODY_RADIUS = 0.5f;
 static constexpr float BODY_HEIGHT = 1.8f;
 static constexpr float RESPAWN_SECONDS = 2.0f;
@@ -54,7 +61,8 @@ static constexpr float KNOCKBACK_STOP_SPEED = 0.5f;
 KNOCKBACK_PARAMS Fighter::KnockbackParams() const
 {
 	return { KNOCKBACK_BASE_SPEED, KNOCKBACK_GROWTH, KNOCKBACK_ANGLE,
-		KNOCKBACK_AIR_DRAG, KNOCKBACK_FRICTION, KNOCKBACK_STOP_SPEED, GRAVITY };
+		KNOCKBACK_AIR_DRAG, KNOCKBACK_FRICTION, KNOCKBACK_STOP_SPEED, GRAVITY,
+		MAX_FALL_SPEED, AIR_CONTROL, MOVE_SPEED };
 }
 
 XMFLOAT4 Fighter::GetPlayerColor(int slot)
@@ -89,6 +97,8 @@ void Fighter::PlaceAtSpawn()
 	m_Percent = 0.0f;
 	m_Yaw = 0.0f;
 	m_Launched = false;
+	m_FlinchFrames = 0;
+	m_Dash.Reset();
 	m_HeldBy = -1;
 	m_Pulled = false;
 	m_Status.Reset();
@@ -134,31 +144,62 @@ DUMMY_EVENT Fighter::Update(const Camera* camera, const ArmManager* arms)
 	m_Respawned = false;
 	const float dt = GameTimeGetDeltaTime();
 	const STAGE& stage = m_Stage->GetStage();
-	if (IsActive() && !IsHeld()) {
-		if (m_Launched) {
-			m_Launched = KnockbackCalcStep(m_Body, dt, KnockbackParams(), stage);
+	if (m_FlinchFrames > 0) --m_FlinchFrames;
+	const DASH_PARAMS dashParams{ DASH_SPEED, DASH_SECONDS, DASH_COOLDOWN };
+	if (IsActive() && !IsHeld() && !m_Pulled) {
+		PLAYER_PARAMS params{};
+		params.Gravity = GRAVITY;
+		params.MaxFallSpeed = MAX_FALL_SPEED;
+		params.AirJumps = AIR_JUMPS;
+		float moveX = 0.0f, moveZ = 0.0f;
+		bool jump = false;
+		bool dash = false;
+		VEC3 rushVelocity{};
+		if (IsHuman() && camera != nullptr && arms != nullptr) {
+			const ACTION_AXIS move = GetMoveInput();
+			const float yaw = camera->GetYaw();
+			moveX = cosf(yaw) * move.X + sinf(yaw) * move.Y;
+			moveZ = -sinf(yaw) * move.X + cosf(yaw) * move.Y;
+			params.MoveSpeed = MOVE_SPEED * arms->GetMoveScale() * m_Status.GetMoveScale();
+			params.JumpSpeed = JUMP_SPEED;
+			if (!m_Status.IsActive(STATUS_STUN)) {
+				jump = IsTrigger(ACTION_JUMP);
+				rushVelocity = arms->GetRushVelocity();
+				// 腕の突進中と、腕が足を止めている間（刀が空間を斬っている間など）はダッシュできない。
+				dash = IsTrigger(ACTION_DASH) && rushVelocity.X == 0.0f && rushVelocity.Z == 0.0f && arms->GetMoveScale() > 0.0f;
+			}
 		}
-		else if (!m_Pulled) {
-			PLAYER_PARAMS params{};
-			params.Gravity = GRAVITY;
-			float moveX = 0.0f, moveZ = 0.0f;
-			bool jump = false;
-			VEC3 rushVelocity{};
-			if (IsHuman() && camera != nullptr && arms != nullptr) {
-				const ACTION_AXIS move = GetMoveInput();
-				const float yaw = camera->GetYaw();
-				moveX = cosf(yaw) * move.X + sinf(yaw) * move.Y;
-				moveZ = -sinf(yaw) * move.X + cosf(yaw) * move.Y;
-				params.MoveSpeed = MOVE_SPEED * arms->GetMoveScale() * m_Status.GetMoveScale();
-				params.JumpSpeed = JUMP_SPEED;
-				if (!m_Status.IsActive(STATUS_STUN)) {
-					jump = IsTrigger(ACTION_JUMP);
-					rushVelocity = arms->GetRushVelocity();
-				}
+		// ダッシュの向きは移動の入力、入力がなければキャラの向き。
+		const bool hasMove = moveX != 0.0f || moveZ != 0.0f;
+		const VEC3 dashDirection = hasMove ? VEC3{ moveX, 0.0f, moveZ } : VEC3{ sinf(m_Yaw), 0.0f, cosf(m_Yaw) };
+		const bool onGround = m_Body.GetOnGround();
+		if (m_Launched) {
+			// 吹っ飛び中もすぐ動ける。空中ジャンプとダッシュは吹っ飛びの速度を消さずに足す。
+			if (m_Status.IsActive(STATUS_STUN)) moveX = moveZ = 0.0f;
+			if (jump) m_Body.Jump(JUMP_SPEED, AIR_JUMPS);
+			if (dash && m_Dash.TryStart(dashDirection, onGround, dashParams, false)) {
+				const VEC3 push = Vec3Scale(m_Dash.GetDirection(), DASH_SPEED);
+				m_Body.SetVelocity({ m_Body.GetVelocityX() + push.X, m_Body.GetVelocityY(), m_Body.GetVelocityZ() + push.Z });
+			}
+			m_Dash.Step(dt, m_Body.GetOnGround(), dashParams);
+			m_Launched = KnockbackCalcStep(m_Body, dt, KnockbackParams(), stage, moveX, moveZ);
+		}
+		else {
+			if (dash) m_Dash.TryStart(dashDirection, onGround, dashParams, true);
+			// ジャンプを押したらダッシュをやめて跳ぶ。
+			if (jump && m_Dash.IsDashing()) m_Dash.Cancel();
+			if (rushVelocity.X != 0.0f || rushVelocity.Z != 0.0f) m_Dash.Cancel();
+			const bool dashing = m_Dash.IsDashing();
+			const VEC3 dashVelocity = m_Dash.Step(dt, onGround, dashParams);
+			if (dashing) {
+				// ダッシュ中は落ちない。
+				rushVelocity = dashVelocity;
+				m_Body.SetVelocity({ dashVelocity.X, 0.0f, dashVelocity.Z });
 			}
 			m_Body.Step(moveX, moveZ, jump, dt, params, stage, rushVelocity);
 		}
 	}
+	else m_Dash.Step(dt, m_Body.GetOnGround(), dashParams);
 	const DUMMY_EVENT event = m_Life.Update(StageCalcIsOut(stage, m_Body.GetY()), RESPAWN_SECONDS, dt);
 	if (event == DUMMY_EVENT_OUT) {
 		m_HeldBy = -1;
@@ -225,7 +266,7 @@ void Fighter::UpdateAnimation(const ArmManager* arms, float dt)
 	request.Speed = m_Motion.GetPlaySpeed();
 	request.Twist = m_Motion.GetTwist();
 	const int hand = IsHuman() && arms ? arms->GetActiveHand() : -1;
-	if (hand >= 0 && !m_Launched) {
+	if (hand >= 0) {
 		const ARM_BODY_CLIP attack = arms->GetBodyClip(hand);
 		if (attack.Active) {
 			request.Upper = AnimCalcAttackClip(attack.Kind, hand);
@@ -394,6 +435,8 @@ bool Fighter::Grab(int holder)
 	m_HeldBy = holder;
 	m_Launched = false;
 	m_Pulled = false;
+	m_Dash.Reset();
+	m_Body.ResetAirJumps();
 	m_Body.SetVelocity({});
 	m_Body.SetOnGround(false);
 	return true;
@@ -438,6 +481,8 @@ void Fighter::SetLaunchVelocity(const VEC3& velocity)
 	m_HeldBy = -1;
 	m_Pulled = false;
 	m_Launched = true;
+	m_FlinchFrames = FLINCH_FRAMES;
+	m_Dash.Cancel();
 }
 
 void Fighter::Hit(const VEC3& direction, float damage, float power)

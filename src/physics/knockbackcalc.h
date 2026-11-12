@@ -17,6 +17,9 @@ struct KNOCKBACK_PARAMS
 	float GroundFriction;	///< 地面の摩擦（浮島の上をすべっている間、横の速さが 1秒ごとにこれだけ減る）
 	float StopSpeed;		///< 浮島の上で横の速さがこれより遅くなったら止まる（吹っ飛ばされている状態が終わる）
 	float Gravity;			///< 重力（1秒ごとに下向きの速さがこれだけ増える）
+	float MaxFallSpeed = 0.0f;	///< 重力で落ちる速さの上限（0 以下なら上限なし）
+	float AirControl = 0.0f;	///< 空中で、移動の入力の向きへ1秒ごとに足せる横の速さ（0 なら動かせない）
+	float ControlSpeed = 0.0f;	///< 自分の入力だけで出せる、入力の向きの速さの上限
 };
 
 /// @brief ダメージ%にダメージを足す
@@ -50,11 +53,16 @@ VEC3 KnockbackCalcVelocity(const VEC3& direction, float speed, const KNOCKBACK_P
 VEC3 KnockbackCalcDirectedVelocity(const VEC3& direction, float speed);
 
 /// @brief 吹っ飛ばされている体を1フレーム分動かす
-/// @details 自分では止まれない。空中では重力と空気の抵抗、浮島の上から落ちてきたら着地して、地面の摩擦ですべりながら遅くなる。
-///          浮島の上で StopSpeed より遅くなったら止まり、吹っ飛ばされている状態が終わる（浮島の外では止まらずに落ちる）
+/// @details 空中では重力と空気の抵抗、浮島の上から落ちてきたら着地して、地面の摩擦ですべりながら遅くなる。
+///          浮島の上で StopSpeed より遅くなったら止まり、吹っ飛ばされている状態が終わる（浮島の外では止まらずに落ちる）。
+///          空中では、移動の入力の向きへ AirControl の分だけ横の速さを足せる（吹っ飛びの速度は消さない。
+///          入力の向きの速さが ControlSpeed に届いていれば足さない）
 /// @param[in,out] body 体（速度は吹っ飛ばされたときの速度から始める）
 /// @param dt 1フレームの秒数
 /// @param params 調整用の値
 /// @param stage 浮島
+/// @param moveX 移動の向きの X（ワールドの向き。-1〜1。入力なしは 0）
+/// @param moveZ 移動の向きの Z（ワールドの向き。-1〜1。入力なしは 0）
 /// @return まだ吹っ飛ばされているなら true、止まったら false
-bool KnockbackCalcStep(PlayerBodyCalc& body, float dt, const KNOCKBACK_PARAMS& params, const STAGE& stage);
+bool KnockbackCalcStep(PlayerBodyCalc& body, float dt, const KNOCKBACK_PARAMS& params, const STAGE& stage,
+	float moveX = 0.0f, float moveZ = 0.0f);

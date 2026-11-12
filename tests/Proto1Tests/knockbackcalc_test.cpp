@@ -183,4 +183,27 @@ namespace Proto1Tests
 		EXPECT_FALSE(body.GetOnGround());
 		EXPECT_TRUE(body.GetY() < 0.0f);
 	}
+
+	// 吹っ飛び中に移動の入力を入れると、入力の向きへ横の速さが変わる。入力なしなら今までと同じ動き
+	TEST(KnockbackCalcTest, Step_AirControlAddsTowardInput)
+	{
+		KNOCKBACK_PARAMS params = MakeKnockbackParams();
+		params.AirControl = 12.0f;
+		params.ControlSpeed = 6.0f;
+		PlayerBodyCalc free{}, steered{}, plain{};
+		for (PlayerBodyCalc* body : { &free, &steered, &plain }) {
+			body->SetPosition({ 0.0f, 5.0f, 0.0f });
+			body->SetVelocity({ 10.0f, 5.0f, 0.0f });
+		}
+		for (int i = 0; i < 20; i++) {
+			KnockbackCalcStep(free, KB_DT, params, MakeKnockbackStage());
+			KnockbackCalcStep(steered, KB_DT, params, MakeKnockbackStage(), -1.0f, 0.0f);
+			KnockbackCalcStep(plain, KB_DT, MakeKnockbackParams(), MakeKnockbackStage());
+		}
+		EXPECT_NEAR(plain.GetVelocityX(), free.GetVelocityX(), KB_EPSILON);
+		EXPECT_NEAR(plain.GetX(), free.GetX(), KB_EPSILON);
+		// 20 フレームで 12 × 20/60 = 4 ほど、入力の向き（-X）へ速さが変わる（空気の抵抗で少し減る）。吹っ飛びの速度は残る。
+		EXPECT_NEAR(free.GetVelocityX() - 4.0f, steered.GetVelocityX(), 0.5f);
+		EXPECT_TRUE(steered.GetVelocityX() > 0.0f);
+	}
 }
