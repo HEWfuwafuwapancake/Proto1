@@ -193,6 +193,10 @@
     <ClCompile Include="src\physics\scenecalc.cpp" />
     <ClCompile Include="src\physics\randomcalc.cpp" />
     <ClCompile Include="src\physics\spawncalc.cpp" />
+    <ClCompile Include="src\physics\dashcalc.cpp" />
+    <ClCompile Include="src\physics\risecalc.cpp" />
+    <ClCompile Include="src\physics\escapecalc.cpp" />
+    <ClCompile Include="src\physics\parrycalc.cpp" />
     <ClCompile Include="src\game\character.cpp" />
     <ClCompile Include="src\game\fighter.cpp" />
     <ClCompile Include="src\render\shape.cpp" />
@@ -267,6 +271,10 @@
     <ClInclude Include="src\physics\scenecalc.h" />
     <ClInclude Include="src\physics\randomcalc.h" />
     <ClInclude Include="src\physics\spawncalc.h" />
+    <ClInclude Include="src\physics\dashcalc.h" />
+    <ClInclude Include="src\physics\risecalc.h" />
+    <ClInclude Include="src\physics\escapecalc.h" />
+    <ClInclude Include="src\physics\parrycalc.h" />
     <ClInclude Include="src\physics\vec3.h" />
     <ClInclude Include="src\game\character.h" />
     <ClInclude Include="src\game\fighter.h" />

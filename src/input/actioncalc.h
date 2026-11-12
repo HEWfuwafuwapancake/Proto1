@@ -18,8 +18,14 @@ enum ACTION
 	ACTION_EQUIP_HAND_RIGHT, ///< 装備を切り替える手に右手を選ぶ
 	ACTION_EQUIP_NEXT, ///< 選んだ手を次の腕に切り替える
 	ACTION_EQUIP_PREV, ///< 選んだ手を前の腕に切り替える
+	ACTION_DASH, ///< ダッシュ
+	ACTION_GUARD_LEFT, ///< 左の腕でガードする
+	ACTION_GUARD_RIGHT, ///< 右の腕でガードする
 	ACTION_COUNT ///< 行動の数
 };
+
+// PLAYER_INPUT::Buttons は 16 ビットなので、行動は 16 個まで。これ以上足すときは通信の形式（lockstepcalc）も変える。
+static_assert(ACTION_COUNT <= 16, "行動は PLAYER_INPUT::Buttons のビット数（16）までにする");
 
 /// @file actioncalc.h
 /// @brief 入力を「行動」に変えるときの計算（キーから移動の向きを作る・複数の機器の入力をまとめる）

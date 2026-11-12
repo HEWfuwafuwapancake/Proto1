@@ -141,6 +141,14 @@
     <ClCompile Include="spawncalc_test.cpp" />
     <ClCompile Include="..\..\src\physics\randomcalc.cpp" />
     <ClCompile Include="..\..\src\physics\spawncalc.cpp" />
+    <ClCompile Include="dashcalc_test.cpp" />
+    <ClCompile Include="risecalc_test.cpp" />
+    <ClCompile Include="escapecalc_test.cpp" />
+    <ClCompile Include="parrycalc_test.cpp" />
+    <ClCompile Include="..\..\src\physics\dashcalc.cpp" />
+    <ClCompile Include="..\..\src\physics\risecalc.cpp" />
+    <ClCompile Include="..\..\src\physics\escapecalc.cpp" />
+    <ClCompile Include="..\..\src\physics\parrycalc.cpp" />
     <ClCompile Include="..\..\src\physics\scenecalc.cpp" />
     <ClCompile Include="..\..\src\physics\matchcalc.cpp" />
     <ClCompile Include="..\..\src\physics\tentaclecalc.cpp" />

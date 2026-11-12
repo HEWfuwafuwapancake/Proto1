@@ -23,6 +23,13 @@ static constexpr int ACTION_KEYS[ACTION_COUNT] = {
 	'F',			// ACTION_CAMERA_TOGGLE
 	VK_LEFT,		// ACTION_TARGET_LEFT
 	VK_RIGHT,		// ACTION_TARGET_RIGHT
+	0,				// ACTION_EQUIP_HAND_LEFT（キーボードは Q / E と数字キーで別に処理）
+	0,				// ACTION_EQUIP_HAND_RIGHT（同上）
+	0,				// ACTION_EQUIP_NEXT（同上）
+	0,				// ACTION_EQUIP_PREV（同上）
+	'C',			// ACTION_DASH
+	'Z',			// ACTION_GUARD_LEFT
+	'X',			// ACTION_GUARD_RIGHT
 };
 
 // 行動ごとのパッドのボタン（ACTION の並びと同じ順番。企画書の「5. 操作方法」のとおり）
@@ -40,6 +47,9 @@ static constexpr PAD_BUTTON ACTION_PAD_BUTTONS[ACTION_COUNT] = {
 	PAD_BUTTON_DPAD_RIGHT,	// ACTION_EQUIP_HAND_RIGHT（→）
 	PAD_BUTTON_DPAD_DOWN,	// ACTION_EQUIP_NEXT（↓）
 	PAD_BUTTON_DPAD_UP,		// ACTION_EQUIP_PREV（↑）
+	PAD_BUTTON_CIRCLE,		// ACTION_DASH（○。Xbox の B。決定と同じボタンだが、決定はメニューと TIME UP だけで使う）
+	PAD_BUTTON_L2,			// ACTION_GUARD_LEFT（L2。Switch の ZL）
+	PAD_BUTTON_R2,			// ACTION_GUARD_RIGHT（R2。Switch の ZR）
 };
 
 // 移動のキー
@@ -199,7 +209,9 @@ static void UpdateEquipInput(void)
 static void UpdateKeyboardInput(float dt)
 {
 	ACTION_STATE& state = g_Devices[ACTION_DEVICE_KEYBOARD];
-	for (int i = 0; i < ACTION_TARGET_LEFT; ++i) {
+	for (int i = 0; i < ACTION_COUNT; ++i) {
+		// ターゲット切り替えは下の UpdateKeyboardTargetInput で、押した瞬間だけのイベントにする。
+		if (i == ACTION_TARGET_LEFT || i == ACTION_TARGET_RIGHT) continue;
 		state.OldPress[i] = state.Press[i];
 		state.Press[i] = ACTION_KEYS[i] != 0 && KeyboardIsPress(ACTION_KEYS[i]);
 	}
