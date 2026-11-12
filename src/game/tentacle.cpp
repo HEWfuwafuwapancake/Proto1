@@ -14,7 +14,7 @@
 #include <algorithm>
 
 // 調整用の値
-static constexpr TENTACLE_PARAMS PARAMS{ 8.0f, 24.0f, 30.0f, 3.0f, 0.18f };
+static constexpr TENTACLE_PARAMS PARAMS{ 8.0f, 24.0f, 30.0f, 3.0f, 0.18f, 0.35f };
 static constexpr float GRAB_DAMAGE = 4.0f; // つかんだときに足す %
 static constexpr float THROW_DAMAGE = 4.0f;
 static constexpr float THROW_POWER = 1.5f;

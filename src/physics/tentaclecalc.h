@@ -20,6 +20,7 @@ struct TENTACLE_PARAMS
 	float ReturnSpeed; ///< 戻る速さ
 	float HoldSeconds; ///< 命中から離すまでの秒数
 	float Radius; ///< 腕の半径
+	float ThrowSeconds = 0.0f; ///< つかんでから自動で投げるまでの秒数（0 以下なら自動で投げない）
 };
 
 /// @brief つかむ候補（番号は配列の添字）
