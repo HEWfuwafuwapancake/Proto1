@@ -306,6 +306,7 @@ void KatanaArm::StepBreach(const ARM_INPUT& input, float dt)
 			// 着いた瞬間に、飛んだ向きを前として居合の一閃を出す。
 			m_IaiDirection = ArmCalcPitchDirection(m_Direction, 0.0f);
 			m_Hits.Clear();
+			IaiTargets();
 		}
 		return;
 	}
