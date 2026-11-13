@@ -5,6 +5,25 @@
 
 static constexpr float MOTION_PI = 3.14159265f;
 
+MOTION_HIT_REACTION MotionCalcHitReaction(bool held, bool stunned, bool launched, float launchElapsed, float flinchSeconds)
+{
+	if (held) return { true, SKINNED_CLIP::HitHeld, -1.0f };
+	if (launchElapsed >= 0.0f && launchElapsed < flinchSeconds) return { true, SKINNED_CLIP::HitFlinch, launchElapsed };
+	if (stunned) return { true, SKINNED_CLIP::HitStun, -1.0f };
+	if (launched) return { true, SKINNED_CLIP::HitLaunched, -1.0f };
+	return {};
+}
+
+MOTION_DASH_CLIP MotionCalcDash(float elapsed, bool air, float relativeYaw, const MOTION_PARAMS& params)
+{
+	if (elapsed < 0.0f || elapsed >= params.DashClipSeconds) return {};
+	const float side = fabsf(WrapYaw(relativeYaw));
+	if (side >= params.SideDashMinAngle && side <= params.SideDashMaxAngle) {
+		return { true, WrapYaw(relativeYaw) > 0.0f ? SKINNED_CLIP::SideDashRight : SKINNED_CLIP::SideDashLeft, elapsed, true };
+	}
+	return { true, air ? SKINNED_CLIP::AirDash : SKINNED_CLIP::Dash, elapsed, false };
+}
+
 void MotionCalc::Reset(float yaw)
 {
 	m_LegYaw = WrapYaw(yaw);
@@ -13,6 +32,7 @@ void MotionCalc::Reset(float yaw)
 	m_LeanRoll = 0.0f;
 	m_LandTimer = 0.0f;
 	m_PlaySpeed = 1.0f;
+	m_ClipTime = -1.0f;
 	m_Backward = false;
 	m_WasOnGround = true;
 	m_Clip = SKINNED_CLIP::Idle;
@@ -24,6 +44,27 @@ void MotionCalc::Step(const MOTION_INPUT& input, const MOTION_PARAMS& params, fl
 	const float aim = WrapYaw(input.AimYaw);
 	const float speed = sqrtf(input.VelocityX * input.VelocityX + input.VelocityZ * input.VelocityZ);
 	const bool moving = input.Locomotion && speed > params.RunThreshold;
+	m_ClipTime = -1.0f;
+
+	// 0. ダッシュ中は、ダッシュのクリップを見せる。横ダッシュは体ごと狙いの向きのまま横へ滑り、
+	//    ほかは脚（モデル全体）をダッシュの向きへすぐそろえて、上半身だけ狙いの方へ上限までねじる（脚は引っぱらない）。
+	//    傾きはクリップに任せて戻す。
+	const MOTION_DASH_CLIP dash = input.Locomotion
+		? MotionCalcDash(input.DashElapsed, input.DashAir, WrapYaw(input.DashYaw - aim), params) : MOTION_DASH_CLIP{};
+	if (dash.Active) {
+		m_LegYaw = dash.Side ? aim : WrapYaw(input.DashYaw);
+		m_Twist = std::max(-params.MaxTwist, std::min(params.MaxTwist, WrapYaw(aim - m_LegYaw)));
+		m_Backward = false;
+		m_LandTimer = 0.0f;
+		m_WasOnGround = input.OnGround;
+		m_Clip = dash.Clip;
+		m_ClipTime = dash.ClipTime;
+		m_PlaySpeed = 1.0f;
+		const float rate = Saturate(params.LeanRate * dt);
+		m_LeanPitch -= m_LeanPitch * rate;
+		m_LeanRoll -= m_LeanRoll * rate;
+		return;
+	}
 
 	// 1. 脚の向き：走っているときは進む向き（狙いと反対へ進むときは後ろ走りで狙いの側）、止まっているときは狙いの向き
 	float legTarget = aim;

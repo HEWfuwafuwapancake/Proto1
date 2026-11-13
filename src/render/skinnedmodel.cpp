@@ -15,18 +15,28 @@ static constexpr size_t REQUIRED_CLIPS = static_cast<size_t>(SKINNED_CLIP::RunBa
 // ループしないクリップ（最後の姿勢で止める）
 static bool IsLoopClip(SKINNED_CLIP clip)
 {
-	return clip != SKINNED_CLIP::Jump && clip != SKINNED_CLIP::Land && !AnimCalcIsAttackClip(clip);
+	return clip != SKINNED_CLIP::Jump && clip != SKINNED_CLIP::Land
+		&& clip != SKINNED_CLIP::HitFlinch && clip != SKINNED_CLIP::Dash && clip != SKINNED_CLIP::AirDash
+		&& clip != SKINNED_CLIP::SideDashLeft && clip != SKINNED_CLIP::SideDashRight
+		&& !AnimCalcIsAttackClip(clip);
 }
 
 // ファイルがないクリップの代わり
 static SKINNED_CLIP FallbackClip(SKINNED_CLIP clip)
 {
+	if (clip == SKINNED_CLIP::HitFlinch || clip == SKINNED_CLIP::HitLaunched || clip == SKINNED_CLIP::HitHeld) {
+		return SKINNED_CLIP::Fall;
+	}
+	if (clip == SKINNED_CLIP::HitStun) return SKINNED_CLIP::Idle;
+	if (clip == SKINNED_CLIP::AirDash) return SKINNED_CLIP::Fall;
 	if (AnimCalcIsAttackClip(clip)) {
 		// 攻撃クリップのないキャラは、その手を前に出すクリップで動かす。
 		const bool left = (static_cast<int>(clip) - static_cast<int>(SKINNED_CLIP::KatanaIaiLeft)) % 2 == 0;
 		return left ? SKINNED_CLIP::Left : SKINNED_CLIP::Right;
 	}
-	return clip == SKINNED_CLIP::RunBack ? SKINNED_CLIP::Run : SKINNED_CLIP::Idle;
+	const bool run = clip == SKINNED_CLIP::RunBack || clip == SKINNED_CLIP::Dash
+		|| clip == SKINNED_CLIP::SideDashLeft || clip == SKINNED_CLIP::SideDashRight;
+	return run ? SKINNED_CLIP::Run : SKINNED_CLIP::Idle;
 }
 static constexpr unsigned IMPORT_FLAGS = aiProcess_ConvertToLeftHanded | aiProcess_LimitBoneWeights
 	| aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_JoinIdenticalVertices;
@@ -339,7 +349,8 @@ void SkinnedModel::Update(SKINNED_POSE& pose, const SKINNED_REQUEST& request, fl
 		pose.BlendElapsed = 0.0f;
 	}
 	const float length = GetClip(clip).LoopSeconds;
-	const float time = pose.Time + dt * (request.Speed > 0.0f ? request.Speed : 0.0f);
+	const float time = request.ClipTime >= 0.0f ? request.ClipTime
+		: pose.Time + dt * (request.Speed > 0.0f ? request.Speed : 0.0f);
 	pose.Time = IsLoopClip(clip) ? AnimCalcLoopTime(time, length) : std::min(time, length);
 
 	// 上半身のクリップは、出し入れのときに重みを少しずつ変える。

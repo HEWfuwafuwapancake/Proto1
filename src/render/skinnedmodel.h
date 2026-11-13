@@ -16,6 +16,7 @@ struct SKINNED_BONES_DESC
 struct SKINNED_REQUEST
 {
 	SKINNED_CLIP Clip = SKINNED_CLIP::Idle; ///< 全身（下半身）で再生するクリップ
+	float ClipTime = -1.0f; ///< 全身のクリップの再生位置の秒（負なら経過時間で進める）
 	float Speed = 1.0f; ///< 全身のクリップの再生速度の倍率
 	SKINNED_CLIP Upper = SKINNED_CLIP::Count; ///< 上半身に重ねるクリップ（Count なら重ねない）
 	float UpperTime = -1.0f; ///< 上半身のクリップの再生位置の秒（負なら経過時間でループ再生する）
@@ -60,7 +61,7 @@ public:
 	SkinnedModel& operator=(const SkinnedModel&) = delete;
 
 	/// @brief 列挙の順にFBXを読み、待機のFBXからモデルを作る。成功したら true
-	/// @details 待機・走り・左腕・右腕は必須。後ろ走り・ジャンプ・落下・着地は nullptr か読めなければ代わりのクリップを使う
+	/// @details 待機・走り・左腕・右腕は必須。ほかは nullptr か読めなければ代わりのクリップを使う
 	/// @param paths クリップごとの FBX のパス
 	/// @param bones 上半身の根元とねじる骨の名前
 	bool Load(const std::array<const char*, static_cast<size_t>(SKINNED_CLIP::Count)>& paths, const SKINNED_BONES_DESC& bones);

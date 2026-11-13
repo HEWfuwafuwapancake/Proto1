@@ -26,6 +26,8 @@ public:
 	void Step(bool guarding, float dt);
 	/// @brief ガードを構えているかを取得する
 	bool IsGuarding() const { return m_Guarding; }
+	/// @brief 構えてからの秒数を取得する（描画用。構えていなければ0）
+	float GetGuardSeconds() const { return static_cast<float>(m_GuardSeconds); }
 	/// @brief 今防ぐとパリィになるかを取得する
 	bool IsParryWindow() const;
 	/// @brief 攻撃を防いだ結果を返す（構えは変えない）

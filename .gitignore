@@ -37,3 +37,7 @@ TestResults/
 
 # Claude Code の PC ごとの設定（許可の決まりなど。GitHub には送らない）
 .claude/settings.local.json
+
+# Python のキャッシュ（Maya のスクリプトを実行すると作られる）
+__pycache__/
+*.pyc
