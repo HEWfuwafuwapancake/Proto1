@@ -45,7 +45,7 @@ public:
 	/// @brief 生存している体を描く
 	/// @param highlighted 強調を設定する（true：ターゲットの色、false：通常の色）
 	void Draw(bool highlighted) const;
-	/// @brief 描画するモデルのワールド行列（大きさ・足元・傾き・脚の向き・位置）を取得する
+	/// @brief 描画するモデルのワールド行列（大きさ・足元・傾き・脚の向き・位置。しびれ中は震えのずれも足す）を取得する
 	XMMATRIX GetModelWorld() const;
 	/// @brief アニメの腕の骨から、描画用の腕の付け根・向き・長さを取得する（描画だけに使う）
 	/// @param hand 0：左手、1：右手
@@ -147,6 +147,8 @@ private:
 	void PlaceAtSpawn();
 	void SetLaunchVelocity(const VEC3& velocity);
 	KNOCKBACK_PARAMS KnockbackParams() const;
+	XMFLOAT3 GetStunShake() const;
+	void DrawStunStars() const;
 	PlayerBodyCalc m_Body;
 	StatusCalc m_Status;
 	DummyLifeCalc m_Life;
