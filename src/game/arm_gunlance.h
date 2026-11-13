@@ -30,6 +30,8 @@ public:
 	bool IsBusy() const override;
 	/// @brief 突き上げ・撃ち込みで相手をつかんでいれば true を返す
 	bool IsHolding() const override;
+	/// @brief 突進中か突き刺し中なら true を返し、もう片手の新しい動作を禁止する
+	bool LocksOtherHand() const override;
 	/// @brief 次の単発射撃ができるときに true を返す
 	bool CanTakeTap() const override;
 	/// @brief 新しく突進を始められるときに true を返す

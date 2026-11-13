@@ -269,6 +269,11 @@ bool GunlanceArm::IsHolding() const
 	return m_Calc.IsHolding();
 }
 
+bool GunlanceArm::LocksOtherHand() const
+{
+	return m_Calc.IsRushing() || m_Calc.IsHolding();
+}
+
 float GunlanceArm::GetMoveScale() const
 {
 	return IsHolding() ? 0.0f : 1.0f;
