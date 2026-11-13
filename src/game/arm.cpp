@@ -47,6 +47,13 @@ static constexpr float PARRY_RUMBLE = 1.0f;
 static constexpr float PARRY_RUMBLE_SECONDS = 0.1f;
 static constexpr float BREAK_RUMBLE = 0.8f;
 static constexpr float BREAK_RUMBLE_SECONDS = 0.3f;
+static constexpr float GUARD_FEEDBACK_SECONDS = 0.6f;
+static constexpr float GUARD_FLASH_SECONDS = 0.3f;
+static constexpr float GUARD_FLASH_START_RADIUS = 0.3f;
+static constexpr float PARRY_FLASH_END_RADIUS = 1.2f;
+static constexpr float GUARD_FLASH_END_RADIUS = 0.8f;
+static constexpr XMFLOAT4 PARRY_FLASH_COLOR{ 1.0f, 0.9f, 0.2f, 1.0f };
+static constexpr XMFLOAT4 GUARD_FLASH_COLOR{ 0.6f, 0.6f, 0.6f, 1.0f };
 // ARM_TYPE の順に、触手・ハンマー・ナックル・C4・ガンランス・刀・素手。
 static constexpr int ARM_MAX_DURABILITY = 100;
 static constexpr int GUARD_DURABILITY_COST = 50;
@@ -128,6 +135,7 @@ void ArmManager::Reset(void)
 	}
 	m_LastActiveHand = -1;
 	m_GuardHand = -1;
+	m_GuardFeedbackSeconds = 0.0f;
 }
 
 void ArmManager::ResetForMatch(GAME_RULE rule, const MATCH_TUNING& tuning)
@@ -191,11 +199,18 @@ void ArmManager::BreakExhaustedArm(int hand)
 // 前の更新から防いだ攻撃を処理してから、このフレームの構えを決める。
 void ArmManager::UpdateGuards(const Fighter& player, float dt, bool interrupted)
 {
+	m_GuardFeedbackSeconds = fmaxf(0.0f, m_GuardFeedbackSeconds - dt);
 	const bool hadGuard = m_GuardHand >= 0 && m_Guards[m_GuardHand].IsGuarding();
 	if (hadGuard && m_Links.Fighters->ConsumeGuardedHit(m_Links.Slot)) {
 		const int hand = m_GuardHand;
 		const PARRY_RESULT result = m_Guards[hand].OnHit(true);
 		Arm& arm = *m_Arms[hand][m_Types[hand]];
+		if (result == PARRY_SUCCESS || result == PARRY_BREAK_ARM) {
+			m_GuardFeedbackSeconds = GUARD_FEEDBACK_SECONDS;
+			m_GuardFeedbackParry = result == PARRY_SUCCESS;
+			m_GuardFeedbackPosition = Vec3Add(arm.GetDrawShoulder(),
+				{ sinf(player.GetYaw()) * GUARD_MARKER_FORWARD, 0.0f, cosf(player.GetYaw()) * GUARD_MARKER_FORWARD });
+		}
 		if (result == PARRY_SUCCESS) arm.Rumble(PARRY_RUMBLE, PARRY_RUMBLE, PARRY_RUMBLE_SECONDS);
 		else if (result == PARRY_BREAK_ARM && !HasUnlimitedUses()) {
 			m_Uses[hand].Consume(TuningCalcDurabilityCost(GUARD_DURABILITY_COST, m_Tuning));
@@ -264,6 +279,15 @@ void ArmManager::Draw(void) const
 	if (!m_Links.Fighters->IsActive(m_Links.Slot)) return;
 	for (int hand = 0; hand < 2; ++hand) m_Arms[hand][m_Types[hand]]->Draw();
 	const Fighter& player = m_Links.Fighters->GetFighter(m_Links.Slot);
+	const GUARD_FEEDBACK feedback = GetGuardFeedback();
+	if (feedback.Active && feedback.Elapsed < GUARD_FLASH_SECONDS) {
+		const float progress = feedback.Elapsed / GUARD_FLASH_SECONDS;
+		const float endRadius = feedback.Parry ? PARRY_FLASH_END_RADIUS : GUARD_FLASH_END_RADIUS;
+		XMFLOAT4 color = feedback.Parry ? PARRY_FLASH_COLOR : GUARD_FLASH_COLOR;
+		color.w *= 1.0f - progress;
+		ShapeDrawSphere({ m_GuardFeedbackPosition.X, m_GuardFeedbackPosition.Y, m_GuardFeedbackPosition.Z },
+			GUARD_FLASH_START_RADIUS + (endRadius - GUARD_FLASH_START_RADIUS) * progress, color);
+	}
 	for (int hand = 0; hand < 2; ++hand) {
 		if (!m_Guards[hand].IsGuarding()) continue;
 		const VEC3 shoulder = m_Arms[hand][m_Types[hand]]->GetDrawShoulder();
@@ -312,6 +336,11 @@ int ArmManager::GetDurability(int hand) const
 {
 	if (hand < 0 || hand >= 2) return 0;
 	return HasUnlimitedUses() ? -1 : m_Uses[hand].GetRemaining();
+}
+
+GUARD_FEEDBACK ArmManager::GetGuardFeedback() const
+{
+	return { m_GuardFeedbackSeconds > 0.0f, m_GuardFeedbackParry, GUARD_FEEDBACK_SECONDS - m_GuardFeedbackSeconds };
 }
 
 int ArmManager::GetChangeDirection(int hand) const

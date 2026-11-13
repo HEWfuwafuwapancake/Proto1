@@ -43,7 +43,7 @@ bool Game::Initialize(const NET_OPTIONS& options)
 	}
 	m_Match.Initialize(m_Fighters, m_Arms);
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
-		m_Huds[i].Initialize(m_Cameras[i], m_Fighters, i, m_Match, m_Scene, m_Arms[i]);
+		m_Huds[i].Initialize(m_Cameras[i], m_Fighters, i, m_Match, m_Scene, m_Arms);
 	}
 	ConfigurePlayers();
 	const bool connected = m_Net.Initialize(options);
