@@ -23,8 +23,8 @@ class Hud
 {
 public:
 
-	/// @brief 自分の腕・カメラと試合への参照を受け取り、腕名の画像を用意する（DX11 の初期化後）
-	void Initialize(const Camera& camera, const FighterManager& fighters, int slot, const Match& match, const SceneCalc& scene, const ArmManager& arms);
+	/// @brief 全スロット分の腕・自分のカメラと試合への参照を受け取り、腕名の画像を用意する（DX11 の初期化後）
+	void Initialize(const Camera& camera, const FighterManager& fighters, int slot, const Match& match, const SceneCalc& scene, const ArmManager* arms);
 
 	/// @brief 状態を最初に戻す（参照はそのまま）
 	void Reset(void);
@@ -52,6 +52,7 @@ private:
 	void DrawPercent(float percent, float centerX, float y, float digitWidth, const XMFLOAT4& color) const;
 	void DrawFighterPercent(int index) const;
 	void DrawArmName(int hand) const;
+	void DrawGuardFeedback(int slot) const;
 	void DrawMenuItem(const char* text, float y, bool selected) const;
 	void DrawMenuHelp(float selectY, float decideY) const;
 	const Camera* m_Camera = nullptr;
@@ -59,6 +60,7 @@ private:
 	const Match* m_Match = nullptr;
 	const SceneCalc* m_Scene = nullptr;
 	const ArmManager* m_Arms = nullptr;
+	const ArmManager* m_AllArms = nullptr; // 全員の結果を各画面のカメラで描くための参照
 	int m_ArmNames[ARM_TYPE_COUNT] = {};
 	struct ARM_FLIP
 	{

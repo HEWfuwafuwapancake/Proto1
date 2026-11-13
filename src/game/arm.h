@@ -49,6 +49,14 @@ struct ARM_BODY_CLIP
 	bool FullBody = false; ///< 重ねる範囲を設定する（true：全身、false：上半身だけ）
 };
 
+/// @brief ガード結果の文字表示に使う描画専用の情報
+struct GUARD_FEEDBACK
+{
+	bool Active = false; ///< 結果を表示中ならtrue
+	bool Parry = false; ///< 結果を設定する（true：パリィ、false：通常のガード）
+	float Elapsed = 0.0f; ///< 防いだ瞬間からの経過秒数
+};
+
 /// @brief 片手の腕の基本クラス。左 0・右 1 を1インスタンスずつ受け持つ
 class Arm
 {
@@ -227,6 +235,9 @@ public:
 	/// @brief 片手の残り耐久を取得する（DEBUG は -1、範囲外は 0）
 	int GetDurability(int hand) const;
 
+	/// @brief 最後に防いだ結果と経過時間を取得する（描画専用、通信のハッシュには含めない）
+	GUARD_FEEDBACK GetGuardFeedback() const;
+
 	/// @brief 十字キーで選んでいる手を取得する（左 0・右 1）
 	int GetSelectedHand() const { return m_SelectedHand; }
 	/// @brief 片手の最後の装備変更の向きを取得する（左 0・右 1、次・直接選択 +1、前 -1）
@@ -250,6 +261,9 @@ private:
 	ArmPressCalc m_Presses[2];
 	ArmUseCalc m_Uses[2];
 	ParryCalc m_Guards[2];
+	float m_GuardFeedbackSeconds = 0.0f; // 描画だけの残り秒数
+	bool m_GuardFeedbackParry = false;
+	VEC3 m_GuardFeedbackPosition = {}; // 防いだ瞬間の肩の前の座標
 	int m_GuardHand = -1; // 両手なら後から構えた手で受ける
 };
 

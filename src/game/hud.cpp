@@ -47,6 +47,12 @@ static constexpr float ARM_DURABILITY_BAR_HEIGHT = 4.0f;
 static constexpr float ARM_DURABILITY_MAX = 100.0f;
 static constexpr float ARM_FLIP_SECONDS = 0.2f;
 static constexpr float ARM_EDGE_BRIGHTNESS = 0.65f;
+static constexpr float GUARD_TEXT_SECONDS = 0.6f;
+static constexpr float GUARD_TEXT_DOT = 3.0f;
+static constexpr float GUARD_TEXT_HEAD_OFFSET = 0.4f;
+static constexpr float GUARD_TEXT_RISE = 0.8f;
+static constexpr XMFLOAT4 PARRY_TEXT_COLOR{ 1.0f, 0.9f, 0.2f, 1.0f };
+static constexpr XMFLOAT4 GUARD_TEXT_COLOR{ 0.6f, 0.6f, 0.6f, 1.0f };
 
 static constexpr float PERCENT_DIGIT_WIDTH = 14.0f;	// 頭の上の % の桁の幅
 static constexpr float PERCENT_HEAD_OFFSET = 0.4f;	// 頭のてっぺんから、% を出す点までの高さ（ワールド）
@@ -244,6 +250,23 @@ void Hud::DrawArmName(int hand) const
 	}
 }
 
+void Hud::DrawGuardFeedback(int slot) const
+{
+	if (!m_Fighters->IsActive(slot) || m_Fighters->IsHidden(slot)) return;
+	const GUARD_FEEDBACK feedback = m_AllArms[slot].GetGuardFeedback();
+	if (!feedback.Active || feedback.Elapsed >= GUARD_TEXT_SECONDS) return;
+	const float progress = feedback.Elapsed / GUARD_TEXT_SECONDS;
+	const Fighter& fighter = m_Fighters->GetFighter(slot);
+	XMFLOAT3 head = fighter.GetPosition();
+	head.y += fighter.GetHeight() + GUARD_TEXT_HEAD_OFFSET + GUARD_TEXT_RISE * progress;
+	XMFLOAT2 screen;
+	if (!m_Camera->WorldToScreen(head, &screen)) return;
+	XMFLOAT4 color = feedback.Parry ? PARRY_TEXT_COLOR : GUARD_TEXT_COLOR;
+	color.w *= 1.0f - progress;
+	Number2DDrawText(feedback.Parry ? "PARRY!" : "GUARD", screen.x / m_Scale,
+		screen.y / m_Scale - GUARD_TEXT_DOT * 7.0f, GUARD_TEXT_DOT, GLYPH_ALIGN_CENTER, color);
+}
+
 void Hud::DrawMenuItem(const char* text, float y, bool selected) const
 {
 	const float centerX = (float)SCREEN_WIDTH * 0.5f;
@@ -416,6 +439,7 @@ void Hud::Draw(void) const
 
 	for (int i = 0; i < FIGHTER_COUNT; i++) {
 		DrawFighterPercent(i);
+		DrawGuardFeedback(i);
 	}
 
 	if (m_Match->GetState() == MATCH_STATE_FINISHED) {
@@ -441,14 +465,15 @@ void Hud::Draw(void) const
 	Shader_Set2DSize((float)SCREEN_WIDTH, (float)SCREEN_HEIGHT);
 }
 
-void Hud::Initialize(const Camera& camera, const FighterManager& fighters, int slot, const Match& match, const SceneCalc& scene, const ArmManager& arms)
+void Hud::Initialize(const Camera& camera, const FighterManager& fighters, int slot, const Match& match, const SceneCalc& scene, const ArmManager* arms)
 {
 	m_Camera = &camera;
 	m_Fighters = &fighters;
 	m_Slot = slot;
 	m_Match = &match;
 	m_Scene = &scene;
-	m_Arms = &arms;
+	m_Arms = &arms[slot];
+	m_AllArms = arms;
 	for (int type = 0; type < ARM_TYPE_COUNT; ++type) {
 		m_ArmNames[type] = Text2DCreate(ArmGetName(static_cast<ARM_TYPE>(type)));
 	}
