@@ -36,28 +36,16 @@ TEST(MotionCalcTest, RunsForwardWithLegsTowardMovement)
 	EXPECT_GT(motion.GetLeanPitch(), 0.0f);
 }
 
-// 狙いを+Xに保って右へ横走りすると、脚も狙いを向き、半速で右の横走りを再生する。
-TEST(MotionCalcTest, StrafesRightWithLegsOnAim)
+// 狙いを前に保ったまま横へ走ると、脚は横を向こうとするが、上半身のねじれは上限で止まる。
+TEST(MotionCalcTest, StrafeLimitsTwist)
 {
 	MotionCalc motion;
 	motion.Reset(0.0f);
-	StepFrames(motion, Moving(0.0f, -3.0f, PI * 0.5f), 30);
-	EXPECT_NEAR(motion.GetLegYaw(), PI * 0.5f, 0.001f);
-	EXPECT_NEAR(motion.GetTwist(), 0.0f, 0.001f);
-	EXPECT_EQ(SKINNED_CLIP::StrafeRight, motion.GetClip());
-	EXPECT_NEAR(motion.GetPlaySpeed(), 0.5f, 0.001f);
-}
-
-// 狙いを前に保って左へ横走りすると、脚が狙いを向き、全速で左の横走りを再生する。
-TEST(MotionCalcTest, StrafesLeftWithLegsOnAim)
-{
-	MotionCalc motion;
-	motion.Reset(PI * 0.5f);
-	StepFrames(motion, Moving(-6.0f, 0.0f, 0.0f), 30);
-	EXPECT_NEAR(motion.GetLegYaw(), 0.0f, 0.001f);
-	EXPECT_NEAR(motion.GetTwist(), 0.0f, 0.001f);
-	EXPECT_EQ(SKINNED_CLIP::StrafeLeft, motion.GetClip());
-	EXPECT_NEAR(motion.GetPlaySpeed(), 1.0f, 0.001f);
+	const MOTION_PARAMS params;
+	StepFrames(motion, Moving(6.0f, 0.0f, 0.0f), 60);
+	EXPECT_NEAR(motion.GetTwist(), -params.MaxTwist, 0.001f);
+	EXPECT_NEAR(motion.GetLegYaw(), params.MaxTwist, 0.001f);
+	EXPECT_EQ(SKINNED_CLIP::Run, motion.GetClip());
 }
 
 // 狙いと反対へ進むと後ろ走りになり、脚は狙いの向きのまま後ろへ傾く。
@@ -144,13 +132,11 @@ TEST(MotionCalcTest, NoReactionKeepsLocomotion)
 	EXPECT_FALSE(MotionCalcHitReaction(false, false, false, 1.0f, 0.33f).Active);
 }
 
-// 攻撃の最後の組は攻撃扱いのまま、やられと横走りは攻撃扱いにしない。
+// 攻撃の最後の組は攻撃扱いのまま、やられは攻撃扱いにしない。
 TEST(MotionCalcTest, HitReactionsAreNotAttackClips)
 {
 	EXPECT_TRUE(AnimCalcIsAttackClip(SKINNED_CLIP::KnuckleAirRushLeft));
 	EXPECT_TRUE(AnimCalcIsAttackClip(SKINNED_CLIP::KnuckleAirRushRight));
-	EXPECT_FALSE(AnimCalcIsAttackClip(SKINNED_CLIP::StrafeLeft));
-	EXPECT_FALSE(AnimCalcIsAttackClip(SKINNED_CLIP::StrafeRight));
 	EXPECT_FALSE(AnimCalcIsAttackClip(SKINNED_CLIP::HitFlinch));
 	EXPECT_FALSE(AnimCalcIsAttackClip(SKINNED_CLIP::HitLaunched));
 	EXPECT_FALSE(AnimCalcIsAttackClip(SKINNED_CLIP::HitStun));

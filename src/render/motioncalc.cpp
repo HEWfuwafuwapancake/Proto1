@@ -23,7 +23,6 @@ void MotionCalc::Reset(float yaw)
 	m_LandTimer = 0.0f;
 	m_PlaySpeed = 1.0f;
 	m_Backward = false;
-	m_Strafing = false;
 	m_WasOnGround = true;
 	m_Clip = SKINNED_CLIP::Idle;
 }
@@ -35,22 +34,17 @@ void MotionCalc::Step(const MOTION_INPUT& input, const MOTION_PARAMS& params, fl
 	const float speed = sqrtf(input.VelocityX * input.VelocityX + input.VelocityZ * input.VelocityZ);
 	const bool moving = input.Locomotion && speed > params.RunThreshold;
 
-	// 1. 脚の向き：地面の横走りは狙いへそろえ、ほかは進む向き（後ろ走りは反転）へ回す。
+	// 1. 脚の向き：走っているときは進む向き（狙いと反対へ進むときは後ろ走りで狙いの側）、止まっているときは狙いの向き
 	float legTarget = aim;
 	float turnSpeed = params.IdleTurnSpeed;
-	float moveDifference = 0.0f;
 	if (moving) {
 		const float moveYaw = atan2f(input.VelocityX, input.VelocityZ);
-		moveDifference = WrapYaw(moveYaw - aim);
-		const float difference = fabsf(moveDifference);
+		const float difference = fabsf(WrapYaw(moveYaw - aim));
 		m_Backward = m_Backward ? difference > params.BackAngle - params.BackHysteresis : difference > params.BackAngle;
-		const float strafeThreshold = m_Strafing ? params.StrafeAngle - params.BackHysteresis : params.StrafeAngle;
-		m_Strafing = input.OnGround && !m_Backward && difference > strafeThreshold;
-		legTarget = m_Strafing ? aim : (m_Backward ? WrapYaw(moveYaw + MOTION_PI) : moveYaw);
+		legTarget = m_Backward ? WrapYaw(moveYaw + MOTION_PI) : moveYaw;
 		turnSpeed = params.LegTurnSpeed;
 	} else {
 		m_Backward = false;
-		m_Strafing = false;
 	}
 	const float previousLegYaw = m_LegYaw;
 	m_LegYaw = input.Locomotion ? TurnYaw(m_LegYaw, legTarget, turnSpeed, dt) : aim;
@@ -63,15 +57,12 @@ void MotionCalc::Step(const MOTION_INPUT& input, const MOTION_PARAMS& params, fl
 	}
 	m_Twist = twist;
 
-	// 3. クリップ：空中は上昇／落下、地面では走り／左右の横走り／後ろ走り／着地／待機。
+	// 3. クリップ：空中は上昇／落下、着地の直後は着地、地面では走り／後ろ走り／待機
 	m_LandTimer = std::max(0.0f, m_LandTimer - dt);
 	if (input.OnGround && !m_WasOnGround) m_LandTimer = params.LandSeconds;
 	m_WasOnGround = input.OnGround;
 	if (!input.OnGround) m_Clip = input.Locomotion && input.VelocityY > 0.0f ? SKINNED_CLIP::Jump : SKINNED_CLIP::Fall;
-	else if (moving) {
-		m_Clip = m_Backward ? SKINNED_CLIP::RunBack : (m_Strafing
-			? (moveDifference < 0.0f ? SKINNED_CLIP::StrafeLeft : SKINNED_CLIP::StrafeRight) : SKINNED_CLIP::Run);
-	}
+	else if (moving) m_Clip = m_Backward ? SKINNED_CLIP::RunBack : SKINNED_CLIP::Run;
 	else if (m_LandTimer > 0.0f) m_Clip = SKINNED_CLIP::Land;
 	else m_Clip = SKINNED_CLIP::Idle;
 

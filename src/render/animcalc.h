@@ -55,8 +55,6 @@ enum class SKINNED_CLIP
 	HitLaunched, ///< 吹っ飛び中
 	HitStun, ///< しびれ中
 	HitHeld, ///< つかまれ中
-	StrafeLeft, ///< 左横走り（ファイルがなければ走り）
-	StrafeRight, ///< 右横走り（ファイルがなければ走り）
 	Count ///< クリップの数
 };
 
