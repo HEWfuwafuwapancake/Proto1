@@ -51,6 +51,15 @@ static constexpr float STATUS_MARKER_GAP = 0.22f;
 static constexpr XMFLOAT4 STATUS_COLORS[STATUS_COUNT] = {
 	{ 1.0f, 0.95f, 0.2f, 1.0f }, { 0.5f, 0.85f, 1.0f, 1.0f }, { 1.0f, 0.45f, 0.1f, 1.0f }, { 0.6f, 0.6f, 0.6f, 1.0f }
 }; // しびれ・遅い・燃える・隠れる（隠れるは描かない）
+// しびれ中の見た目（描画だけ。当たり判定・攻撃の起点は動かさない）
+static constexpr float STUN_SHAKE_WIDTH = 0.08f; // 体が左右に震える幅
+static constexpr float STUN_SHAKE_SPEED = 70.0f; // 震える速さ（ラジアン／秒。約 11 回／秒）
+static constexpr int STUN_STAR_COUNT = 3; // 頭の上を回る星の数
+static constexpr float STUN_STAR_RADIUS = 0.09f; // 星の球の半径
+static constexpr float STUN_STAR_ORBIT = 0.4f; // 星が回る輪の半径
+static constexpr float STUN_STAR_HEIGHT = 0.3f; // 星の輪の、頭の上からの高さ
+static constexpr float STUN_STAR_BOB = 0.06f; // 星が上下に揺れる幅
+static constexpr float STUN_STAR_SPIN = 7.0f; // 星が回る速さ（ラジアン／秒）
 static constexpr float KNOCKBACK_BASE_SPEED = 4.0f;
 static constexpr float KNOCKBACK_GROWTH = 0.06f; // 100% で今までの 50% と同じ速さ（2026-11-12、管理者）
 static constexpr float KNOCKBACK_ANGLE = XMConvertToRadians(30.0f);
@@ -296,11 +305,15 @@ void Fighter::Draw(bool highlighted) const
 	if (m_Models[m_Character].IsLoaded()) {
 		m_Models[m_Character].Draw(m_Pose, GetModelWorld(), color);
 	} else {
-		ShapeDrawCapsule(GetPosition(), BODY_RADIUS, BODY_HEIGHT, color);
+		const XMFLOAT3 p = GetPosition();
+		const XMFLOAT3 shake = GetStunShake();
+		ShapeDrawCapsule({ p.x + shake.x, p.y, p.z + shake.z }, BODY_RADIUS, BODY_HEIGHT, color);
 	}
+	DrawStunStars();
 	int marker = 0;
 	for (int type = 0; type < STATUS_HIDDEN; ++type) {
-		if (!m_Status.IsActive((STATUS_TYPE)type)) continue;
+		// しびれは頭の上を回る星で見せる。
+		if (type == STATUS_STUN || !m_Status.IsActive((STATUS_TYPE)type)) continue;
 		const XMFLOAT3 p = GetPosition();
 		ShapeDrawSphere({ p.x + STATUS_MARKER_GAP * marker++, p.y + BODY_HEIGHT + STATUS_MARKER_HEIGHT, p.z }, STATUS_MARKER_RADIUS, STATUS_COLORS[type]);
 	}
@@ -315,12 +328,35 @@ XMMATRIX Fighter::GetModelWorld() const
 	const CHARACTER_DATA& character = CHARACTER_DATA::Get(m_Character);
 	const float scale = BODY_HEIGHT / character.ModelHeight;
 	const XMFLOAT3 p = GetPosition();
+	const XMFLOAT3 shake = GetStunShake();
 	// 足元を中心に、前後・左右へ傾けてから脚の向きへ回す（上半身は骨のねじれで狙いの向きになる）。
 	// RotationZ はプラスで左へ傾くので、右へ傾く値の符号を変えて渡す。
 	return XMMatrixScaling(scale, scale, scale) * XMMatrixRotationY(character.ModelYaw)
 		* XMMatrixTranslation(0.0f, -character.ModelFootY * scale, 0.0f)
 		* XMMatrixRotationX(m_Motion.GetLeanPitch()) * XMMatrixRotationZ(-m_Motion.GetLeanRoll())
-		* XMMatrixRotationY(m_Motion.GetLegYaw()) * XMMatrixTranslation(p.x, p.y, p.z);
+		* XMMatrixRotationY(m_Motion.GetLegYaw()) * XMMatrixTranslation(p.x + shake.x, p.y, p.z + shake.z);
+}
+
+// しびれ中だけ、体を左右（体の向きに対して横）に細かく震わせるずれ。描画だけで使う。
+XMFLOAT3 Fighter::GetStunShake() const
+{
+	if (!m_Status.IsActive(STATUS_STUN)) return { 0.0f, 0.0f, 0.0f };
+	const float side = sinf(GameTimeGetElapsed() * STUN_SHAKE_SPEED) * STUN_SHAKE_WIDTH;
+	return { cosf(m_Yaw) * side, 0.0f, -sinf(m_Yaw) * side };
+}
+
+// しびれ中だけ、頭の上に黄色い星を回す。
+void Fighter::DrawStunStars() const
+{
+	if (!m_Status.IsActive(STATUS_STUN)) return;
+	const XMFLOAT3 p = GetPosition();
+	const float time = GameTimeGetElapsed();
+	for (int i = 0; i < STUN_STAR_COUNT; ++i) {
+		const float angle = time * STUN_STAR_SPIN + XM_2PI * i / STUN_STAR_COUNT;
+		const float bob = sinf(angle * 2.0f) * STUN_STAR_BOB;
+		ShapeDrawSphere({ p.x + cosf(angle) * STUN_STAR_ORBIT, p.y + BODY_HEIGHT + STUN_STAR_HEIGHT + bob,
+			p.z + sinf(angle) * STUN_STAR_ORBIT }, STUN_STAR_RADIUS, STATUS_COLORS[STATUS_STUN]);
+	}
 }
 
 float Fighter::GetAttackArm(int hand, VEC3& arm, VEC3& weapon, bool& own) const
