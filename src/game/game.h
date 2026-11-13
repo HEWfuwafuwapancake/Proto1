@@ -38,6 +38,10 @@ public:
 	void SetTuning(const MATCH_TUNING& tuning);
 	/// @brief オフライン、または試合中でないオンラインのホストならtrueを返す
 	bool CanEditTuning() const;
+	/// @brief オフラインで1Pの指定の手が素手でなければtrueを返す（左0・右1）
+	bool CanEditDurability(int hand) const;
+	/// @brief 編集可能なときだけ1Pの指定の手の耐久を設定する（左0・右1、値は0〜100へ収める）
+	void SetDurability(int hand, int value);
 
 private:
 	void Restart(bool retry);

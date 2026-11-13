@@ -19,6 +19,7 @@
 #include "render/model.h"
 #include "render/shape.h"
 #include <memory>
+#include <algorithm>
 
 #ifdef _DEBUG
 #include "core/debug_ostream.h"
@@ -54,7 +55,7 @@ static constexpr float PARRY_FLASH_END_RADIUS = 1.2f;
 static constexpr float GUARD_FLASH_END_RADIUS = 0.8f;
 static constexpr XMFLOAT4 PARRY_FLASH_COLOR{ 1.0f, 0.9f, 0.2f, 1.0f };
 static constexpr XMFLOAT4 GUARD_FLASH_COLOR{ 0.6f, 0.6f, 0.6f, 1.0f };
-// ARM_TYPE の順に、触手・ハンマー・ナックル・C4・ガンランス・刀・素手。
+// 装備時の耐久は全腕共通。素手は0。
 static constexpr int ARM_MAX_DURABILITY = 100;
 static constexpr int GUARD_DURABILITY_COST = 50;
 
@@ -180,18 +181,27 @@ void ArmManager::UpdateEquip(const Fighter& player)
 		ChangeType(m_SelectedHand, ArmCalcCycle(m_Types[m_SelectedHand], direction, available, ARM_TYPE_COUNT), direction);
 	}
 	for (int hand = 0; hand < 2; ++hand) {
-		if (key.Hand == hand) ChangeType(hand, direct);
+		if (key.Hand == hand) {
+			// 同じ番号で付け直したときも耐久を100へ戻す（DEBUGだけがこの関数を呼ぶ）。
+			if (direct >= 0 && direct == m_Types[hand]) m_Uses[hand].Reset(ARM_MAX_DURABILITY);
+			ChangeType(hand, direct);
+		}
 	}
 }
 
-bool ArmManager::HasUnlimitedUses() const
+bool ArmManager::IsDurabilityLocked() const
 {
-	return m_Rule == GAME_RULE_DEBUG || TuningCalcIsUnlimitedUses(m_Tuning);
+	return TuningCalcIsUnlimitedUses(m_Tuning);
+}
+
+bool ArmManager::CanBreak() const
+{
+	return !IsDebug() && !IsDurabilityLocked();
 }
 
 void ArmManager::BreakExhaustedArm(int hand)
 {
-	if (HasUnlimitedUses() || m_Types[hand] == ARM_TYPE_NONE || !m_Uses[hand].IsExhausted()) return;
+	if (!CanBreak() || m_Types[hand] == ARM_TYPE_NONE || !m_Uses[hand].IsExhausted()) return;
 	const Arm& arm = *m_Arms[hand][m_Types[hand]];
 	if (!arm.IsActive() && !arm.IsBusy()) ChangeType(hand, ARM_TYPE_NONE);
 }
@@ -212,9 +222,9 @@ void ArmManager::UpdateGuards(const Fighter& player, float dt, bool interrupted)
 				{ sinf(player.GetYaw()) * GUARD_MARKER_FORWARD, 0.0f, cosf(player.GetYaw()) * GUARD_MARKER_FORWARD });
 		}
 		if (result == PARRY_SUCCESS) arm.Rumble(PARRY_RUMBLE, PARRY_RUMBLE, PARRY_RUMBLE_SECONDS);
-		else if (result == PARRY_BREAK_ARM && !HasUnlimitedUses()) {
+		else if (result == PARRY_BREAK_ARM && !IsDurabilityLocked()) {
 			m_Uses[hand].Consume(TuningCalcDurabilityCost(GUARD_DURABILITY_COST, m_Tuning));
-			if (m_Uses[hand].IsExhausted()) {
+			if (CanBreak() && m_Uses[hand].IsExhausted()) {
 				arm.Rumble(BREAK_RUMBLE, BREAK_RUMBLE, BREAK_RUMBLE_SECONDS);
 				ChangeType(hand, ARM_TYPE_NONE);
 			}
@@ -261,14 +271,14 @@ void ArmManager::Update(bool playing)
 			const bool wasActive = arm.IsActive();
 			ARM_INPUT input{};
 			if (m_Guards[hand].IsGuarding()) m_Presses[hand].Reset(pressed);
-			else if (HasUnlimitedUses() || !m_Uses[hand].IsExhausted() || arm.IsHolding()) { // 最後の1回でつかんだ相手も投げられるようにする。
+			else if (CanUseArm(hand) || arm.IsHolding()) { // 最後の1回でつかんだ相手も投げられるようにする。
 				input = m_Presses[hand].Step(pressed, dt, arm.CanTakeTap(), arm.CanTakeHold());
 			}
 			else m_Presses[hand].Reset(pressed);
 			arm.Update(input);
 			if (!wasActive && arm.IsActive()) m_LastActiveHand = hand;
 		}
-		if (!HasUnlimitedUses()) m_Uses[hand].Consume(arm.m_Used);
+		if (!IsDurabilityLocked()) m_Uses[hand].Consume(arm.m_Used);
 		arm.m_Used = 0;
 		BreakExhaustedArm(hand);
 	}
@@ -335,7 +345,19 @@ ARM_TYPE ArmManager::GetType(int hand) const
 int ArmManager::GetDurability(int hand) const
 {
 	if (hand < 0 || hand >= 2) return 0;
-	return HasUnlimitedUses() ? -1 : m_Uses[hand].GetRemaining();
+	return IsDurabilityLocked() ? -1 : m_Uses[hand].GetRemaining();
+}
+
+void ArmManager::SetDurability(int hand, int value)
+{
+	if (hand < 0 || hand >= 2 || m_Types[hand] == ARM_TYPE_NONE) return;
+	m_Uses[hand].Reset((std::max)(0, (std::min)(ARM_MAX_DURABILITY, value)));
+	BreakExhaustedArm(hand);
+}
+
+bool ArmManager::CanUseArm(int hand) const
+{
+	return hand >= 0 && hand < 2 && (!CanBreak() || !m_Uses[hand].IsExhausted());
 }
 
 GUARD_FEEDBACK ArmManager::GetGuardFeedback() const
@@ -388,6 +410,11 @@ void Arm::ConsumeDurability(int cost)
 int Arm::GetDurability() const
 {
 	return m_Links.Arms->GetDurability(m_Hand);
+}
+
+bool Arm::CanUse() const
+{
+	return m_Links.Arms->CanUseArm(m_Hand);
 }
 
 const MATCH_TUNING& Arm::GetTuning() const

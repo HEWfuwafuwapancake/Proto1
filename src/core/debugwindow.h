@@ -27,3 +27,14 @@ bool DebugWindowTakeSelection(int row, int& index);
 bool DebugWindowTakeReset();
 /// @brief 選択欄と戻すボタンを使えるか設定する（true：選べる、false：灰色で表示だけ）
 void DebugWindowSetChoicesEnabled(bool enabled);
+
+/// @brief 1Pの腕名と耐久を表示する（ユーザー変更通知は出さず、ドラッグ中の位置は上書きしない）
+/// @param hand 左0・右1
+/// @param armName 腕のマルチバイトの名前
+/// @param value 残り耐久0〜100（無制限は-1）
+/// @param enabled 操作を設定する（true：つまみを動かせる、false：灰色で表示だけ）
+void DebugWindowSetMeter(int hand, const char* armName, int value, bool enabled);
+/// @brief 前に読んでからユーザーがつまみを動かしたらtrueを返し、valueへ耐久を入れて通知を消す
+/// @param hand 左0・右1
+/// @param value 変更後の耐久を書く先
+bool DebugWindowTakeMeter(int hand, int& value);

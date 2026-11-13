@@ -1,6 +1,9 @@
 ﻿#include "core/debugwindow.h"
 #include <string>
 #include <algorithm>
+#include <commctrl.h>
+
+#pragma comment(lib, "comctl32.lib")
 
 // 調整用の値（枠を含む幅・高さと、モニター端からの余白。ピクセル）
 static constexpr int WINDOW_WIDTH = 720;
@@ -15,6 +18,10 @@ static constexpr int CONTROL_MARGIN = 8;
 static constexpr int LABEL_WIDTH = 280;
 static constexpr int RESET_WIDTH = 180;
 static constexpr int DROPDOWN_HEIGHT = 240;
+static constexpr int METER_HANDS = 2;
+static constexpr int METER_ID = 300;
+static constexpr int METER_MAX = 100;
+static constexpr int METER_VALUE_WIDTH = 64;
 
 static HWND g_Window = nullptr;
 static HWND g_Text = nullptr;
@@ -26,6 +33,14 @@ static int g_ChoiceCounts[CHOICE_ROWS] = {};
 static bool g_Changed[CHOICE_ROWS] = {};
 static bool g_ResetRequested = false;
 static bool g_ChoicesEnabled = true;
+static HWND g_Meters[METER_HANDS] = {};
+static HWND g_MeterLabels[METER_HANDS] = {};
+static HWND g_MeterNumbers[METER_HANDS] = {};
+static bool g_MeterChanged[METER_HANDS] = {};
+static bool g_MeterDragging[METER_HANDS] = {};
+static int g_MeterValues[METER_HANDS] = {};
+static int g_MeterShownValues[METER_HANDS] = { -2, -2 };
+static std::wstring g_MeterNames[METER_HANDS];
 
 static std::wstring ToWide(const char* text)
 {
@@ -44,7 +59,7 @@ static void Layout(HWND window)
 	int rows = 0;
 	for (int count : g_ChoiceCounts) if (count > 0) ++rows;
 	const int width = client.right;
-	const int textHeight = (std::max)(0, static_cast<int>(client.bottom) - ROW_HEIGHT * (rows + 1) - CONTROL_MARGIN * 2);
+	const int textHeight = (std::max)(0, static_cast<int>(client.bottom) - ROW_HEIGHT * (rows + 1 + METER_HANDS) - CONTROL_MARGIN * 2);
 	if (g_Text) MoveWindow(g_Text, 0, 0, width, textHeight, TRUE);
 	const int labelWidth = (std::min)(LABEL_WIDTH, width / 2);
 	const int choiceWidth = (std::max)(0, width - labelWidth - CONTROL_MARGIN * 3);
@@ -56,6 +71,15 @@ static void Layout(HWND window)
 		y += ROW_HEIGHT;
 	}
 	if (g_ResetButton) MoveWindow(g_ResetButton, CONTROL_MARGIN, y, RESET_WIDTH, ROW_HEIGHT - 4, TRUE);
+	y += ROW_HEIGHT;
+	const int meterWidth = (std::max)(0, choiceWidth - METER_VALUE_WIDTH - CONTROL_MARGIN);
+	for (int hand = 0; hand < METER_HANDS; ++hand) {
+		MoveWindow(g_MeterLabels[hand], CONTROL_MARGIN, y + 4, labelWidth, ROW_HEIGHT - 4, TRUE);
+		MoveWindow(g_Meters[hand], labelWidth + CONTROL_MARGIN * 2, y, meterWidth, ROW_HEIGHT - 4, TRUE);
+		MoveWindow(g_MeterNumbers[hand], labelWidth + CONTROL_MARGIN * 3 + meterWidth, y + 4,
+			METER_VALUE_WIDTH, ROW_HEIGHT - 4, TRUE);
+		y += ROW_HEIGHT;
+	}
 }
 
 // ゲームと違うモニターを1つ探すための情報。見つからなければゲーム側の作業領域を使う。
@@ -100,6 +124,21 @@ static LRESULT CALLBACK DebugWindowProc(HWND window, UINT message, WPARAM wParam
 			0, 0, 0, 0, window, reinterpret_cast<HMENU>(static_cast<INT_PTR>(RESET_ID)), GetModuleHandle(nullptr), nullptr);
 		if (!g_ResetButton) return -1;
 		SendMessageW(g_ResetButton, WM_SETFONT, reinterpret_cast<WPARAM>(GetStockObject(DEFAULT_GUI_FONT)), TRUE);
+		for (int hand = 0; hand < METER_HANDS; ++hand) {
+			g_MeterLabels[hand] = CreateWindowExW(0, L"STATIC", L"", WS_CHILD | WS_VISIBLE,
+				0, 0, 0, 0, window, nullptr, GetModuleHandle(nullptr), nullptr);
+			g_Meters[hand] = CreateWindowExW(0, TRACKBAR_CLASSW, L"", WS_CHILD | WS_VISIBLE | WS_TABSTOP | TBS_HORZ | TBS_NOTICKS,
+				0, 0, 0, 0, window, reinterpret_cast<HMENU>(static_cast<INT_PTR>(METER_ID + hand)), GetModuleHandle(nullptr), nullptr);
+			g_MeterNumbers[hand] = CreateWindowExW(0, L"STATIC", L"", WS_CHILD | WS_VISIBLE,
+				0, 0, 0, 0, window, nullptr, GetModuleHandle(nullptr), nullptr);
+			if (!g_MeterLabels[hand] || !g_Meters[hand] || !g_MeterNumbers[hand]) return -1;
+			SendMessageW(g_Meters[hand], TBM_SETRANGE, TRUE, MAKELPARAM(0, METER_MAX));
+			SendMessageW(g_MeterLabels[hand], WM_SETFONT, reinterpret_cast<WPARAM>(GetStockObject(DEFAULT_GUI_FONT)), TRUE);
+			SendMessageW(g_MeterNumbers[hand], WM_SETFONT, reinterpret_cast<WPARAM>(GetStockObject(DEFAULT_GUI_FONT)), TRUE);
+			EnableWindow(g_Meters[hand], FALSE);
+			EnableWindow(g_MeterLabels[hand], FALSE);
+			EnableWindow(g_MeterNumbers[hand], FALSE);
+		}
 		return 0;
 	case WM_SIZE:
 		Layout(window);
@@ -109,6 +148,14 @@ static LRESULT CALLBACK DebugWindowProc(HWND window, UINT message, WPARAM wParam
 			g_Changed[LOWORD(wParam) - CHOICE_ID] = true;
 		}
 		if (LOWORD(wParam) == RESET_ID && HIWORD(wParam) == BN_CLICKED) g_ResetRequested = true;
+		return 0;
+	case WM_HSCROLL:
+		for (int hand = 0; hand < METER_HANDS; ++hand) {
+			if (reinterpret_cast<HWND>(lParam) != g_Meters[hand] || !IsWindowEnabled(g_Meters[hand])) continue;
+			g_MeterDragging[hand] = LOWORD(wParam) == TB_THUMBTRACK;
+			g_MeterValues[hand] = static_cast<int>(SendMessageW(g_Meters[hand], TBM_GETPOS, 0, 0));
+			g_MeterChanged[hand] = true;
+		}
 		return 0;
 	case WM_SETFOCUS:
 		if (g_Text != nullptr) SetFocus(g_Text);
@@ -127,6 +174,13 @@ static LRESULT CALLBACK DebugWindowProc(HWND window, UINT message, WPARAM wParam
 		}
 		g_ResetRequested = false;
 		g_ChoicesEnabled = true;
+		for (int hand = 0; hand < METER_HANDS; ++hand) {
+			g_Meters[hand] = g_MeterLabels[hand] = g_MeterNumbers[hand] = nullptr;
+			g_MeterChanged[hand] = g_MeterDragging[hand] = false;
+			g_MeterValues[hand] = 0;
+			g_MeterShownValues[hand] = -2;
+			g_MeterNames[hand].clear();
+		}
 		return 0;
 	default:
 		return DefWindowProcW(window, message, wParam, lParam);
@@ -136,6 +190,8 @@ static LRESULT CALLBACK DebugWindowProc(HWND window, UINT message, WPARAM wParam
 bool DebugWindowInitialize(HWND gameWindow)
 {
 	DebugWindowFinalize();
+	INITCOMMONCONTROLSEX controls{ sizeof(INITCOMMONCONTROLSEX), ICC_BAR_CLASSES };
+	if (!InitCommonControlsEx(&controls)) return false;
 	const HINSTANCE instance = GetModuleHandle(nullptr);
 	WNDCLASSEXW windowClass{};
 	windowClass.cbSize = sizeof(windowClass);
@@ -237,4 +293,42 @@ void DebugWindowSetChoicesEnabled(bool enabled)
 		EnableWindow(g_Choices[row], enabled);
 	}
 	EnableWindow(g_ResetButton, enabled);
+}
+
+void DebugWindowSetMeter(int hand, const char* armName, int value, bool enabled)
+{
+	if (!g_Window || hand < 0 || hand >= METER_HANDS) return;
+	const std::wstring name = ToWide(armName);
+	if (g_MeterNames[hand] != name) {
+		g_MeterNames[hand] = name;
+		const std::wstring label = std::wstring(hand == 0 ? L"1P 左手の耐久（" : L"1P 右手の耐久（") + name.c_str() + L"）";
+		SetWindowTextW(g_MeterLabels[hand], label.c_str());
+	}
+	if (!enabled) {
+		g_MeterChanged[hand] = false;
+		g_MeterDragging[hand] = false;
+	}
+	if ((IsWindowEnabled(g_Meters[hand]) != FALSE) != enabled) {
+		EnableWindow(g_Meters[hand], enabled);
+		EnableWindow(g_MeterLabels[hand], enabled);
+		EnableWindow(g_MeterNumbers[hand], enabled);
+	}
+	const bool preserve = g_MeterDragging[hand] || g_MeterChanged[hand];
+	const int position = static_cast<int>(SendMessageW(g_Meters[hand], TBM_GETPOS, 0, 0));
+	const int requested = value < 0 ? METER_MAX : (std::max)(0, (std::min)(METER_MAX, value));
+	if (!preserve && position != requested) SendMessageW(g_Meters[hand], TBM_SETPOS, TRUE, requested);
+	const int shown = preserve ? position : value;
+	if (g_MeterShownValues[hand] != shown) {
+		g_MeterShownValues[hand] = shown;
+		const std::wstring number = shown < 0 ? L"無制限" : std::to_wstring((std::max)(0, (std::min)(METER_MAX, shown)));
+		SetWindowTextW(g_MeterNumbers[hand], number.c_str());
+	}
+}
+
+bool DebugWindowTakeMeter(int hand, int& value)
+{
+	if (!g_Window || hand < 0 || hand >= METER_HANDS || !g_MeterChanged[hand]) return false;
+	g_MeterChanged[hand] = false;
+	value = g_MeterValues[hand];
+	return true;
 }

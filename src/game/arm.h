@@ -101,8 +101,10 @@ protected:
 
 	/// @brief 耐久の減る量に試合の倍率を適用し、このフレームの消費に加える
 	void ConsumeDurability(int cost);
-	/// @brief 残り耐久を取得する（DEBUG の無制限は -1）
+	/// @brief 残り耐久を取得する（無制限の段だけ -1）
 	int GetDurability() const;
+	/// @brief 残り耐久があるか、DEBUGで0でも使えるならtrueを返す
+	bool CanUse() const;
 	/// @brief 今の試合に適用済みの設定を取得する
 	const MATCH_TUNING& GetTuning() const;
 	/// @brief プレイヤーへの参照を取得する
@@ -232,8 +234,14 @@ public:
 	/// @param hand 左 0・右 1
 	/// @return 装備している種類。手が範囲外なら ARM_TYPE_COUNT
 	ARM_TYPE GetType(int hand) const;
-	/// @brief 片手の残り耐久を取得する（DEBUG は -1、範囲外は 0）
+	/// @brief 片手の残り耐久を取得する（無制限の段だけ -1、範囲外は 0）
 	int GetDurability(int hand) const;
+	/// @brief 残り耐久を0〜100へ収めて設定する（待機中のGAMEの腕が0なら素手になる）
+	void SetDurability(int hand, int value);
+	/// @brief その手の腕を使える耐久があるか、DEBUGで壊れないならtrueを返す（範囲外はfalse）
+	bool CanUseArm(int hand) const;
+	/// @brief DEBUGのルールならtrueを返す（耐久は減るが壊れない）
+	bool IsDebug() const { return m_Rule == GAME_RULE_DEBUG; }
 
 	/// @brief 最後に防いだ結果と経過時間を取得する（描画専用、通信のハッシュには含めない）
 	GUARD_FEEDBACK GetGuardFeedback() const;
@@ -245,7 +253,8 @@ public:
 
 private:
 	void ChangeType(int hand, int next, int direction = 1);
-	bool HasUnlimitedUses() const;
+	bool IsDurabilityLocked() const;
+	bool CanBreak() const;
 	void UpdateEquip(const Fighter& player);
 	void BreakExhaustedArm(int hand);
 	void UpdateGuards(const Fighter& player, float dt, bool interrupted);

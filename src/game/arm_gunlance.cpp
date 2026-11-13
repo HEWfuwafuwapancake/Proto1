@@ -100,7 +100,7 @@ void GunlanceArm::ReleaseHeld()
 
 void GunlanceArm::Fire()
 {
-	if (GetDurability() == 0 || !m_Calc.CanFire()) return;
+	if (!CanUse() || !m_Calc.CanFire()) return;
 	const VEC3 shoulder = GetShoulder();
 	const VEC3 aim = GetAim(true);
 	const int index = m_Shots.Fire(Vec3Add(shoulder, Vec3Scale(aim, MUZZLE_FORWARD)), Vec3Scale(aim, SHOT_SPEED), -1, SHOT_PARAMS);
@@ -256,12 +256,12 @@ ARM_BODY_CLIP GunlanceArm::GetBodyClip() const
 
 bool GunlanceArm::CanTakeTap() const
 {
-	return GetDurability() != 0 && m_Calc.CanFire(GameTimeGetDeltaTime());
+	return CanUse() && m_Calc.CanFire(GameTimeGetDeltaTime());
 }
 
 bool GunlanceArm::CanTakeHold() const
 {
-	return GetDurability() != 0 && m_Calc.IsIdle();
+	return CanUse() && m_Calc.IsIdle();
 }
 
 bool GunlanceArm::IsHolding() const

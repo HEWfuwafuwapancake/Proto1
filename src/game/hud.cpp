@@ -42,7 +42,7 @@ static constexpr float ARM_LABEL_BORDER = 2.0f;
 static constexpr float ARM_HAND_DOT = 4.0f;
 static constexpr float ARM_NAME_OFFSET = 46.0f;
 static constexpr float ARM_USES_DIGIT_WIDTH = 10.0f;
-static constexpr float ARM_DURABILITY_BAR_WIDTH = 72.0f;
+static constexpr float ARM_DURABILITY_BAR_WIDTH = 40.0f; // 腕名と重ならず、数字の下に収める。
 static constexpr float ARM_DURABILITY_BAR_HEIGHT = 4.0f;
 static constexpr float ARM_DURABILITY_MAX = 100.0f;
 static constexpr float ARM_FLIP_SECONDS = 0.2f;
@@ -215,7 +215,7 @@ void Hud::Update(void)
 void Hud::DrawArmName(int hand) const
 {
 	const int remaining = m_Arms->GetDurability(hand);
-	const bool selected = remaining < 0 && m_Arms->GetSelectedHand() == hand;
+	const bool selected = m_Arms->IsDebug() && m_Arms->GetSelectedHand() == hand;
 	const float x = hand == 0 ? ARM_LABEL_MARGIN : m_Width - ARM_LABEL_MARGIN - ARM_LABEL_WIDTH;
 	const float y = m_Height - ARM_LABEL_MARGIN - ARM_LABEL_PADDING - ARM_LABEL_HEIGHT;
 	const XMFLOAT4 color = selected ? MENU_SELECTED_COLOR : TEXT_COLOR;
