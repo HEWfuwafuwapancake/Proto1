@@ -84,6 +84,8 @@ static void UpdateTuningChoices()
 	MATCH_TUNING tuning = g_Game.GetTuning();
 	const bool reset = DebugWindowTakeReset();
 	if (enabled && reset) tuning = TuningCalcDefault();
+	// 「ふつうに戻す」は耐久の減る量の表も最初の値に戻す（オフラインだけ）。
+	if (reset) g_Game.SetArmCosts(ArmCostCalcDefault());
 	for (int row = 0; row < TUNING_ITEM_COUNT; ++row) {
 		int level = 0;
 		// 編集できない間の古い通知も読み捨て、あとから適用しない。
@@ -95,12 +97,42 @@ static void UpdateTuningChoices()
 
 static void UpdateDurabilityMeters()
 {
-	for (int hand = 0; hand < 2; ++hand) {
+	// 腕の種類ごとに1行。1Pが装備している腕だけ動かせる（両手なら両方の手が変わる）。
+	for (int type = 0; type < ARM_TYPE_NONE; ++type) {
+		const auto arm = static_cast<ARM_TYPE>(type);
 		int value = 0;
-		// オンラインや素手の間の古い変更通知も読み捨てる。
-		if (DebugWindowTakeMeter(hand, value)) g_Game.SetDurability(hand, value);
-		const ArmManager& arms = g_Game.GetArms(0);
-		DebugWindowSetMeter(hand, ArmGetName(arms.GetType(hand)), arms.GetDurability(hand), g_Game.CanEditDurability(hand));
+		// オンラインや装備していない間の古い変更通知も読み捨てる。
+		if (DebugWindowTakeMeter(type, value)) g_Game.SetDurability(arm, value);
+		DebugWindowSetMeter(type, ArmGetName(arm), g_Game.GetDurability(arm), g_Game.CanEditDurability(arm));
+	}
+}
+
+// 耐久の減る量の表（行は ARM_COST_ROW、列は ARM_COST_ITEM の順）。
+static constexpr const char* COST_COLUMN_LABELS[ARM_COST_ITEM_COUNT] = { "弱・当たり", "弱・外れ", "強・当たり", "強・外れ", "そのほか" };
+static constexpr const char* COST_ROW_LABELS[ARM_COST_ROW_COUNT] = { "触手", "ハンマー", "ナックル", "C4", "ガンランス", "刀", "ガード" };
+static constexpr const char* COST_ROW_NOTES[ARM_COST_ROW_COUNT] = {
+	"弱：つかむ・足場　強：回転", "強：衝撃波　そのほか：空中の跳ね", "強：地上の突進　そのほか：空中の突進",
+	"強：大きい爆弾　そのほか：場外で消えた1つ", "強：突き刺し・突進　そのほか：弾1発",
+	"強：飛んだ時に外れ、当たれば差を足す", "そのほか：パリィできずに防いだ"
+};
+
+static void UpdateCostTable()
+{
+	const bool enabled = g_Game.CanEditArmCosts();
+	ARM_COST_TABLE costs = g_Game.GetArmCosts();
+	// 「ふつうに戻す」は試合の設定と一緒に読むので、ここでは表の書き換えだけを読む。
+	for (int row = 0; row < ARM_COST_ROW_COUNT; ++row) {
+		for (int item = 0; item < ARM_COST_ITEM_COUNT; ++item) {
+			int value = 0;
+			if (DebugWindowTakeTableValue(row, item, value) && enabled) ArmCostCalcSet(costs, row, item, value);
+		}
+	}
+	g_Game.SetArmCosts(costs);
+	for (int row = 0; row < ARM_COST_ROW_COUNT; ++row) {
+		for (int item = 0; item < ARM_COST_ITEM_COUNT; ++item) {
+			const int value = ArmCostCalcIsUsed(row, item) ? g_Game.GetArmCosts().Values[row][item] : -1;
+			DebugWindowSetTableValue(row, item, value, enabled);
+		}
 	}
 }
 
@@ -258,6 +290,7 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
 		return -1;
 	}
 	InitializeTuningChoices();
+	DebugWindowSetTable(COST_COLUMN_LABELS, ARM_COST_ITEM_COUNT, COST_ROW_LABELS, COST_ROW_NOTES, ARM_COST_ROW_COUNT);
 	RefreshTitle(hWnd);
 	ShowWindow(hWnd, fullscreen || windowed ? nCmdShow : SW_SHOWMAXIMIZED);
 	UpdateWindow(hWnd);
@@ -553,6 +586,7 @@ void Update(void)
 	}
 
 	UpdateTuningChoices();
+	UpdateCostTable();
 	g_Game.Update();
 	UpdateDurabilityMeters();
 }

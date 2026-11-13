@@ -8,9 +8,8 @@
 #include "render/shape.h"
 
 // 調整用の値
-static constexpr int SHOT_COST = 5;
-static constexpr int IMPALE_COST = 50;
-static constexpr int RUSH_MISS_COST = 25;
+// 耐久の減る量は physics/armcostcalc の表のガンランスの行（強：突き刺し・突進の空振り、そのほか：弾1発）。
+static constexpr ARM_COST_ROW COST_ROW = ARM_COST_ROW_GUNLANCE;
 static constexpr int IMPALE_SHOTS = 3;
 static constexpr PROJECTILE_PARAMS SHOT_PARAMS{ 0.2f, 0.0f, 0.8f, 0.0f, false };
 static constexpr float SHOT_SPEED = 30.0f;
@@ -63,7 +62,7 @@ GunlanceArm::GunlanceArm(int hand, const ARM_LINKS& links) : Arm(hand, links)
 
 void GunlanceArm::FinishRush()
 {
-	if (m_RushPending) ConsumeDurability(RUSH_MISS_COST);
+	if (m_RushPending) ConsumeDurability(GetCost(COST_ROW, ARM_COST_HOLD_MISS));
 	m_RushPending = false;
 }
 
@@ -109,7 +108,7 @@ void GunlanceArm::Fire()
 	m_PoseSeconds = POSE_SECONDS;
 	m_RecoilSeconds = 0.0f;
 	m_Calc.RecordShot();
-	ConsumeDurability(SHOT_COST);
+	ConsumeDurability(GetCost(COST_ROW, ARM_COST_EXTRA));
 }
 
 void GunlanceArm::StepRush()
@@ -127,7 +126,7 @@ void GunlanceArm::StepRush()
 		}
 		m_HeldTarget = i;
 		fighters.AddDamage(i, GetSlot(), IMPALE_DAMAGE);
-		ConsumeDurability(IMPALE_COST);
+		ConsumeDurability(GetCost(COST_ROW, ARM_COST_HOLD_HIT));
 		m_RushPending = false;
 		m_Calc.StartImpale(IMPALE_SHOTS);
 		Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);

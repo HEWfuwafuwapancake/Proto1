@@ -38,10 +38,18 @@ public:
 	void SetTuning(const MATCH_TUNING& tuning);
 	/// @brief オフライン、または試合中でないオンラインのホストならtrueを返す
 	bool CanEditTuning() const;
-	/// @brief オフラインで1Pの指定の手が素手でなければtrueを返す（左0・右1）
-	bool CanEditDurability(int hand) const;
-	/// @brief 編集可能なときだけ1Pの指定の手の耐久を設定する（左0・右1、値は0〜100へ収める）
-	void SetDurability(int hand, int value);
+	/// @brief オフラインで1Pがその腕をどちらかの手に装備していればtrueを返す
+	bool CanEditDurability(ARM_TYPE type) const;
+	/// @brief 1Pがその腕を装備している手の耐久を取得する（左手を優先。装備していなければ -2、無制限の段は -1）
+	int GetDurability(ARM_TYPE type) const;
+	/// @brief 編集可能なときだけ、1Pがその腕を装備している手（両手なら両方）の耐久を設定する（0〜100へ収める）
+	void SetDurability(ARM_TYPE type, int value);
+	/// @brief 耐久が減る量の表（オフラインで使う。オンラインははじめの表を使う）を取得する
+	const ARM_COST_TABLE& GetArmCosts() const { return m_ArmCosts; }
+	/// @brief オフラインならtrueを返す（減る量の表を書き換えられる。オンラインで変えると相手とずれるため）
+	bool CanEditArmCosts() const;
+	/// @brief 書き換えられるときだけ減る量の表を設定する（次のフレームから効く）
+	void SetArmCosts(const ARM_COST_TABLE& costs);
 
 private:
 	void Restart(bool retry);
@@ -56,6 +64,7 @@ private:
 
 	Stage m_Stage;
 	MATCH_TUNING m_Tuning = TuningCalcDefault();
+	ARM_COST_TABLE m_ArmCosts = ArmCostCalcDefault(); // デバッグ用ウィンドウで変える、オフラインの減る量の表。
 	VersusCalc m_Participants; // タイトルで決まる参加者。試合の得点はFighterManagerが持つ。
 	FighterManager m_Fighters;
 	ArmCapsule m_ArmCapsule;

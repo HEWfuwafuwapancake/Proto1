@@ -57,7 +57,8 @@ static constexpr XMFLOAT4 PARRY_FLASH_COLOR{ 1.0f, 0.9f, 0.2f, 1.0f };
 static constexpr XMFLOAT4 GUARD_FLASH_COLOR{ 0.6f, 0.6f, 0.6f, 1.0f };
 // 装備時の耐久は全腕共通。素手は0。
 static constexpr int ARM_MAX_DURABILITY = 100;
-static constexpr int GUARD_DURABILITY_COST = 50;
+// 攻撃・ガードで減る量は physics/armcostcalc の表（デバッグ用ウィンドウで変えられる）。
+static_assert(ARM_COST_ROW_TENTACLE == ARM_TYPE_TENTACLE && ARM_COST_ROW_KATANA == ARM_TYPE_KATANA, "減る量の表の行は ARM_TYPE と同じ順にする");
 
 static_assert(ARM_TYPE_COUNT <= ACTION_EQUIP_NUMBER_COUNT, "腕の番号は通信で送れる数までにする");
 
@@ -223,7 +224,7 @@ void ArmManager::UpdateGuards(const Fighter& player, float dt, bool interrupted)
 		}
 		if (result == PARRY_SUCCESS) arm.Rumble(PARRY_RUMBLE, PARRY_RUMBLE, PARRY_RUMBLE_SECONDS);
 		else if (result == PARRY_BREAK_ARM && !IsDurabilityLocked()) {
-			m_Uses[hand].Consume(TuningCalcDurabilityCost(GUARD_DURABILITY_COST, m_Tuning));
+			m_Uses[hand].Consume(TuningCalcDurabilityCost(m_Costs.Values[ARM_COST_ROW_GUARD][ARM_COST_EXTRA], m_Tuning));
 			if (CanBreak() && m_Uses[hand].IsExhausted()) {
 				arm.Rumble(BREAK_RUMBLE, BREAK_RUMBLE, BREAK_RUMBLE_SECONDS);
 				ChangeType(hand, ARM_TYPE_NONE);
@@ -407,6 +408,11 @@ const char* ArmGetName(ARM_TYPE type)
 void Arm::ConsumeDurability(int cost)
 {
 	if (GetDurability() >= 0) m_Used += TuningCalcDurabilityCost(cost, GetTuning());
+}
+
+int Arm::GetCost(ARM_COST_ROW row, ARM_COST_ITEM item) const
+{
+	return m_Links.Arms->GetCosts().Values[row][item];
 }
 
 int Arm::GetDurability() const

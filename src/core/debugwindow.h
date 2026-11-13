@@ -28,13 +28,32 @@ bool DebugWindowTakeReset();
 /// @brief 選択欄と戻すボタンを使えるか設定する（true：選べる、false：灰色で表示だけ）
 void DebugWindowSetChoicesEnabled(bool enabled);
 
-/// @brief 1Pの腕名と耐久を表示する（ユーザー変更通知は出さず、ドラッグ中の位置は上書きしない）
-/// @param hand 左0・右1
-/// @param armName 腕のマルチバイトの名前
-/// @param value 残り耐久0〜100（無制限は-1）
+/// @brief 耐久のメーターの1行を表示する（初めての行は足して並べ直す。ユーザー変更通知は出さず、ドラッグ中の位置は上書きしない）
+/// @param row 行0〜7
+/// @param label 行の名前（マルチバイト）
+/// @param value 残り耐久0〜100（無制限は-1、装備していないは-2）
 /// @param enabled 操作を設定する（true：つまみを動かせる、false：灰色で表示だけ）
-void DebugWindowSetMeter(int hand, const char* armName, int value, bool enabled);
+void DebugWindowSetMeter(int row, const char* label, int value, bool enabled);
 /// @brief 前に読んでからユーザーがつまみを動かしたらtrueを返し、valueへ耐久を入れて通知を消す
-/// @param hand 左0・右1
+/// @param row 行0〜7
 /// @param value 変更後の耐久を書く先
-bool DebugWindowTakeMeter(int hand, int& value);
+bool DebugWindowTakeMeter(int row, int& value);
+
+/// @brief 数字を書き換えられる表の見出しを設定する（起動時に1回。列は6まで・行は8まで）
+/// @param columns 数字の列の見出し（マルチバイト）
+/// @param columnCount 数字の列の数
+/// @param rows 行の名前（マルチバイト）
+/// @param notes 行ごとの右端の説明（マルチバイト）
+/// @param rowCount 行の数
+void DebugWindowSetTable(const char* const* columns, int columnCount, const char* const* rows, const char* const* notes, int rowCount);
+/// @brief 表の1欄の数字を表示する（打っている途中の欄は上書きしない。ユーザー変更通知は出さない）
+/// @param row 行
+/// @param column 列
+/// @param value 表示する数字（0以上。負なら使わない欄として「―」を出す）
+/// @param enabled 操作を設定する（true：書き換えられる、false：灰色で表示だけ）
+void DebugWindowSetTableValue(int row, int column, int value, bool enabled);
+/// @brief 前に読んでからユーザーが欄を書き換えたらtrueを返し、valueへ数字を入れて通知を消す
+/// @param row 行
+/// @param column 列
+/// @param value 書き換えた数字を書く先
+bool DebugWindowTakeTableValue(int row, int column, int& value);

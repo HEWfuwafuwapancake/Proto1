@@ -91,6 +91,7 @@
     <ClCompile Include="..\..\src\physics\armcalc.cpp" />
     <ClCompile Include="..\..\src\physics\delayedhitcalc.cpp" />
     <ClCompile Include="..\..\src\physics\armpresscalc.cpp" />
+    <ClCompile Include="..\..\src\physics\armcostcalc.cpp" />
     <ClCompile Include="..\..\src\physics\armusecalc.cpp" />
     <ClCompile Include="..\..\src\physics\breachcalc.cpp" />
     <ClCompile Include="..\..\src\physics\collision.cpp" />
@@ -115,6 +116,7 @@
     <ClCompile Include="gunlancecalc_test.cpp" />
     <ClCompile Include="c4calc_test.cpp" />
     <ClCompile Include="armpresscalc_test.cpp" />
+    <ClCompile Include="armcostcalc_test.cpp" />
     <ClCompile Include="armusecalc_test.cpp" />
     <ClCompile Include="capsulecalc_test.cpp" />
     <ClCompile Include="tuningcalc_test.cpp" />

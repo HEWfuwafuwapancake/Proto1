@@ -7,11 +7,8 @@
 #include "render/shape.h"
 
 // 調整用の値
-static constexpr int BOMB_HIT_COST = 34;
-static constexpr int BOMB_MISS_COST = 15;
-static constexpr int LARGE_HIT_COST = 50;
-static constexpr int LARGE_MISS_COST = 25;
-static constexpr int LOST_BOMB_COST = 5;
+// 耐久の減る量は physics/armcostcalc の表のC4の行（弱：通常の爆弾、強：大きい爆弾、そのほか：場外で消えた爆弾1つ）。
+static constexpr ARM_COST_ROW COST_ROW = ARM_COST_ROW_C4;
 static constexpr float C4_SECONDS[] = { 1.0f, 0.3f }; // 大型のため・投げたあとの構え（ハンマーの強攻撃より速く強くならないようにする）
 static constexpr PROJECTILE_PARAMS BOMB_PARAMS{ 0.2f, 20.0f, 5.0f, 0.0f, false };
 static constexpr float THROW_SPEED = 12.0f;
@@ -95,7 +92,7 @@ void C4Arm::StepBombs(float dt)
 	C4_IMPACT impacts[PROJECTILE_MAX];
 	int expired = 0;
 	const int count = m_Bombs.Step(dt, targets, FIGHTER_COUNT, GetStage().GetStage(), BOMB_PARAMS, impacts, PROJECTILE_MAX, &expired);
-	for (int i = 0; i < expired; ++i) ConsumeDurability(LOST_BOMB_COST);
+	for (int i = 0; i < expired; ++i) ConsumeDurability(GetCost(COST_ROW, ARM_COST_EXTRA));
 	m_RangeSeconds = fmaxf(0.0f, m_RangeSeconds - dt);
 	if (count == 0) return;
 	m_RangeCount = count;
@@ -106,8 +103,8 @@ void C4Arm::StepBombs(float dt)
 		int affected = 0;
 		Explode(m_RangeCenters[i], m_RangeRadii[i], large ? LARGE_BLAST_DAMAGE : BLAST_DAMAGE,
 			large ? LARGE_BLAST_POWER : BLAST_POWER, large ? LARGE_BLAST_UP : BLAST_UP, &affected);
-		ConsumeDurability(large ? (affected > 0 ? LARGE_HIT_COST : LARGE_MISS_COST)
-			: (affected > 0 ? BOMB_HIT_COST : BOMB_MISS_COST));
+		ConsumeDurability(GetCost(COST_ROW, large ? (affected > 0 ? ARM_COST_HOLD_HIT : ARM_COST_HOLD_MISS)
+			: (affected > 0 ? ARM_COST_TAP_HIT : ARM_COST_TAP_MISS)));
 	}
 	m_RangeSeconds = RANGE_SHOW_SECONDS;
 	Rumble(BLAST_RUMBLE_SMALL, BLAST_RUMBLE_LARGE, BLAST_RUMBLE_SECONDS);

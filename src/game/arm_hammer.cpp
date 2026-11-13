@@ -8,11 +8,8 @@
 #include "render/shape.h"
 
 // 調整用の値
-static constexpr int TAP_HIT_COST = 50;
-static constexpr int TAP_MISS_COST = 25;
-static constexpr int WAVE_HIT_COST = 50;
-static constexpr int WAVE_MISS_COST = 30;
-static constexpr int AIR_TAP_COST = 50;
+// 耐久の減る量は physics/armcostcalc の表のハンマーの行（弱：単押し、強：衝撃波、そのほか：空中の跳ね）。
+static constexpr ARM_COST_ROW COST_ROW = ARM_COST_ROW_HAMMER;
 static constexpr float TAP_SECONDS[] = { 0.9f, 0.1f, 0.4f }; // 単押し：ため・叩き・休み
 static constexpr float WAVE_SECONDS[] = { 1.2f, 0.1f, 0.5f }; // 長押し：ため・叩き・休み
 static constexpr float TAP_CLIP_SECONDS[] = { 16.0f / 24.0f, 4.0f / 24.0f, 10.0f / 24.0f }; // 単押しのクリップの区切り（hammer_tap）
@@ -85,7 +82,7 @@ void HammerArm::StartHop()
 
 void HammerArm::Reset()
 {
-	if (!m_Phase.IsIdle() && !m_UseConsumed) ConsumeDurability(m_Wave ? WAVE_MISS_COST : TAP_MISS_COST);
+	if (!m_Phase.IsIdle() && !m_UseConsumed) ConsumeDurability(GetCost(COST_ROW, m_Wave ? ARM_COST_HOLD_MISS : ARM_COST_TAP_MISS));
 	m_UseConsumed = true;
 	StopHop();
 	m_Phase.Reset();
@@ -115,7 +112,7 @@ void HammerArm::Impact()
 		hit = true;
 	}
 	if (affected && !m_UseConsumed) {
-		ConsumeDurability(m_Wave ? WAVE_HIT_COST : TAP_HIT_COST);
+		ConsumeDurability(GetCost(COST_ROW, m_Wave ? ARM_COST_HOLD_HIT : ARM_COST_TAP_HIT));
 		m_UseConsumed = true;
 	}
 	if (hit) Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
@@ -139,7 +136,7 @@ void HammerArm::Update(const ARM_INPUT& input)
 	if (step.Entered == HAMMER_SLAM) {
 		m_Direction = GetAim(false);
 		if (m_AirTap) {
-			ConsumeDurability(AIR_TAP_COST);
+			ConsumeDurability(GetCost(COST_ROW, ARM_COST_EXTRA));
 			m_UseConsumed = true;
 			StartHop();
 		}
@@ -154,7 +151,7 @@ void HammerArm::Update(const ARM_INPUT& input)
 	}
 	m_RangeSeconds = fmaxf(0.0f, m_RangeSeconds - dt);
 	if (step.Finished && !m_UseConsumed) {
-		ConsumeDurability(m_Wave ? WAVE_MISS_COST : TAP_MISS_COST);
+		ConsumeDurability(GetCost(COST_ROW, m_Wave ? ARM_COST_HOLD_MISS : ARM_COST_TAP_MISS));
 		m_UseConsumed = true;
 	}
 	const float speed = dt / STRAIGHTEN_SECONDS;
