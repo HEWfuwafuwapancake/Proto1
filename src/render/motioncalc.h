@@ -35,6 +35,23 @@ struct MOTION_PARAMS
 	float LeanRate = 8.0f; ///< 傾きが目標へ近づく速さ（1秒あたりの割合）
 };
 
+/// @brief やられの全身クリップの指定（描画だけ）
+struct MOTION_HIT_REACTION
+{
+	bool Active = false; ///< やられのクリップを使うか（true：使う、false：通常の動きを使う）
+	SKINNED_CLIP Clip = SKINNED_CLIP::Idle; ///< 全身で再生するクリップ
+	float ClipTime = -1.0f; ///< 再生位置の秒（負なら経過時間で進める）
+};
+
+/// @brief つかまれ・のけぞり・しびれ・吹っ飛びの順に、やられのクリップを選ぶ
+/// @param held つかまれ中か（true：つかまれ中、false：つかまれていない）
+/// @param stunned しびれ中か（true：しびれ中、false：しびれていない）
+/// @param launched 吹っ飛び中か（true：吹っ飛び中、false：吹っ飛んでいない）
+/// @param launchElapsed 吹っ飛ばされてからの秒数（復活時はのけぞりの秒数以上にする）
+/// @param flinchSeconds のけぞりを見せる秒数
+/// @return 使うか・クリップ・再生位置（ループするクリップは負）
+MOTION_HIT_REACTION MotionCalcHitReaction(bool held, bool stunned, bool launched, float launchElapsed, float flinchSeconds);
+
 /// @brief 1体分の見た目の動き（Fighter ごとに持つ）
 class MotionCalc
 {

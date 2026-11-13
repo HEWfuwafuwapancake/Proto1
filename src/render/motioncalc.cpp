@@ -5,6 +5,15 @@
 
 static constexpr float MOTION_PI = 3.14159265f;
 
+MOTION_HIT_REACTION MotionCalcHitReaction(bool held, bool stunned, bool launched, float launchElapsed, float flinchSeconds)
+{
+	if (held) return { true, SKINNED_CLIP::HitHeld, -1.0f };
+	if (launchElapsed >= 0.0f && launchElapsed < flinchSeconds) return { true, SKINNED_CLIP::HitFlinch, launchElapsed };
+	if (stunned) return { true, SKINNED_CLIP::HitStun, -1.0f };
+	if (launched) return { true, SKINNED_CLIP::HitLaunched, -1.0f };
+	return {};
+}
+
 void MotionCalc::Reset(float yaw)
 {
 	m_LegYaw = WrapYaw(yaw);

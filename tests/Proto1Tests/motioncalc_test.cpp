@@ -94,3 +94,51 @@ TEST(MotionCalcTest, NoLocomotionKeepsLegsOnAim)
 	EXPECT_NEAR(motion.GetLegYaw(), 1.0f, 0.001f);
 	EXPECT_EQ(SKINNED_CLIP::Fall, motion.GetClip());
 }
+
+// つかまれ中は、被弾直後・しびれ・吹っ飛びより優先してもがく。
+TEST(MotionCalcTest, HeldReactionTakesPriority)
+{
+	const MOTION_HIT_REACTION reaction = MotionCalcHitReaction(true, true, true, 0.1f, 0.33f);
+	EXPECT_TRUE(reaction.Active);
+	EXPECT_EQ(SKINNED_CLIP::HitHeld, reaction.Clip);
+	EXPECT_LT(reaction.ClipTime, 0.0f);
+}
+
+// 被弾直後はしびれより優先して経過秒の位置でのけぞり、時間が過ぎると吹っ飛びのループになる。
+TEST(MotionCalcTest, FlinchUsesElapsedTimeThenLaunchedLoops)
+{
+	const MOTION_HIT_REACTION flinch = MotionCalcHitReaction(false, true, true, 0.1f, 0.33f);
+	EXPECT_TRUE(flinch.Active);
+	EXPECT_EQ(SKINNED_CLIP::HitFlinch, flinch.Clip);
+	EXPECT_NEAR(flinch.ClipTime, 0.1f, 0.0001f);
+	const MOTION_HIT_REACTION launched = MotionCalcHitReaction(false, false, true, 0.5f, 0.33f);
+	EXPECT_TRUE(launched.Active);
+	EXPECT_EQ(SKINNED_CLIP::HitLaunched, launched.Clip);
+	EXPECT_LT(launched.ClipTime, 0.0f);
+}
+
+// のけぞりの時間を過ぎてもしびれていれば、吹っ飛びより優先してしびれをループする。
+TEST(MotionCalcTest, StunReactionTakesPriorityOverLaunched)
+{
+	const MOTION_HIT_REACTION reaction = MotionCalcHitReaction(false, true, true, 0.5f, 0.33f);
+	EXPECT_TRUE(reaction.Active);
+	EXPECT_EQ(SKINNED_CLIP::HitStun, reaction.Clip);
+	EXPECT_LT(reaction.ClipTime, 0.0f);
+}
+
+// やられの状態がなければ、通常の走り・ジャンプなどをそのまま使う。
+TEST(MotionCalcTest, NoReactionKeepsLocomotion)
+{
+	EXPECT_FALSE(MotionCalcHitReaction(false, false, false, 1.0f, 0.33f).Active);
+}
+
+// 攻撃の最後の組は攻撃扱いのまま、後ろに足したやられの4クリップは攻撃扱いにしない。
+TEST(MotionCalcTest, HitReactionsAreNotAttackClips)
+{
+	EXPECT_TRUE(AnimCalcIsAttackClip(SKINNED_CLIP::GunlanceImpaleLeft));
+	EXPECT_TRUE(AnimCalcIsAttackClip(SKINNED_CLIP::GunlanceImpaleRight));
+	EXPECT_FALSE(AnimCalcIsAttackClip(SKINNED_CLIP::HitFlinch));
+	EXPECT_FALSE(AnimCalcIsAttackClip(SKINNED_CLIP::HitLaunched));
+	EXPECT_FALSE(AnimCalcIsAttackClip(SKINNED_CLIP::HitStun));
+	EXPECT_FALSE(AnimCalcIsAttackClip(SKINNED_CLIP::HitHeld));
+}
