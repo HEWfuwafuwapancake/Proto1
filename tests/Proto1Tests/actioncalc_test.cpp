@@ -251,4 +251,24 @@ namespace Proto1Tests
 		EXPECT_EQ(-1, key.Hand);
 		EXPECT_EQ(-1, key.Number);
 	}
+
+	// 試合の開始前から押し続けているボタンは、離すまで消え、押し直すと届く。ほかのボタンはそのまま届く。
+	TEST(ActionCalcTest, MaskHeld_IgnoresUntilReleased)
+	{
+		const uint16_t dash = static_cast<uint16_t>(1u << ACTION_DASH);
+		const uint16_t jump = static_cast<uint16_t>(1u << ACTION_JUMP);
+		uint16_t held = 0xFFFF;
+		PLAYER_INPUT input{};
+		input.Buttons = static_cast<uint16_t>(dash);
+		ActionCalcMaskHeld(input, held);
+		EXPECT_EQ(0, input.Buttons);
+		input.Buttons = static_cast<uint16_t>(dash | jump);
+		ActionCalcMaskHeld(input, held);
+		EXPECT_EQ(jump, input.Buttons);
+		input.Buttons = 0;
+		ActionCalcMaskHeld(input, held);
+		input.Buttons = dash;
+		ActionCalcMaskHeld(input, held);
+		EXPECT_EQ(dash, input.Buttons);
+	}
 }

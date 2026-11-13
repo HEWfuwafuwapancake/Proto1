@@ -78,4 +78,5 @@ private:
 	std::chrono::steady_clock::time_point m_Started;
 	int32_t m_ReportedDesync = -1;
 	uint64_t m_AdvancedFrames = 0;
+	uint16_t m_HeldButtons = 0; // 試合の開始前から押し続けていて、離すまで送らないボタン。
 };

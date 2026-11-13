@@ -82,6 +82,10 @@ ACTION_AXIS ActionCalcPlayerLook(const PLAYER_INPUT& input);
 bool ActionCalcPlayerPress(const PLAYER_INPUT& input, ACTION action);
 /// @brief 今と前の入力から押した瞬間を調べる（ターゲット切り替えのイベントは連続フレームでも有効）
 bool ActionCalcPlayerTrigger(const PLAYER_INPUT& current, const PLAYER_INPUT& previous, ACTION action);
+/// @brief 前から押し続けているボタンを、離すまで押していないことにする（試合の開始に押した決定でダッシュしないように）
+/// @param input 今の入力。押し続けているボタンのビットを消す
+/// @param held 離すまで消すボタンのビット。離したボタンのビットを消した値に書き換える
+void ActionCalcMaskHeld(PLAYER_INPUT& input, uint16_t& held);
 
 /// @brief 切り替えモードのキーと数字キーから、装備の直接選択を作る
 /// @details 左のモードキーで左手、右のモードキーで右手の選択モードの1段目に入る。同じキーを押すたびに次の段へ進み、
