@@ -41,6 +41,12 @@ enum class SKINNED_CLIP
 	TentacleThrowRight, ///< 触手の投げ（右手）
 	TentacleSpinLeft, ///< 触手の回転（左手）
 	TentacleSpinRight, ///< 触手の回転（右手）
+	GuardRaiseLeft, ///< ガードの構え（左手）
+	GuardRaiseRight, ///< ガードの構え（右手）
+	GuardHitLeft, ///< ガードの受け（左手）
+	GuardHitRight, ///< ガードの受け（右手）
+	ParryLeft, ///< パリィのはじき（左手）
+	ParryRight, ///< パリィのはじき（右手）
 	HitFlinch, ///< 吹っ飛ばされた直後ののけぞり
 	HitLaunched, ///< 吹っ飛び中
 	HitStun, ///< しびれ中
@@ -65,6 +71,9 @@ enum class ATTACK_CLIP
 	TentacleReach, ///< 触手の伸長
 	TentacleThrow, ///< 触手の投げ
 	TentacleSpin, ///< 触手の回転
+	GuardRaise, ///< ガードの構え
+	GuardHit, ///< ガードの受け
+	Parry, ///< パリィのはじき
 };
 
 /// @brief 攻撃の種類と手から、再生するクリップを求める
@@ -81,7 +90,7 @@ inline SKINNED_CLIP AnimCalcAttackClip(ATTACK_CLIP kind, int hand)
 /// @return 攻撃クリップなら true
 inline bool AnimCalcIsAttackClip(SKINNED_CLIP clip)
 {
-	return clip >= SKINNED_CLIP::KatanaIaiLeft && clip <= SKINNED_CLIP::TentacleSpinRight;
+	return clip >= SKINNED_CLIP::KatanaIaiLeft && clip <= SKINNED_CLIP::ParryRight;
 }
 
 /// @brief アニメで使う3成分

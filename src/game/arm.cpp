@@ -49,6 +49,9 @@ static constexpr float PARRY_RUMBLE_SECONDS = 0.1f;
 static constexpr float BREAK_RUMBLE = 0.8f;
 static constexpr float BREAK_RUMBLE_SECONDS = 0.3f;
 static constexpr float GUARD_FEEDBACK_SECONDS = 0.6f;
+static constexpr float GUARD_RAISE_CLIP_SECONDS = 4.0f / 24.0f;
+static constexpr float GUARD_HIT_CLIP_SECONDS = 8.0f / 24.0f;
+static constexpr float PARRY_CLIP_SECONDS = 12.0f / 24.0f;
 static constexpr float GUARD_FLASH_SECONDS = 0.3f;
 static constexpr float GUARD_FLASH_START_RADIUS = 0.3f;
 static constexpr float PARRY_FLASH_END_RADIUS = 1.2f;
@@ -136,6 +139,8 @@ void ArmManager::Reset(void)
 		m_Guards[hand].Reset();
 	}
 	m_LastActiveHand = -1;
+	m_LastBodyHand = -1;
+	m_GuardFeedbackHand = -1;
 	m_GuardHand = -1;
 	m_GuardFeedbackSeconds = 0.0f;
 }
@@ -219,6 +224,7 @@ void ArmManager::UpdateGuards(const Fighter& player, float dt, bool interrupted)
 		if (result == PARRY_SUCCESS || result == PARRY_BREAK_ARM) {
 			m_GuardFeedbackSeconds = GUARD_FEEDBACK_SECONDS;
 			m_GuardFeedbackParry = result == PARRY_SUCCESS;
+			m_GuardFeedbackHand = hand;
 			m_GuardFeedbackPosition = Vec3Add(arm.GetDrawShoulder(),
 				{ sinf(player.GetYaw()) * GUARD_MARKER_FORWARD, 0.0f, cosf(player.GetYaw()) * GUARD_MARKER_FORWARD });
 		}
@@ -239,6 +245,7 @@ void ArmManager::UpdateGuards(const Fighter& player, float dt, bool interrupted)
 			&& m_Types[hand] != ARM_TYPE_NONE && !arm.IsActive() && !arm.IsBusy();
 		m_Guards[hand].Step(guarding, dt);
 		if (guarding && !wasGuarding) {
+			m_LastBodyHand = hand;
 			// 刀の無敵など、構える前に防いだ記録を今回のガードへ持ち越さない。
 			if (!hadGuard && !any) m_Links.Fighters->ConsumeGuardedHit(m_Links.Slot);
 			m_GuardHand = hand;
@@ -258,7 +265,10 @@ void ArmManager::Update(bool playing)
 	if (m_Rule == GAME_RULE_GAME && player.DidRespawn()) return;
 	// 中断中に押していた入力は、使えるようになっても一度離すまで引き継がない。
 	const bool interrupted = !player.CanUseArms() || player.DidRespawn() || player.IsStatus(STATUS_STUN);
-	if (interrupted) m_LastActiveHand = -1;
+	if (interrupted) {
+		m_LastActiveHand = -1;
+		m_LastBodyHand = -1;
+	}
 	const float dt = GameTimeGetDeltaTime();
 	UpdateGuards(player, dt, interrupted);
 	for (int hand = 0; hand < 2; ++hand) {
@@ -279,7 +289,10 @@ void ArmManager::Update(bool playing)
 			}
 			else m_Presses[hand].Reset(pressed);
 			arm.Update(input);
-			if (!wasActive && arm.IsActive()) m_LastActiveHand = hand;
+			if (!wasActive && arm.IsActive()) {
+				m_LastActiveHand = hand;
+				m_LastBodyHand = hand;
+			}
 		}
 		if (!IsDurabilityLocked()) m_Uses[hand].Consume(arm.m_Used);
 		arm.m_Used = 0;
@@ -332,7 +345,8 @@ int ArmManager::GetActiveHand() const
 	const auto active = [this](int hand) {
 		return m_Arms[hand][m_Types[hand]]->IsActive() || GetBodyClip(hand).Active;
 	};
-	if (m_LastActiveHand >= 0 && active(m_LastActiveHand)) return m_LastActiveHand;
+	// ガードと攻撃が同じフレームに始まれば、後で処理する攻撃を優先する。
+	if (m_LastBodyHand >= 0 && active(m_LastBodyHand)) return m_LastBodyHand;
 	for (int hand = 0; hand < 2; ++hand) {
 		if (active(hand)) return hand;
 	}
@@ -341,7 +355,16 @@ int ArmManager::GetActiveHand() const
 
 ARM_BODY_CLIP ArmManager::GetBodyClip(int hand) const
 {
-	return hand == 0 || hand == 1 ? m_Arms[hand][m_Types[hand]]->GetBodyClip() : ARM_BODY_CLIP{};
+	if (hand != 0 && hand != 1) return {};
+	const GUARD_FEEDBACK feedback = GetGuardFeedback();
+	const float feedbackSeconds = feedback.Parry ? PARRY_CLIP_SECONDS : GUARD_HIT_CLIP_SECONDS;
+	if (feedback.Active && feedback.Hand == hand && feedback.Elapsed < feedbackSeconds) {
+		return { true, feedback.Parry ? ATTACK_CLIP::Parry : ATTACK_CLIP::GuardHit, feedback.Elapsed, false };
+	}
+	if (m_Guards[hand].IsGuarding()) {
+		return { true, ATTACK_CLIP::GuardRaise, fminf(m_Guards[hand].GetGuardSeconds(), GUARD_RAISE_CLIP_SECONDS), false };
+	}
+	return m_Arms[hand][m_Types[hand]]->GetBodyClip();
 }
 
 ARM_TYPE ArmManager::GetType(int hand) const
@@ -369,7 +392,8 @@ bool ArmManager::CanUseArm(int hand) const
 
 GUARD_FEEDBACK ArmManager::GetGuardFeedback() const
 {
-	return { m_GuardFeedbackSeconds > 0.0f, m_GuardFeedbackParry, GUARD_FEEDBACK_SECONDS - m_GuardFeedbackSeconds };
+	return { m_GuardFeedbackSeconds > 0.0f, m_GuardFeedbackParry,
+		GUARD_FEEDBACK_SECONDS - m_GuardFeedbackSeconds, m_GuardFeedbackHand };
 }
 
 int ArmManager::GetChangeDirection(int hand) const
