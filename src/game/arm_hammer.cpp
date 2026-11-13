@@ -8,6 +8,11 @@
 #include "render/shape.h"
 
 // 調整用の値
+static constexpr int TAP_HIT_COST = 50;
+static constexpr int TAP_MISS_COST = 25;
+static constexpr int WAVE_HIT_COST = 50;
+static constexpr int WAVE_MISS_COST = 30;
+static constexpr int AIR_TAP_COST = 50;
 static constexpr float TAP_SECONDS[] = { 0.9f, 0.1f, 0.4f }; // 単押し：ため・叩き・休み
 static constexpr float WAVE_SECONDS[] = { 1.2f, 0.1f, 0.5f }; // 長押し：ため・叩き・休み
 static constexpr float TAP_CLIP_SECONDS[] = { 16.0f / 24.0f, 4.0f / 24.0f, 10.0f / 24.0f }; // 単押しのクリップの区切り（hammer_tap）
@@ -76,15 +81,12 @@ void HammerArm::StartHop()
 	m_Rise.Start({ feet.x, feet.y, feet.z }, offset, HOP_SECONDS, true);
 	m_Hopping = true;
 	GetPlayer().SetPulled(true);
-	// 復帰に使ったら、当たらなくても1回減る（叩きが当たっていたら、重ねて減らさない）。
-	if (!m_UseConsumed) {
-		ConsumeUse();
-		m_UseConsumed = true;
-	}
 }
 
 void HammerArm::Reset()
 {
+	if (!m_Phase.IsIdle() && !m_UseConsumed) ConsumeDurability(m_Wave ? WAVE_MISS_COST : TAP_MISS_COST);
+	m_UseConsumed = true;
 	StopHop();
 	m_Phase.Reset();
 	m_Straighten = 0.0f;
@@ -113,7 +115,7 @@ void HammerArm::Impact()
 		hit = true;
 	}
 	if (affected && !m_UseConsumed) {
-		ConsumeUse();
+		ConsumeDurability(m_Wave ? WAVE_HIT_COST : TAP_HIT_COST);
 		m_UseConsumed = true;
 	}
 	if (hit) Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
@@ -136,8 +138,12 @@ void HammerArm::Update(const ARM_INPUT& input)
 	const ARM_PHASE_STEP step = m_Phase.Step(dt, GetSeconds(), HAMMER_PHASE_COUNT);
 	if (step.Entered == HAMMER_SLAM) {
 		m_Direction = GetAim(false);
+		if (m_AirTap) {
+			ConsumeDurability(AIR_TAP_COST);
+			m_UseConsumed = true;
+			StartHop();
+		}
 		Impact();
-		if (m_AirTap) StartHop();
 	}
 	if (m_Hopping) {
 		if (!m_Phase.IsIdle() && m_Rise.IsActive()) {
@@ -147,6 +153,10 @@ void HammerArm::Update(const ARM_INPUT& input)
 		else StopHop();
 	}
 	m_RangeSeconds = fmaxf(0.0f, m_RangeSeconds - dt);
+	if (step.Finished && !m_UseConsumed) {
+		ConsumeDurability(m_Wave ? WAVE_MISS_COST : TAP_MISS_COST);
+		m_UseConsumed = true;
+	}
 	const float speed = dt / STRAIGHTEN_SECONDS;
 	m_Straighten = m_Phase.IsIdle() ? fmaxf(0.0f, m_Straighten - speed) : fminf(1.0f, m_Straighten + speed);
 }

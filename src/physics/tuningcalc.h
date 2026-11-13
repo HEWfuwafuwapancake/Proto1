@@ -12,7 +12,7 @@ enum TUNING_ITEM : uint8_t
 	TUNING_DAMAGE, ///< ダメージの倍率
 	TUNING_MAP_SIZE, ///< マップの広さの倍率
 	TUNING_CAPSULES, ///< 腕カプセルの出現量の段
-	TUNING_ARM_USES, ///< 腕の使用回数の倍率（最後は無制限）
+	TUNING_ARM_USES, ///< 腕の耐久の持ちの倍率（最後は無制限）
 	TUNING_ITEM_COUNT, ///< 項目数
 };
 
@@ -38,5 +38,5 @@ int TuningCalcCapsuleCount(const MATCH_TUNING& tuning);
 float TuningCalcCapsuleSeconds(const MATCH_TUNING& tuning);
 /// @brief 腕の使用回数が無制限の段ならtrueを返す
 bool TuningCalcIsUnlimitedUses(const MATCH_TUNING& tuning);
-/// @brief 元の使用回数に倍率をかけて切り上げる（素手は0、それ以外は1以上。無制限の段は元の回数）
-int TuningCalcArmUses(int baseUses, const MATCH_TUNING& tuning);
+/// @brief 耐久の減る量を倍率で割って切り上げる（0以下は0、正の値は1以上。無制限の段は元の値）
+int TuningCalcDurabilityCost(int baseCost, const MATCH_TUNING& tuning);

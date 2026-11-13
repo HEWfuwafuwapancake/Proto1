@@ -15,13 +15,18 @@ bool C4Calc::Throw(const VEC3& origin, const VEC3& velocity, const PROJECTILE_PA
 }
 
 int C4Calc::Step(float dt, const TENTACLE_TARGET* targets, int count, const STAGE& stage,
-	const PROJECTILE_PARAMS& params, C4_IMPACT* impacts, int maxImpacts)
+	const PROJECTILE_PARAMS& params, C4_IMPACT* impacts, int maxImpacts, int* expired)
 {
+	if (expired) *expired = 0;
 	PROJECTILE_EVENT events[PROJECTILE_MAX];
 	const int eventCount = m_Thrown.Step(dt, targets, count, stage, params, events, PROJECTILE_MAX);
 	int written = 0;
 	for (int i = 0; i < eventCount; ++i) {
-		if (events[i].Type == PROJECTILE_EXPIRED || written >= maxImpacts) continue;
+		if (events[i].Type == PROJECTILE_EXPIRED) {
+			if (expired) ++*expired;
+			continue;
+		}
+		if (written >= maxImpacts) continue;
 		impacts[written++] = { events[i].Position, m_Large[events[i].Index] };
 	}
 	return written;

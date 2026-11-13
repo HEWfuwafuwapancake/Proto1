@@ -66,7 +66,8 @@ private:
 	ArmPhaseCalc m_Phase; // 単押しの斬撃の、振りかぶり → 斬る → 休み
 	HitRecord m_Hits; // 1回の斬撃・一閃で当たった相手
 	DelayedHitCalc m_Delayed; // 着いたときの一閃で当てて、あとから効かせる斬撃
-	bool m_IaiConsumed = false; // 今の動作で使用回数を消費したか
+	bool m_DashHitConsumed = false; // 飛行と着地を通して追加の耐久10を減らしたか
+	bool m_IaiConsumed = false; // 今の動作で耐久を消費したか
 	bool m_OwnPull = false; // true：この腕が体の計算を止めている（空中で斬っている間・飛んでいる間）
 	VEC3 m_IaiDirection = { 0.0f, 0.0f, 1.0f }; // 着いたときの一閃の水平の向き。
 	float m_SlashSeconds[FIGHTER_COUNT] = {}; // 相手ごとの、斬撃を見せる残りの秒数。

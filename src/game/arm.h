@@ -37,7 +37,7 @@ struct ARM_LINKS
 	int Slot; ///< 自分のスロット番号（0〜3。相手の候補から除く）
 	const Camera* CameraObject; ///< 狙いと投げる向きを読むカメラ
 	const Stage* StageObject; ///< 浮島と場外の線を読むステージ
-	const ArmManager* Arms; ///< 片手の残り使用回数を読む腕の管理
+	const ArmManager* Arms; ///< 片手の残り耐久を読む腕の管理
 };
 
 /// @brief 腕が今の動作で体に見せる攻撃クリップ
@@ -91,10 +91,10 @@ protected:
 	/// @brief 手とゲームの部品への参照を保持する（モデルは派生クラスの生成時に読む）
 	Arm(int hand, const ARM_LINKS& links) : m_Hand(hand), m_Links(links) {}
 
-	/// @brief 効いた攻撃などで使った回数を、このフレームの消費に加える
-	void ConsumeUse(int count = 1);
-	/// @brief 残り使用回数を取得する（DEBUG の無制限は -1）
-	int GetRemainingUses() const;
+	/// @brief 耐久の減る量に試合の倍率を適用し、このフレームの消費に加える
+	void ConsumeDurability(int cost);
+	/// @brief 残り耐久を取得する（DEBUG の無制限は -1）
+	int GetDurability() const;
 	/// @brief 今の試合に適用済みの設定を取得する
 	const MATCH_TUNING& GetTuning() const;
 	/// @brief プレイヤーへの参照を取得する
@@ -197,7 +197,7 @@ public:
 	const MATCH_TUNING& GetTuning() const { return m_Tuning; }
 	/// @brief 両手を触手に戻し、十字キーの手の選択も左手に戻す（オンラインを始めるとき。相手と装備をそろえる）
 	void ResetEquip(void);
-	/// @brief 拾った腕を空いている左手、次に右手へ装備し、使用回数を入れる（装備できたら true）
+	/// @brief 拾った腕を空いている左手、次に右手へ装備し、耐久100を入れる（装備できたら true）
 	bool TryEquipPickup(ARM_TYPE type);
 	/// @brief DEBUG では装備を切り替え、試合中は左手・右手の順に更新する（カメラとキャラの向きの更新後）
 	/// @param playing 腕の更新を設定する（true：試合中として更新、false：装備切り替えだけ）
@@ -224,8 +224,8 @@ public:
 	/// @param hand 左 0・右 1
 	/// @return 装備している種類。手が範囲外なら ARM_TYPE_COUNT
 	ARM_TYPE GetType(int hand) const;
-	/// @brief 片手の残り使用回数を取得する（DEBUG は -1、範囲外は 0）
-	int GetRemainingUses(int hand) const;
+	/// @brief 片手の残り耐久を取得する（DEBUG は -1、範囲外は 0）
+	int GetDurability(int hand) const;
 
 	/// @brief 十字キーで選んでいる手を取得する（左 0・右 1）
 	int GetSelectedHand() const { return m_SelectedHand; }

@@ -71,7 +71,7 @@ bool TuningCalcIsUnlimitedUses(const MATCH_TUNING& tuning)
 	return Level(tuning, TUNING_ARM_USES) == UNLIMITED_LEVEL;
 }
 
-int TuningCalcArmUses(int baseUses, const MATCH_TUNING& tuning)
+int TuningCalcDurabilityCost(int baseCost, const MATCH_TUNING& tuning)
 {
-	return baseUses <= 0 ? 0 : (std::max)(1, static_cast<int>(std::ceil(baseUses * TuningCalcValue(tuning, TUNING_ARM_USES))));
+	return baseCost <= 0 ? 0 : (std::max)(1, static_cast<int>(std::ceil(baseCost / TuningCalcValue(tuning, TUNING_ARM_USES))));
 }

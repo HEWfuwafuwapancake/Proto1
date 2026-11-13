@@ -42,6 +42,9 @@ static constexpr float ARM_LABEL_BORDER = 2.0f;
 static constexpr float ARM_HAND_DOT = 4.0f;
 static constexpr float ARM_NAME_OFFSET = 46.0f;
 static constexpr float ARM_USES_DIGIT_WIDTH = 10.0f;
+static constexpr float ARM_DURABILITY_BAR_WIDTH = 72.0f;
+static constexpr float ARM_DURABILITY_BAR_HEIGHT = 4.0f;
+static constexpr float ARM_DURABILITY_MAX = 100.0f;
 static constexpr float ARM_FLIP_SECONDS = 0.2f;
 static constexpr float ARM_EDGE_BRIGHTNESS = 0.65f;
 
@@ -205,7 +208,7 @@ void Hud::Update(void)
 
 void Hud::DrawArmName(int hand) const
 {
-	const int remaining = m_Arms->GetRemainingUses(hand);
+	const int remaining = m_Arms->GetDurability(hand);
 	const bool selected = remaining < 0 && m_Arms->GetSelectedHand() == hand;
 	const float x = hand == 0 ? ARM_LABEL_MARGIN : m_Width - ARM_LABEL_MARGIN - ARM_LABEL_WIDTH;
 	const float y = m_Height - ARM_LABEL_MARGIN - ARM_LABEL_PADDING - ARM_LABEL_HEIGHT;
@@ -235,6 +238,9 @@ void Hud::DrawArmName(int hand) const
 		const float countX = x + ARM_LABEL_WIDTH - ARM_LABEL_PADDING;
 		const float countY = y + ARM_LABEL_HEIGHT * 0.5f - ARM_USES_DIGIT_WIDTH;
 		Number2DDrawNumber(remaining, 1, countX, countY, ARM_USES_DIGIT_WIDTH, GLYPH_ALIGN_RIGHT, color);
+		const float barY = y + ARM_LABEL_HEIGHT - ARM_DURABILITY_BAR_HEIGHT;
+		Number2DDrawBox({ countX - ARM_DURABILITY_BAR_WIDTH, barY, ARM_DURABILITY_BAR_WIDTH, ARM_DURABILITY_BAR_HEIGHT }, COVER_COLOR);
+		Number2DDrawBox({ countX - ARM_DURABILITY_BAR_WIDTH, barY, ARM_DURABILITY_BAR_WIDTH * remaining / ARM_DURABILITY_MAX, ARM_DURABILITY_BAR_HEIGHT }, color);
 	}
 }
 

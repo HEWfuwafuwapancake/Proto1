@@ -14,6 +14,10 @@
 #include <algorithm>
 
 // 調整用の値
+static constexpr int REACH_HIT_COST = 34;
+static constexpr int REACH_MISS_COST = 15;
+static constexpr int SPIN_HIT_COST = 50;
+static constexpr int SPIN_MISS_COST = 25;
 static constexpr TENTACLE_PARAMS PARAMS{ 8.0f, 24.0f, 30.0f, 3.0f, 0.18f, 0.35f };
 static constexpr float GRAB_DAMAGE = 4.0f; // つかんだときに足す %
 static constexpr float THROW_DAMAGE = 4.0f;
@@ -108,6 +112,10 @@ TentacleArm::TentacleArm(int hand, const ARM_LINKS& links) : Arm(hand, links)
 
 void TentacleArm::Reset()
 {
+	if (m_ReachPending) ConsumeDurability(REACH_MISS_COST);
+	m_ReachPending = false;
+	if (!m_Spin.IsIdle() && !m_SpinConsumed) ConsumeDurability(SPIN_MISS_COST);
+	m_SpinConsumed = true;
 	TentacleCalc& arm = m_Arm;
 	GetFighters().Release(arm.GetTarget(), GetSlot(), false, {}, 0.0f, 0.0f);
 	arm.Reset();
@@ -164,7 +172,8 @@ void TentacleArm::StartReach(const TENTACLE_TARGET* targets, const VEC3& origin,
 void TentacleArm::StepPull(const TENTACLE_EVENT& event, float dt)
 {
 	if (event.Anchored) {
-		ConsumeUse();
+		ConsumeDurability(REACH_HIT_COST);
+		m_ReachPending = false;
 		// 新しく付いた手へ受け持ちを移す。先の手は腕を戻す。
 		if (m_OtherArm != nullptr && m_OtherArm->m_Pulling) {
 			m_OtherArm->m_Arm.ReleasePull();
@@ -207,6 +216,10 @@ void TentacleArm::StepSpin(const ARM_INPUT& input, float dt)
 		m_Spin.Start(SPIN_CHARGE);
 	}
 	const ARM_PHASE_STEP step = m_Spin.Step(dt, SPIN_PHASE_SECONDS, SPIN_PHASE_COUNT);
+	if (step.Finished && !m_SpinConsumed) {
+		ConsumeDurability(SPIN_MISS_COST);
+		m_SpinConsumed = true;
+	}
 	if (m_Spin.GetPhase() != SPIN_SWING && step.Entered != SPIN_RECOVER) return;
 	// 前のフレームから今までに回った扇だけを調べる（段階の終わりは必ず一周まで）。
 	const float angle = step.Entered == SPIN_RECOVER ? SPIN_FULL_TURN
@@ -224,7 +237,7 @@ void TentacleArm::StepSpin(const ARM_INPUT& input, float dt)
 		m_SpinHits.TryAdd(i);
 		const bool applied = GetFighters().Launch(i, GetSlot(), AreaCalcRadialDirection(center, target.Body, SPIN_UP, middle), SPIN_DAMAGE, SPIN_POWER);
 		if (applied && !m_SpinConsumed) {
-			ConsumeUse();
+			ConsumeDurability(SPIN_HIT_COST);
 			m_SpinConsumed = true;
 		}
 		hit = true;
@@ -251,18 +264,26 @@ void TentacleArm::Update(const ARM_INPUT& input)
 	bool hasGrip = false;
 	// 回転の間は単押しで伸ばさない。
 	const bool trigger = input.Tap && m_Spin.IsIdle();
-	if (trigger && arm.GetState() == TENTACLE_IDLE) StartReach(targets, origin, cameraForward, aim, grip, hasGrip);
+	if (trigger && arm.GetState() == TENTACLE_IDLE) {
+		m_ReachPending = true;
+		StartReach(targets, origin, cameraForward, aim, grip, hasGrip);
+	}
 	const float dt = GameTimeGetDeltaTime();
 	const bool cancel = GetPlayer().DidRespawn() || (arm.GetTarget() >= 0 && !GetFighters().IsHeldBy(arm.GetTarget(), GetSlot()));
 	const TENTACLE_EVENT event = arm.Step(origin, aim, hold, trigger, cancel,
 		dt, PARAMS, targets, FIGHTER_COUNT, GetStage().GetStage(), hasGrip ? &grip : nullptr, CanAnchor());
 	if (event.Grabbed >= 0) {
 		if (GetFighters().Grab(event.Grabbed, GetSlot())) {
-			ConsumeUse();
+			ConsumeDurability(REACH_HIT_COST);
+			m_ReachPending = false;
 			GetFighters().AddDamage(event.Grabbed, GetSlot(), GRAB_DAMAGE);
 			Rumble(GRAB_RUMBLE_SMALL, GRAB_RUMBLE_LARGE, GRAB_RUMBLE_SECONDS);
 		}
 		else arm.Reset();
+	}
+	if (m_ReachPending && arm.GetState() == TENTACLE_IDLE) {
+		ConsumeDurability(REACH_MISS_COST);
+		m_ReachPending = false;
 	}
 	StepPull(event, dt);
 	StepSpin(input, dt);

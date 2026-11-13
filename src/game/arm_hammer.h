@@ -40,7 +40,7 @@ private:
 	RiseCalc m_Rise; // 空中の単押しで体を上へ動かす計算
 	bool m_AirTap = false; // true：空中で始めた単押し（短いため。振った瞬間に跳ねる）
 	bool m_Hopping = false; // true：跳ねるために体を自分で動かしている
-	bool m_UseConsumed = false; // 今の動作で使用回数を消費したか
+	bool m_UseConsumed = false; // 今の動作で耐久を消費したか
 	int m_ArmModel = -1;
 	int m_HeadModel = -1;
 	bool m_Wave = false; // true：長押しの衝撃波、false：単押しの強打

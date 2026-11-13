@@ -48,10 +48,10 @@ static constexpr float PARRY_RUMBLE_SECONDS = 0.1f;
 static constexpr float BREAK_RUMBLE = 0.8f;
 static constexpr float BREAK_RUMBLE_SECONDS = 0.3f;
 // ARM_TYPE の順に、触手・ハンマー・ナックル・C4・ガンランス・刀・素手。
-static constexpr int ARM_MAX_USES[] = { 3, 2, 3, 2, 8, 3, 0 };
+static constexpr int ARM_MAX_DURABILITY = 100;
+static constexpr int GUARD_DURABILITY_COST = 50;
 
 static_assert(ARM_TYPE_COUNT <= ACTION_EQUIP_NUMBER_COUNT, "腕の番号は通信で送れる数までにする");
-static_assert(sizeof(ARM_MAX_USES) / sizeof(ARM_MAX_USES[0]) == ARM_TYPE_COUNT, "腕ごとに使用回数を設定する");
 
 template<class T>
 static std::unique_ptr<Arm> CreateArm(int hand, const ARM_LINKS& links)
@@ -85,7 +85,8 @@ void ArmManager::ChangeType(int hand, int next, int direction)
 	// 前の装備で押し始めた入力は持ち越さない。
 	m_Presses[hand].Reset(player.IsPress(action) && !player.IsTrigger(action));
 	m_Types[hand] = (ARM_TYPE)next;
-	m_Uses[hand].Reset(TuningCalcArmUses(ARM_MAX_USES[next], m_Tuning));
+	m_Uses[hand].Reset(next == ARM_TYPE_NONE ? 0 : ARM_MAX_DURABILITY);
+	m_Arms[hand][next]->m_Used = 0;
 	m_ChangeDirections[hand] = direction;
 #ifdef _DEBUG
 	hal::dout << "腕：" << (hand == 0 ? "左" : "右") << " → " << ArmGetName(m_Types[hand]) << std::endl;
@@ -99,6 +100,7 @@ void ArmManager::Initialize(const Stage& stage, FighterManager& fighters, int sl
 	m_Types[0] = m_Types[1] = ARM_TYPE_TENTACLE;
 	m_SelectedHand = 0;
 	m_ChangeDirections[0] = m_ChangeDirections[1] = 1;
+	for (auto& durability : m_Uses) durability.Reset(ARM_MAX_DURABILITY);
 	for (int type = 0; type < ARM_TYPE_COUNT; ++type) {
 		if (ARM_FACTORIES[type] == nullptr) continue;
 		for (int hand = 0; hand < 2; ++hand) m_Arms[hand][type] = ARM_FACTORIES[type](hand, m_Links);
@@ -196,8 +198,11 @@ void ArmManager::UpdateGuards(const Fighter& player, float dt, bool interrupted)
 		Arm& arm = *m_Arms[hand][m_Types[hand]];
 		if (result == PARRY_SUCCESS) arm.Rumble(PARRY_RUMBLE, PARRY_RUMBLE, PARRY_RUMBLE_SECONDS);
 		else if (result == PARRY_BREAK_ARM && !HasUnlimitedUses()) {
-			arm.Rumble(BREAK_RUMBLE, BREAK_RUMBLE, BREAK_RUMBLE_SECONDS);
-			ChangeType(hand, ARM_TYPE_NONE);
+			m_Uses[hand].Consume(TuningCalcDurabilityCost(GUARD_DURABILITY_COST, m_Tuning));
+			if (m_Uses[hand].IsExhausted()) {
+				arm.Rumble(BREAK_RUMBLE, BREAK_RUMBLE, BREAK_RUMBLE_SECONDS);
+				ChangeType(hand, ARM_TYPE_NONE);
+			}
 		}
 	}
 	bool any = false;
@@ -303,7 +308,7 @@ ARM_TYPE ArmManager::GetType(int hand) const
 	return hand >= 0 && hand < 2 ? m_Types[hand] : ARM_TYPE_COUNT;
 }
 
-int ArmManager::GetRemainingUses(int hand) const
+int ArmManager::GetDurability(int hand) const
 {
 	if (hand < 0 || hand >= 2) return 0;
 	return HasUnlimitedUses() ? -1 : m_Uses[hand].GetRemaining();
@@ -346,14 +351,14 @@ const char* ArmGetName(ARM_TYPE type)
 	return type >= 0 && type < ARM_TYPE_COUNT ? ARM_NAMES[type] : "不明";
 }
 
-void Arm::ConsumeUse(int count)
+void Arm::ConsumeDurability(int cost)
 {
-	if (GetRemainingUses() >= 0) m_Used += count;
+	if (GetDurability() >= 0) m_Used += TuningCalcDurabilityCost(cost, GetTuning());
 }
 
-int Arm::GetRemainingUses() const
+int Arm::GetDurability() const
 {
-	return m_Links.Arms->GetRemainingUses(m_Hand);
+	return m_Links.Arms->GetDurability(m_Hand);
 }
 
 const MATCH_TUNING& Arm::GetTuning() const

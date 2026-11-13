@@ -14,21 +14,23 @@ namespace Proto1Tests
 		EXPECT_FLOAT_EQ(1.2f, TuningCalcValue(tuning, TUNING_HAMMER_STUN));
 		EXPECT_EQ(8, TuningCalcCapsuleCount(tuning));
 		EXPECT_FLOAT_EQ(1.5f, TuningCalcCapsuleSeconds(tuning));
-		EXPECT_EQ(3, TuningCalcArmUses(3, tuning));
+		EXPECT_EQ(34, TuningCalcDurabilityCost(34, tuning));
 		EXPECT_FALSE(TuningCalcIsUnlimitedUses(tuning));
 	}
 
-	// 回数は切り上げ、素手を増やさず、無制限の段を区別する。
-	TEST(TuningCalcTest, UsesRoundUpAndSupportUnlimited)
+	// 耐久の減る量を倍率で割って切り上げ、無制限の段を区別する。
+	TEST(TuningCalcTest, DurabilityCostsRoundUpAndSupportUnlimited)
 	{
 		MATCH_TUNING tuning = TuningCalcDefault();
 		tuning.Levels[TUNING_ARM_USES] = 0;
-		EXPECT_EQ(2, TuningCalcArmUses(3, tuning));
+		EXPECT_EQ(30, TuningCalcDurabilityCost(15, tuning));
 		tuning.Levels[TUNING_ARM_USES] = 3;
-		EXPECT_EQ(16, TuningCalcArmUses(8, tuning));
-		EXPECT_EQ(0, TuningCalcArmUses(0, tuning));
+		EXPECT_EQ(17, TuningCalcDurabilityCost(34, tuning));
+		tuning.Levels[TUNING_ARM_USES] = 2;
+		EXPECT_EQ(4, TuningCalcDurabilityCost(5, tuning));
 		tuning.Levels[TUNING_ARM_USES] = 4;
 		EXPECT_TRUE(TuningCalcIsUnlimitedUses(tuning));
+		EXPECT_EQ(34, TuningCalcDurabilityCost(34, tuning));
 	}
 
 	// 各項目の段を表どおり選べ、範囲外の通信値は拒否する。

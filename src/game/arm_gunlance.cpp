@@ -8,6 +8,10 @@
 #include "render/shape.h"
 
 // 調整用の値
+static constexpr int SHOT_COST = 5;
+static constexpr int IMPALE_COST = 50;
+static constexpr int RUSH_MISS_COST = 25;
+static constexpr int IMPALE_SHOTS = 3;
 static constexpr PROJECTILE_PARAMS SHOT_PARAMS{ 0.2f, 0.0f, 0.8f, 0.0f, false };
 static constexpr float SHOT_SPEED = 30.0f;
 static constexpr float MUZZLE_FORWARD = 1.4f; // 肩から弾を出す所までの距離。
@@ -57,8 +61,15 @@ GunlanceArm::GunlanceArm(int hand, const ARM_LINKS& links) : Arm(hand, links)
 	Reset();
 }
 
+void GunlanceArm::FinishRush()
+{
+	if (m_RushPending) ConsumeDurability(RUSH_MISS_COST);
+	m_RushPending = false;
+}
+
 void GunlanceArm::Reset()
 {
+	FinishRush();
 	ReleaseHeld();
 	m_Calc.Reset();
 	m_Shots.Reset();
@@ -69,6 +80,7 @@ void GunlanceArm::Reset()
 
 void GunlanceArm::Interrupt()
 {
+	FinishRush();
 	ReleaseHeld();
 	m_Calc.StopAction();
 	m_Straighten = 0.0f;
@@ -88,7 +100,7 @@ void GunlanceArm::ReleaseHeld()
 
 void GunlanceArm::Fire()
 {
-	if (GetRemainingUses() == 0 || !m_Calc.CanFire()) return;
+	if (GetDurability() == 0 || !m_Calc.CanFire()) return;
 	const VEC3 shoulder = GetShoulder();
 	const VEC3 aim = GetAim(true);
 	const int index = m_Shots.Fire(Vec3Add(shoulder, Vec3Scale(aim, MUZZLE_FORWARD)), Vec3Scale(aim, SHOT_SPEED), -1, SHOT_PARAMS);
@@ -97,7 +109,7 @@ void GunlanceArm::Fire()
 	m_PoseSeconds = POSE_SECONDS;
 	m_RecoilSeconds = 0.0f;
 	m_Calc.RecordShot();
-	ConsumeUse();
+	ConsumeDurability(SHOT_COST);
 }
 
 void GunlanceArm::StepRush()
@@ -115,7 +127,9 @@ void GunlanceArm::StepRush()
 		}
 		m_HeldTarget = i;
 		fighters.AddDamage(i, GetSlot(), IMPALE_DAMAGE);
-		m_Calc.StartImpale(GetRemainingUses());
+		ConsumeDurability(IMPALE_COST);
+		m_RushPending = false;
+		m_Calc.StartImpale(IMPALE_SHOTS);
 		Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
 		return;
 	}
@@ -131,7 +145,6 @@ void GunlanceArm::StepImpale(const GUNLANCE_STEP& step)
 	fighters.MoveHeld(m_HeldTarget, GetSlot(), center);
 
 	for (int i = 0; i < step.Shots; ++i) {
-		ConsumeUse();
 		m_RecoilSeconds = RECOIL_SECONDS;
 		Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
 		if (step.Finished && i + 1 == step.Shots) {
@@ -169,12 +182,14 @@ void GunlanceArm::Update(const ARM_INPUT& input)
 	}
 	if (input.HoldStarted && CanTakeHold()) {
 		m_Calc.StartRush();
+		m_RushPending = true;
 		m_PoseSeconds = 0.0f;
 		m_RecoilSeconds = 0.0f;
 	}
 	const GUNLANCE_STEP step = m_Calc.Step(dt, input.Pressed);
 	if (input.Tap) Fire();
 	if (m_Calc.IsRushing()) StepRush();
+	if (!m_Calc.IsRushing()) FinishRush();
 	if (m_HeldTarget >= 0) StepImpale(step);
 	StepShots(dt);
 	const float speed = dt / STRAIGHTEN_SECONDS;
@@ -241,12 +256,12 @@ ARM_BODY_CLIP GunlanceArm::GetBodyClip() const
 
 bool GunlanceArm::CanTakeTap() const
 {
-	return GetRemainingUses() != 0 && m_Calc.CanFire(GameTimeGetDeltaTime());
+	return GetDurability() != 0 && m_Calc.CanFire(GameTimeGetDeltaTime());
 }
 
 bool GunlanceArm::CanTakeHold() const
 {
-	return GetRemainingUses() != 0 && m_Calc.IsIdle();
+	return GetDurability() != 0 && m_Calc.IsIdle();
 }
 
 bool GunlanceArm::IsHolding() const
