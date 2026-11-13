@@ -31,6 +31,10 @@ enum class SKINNED_CLIP
 	KnuckleRushRight, ///< ナックルの爆速突進（右手）
 	GunlanceImpaleLeft, ///< ガンランスの突き上げと撃ち込み（左手）
 	GunlanceImpaleRight, ///< ガンランスの突き上げと撃ち込み（右手）
+	HitFlinch, ///< 攻撃が当たった瞬間ののけぞり（全身。ループしない）
+	Launched, ///< 吹っ飛び中にもがく（全身。ファイルがなければ落下）
+	Stunned, ///< しびれてぐったりする（全身）
+	Held, ///< つかまれてもがく（全身）
 	Count ///< クリップの数
 };
 
@@ -62,7 +66,15 @@ inline SKINNED_CLIP AnimCalcAttackClip(ATTACK_CLIP kind, int hand)
 /// @return 攻撃クリップなら true
 inline bool AnimCalcIsAttackClip(SKINNED_CLIP clip)
 {
-	return clip >= SKINNED_CLIP::KatanaIaiLeft && clip < SKINNED_CLIP::Count;
+	return clip >= SKINNED_CLIP::KatanaIaiLeft && clip <= SKINNED_CLIP::GunlanceImpaleRight;
+}
+
+/// @brief 最後の姿勢で止める（ループしない）クリップか調べる
+/// @param clip 調べるクリップ
+/// @return ジャンプ・着地・攻撃・のけぞりなら true
+inline bool AnimCalcIsOneShotClip(SKINNED_CLIP clip)
+{
+	return clip == SKINNED_CLIP::Jump || clip == SKINNED_CLIP::Land || clip == SKINNED_CLIP::HitFlinch || AnimCalcIsAttackClip(clip);
 }
 
 /// @brief アニメで使う3成分

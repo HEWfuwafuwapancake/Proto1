@@ -16,7 +16,9 @@ off は攻撃していない方の腕の向き（省略すると体のひねり�
 """
 import sys
 import maya.standalone
-maya.standalone.initialize(name='python')
+if __name__ == '__main__':
+    # mayapy から動かすときだけ Maya を起こす（Maya の画面から import するときは要らない）。
+    maya.standalone.initialize(name='python')
 import maya.cmds as cmds
 import maya.mel as mel
 import maya.api.OpenMaya as om

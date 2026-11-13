@@ -24,6 +24,7 @@ static constexpr float BODY_HEIGHT = 1.8f;
 static constexpr float RESPAWN_SECONDS = 2.0f;
 static constexpr float RUN_SPEED_THRESHOLD = 0.25f;
 static constexpr float ANIMATION_BLEND_SECONDS = 0.15f;
+static constexpr float HIT_FLINCH_SECONDS = 10.0f / 24.0f; // 当たった瞬間ののけぞりを見せる秒数（hit_flinch のクリップの長さ）
 // 見た目の動き（描画だけ。当たり判定と m_Yaw は変えない）
 static constexpr float LEG_TURN_SPEED = XMConvertToRadians(900.0f); // 走るとき脚が進む向きへ回る速さ（体の向きより速く、脚が先に向く）
 static constexpr float LEG_IDLE_TURN_SPEED = XMConvertToRadians(360.0f); // 止まっているとき脚が狙いの向きへ回る速さ
@@ -107,6 +108,7 @@ void Fighter::PlaceAtSpawn()
 	m_Yaw = 0.0f;
 	m_Launched = false;
 	m_FlinchFrames = 0;
+	m_HitAnimSeconds = HIT_FLINCH_SECONDS;
 	m_Dash.Reset();
 	m_HeldBy = -1;
 	m_Pulled = false;
@@ -268,12 +270,19 @@ void Fighter::UpdateAnimation(const ArmManager* arms, float dt)
 	// 吹っ飛び中・保持中・引っぱられ中は走らせない（脚は狙いの向き、空中なら落下）。
 	input.Locomotion = !m_Launched && !IsHeld() && !m_Pulled;
 	m_Motion.Step(input, params, dt);
+	m_HitAnimSeconds = std::min(m_HitAnimSeconds + dt, HIT_FLINCH_SECONDS);
 
 	// 脚は走り・ジャンプなどを続け、腕を使っている手のクリップは上半身だけに重ねる。
 	SKINNED_REQUEST request;
 	request.Clip = m_Motion.GetClip();
 	request.Speed = m_Motion.GetPlaySpeed();
 	request.Twist = m_Motion.GetTwist();
+	// つかまれ・しびれ・吹っ飛び中は、全身をやられのクリップにする。
+	const SKINNED_CLIP reaction = MotionCalcReactionClip(IsHeld() || m_Pulled, m_Status.IsActive(STATUS_STUN), m_Launched);
+	if (reaction != SKINNED_CLIP::Count) {
+		request.Clip = reaction;
+		request.Speed = 1.0f;
+	}
 	const int hand = IsHuman() && arms ? arms->GetActiveHand() : -1;
 	if (hand >= 0) {
 		const ARM_BODY_CLIP attack = arms->GetBodyClip(hand);
@@ -292,6 +301,12 @@ void Fighter::UpdateAnimation(const ArmManager* arms, float dt)
 			request.OffTime = otherAttack.Time;
 			request.OffHand = other;
 		}
+	}
+	// 当たった直後は、攻撃していなければのけぞりを全身に重ねる（当たるたびに最初から）。
+	if (m_HitAnimSeconds < HIT_FLINCH_SECONDS && !AnimCalcIsAttackClip(request.Upper)) {
+		request.Upper = SKINNED_CLIP::HitFlinch;
+		request.UpperTime = m_HitAnimSeconds;
+		request.UpperFull = true;
 	}
 	m_Models[m_Character].Update(m_Pose, request, dt, ANIMATION_BLEND_SECONDS);
 }
@@ -518,6 +533,7 @@ void Fighter::SetLaunchVelocity(const VEC3& velocity)
 	m_Pulled = false;
 	m_Launched = true;
 	m_FlinchFrames = FLINCH_FRAMES;
+	m_HitAnimSeconds = 0.0f;
 	m_Dash.Cancel();
 }
 

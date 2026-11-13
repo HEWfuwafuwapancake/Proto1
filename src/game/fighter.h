@@ -159,6 +159,7 @@ private:
 	float m_Yaw = 0.0f;
 	bool m_Launched = false;
 	int m_FlinchFrames = 0; // 吹っ飛ばされた直後に腕を使えないフレーム数（出していた腕を中断させる）
+	float m_HitAnimSeconds = 1.0f; // 最後に吹っ飛ばされてからの秒数（のけぞりを見せる。描画だけで使う）
 	DashCalc m_Dash;
 	int m_HeldBy = -1;
 	bool m_Pulled = false;

@@ -5,6 +5,14 @@
 
 static constexpr float MOTION_PI = 3.14159265f;
 
+SKINNED_CLIP MotionCalcReactionClip(bool held, bool stunned, bool launched)
+{
+	if (held) return SKINNED_CLIP::Held;
+	if (stunned) return SKINNED_CLIP::Stunned;
+	if (launched) return SKINNED_CLIP::Launched;
+	return SKINNED_CLIP::Count;
+}
+
 void MotionCalc::Reset(float yaw)
 {
 	m_LegYaw = WrapYaw(yaw);

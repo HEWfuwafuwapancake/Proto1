@@ -15,7 +15,7 @@ static constexpr size_t REQUIRED_CLIPS = static_cast<size_t>(SKINNED_CLIP::RunBa
 // ループしないクリップ（最後の姿勢で止める）
 static bool IsLoopClip(SKINNED_CLIP clip)
 {
-	return clip != SKINNED_CLIP::Jump && clip != SKINNED_CLIP::Land && !AnimCalcIsAttackClip(clip);
+	return !AnimCalcIsOneShotClip(clip);
 }
 
 // ファイルがないクリップの代わり
@@ -26,6 +26,7 @@ static SKINNED_CLIP FallbackClip(SKINNED_CLIP clip)
 		const bool left = (static_cast<int>(clip) - static_cast<int>(SKINNED_CLIP::KatanaIaiLeft)) % 2 == 0;
 		return left ? SKINNED_CLIP::Left : SKINNED_CLIP::Right;
 	}
+	if (clip == SKINNED_CLIP::Launched) return SKINNED_CLIP::Fall;
 	return clip == SKINNED_CLIP::RunBack ? SKINNED_CLIP::Run : SKINNED_CLIP::Idle;
 }
 static constexpr unsigned IMPORT_FLAGS = aiProcess_ConvertToLeftHanded | aiProcess_LimitBoneWeights
@@ -349,7 +350,8 @@ void SkinnedModel::Update(SKINNED_POSE& pose, const SKINNED_REQUEST& request, fl
 		pose.UpperTime = 0.0f;
 	}
 	if (wantUpper) pose.UpperFull = request.UpperFull;
-	const bool attack = (wantUpper && AnimCalcIsAttackClip(request.Upper)) || (pose.Upper != SKINNED_CLIP::Count && AnimCalcIsAttackClip(pose.Upper));
+	// 攻撃・のけぞりは素早く出し入れする。
+	const bool attack = (wantUpper && AnimCalcIsOneShotClip(request.Upper)) || (pose.Upper != SKINNED_CLIP::Count && AnimCalcIsOneShotClip(pose.Upper));
 	const float upperBlend = attack ? ATTACK_BLEND_SECONDS : blendSeconds;
 	const float step = upperBlend > 0.0f ? dt / upperBlend : 1.0f;
 	pose.UpperWeight = wantUpper ? std::min(1.0f, pose.UpperWeight + step) : std::max(0.0f, pose.UpperWeight - step);
@@ -357,7 +359,7 @@ void SkinnedModel::Update(SKINNED_POSE& pose, const SKINNED_REQUEST& request, fl
 	if (pose.Upper != SKINNED_CLIP::Count) {
 		// 攻撃クリップは腕の段階が決めた位置を見せ、抜けるあいだは最後の位置で止める。
 		if (wantUpper && request.UpperTime >= 0.0f) pose.UpperTime = std::min(request.UpperTime, GetClip(pose.Upper).LoopSeconds);
-		else if (!AnimCalcIsAttackClip(pose.Upper)) pose.UpperTime = AnimCalcLoopTime(pose.UpperTime + dt, GetClip(pose.Upper).LoopSeconds);
+		else if (!AnimCalcIsOneShotClip(pose.Upper)) pose.UpperTime = AnimCalcLoopTime(pose.UpperTime + dt, GetClip(pose.Upper).LoopSeconds);
 	}
 	// もう一方の腕のクリップも同じように出し入れする。
 	const bool wantOff = request.Off != SKINNED_CLIP::Count && !m_ArmMasks[request.OffHand].empty();
