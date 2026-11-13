@@ -270,7 +270,9 @@ void ArmManager::Update(bool playing)
 		else {
 			const bool wasActive = arm.IsActive();
 			ARM_INPUT input{};
-			if (m_Guards[hand].IsGuarding()) m_Presses[hand].Reset(pressed);
+			// もう片手の現在の動作を見て、禁止中の入力は離して押し直すまで受け付けない。
+			const Arm& otherArm = *m_Arms[1 - hand][m_Types[1 - hand]];
+			if (m_Guards[hand].IsGuarding() || otherArm.LocksOtherHand()) m_Presses[hand].Reset(pressed);
 			else if (CanUseArm(hand) || arm.IsHolding()) { // 最後の1回でつかんだ相手も投げられるようにする。
 				input = m_Presses[hand].Step(pressed, dt, arm.CanTakeTap(), arm.CanTakeHold());
 			}

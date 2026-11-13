@@ -80,6 +80,8 @@ public:
 	virtual bool IsBusy() const { return false; }
 	/// @brief 敵をつかんでいる間だけ true を返す
 	virtual bool IsHolding() const = 0;
+	/// @brief この腕の動作中、もう片手の腕に新しい動作を始めさせないなら true を返す（基本は false）
+	virtual bool LocksOtherHand() const { return false; }
 	/// @brief 単押しをすぐ受け付けられるなら true を返す（false の間の単押しは少しの間覚えておく。基本は待機中だけ）
 	virtual bool CanTakeTap() const { return !IsActive(); }
 	/// @brief 長押しをすぐ始められるなら true を返す（false の間は押し続けていれば待つ。基本は待機中だけ）
