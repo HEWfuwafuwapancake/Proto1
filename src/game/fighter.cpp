@@ -27,6 +27,8 @@ static constexpr float RUN_SPEED_THRESHOLD = 0.25f;
 static constexpr float ANIMATION_BLEND_SECONDS = 0.15f;
 static constexpr float FLINCH_ANIM_SECONDS = 0.33f; // 吹っ飛ばされた直後にのけぞりを見せる秒数（描画だけ）
 static constexpr float HIT_BLEND_SECONDS = 0.05f; // のけぞりへ切り替えるときにつなぐ秒数
+static constexpr float DASH_CLIP_SECONDS = 9.0f / 24.0f; // ダッシュのクリップを見せる秒数（飛び出し 2・進む 3・止まる 4 フレーム）
+static constexpr float DASH_BLEND_SECONDS = 0.04f; // ダッシュへ切り替えるときにつなぐ秒数
 // 見た目の動き（描画だけ。当たり判定と m_Yaw は変えない）
 static constexpr float LEG_TURN_SPEED = XMConvertToRadians(900.0f); // 走るとき脚が進む向きへ回る速さ（体の向きより速く、脚が先に向く）
 static constexpr float LEG_IDLE_TURN_SPEED = XMConvertToRadians(360.0f); // 止まっているとき脚が狙いの向きへ回る速さ
@@ -117,6 +119,7 @@ void Fighter::PlaceAtSpawn()
 	m_Models[m_Character].Reset(m_Pose);
 	m_Motion.Reset(m_Yaw);
 	m_LaunchAnimElapsed = (std::numeric_limits<float>::max)(); // 復活時はのけぞらせない。
+	m_DashAnimElapsed = -1.0f;
 }
 
 void Fighter::Reset()
@@ -191,6 +194,7 @@ DUMMY_EVENT Fighter::Update(const Camera* camera, const ArmManager* arms)
 			if (m_Status.IsActive(STATUS_STUN)) moveX = moveZ = 0.0f;
 			if (jump) m_Body.Jump(JUMP_SPEED, AIR_JUMPS);
 			if (dash && m_Dash.TryStart(dashDirection, onGround, dashParams, false)) {
+				StartDashAnimation(onGround);
 				const VEC3 push = Vec3Scale(m_Dash.GetDirection(), DASH_SPEED);
 				m_Body.SetVelocity({ m_Body.GetVelocityX() + push.X, m_Body.GetVelocityY(), m_Body.GetVelocityZ() + push.Z });
 			}
@@ -198,10 +202,12 @@ DUMMY_EVENT Fighter::Update(const Camera* camera, const ArmManager* arms)
 			m_Launched = KnockbackCalcStep(m_Body, dt, KnockbackParams(), stage, moveX, moveZ);
 		}
 		else {
-			if (dash) m_Dash.TryStart(dashDirection, onGround, dashParams, true);
-			// ジャンプを押したらダッシュをやめて跳ぶ。
-			if (jump && m_Dash.IsDashing()) m_Dash.Cancel();
-			if (rushVelocity.X != 0.0f || rushVelocity.Z != 0.0f) m_Dash.Cancel();
+			if (dash && m_Dash.TryStart(dashDirection, onGround, dashParams, true)) StartDashAnimation(onGround);
+			// ジャンプを押したらダッシュをやめて跳ぶ（ダッシュのクリップもやめる）。
+			if ((jump || rushVelocity.X != 0.0f || rushVelocity.Z != 0.0f) && m_Dash.IsDashing()) {
+				m_Dash.Cancel();
+				m_DashAnimElapsed = -1.0f;
+			}
 			const bool dashing = m_Dash.IsDashing();
 			const VEC3 dashVelocity = m_Dash.Step(dt, onGround, dashParams);
 			if (dashing) {
@@ -263,6 +269,7 @@ void Fighter::UpdateAnimation(const ArmManager* arms, float dt)
 	params.LeanTurn = LEAN_TURN;
 	params.LeanSideMax = LEAN_SIDE_MAX;
 	params.LeanRate = LEAN_RATE;
+	params.DashClipSeconds = DASH_CLIP_SECONDS;
 	MOTION_INPUT input;
 	input.VelocityX = m_Body.GetVelocityX();
 	input.VelocityY = m_Body.GetVelocityY();
@@ -271,6 +278,9 @@ void Fighter::UpdateAnimation(const ArmManager* arms, float dt)
 	input.AimYaw = m_Yaw;
 	// 吹っ飛び中・保持中・引っぱられ中は走らせない（脚は狙いの向き、空中なら落下）。
 	input.Locomotion = !m_Launched && !IsHeld() && !m_Pulled;
+	input.DashElapsed = m_DashAnimElapsed;
+	input.DashAir = m_DashAnimAir;
+	input.DashYaw = m_DashAnimYaw;
 	m_Motion.Step(input, params, dt);
 
 	// 脚は走り・ジャンプなどを続け、腕を使っている手のクリップは上半身だけに重ねる。
@@ -278,6 +288,7 @@ void Fighter::UpdateAnimation(const ArmManager* arms, float dt)
 	request.Clip = m_Motion.GetClip();
 	request.Speed = m_Motion.GetPlaySpeed();
 	request.Twist = m_Motion.GetTwist();
+	request.ClipTime = m_Motion.GetClipTime();
 	const MOTION_HIT_REACTION reaction = MotionCalcHitReaction(IsHeld(), m_Status.IsActive(STATUS_STUN),
 		m_Launched, m_LaunchAnimElapsed, FLINCH_ANIM_SECONDS);
 	if (reaction.Active) {
@@ -304,10 +315,24 @@ void Fighter::UpdateAnimation(const ArmManager* arms, float dt)
 			request.OffHand = other;
 		}
 	}
-	const float blendSeconds = request.Clip == SKINNED_CLIP::HitFlinch ? HIT_BLEND_SECONDS : ANIMATION_BLEND_SECONDS;
+	const float blendSeconds = request.Clip == SKINNED_CLIP::HitFlinch ? HIT_BLEND_SECONDS
+		: (request.Clip == SKINNED_CLIP::Dash || request.Clip == SKINNED_CLIP::AirDash ? DASH_BLEND_SECONDS : ANIMATION_BLEND_SECONDS);
 	m_Models[m_Character].Update(m_Pose, request, dt, blendSeconds);
 	// 被弾したフレームは先頭を見せ、そのあと進める。のけぞりが終われば加算を止める。
 	if (dt > 0.0f && m_LaunchAnimElapsed < FLINCH_ANIM_SECONDS) m_LaunchAnimElapsed += dt;
+	// ダッシュのクリップを見せ終わったら止める。
+	if (m_DashAnimElapsed >= 0.0f && dt > 0.0f) {
+		m_DashAnimElapsed += dt;
+		if (m_DashAnimElapsed >= DASH_CLIP_SECONDS) m_DashAnimElapsed = -1.0f;
+	}
+}
+
+void Fighter::StartDashAnimation(bool onGround)
+{
+	m_DashAnimElapsed = 0.0f;
+	m_DashAnimAir = !onGround;
+	const VEC3& direction = m_Dash.GetDirection();
+	m_DashAnimYaw = atan2f(direction.X, direction.Z);
 }
 
 void Fighter::Draw(bool highlighted) const

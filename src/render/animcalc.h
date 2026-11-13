@@ -55,6 +55,8 @@ enum class SKINNED_CLIP
 	HitLaunched, ///< 吹っ飛び中
 	HitStun, ///< しびれ中
 	HitHeld, ///< つかまれ中
+	Dash, ///< 地面のダッシュ（ループしない。ファイルがなければ走り）
+	AirDash, ///< 空中のダッシュ（ループしない。ファイルがなければ落下）
 	Count ///< クリップの数
 };
 

@@ -15,6 +15,9 @@ struct MOTION_INPUT
 	bool OnGround = true; ///< 浮島に立っているか（true：立っている、false：空中）
 	float AimYaw = 0.0f; ///< 上半身を向ける左右の向き（ゲームの向き。ラジアン。0で+Z、プラスで右回り）
 	bool Locomotion = true; ///< 走り・ジャンプの動きをするか（true：人の通常の動き、false：吹っ飛び中など。脚は狙いの向きにそろえ、空中なら落下だけにする）
+	float DashElapsed = -1.0f; ///< ダッシュを始めてからの秒数（負ならダッシュしていない）
+	bool DashAir = false; ///< 空中で始めたダッシュか（true：空中、false：地面）
+	float DashYaw = 0.0f; ///< ダッシュの向き（ゲームの向き。ラジアン）
 };
 
 /// @brief 見た目の動きの調整用の値
@@ -33,6 +36,7 @@ struct MOTION_PARAMS
 	float LeanTurn = 0.06f; ///< 脚が 1 ラジアン／秒で回るときの内側への傾き（ラジアン）
 	float LeanSideMax = 0.17f; ///< 内側への傾きの上限（ラジアン）
 	float LeanRate = 8.0f; ///< 傾きが目標へ近づく速さ（1秒あたりの割合）
+	float DashClipSeconds = 0.375f; ///< ダッシュのクリップを見せる秒数（飛び出し・進む・止まる）
 };
 
 /// @brief やられの全身クリップの指定（描画だけ）
@@ -51,6 +55,21 @@ struct MOTION_HIT_REACTION
 /// @param flinchSeconds のけぞりを見せる秒数
 /// @return 使うか・クリップ・再生位置（ループするクリップは負）
 MOTION_HIT_REACTION MotionCalcHitReaction(bool held, bool stunned, bool launched, float launchElapsed, float flinchSeconds);
+
+/// @brief ダッシュの全身クリップの指定（描画だけ）
+struct MOTION_DASH_CLIP
+{
+	bool Active = false; ///< ダッシュのクリップを使うか（true：使う、false：通常の動きを使う）
+	SKINNED_CLIP Clip = SKINNED_CLIP::Idle; ///< 全身で再生するクリップ
+	float ClipTime = -1.0f; ///< 再生位置の秒（使わないときは負）
+};
+
+/// @brief ダッシュを始めてからの秒数から、ダッシュのクリップと再生位置を選ぶ
+/// @param elapsed ダッシュを始めてからの秒数（負ならダッシュしていない）
+/// @param air 空中で始めたダッシュか（true：空中のダッシュ、false：地面のダッシュ）
+/// @param clipSeconds クリップを見せる秒数（これを過ぎたら使わない）
+/// @return 使うか・クリップ・再生位置
+MOTION_DASH_CLIP MotionCalcDash(float elapsed, bool air, float clipSeconds);
 
 /// @brief 1体分の見た目の動き（Fighter ごとに持つ）
 class MotionCalc
@@ -74,6 +93,8 @@ public:
 	float GetLeanRoll() const { return m_LeanRoll; }
 	/// @brief 下半身（全身）で再生するクリップを取得する
 	SKINNED_CLIP GetClip() const { return m_Clip; }
+	/// @brief 下半身（全身）のクリップの再生位置を取得する（秒。負なら経過時間で進める）
+	float GetClipTime() const { return m_ClipTime; }
 	/// @brief クリップの再生速度の倍率を取得する
 	float GetPlaySpeed() const { return m_PlaySpeed; }
 	/// @brief 後ろ走り中か取得する
@@ -86,6 +107,7 @@ private:
 	float m_LeanRoll = 0.0f;
 	float m_LandTimer = 0.0f;
 	float m_PlaySpeed = 1.0f;
+	float m_ClipTime = -1.0f;
 	bool m_Backward = false;
 	bool m_WasOnGround = true;
 	SKINNED_CLIP m_Clip = SKINNED_CLIP::Idle;

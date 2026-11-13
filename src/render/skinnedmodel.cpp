@@ -16,7 +16,8 @@ static constexpr size_t REQUIRED_CLIPS = static_cast<size_t>(SKINNED_CLIP::RunBa
 static bool IsLoopClip(SKINNED_CLIP clip)
 {
 	return clip != SKINNED_CLIP::Jump && clip != SKINNED_CLIP::Land
-		&& clip != SKINNED_CLIP::HitFlinch && !AnimCalcIsAttackClip(clip);
+		&& clip != SKINNED_CLIP::HitFlinch && clip != SKINNED_CLIP::Dash && clip != SKINNED_CLIP::AirDash
+		&& !AnimCalcIsAttackClip(clip);
 }
 
 // ファイルがないクリップの代わり
@@ -26,12 +27,13 @@ static SKINNED_CLIP FallbackClip(SKINNED_CLIP clip)
 		return SKINNED_CLIP::Fall;
 	}
 	if (clip == SKINNED_CLIP::HitStun) return SKINNED_CLIP::Idle;
+	if (clip == SKINNED_CLIP::AirDash) return SKINNED_CLIP::Fall;
 	if (AnimCalcIsAttackClip(clip)) {
 		// 攻撃クリップのないキャラは、その手を前に出すクリップで動かす。
 		const bool left = (static_cast<int>(clip) - static_cast<int>(SKINNED_CLIP::KatanaIaiLeft)) % 2 == 0;
 		return left ? SKINNED_CLIP::Left : SKINNED_CLIP::Right;
 	}
-	return clip == SKINNED_CLIP::RunBack ? SKINNED_CLIP::Run : SKINNED_CLIP::Idle;
+	return clip == SKINNED_CLIP::RunBack || clip == SKINNED_CLIP::Dash ? SKINNED_CLIP::Run : SKINNED_CLIP::Idle;
 }
 static constexpr unsigned IMPORT_FLAGS = aiProcess_ConvertToLeftHanded | aiProcess_LimitBoneWeights
 	| aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_JoinIdenticalVertices;

@@ -14,6 +14,12 @@ MOTION_HIT_REACTION MotionCalcHitReaction(bool held, bool stunned, bool launched
 	return {};
 }
 
+MOTION_DASH_CLIP MotionCalcDash(float elapsed, bool air, float clipSeconds)
+{
+	if (elapsed < 0.0f || elapsed >= clipSeconds) return {};
+	return { true, air ? SKINNED_CLIP::AirDash : SKINNED_CLIP::Dash, elapsed };
+}
+
 void MotionCalc::Reset(float yaw)
 {
 	m_LegYaw = WrapYaw(yaw);
@@ -22,6 +28,7 @@ void MotionCalc::Reset(float yaw)
 	m_LeanRoll = 0.0f;
 	m_LandTimer = 0.0f;
 	m_PlaySpeed = 1.0f;
+	m_ClipTime = -1.0f;
 	m_Backward = false;
 	m_WasOnGround = true;
 	m_Clip = SKINNED_CLIP::Idle;
@@ -33,6 +40,25 @@ void MotionCalc::Step(const MOTION_INPUT& input, const MOTION_PARAMS& params, fl
 	const float aim = WrapYaw(input.AimYaw);
 	const float speed = sqrtf(input.VelocityX * input.VelocityX + input.VelocityZ * input.VelocityZ);
 	const bool moving = input.Locomotion && speed > params.RunThreshold;
+	m_ClipTime = -1.0f;
+
+	// 0. ダッシュ中は、脚（モデル全体）をダッシュの向きへすぐそろえ、ダッシュのクリップを見せる。
+	//    上半身は狙いの方へ上限までねじる（脚は引っぱらない）。傾きはクリップに任せて戻す。
+	const MOTION_DASH_CLIP dash = input.Locomotion ? MotionCalcDash(input.DashElapsed, input.DashAir, params.DashClipSeconds) : MOTION_DASH_CLIP{};
+	if (dash.Active) {
+		m_LegYaw = WrapYaw(input.DashYaw);
+		m_Twist = std::max(-params.MaxTwist, std::min(params.MaxTwist, WrapYaw(aim - m_LegYaw)));
+		m_Backward = false;
+		m_LandTimer = 0.0f;
+		m_WasOnGround = input.OnGround;
+		m_Clip = dash.Clip;
+		m_ClipTime = dash.ClipTime;
+		m_PlaySpeed = 1.0f;
+		const float rate = Saturate(params.LeanRate * dt);
+		m_LeanPitch -= m_LeanPitch * rate;
+		m_LeanRoll -= m_LeanRoll * rate;
+		return;
+	}
 
 	// 1. 脚の向き：走っているときは進む向き（狙いと反対へ進むときは後ろ走りで狙いの側）、止まっているときは狙いの向き
 	float legTarget = aim;
