@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "core/dx11.h"
+#include "physics/armcostcalc.h"
 #include "physics/armpresscalc.h"
 #include "physics/armusecalc.h"
 #include "physics/parrycalc.h"
@@ -103,6 +104,10 @@ protected:
 
 	/// @brief 耐久の減る量に試合の倍率を適用し、このフレームの消費に加える
 	void ConsumeDurability(int cost);
+	/// @brief 耐久が減る量の表から1欄を取得する（表はデバッグ用ウィンドウで変えられる）
+	/// @param row 腕の行（ARM_COST_ROW）
+	/// @param item 攻撃の列（ARM_COST_ITEM）
+	int GetCost(ARM_COST_ROW row, ARM_COST_ITEM item) const;
 	/// @brief 残り耐久を取得する（無制限の段だけ -1）
 	int GetDurability() const;
 	/// @brief 残り耐久があるか、DEBUGで0でも使えるならtrueを返す
@@ -207,6 +212,10 @@ public:
 	void ResetForMatch(GAME_RULE rule, const MATCH_TUNING& tuning);
 	/// @brief 今の試合に適用済みの設定を取得する
 	const MATCH_TUNING& GetTuning() const { return m_Tuning; }
+	/// @brief 耐久が減る量の表を設定する（オフラインはデバッグ用ウィンドウの表、オンラインははじめの表）
+	void SetCosts(const ARM_COST_TABLE& costs) { m_Costs = costs; }
+	/// @brief 耐久が減る量の表を取得する
+	const ARM_COST_TABLE& GetCosts() const { return m_Costs; }
 	/// @brief 両手を触手に戻し、十字キーの手の選択も左手に戻す（オンラインを始めるとき。相手と装備をそろえる）
 	void ResetEquip(void);
 	/// @brief 拾った腕を空いている左手、次に右手へ装備し、耐久100を入れる（装備できたら true）
@@ -263,6 +272,7 @@ private:
 	ARM_LINKS m_Links = {};
 	GAME_RULE m_Rule = GAME_RULE_DEBUG;
 	MATCH_TUNING m_Tuning = TuningCalcDefault();
+	ARM_COST_TABLE m_Costs = ArmCostCalcDefault();
 	int m_SelectedHand = 0;
 	int m_LastActiveHand = -1;
 	int m_ChangeDirections[2] = { 1, 1 };

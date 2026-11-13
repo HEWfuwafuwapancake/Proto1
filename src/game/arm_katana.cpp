@@ -11,12 +11,11 @@
 #include "physics/grapplecalc.h"
 #include "physics/risecalc.h"
 #include "render/shape.h"
+#include <algorithm>
 
 // 調整用の値
-static constexpr int TAP_HIT_COST = 34;
-static constexpr int TAP_MISS_COST = 15;
-static constexpr int DASH_COST = 40;
-static constexpr int DASH_HIT_COST = 10;
+// 耐久の減る量は physics/armcostcalc の表の刀の行（弱：居合、強：飛んだ瞬間に「強・外れ」、当たったら差の分を足す）。
+static constexpr ARM_COST_ROW COST_ROW = ARM_COST_ROW_KATANA;
 // 単押し：ただの斬撃（押したらすぐ振る。当たった瞬間にダメージ）
 static constexpr float IAI_SECONDS[] = { 0.1f, 0.1f, 0.25f }; // 振りかぶり・斬る・休み
 static constexpr float IAI_CLIP_SECONDS[] = { 8.0f / 24.0f, 6.0f / 24.0f, 12.0f / 24.0f }; // クリップの区切り（katana_iai の抜いて斬る動きを使う）
@@ -119,7 +118,7 @@ KatanaArm::KatanaArm(int hand, const ARM_LINKS& links) : Arm(hand, links)
 
 void KatanaArm::CancelMotion()
 {
-	if (!m_Phase.IsIdle() && !m_IaiConsumed) ConsumeDurability(TAP_MISS_COST);
+	if (!m_Phase.IsIdle() && !m_IaiConsumed) ConsumeDurability(GetCost(COST_ROW, ARM_COST_TAP_MISS));
 	m_IaiConsumed = true;
 	ReleasePull();
 	m_Phase.Reset();
@@ -172,7 +171,7 @@ void KatanaArm::SlashTargets()
 		m_Hits.TryAdd(i);
 		const bool applied = GetFighters().Launch(i, GetSlot(), AreaCalcLaunchDirection(m_Direction, IAI_UP), TAP_DAMAGE, TAP_POWER);
 		if (applied && !m_IaiConsumed) {
-			ConsumeDurability(TAP_HIT_COST);
+			ConsumeDurability(GetCost(COST_ROW, ARM_COST_TAP_HIT));
 			m_IaiConsumed = true;
 		}
 		m_SlashDirections[i] = m_Direction;
@@ -199,7 +198,7 @@ void KatanaArm::IaiTargets()
 		slash.Seconds = IAI_DELAY_SECONDS;
 		m_Delayed.Add(slash);
 		if (!m_DashHitConsumed) {
-			ConsumeDurability(DASH_HIT_COST);
+			ConsumeDurability((std::max)(0, GetCost(COST_ROW, ARM_COST_HOLD_HIT) - GetCost(COST_ROW, ARM_COST_HOLD_MISS)));
 			m_DashHitConsumed = true;
 		}
 		m_SlashDirections[i] = m_IaiDirection;
@@ -219,7 +218,7 @@ void KatanaArm::DashTargets(const VEC3& from, const VEC3& to)
 		const TENTACLE_TARGET target = GetFighters().GetTarget(i, GetSlot());
 		if (!target.Available || !CollisionCapsuleCapsule(path, target.Body).Hit || !m_Hits.TryAdd(i)) continue;
 		if (GetFighters().Launch(i, GetSlot(), AreaCalcLaunchDirection(flat, DASH_UP), DASH_DAMAGE, DASH_POWER) && !m_DashHitConsumed) {
-			ConsumeDurability(DASH_HIT_COST);
+			ConsumeDurability((std::max)(0, GetCost(COST_ROW, ARM_COST_HOLD_HIT) - GetCost(COST_ROW, ARM_COST_HOLD_MISS)));
 			m_DashHitConsumed = true;
 		}
 		m_SlashDirections[i] = flat;
@@ -249,7 +248,7 @@ void KatanaArm::StepIai(float dt)
 	if (step.Entered == IAI_DRAW) BeginDraw();
 	if (m_Phase.GetPhase() == IAI_DRAW) SlashTargets();
 	if (step.Finished && !m_IaiConsumed) {
-		ConsumeDurability(TAP_MISS_COST);
+		ConsumeDurability(GetCost(COST_ROW, ARM_COST_TAP_MISS));
 		m_IaiConsumed = true;
 	}
 }
@@ -299,7 +298,7 @@ void KatanaArm::StartDash()
 	m_Hits.Clear();
 	GetPlayer().SetPulled(true);
 	m_OwnPull = true;
-	ConsumeDurability(DASH_COST);
+	ConsumeDurability(GetCost(COST_ROW, ARM_COST_HOLD_MISS));
 	m_DashHitConsumed = false;
 	Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
 }

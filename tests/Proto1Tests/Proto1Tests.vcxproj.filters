@@ -63,6 +63,7 @@
     <ClCompile Include="gunlancecalc_test.cpp" />
     <ClCompile Include="c4calc_test.cpp" />
     <ClCompile Include="armpresscalc_test.cpp" />
+    <ClCompile Include="armcostcalc_test.cpp" />
     <ClCompile Include="armusecalc_test.cpp" />
     <ClCompile Include="capsulecalc_test.cpp" />
     <ClCompile Include="tuningcalc_test.cpp" />
@@ -74,6 +75,9 @@
       <Filter>src\physics</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\physics\armpresscalc.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\physics\armcostcalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\physics\armusecalc.cpp">

@@ -57,14 +57,35 @@ bool Game::Initialize(const NET_OPTIONS& options)
 	return connected;
 }
 
-bool Game::CanEditDurability(int hand) const
+bool Game::CanEditDurability(ARM_TYPE type) const
 {
-	return !m_Net.IsOnline() && hand >= 0 && hand < 2 && m_Arms[0].GetType(hand) < ARM_TYPE_NONE;
+	return !m_Net.IsOnline() && type < ARM_TYPE_NONE && (m_Arms[0].GetType(0) == type || m_Arms[0].GetType(1) == type);
 }
 
-void Game::SetDurability(int hand, int value)
+int Game::GetDurability(ARM_TYPE type) const
 {
-	if (CanEditDurability(hand)) m_Arms[0].SetDurability(hand, value);
+	for (int hand = 0; hand < 2; ++hand) {
+		if (m_Arms[0].GetType(hand) == type) return m_Arms[0].GetDurability(hand);
+	}
+	return -2;
+}
+
+void Game::SetDurability(ARM_TYPE type, int value)
+{
+	if (!CanEditDurability(type)) return;
+	for (int hand = 0; hand < 2; ++hand) {
+		if (m_Arms[0].GetType(hand) == type) m_Arms[0].SetDurability(hand, value);
+	}
+}
+
+bool Game::CanEditArmCosts() const
+{
+	return !m_Net.IsOnline();
+}
+
+void Game::SetArmCosts(const ARM_COST_TABLE& costs)
+{
+	if (CanEditArmCosts()) m_ArmCosts = costs;
 }
 
 void Game::Finalize()
@@ -257,6 +278,9 @@ void Game::UpdateMenu()
 
 void Game::Update()
 {
+	// オンラインは全員が同じ減り方になるよう、はじめの表を使う。
+	const ARM_COST_TABLE costs = m_Net.IsOnline() ? ArmCostCalcDefault() : m_ArmCosts;
+	for (auto& arms : m_Arms) arms.SetCosts(costs);
 	const SCENE oldScene = m_Scene.GetScene();
 	if (oldScene == SCENE_GAME_START || oldScene == SCENE_CHARACTER_SELECT
 		|| oldScene == SCENE_RULE_SELECT || oldScene == SCENE_MODE_SELECT || oldScene == SCENE_JOIN_ADDRESS) {
