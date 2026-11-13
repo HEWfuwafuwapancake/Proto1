@@ -6,6 +6,7 @@
 #include "core/gametime.h"
 #include "physics/cameracalc.h"
 #include "render/shape.h"
+#include <limits>
 
 // 調整用の値（従来のPlayer・DummyManagerと同じ）
 static constexpr float MOVE_SPEED = 6.0f;
@@ -24,6 +25,8 @@ static constexpr float BODY_HEIGHT = 1.8f;
 static constexpr float RESPAWN_SECONDS = 2.0f;
 static constexpr float RUN_SPEED_THRESHOLD = 0.25f;
 static constexpr float ANIMATION_BLEND_SECONDS = 0.15f;
+static constexpr float FLINCH_ANIM_SECONDS = 0.33f; // 吹っ飛ばされた直後にのけぞりを見せる秒数（描画だけ）
+static constexpr float HIT_BLEND_SECONDS = 0.05f; // のけぞりへ切り替えるときにつなぐ秒数
 // 見た目の動き（描画だけ。当たり判定と m_Yaw は変えない）
 static constexpr float LEG_TURN_SPEED = XMConvertToRadians(900.0f); // 走るとき脚が進む向きへ回る速さ（体の向きより速く、脚が先に向く）
 static constexpr float LEG_IDLE_TURN_SPEED = XMConvertToRadians(360.0f); // 止まっているとき脚が狙いの向きへ回る速さ
@@ -113,6 +116,7 @@ void Fighter::PlaceAtSpawn()
 	m_Status.Reset();
 	m_Models[m_Character].Reset(m_Pose);
 	m_Motion.Reset(m_Yaw);
+	m_LaunchAnimElapsed = (std::numeric_limits<float>::max)(); // 復活時はのけぞらせない。
 }
 
 void Fighter::Reset()
@@ -274,6 +278,13 @@ void Fighter::UpdateAnimation(const ArmManager* arms, float dt)
 	request.Clip = m_Motion.GetClip();
 	request.Speed = m_Motion.GetPlaySpeed();
 	request.Twist = m_Motion.GetTwist();
+	const MOTION_HIT_REACTION reaction = MotionCalcHitReaction(IsHeld(), m_Status.IsActive(STATUS_STUN),
+		m_Launched, m_LaunchAnimElapsed, FLINCH_ANIM_SECONDS);
+	if (reaction.Active) {
+		request.Clip = reaction.Clip;
+		request.ClipTime = reaction.ClipTime;
+		request.Speed = 1.0f;
+	}
 	const int hand = IsHuman() && arms ? arms->GetActiveHand() : -1;
 	if (hand >= 0) {
 		const ARM_BODY_CLIP attack = arms->GetBodyClip(hand);
@@ -293,7 +304,10 @@ void Fighter::UpdateAnimation(const ArmManager* arms, float dt)
 			request.OffHand = other;
 		}
 	}
-	m_Models[m_Character].Update(m_Pose, request, dt, ANIMATION_BLEND_SECONDS);
+	const float blendSeconds = request.Clip == SKINNED_CLIP::HitFlinch ? HIT_BLEND_SECONDS : ANIMATION_BLEND_SECONDS;
+	m_Models[m_Character].Update(m_Pose, request, dt, blendSeconds);
+	// 被弾したフレームは先頭を見せ、そのあと進める。のけぞりが終われば加算を止める。
+	if (dt > 0.0f && m_LaunchAnimElapsed < FLINCH_ANIM_SECONDS) m_LaunchAnimElapsed += dt;
 }
 
 void Fighter::Draw(bool highlighted) const
@@ -517,6 +531,7 @@ void Fighter::SetLaunchVelocity(const VEC3& velocity)
 	m_HeldBy = -1;
 	m_Pulled = false;
 	m_Launched = true;
+	m_LaunchAnimElapsed = 0.0f;
 	m_FlinchFrames = FLINCH_FRAMES;
 	m_Dash.Cancel();
 }
