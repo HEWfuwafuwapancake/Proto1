@@ -46,6 +46,12 @@ bool ActionCalcPlayerTrigger(const PLAYER_INPUT& current, const PLAYER_INPUT& pr
 	return ActionCalcPlayerPress(current, action) && (event || !ActionCalcPlayerPress(previous, action));
 }
 
+void ActionCalcMaskHeld(PLAYER_INPUT& input, uint16_t& held)
+{
+	held = static_cast<uint16_t>(held & input.Buttons);
+	input.Buttons = static_cast<uint16_t>(input.Buttons & ~held);
+}
+
 
 // 向きの長さの2乗（比べるだけなら平方根はいらない）
 static float LengthSq(ACTION_AXIS axis)

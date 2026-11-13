@@ -138,6 +138,9 @@ void NetSession::Update()
 		}
 	}
 	if (!m_Calc.IsRunning()) {
+		// 試合の開始に押した決定（○・B）は、入力の遅れの分だけあとのフレームに届き、ダッシュになる。
+		// 試合が始まる前から押しているボタンは、離すまで送らない。
+		m_HeldButtons = 0xFFFF;
 		// 最初に決定を押した機器に固定。開始はホストの同じ機器からの再決定だけ。
 		for (int device = 0; device < ACTION_DEVICE_COUNT; ++device) {
 			if ((m_Device < 0 || m_Device == device) && ActionIsTrigger(device, ACTION_DECIDE)) {
@@ -151,6 +154,7 @@ void NetSession::Update()
 		PLAYER_INPUT input = ActionGetPlayerInput(m_Device);
 		// パッドで遊ぶ場合もキーボードの装備選択を自分へ配る。F1〜F4には左右されない。
 		input.Equip = ActionGetEquipKey(ActionGetEquipPlayer());
+		ActionCalcMaskHeld(input, m_HeldButtons);
 		m_Calc.CaptureInput(input);
 	}
 	if (m_Calc.IsHost()) {
