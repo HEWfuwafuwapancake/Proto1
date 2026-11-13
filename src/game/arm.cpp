@@ -331,6 +331,15 @@ bool ArmManager::IsActive(void) const
 	return false;
 }
 
+int ArmManager::GetActiveHands(void) const
+{
+	int hands = 0;
+	for (int hand = 0; hand < 2; ++hand) {
+		if (m_Arms[hand][m_Types[hand]]->IsActive()) hands |= 1 << hand;
+	}
+	return hands;
+}
+
 bool ArmManager::IsHolding(void) const
 {
 	for (int hand = 0; hand < 2; ++hand) {
@@ -533,7 +542,10 @@ int Arm::GetAimTarget() const
 
 VEC3 Arm::GetAim(bool keepHeight) const
 {
-	const float yaw = GetCamera().GetYaw();
+	// 相手がいないとき：ロックオン中は画面の正面。フリーカメラでは、使い始めはスティックの向き（なければ体の向き）、
+	// 使っている間は体の向き（使い始めの次のフレームでその向きへそろい、攻撃中は回らない）。
+	const float yaw = !GetCamera().IsFreeLook() ? GetCamera().GetYaw()
+		: IsActive() ? GetPlayer().GetYaw() : GetPlayer().GetFreeAimYaw(GetCamera().GetYaw());
 	const VEC3 fallback{ sinf(yaw), 0.0f, cosf(yaw) };
 	const int target = GetAimTarget();
 	VEC3 center{};

@@ -12,6 +12,21 @@ float PlayerCalcFacing(float current, float moveX, float moveZ, float cameraYaw,
 	return TurnYaw(current, atan2f(moveX, moveZ), speed, dt);
 }
 
+float PlayerCalcFreeAimYaw(float current, float stickX, float stickY, float cameraYaw)
+{
+	if (stickX == 0.0f && stickY == 0.0f) return WrapYaw(current);
+	// 画面から見たスティックの向きを、カメラの向きの分だけ回してワールドの向きにする。
+	return WrapYaw(cameraYaw + atan2f(stickX, stickY));
+}
+
+float PlayerCalcFreeLookFacing(float current, float moveX, float moveZ, float aimYaw,
+	bool armActive, bool armStarted, float speed, float dt)
+{
+	if (armStarted) return WrapYaw(aimYaw);
+	if (armActive) return current;
+	return PlayerCalcFacing(current, moveX, moveZ, 0.0f, false, speed, dt);
+}
+
 
 void PlayerBodyCalc::Step(float moveX, float moveZ, bool jump, float dt,
 	const PLAYER_PARAMS& params, const STAGE& stage, const VEC3& rushVelocity)
