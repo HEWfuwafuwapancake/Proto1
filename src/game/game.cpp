@@ -57,6 +57,16 @@ bool Game::Initialize(const NET_OPTIONS& options)
 	return connected;
 }
 
+bool Game::CanEditDurability(int hand) const
+{
+	return !m_Net.IsOnline() && hand >= 0 && hand < 2 && m_Arms[0].GetType(hand) < ARM_TYPE_NONE;
+}
+
+void Game::SetDurability(int hand, int value)
+{
+	if (CanEditDurability(hand)) m_Arms[0].SetDurability(hand, value);
+}
+
 void Game::Finalize()
 {
 	m_Net.Finalize();

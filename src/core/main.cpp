@@ -93,6 +93,17 @@ static void UpdateTuningChoices()
 	for (int row = 0; row < TUNING_ITEM_COUNT; ++row) DebugWindowSetSelection(row, g_Game.GetTuning().Levels[row]);
 }
 
+static void UpdateDurabilityMeters()
+{
+	for (int hand = 0; hand < 2; ++hand) {
+		int value = 0;
+		// オンラインや素手の間の古い変更通知も読み捨てる。
+		if (DebugWindowTakeMeter(hand, value)) g_Game.SetDurability(hand, value);
+		const ArmManager& arms = g_Game.GetArms(0);
+		DebugWindowSetMeter(hand, ArmGetName(arms.GetType(hand)), arms.GetDurability(hand), g_Game.CanEditDurability(hand));
+	}
+}
+
 static DWORD g_Fps = 0;	// 直近1秒の FPS
 static FRAME_STATS_RESULT g_FrameStats{}; // 直近1秒の最大間隔・平均処理時間・カクつき
 static uint64_t g_Progress = 0; // 直近1秒に通信の入力で進んだフレーム数
@@ -543,6 +554,7 @@ void Update(void)
 
 	UpdateTuningChoices();
 	g_Game.Update();
+	UpdateDurabilityMeters();
 }
 
 void Draw(void)
