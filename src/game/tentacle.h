@@ -54,7 +54,8 @@ private:
 	HitRecord m_SpinHits; // 1回の回転で当たった相手
 	VEC3 m_SpinForward = { 0.0f, 0.0f, 1.0f }; // 回転を始めた向き
 	float m_SpinAngle = 0.0f; // 回転し終わった角度（ラジアン）
-	bool m_SpinConsumed = false; // 今の回転で使用回数を消費したか
+	bool m_ReachPending = false; // 単押しの結果が未確定ならtrue
+	bool m_SpinConsumed = false; // 今の回転で耐久を消費したか
 	TentacleArm* m_OtherArm = nullptr; // 反対の手の触手（起動時につなぐ）
 	bool m_Pulling = false; // 左右のうち、後から付いて引っぱりを受け持つ手だけ true
 	TentacleCalc m_Arm;

@@ -49,7 +49,7 @@ static Game g_Game;
 
 // 調整用の表示名（値と段の数は tuningcalc を使う）。
 static constexpr const char* TUNING_LABELS[] = {
-	"長押しの移動距離", "吹っ飛び力", "ハンマーのしびれ", "ダメージ", "マップの広さ", "カプセルの出現量", "腕の使用回数"
+	"長押しの移動距離", "吹っ飛び力", "ハンマーのしびれ", "ダメージ", "マップの広さ", "カプセルの出現量", "腕の耐久の持ち"
 };
 static constexpr const char* CAPSULE_LABELS[] = { "少ない", "ふつう", "多い", "とても多い" };
 static constexpr int TUNING_MAX_LEVELS = 7;

@@ -32,9 +32,10 @@ public:
 	/// @param params 弾の調整値
 	/// @param impacts 着弾した位置と大きさを書く並び
 	/// @param maxImpacts impacts の要素数（PROJECTILE_MAX 個なら全件受け取れる）
+	/// @param expired 爆発せずに消えた弾の数を書く先（不要ならnullptr）
 	/// @return 書いた着弾の数
 	int Step(float dt, const TENTACLE_TARGET* targets, int count, const STAGE& stage,
-		const PROJECTILE_PARAMS& params, C4_IMPACT* impacts, int maxImpacts);
+		const PROJECTILE_PARAMS& params, C4_IMPACT* impacts, int maxImpacts, int* expired = nullptr);
 	/// @brief 飛んでいる弾を取得する（描画用）
 	const ProjectileCalc& GetThrown() const { return m_Thrown; }
 	/// @brief 指定の弾が大型かを取得する（index は 0〜PROJECTILE_MAX-1、描画用）

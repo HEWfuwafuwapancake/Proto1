@@ -13,6 +13,10 @@
 #include "render/shape.h"
 
 // 調整用の値
+static constexpr int TAP_HIT_COST = 34;
+static constexpr int TAP_MISS_COST = 15;
+static constexpr int DASH_COST = 40;
+static constexpr int DASH_HIT_COST = 10;
 // 単押し：ただの斬撃（押したらすぐ振る。当たった瞬間にダメージ）
 static constexpr float IAI_SECONDS[] = { 0.1f, 0.1f, 0.25f }; // 振りかぶり・斬る・休み
 static constexpr float IAI_CLIP_SECONDS[] = { 8.0f / 24.0f, 6.0f / 24.0f, 12.0f / 24.0f }; // クリップの区切り（katana_iai の抜いて斬る動きを使う）
@@ -115,6 +119,8 @@ KatanaArm::KatanaArm(int hand, const ARM_LINKS& links) : Arm(hand, links)
 
 void KatanaArm::CancelMotion()
 {
+	if (!m_Phase.IsIdle() && !m_IaiConsumed) ConsumeDurability(TAP_MISS_COST);
+	m_IaiConsumed = true;
 	ReleasePull();
 	m_Phase.Reset();
 	m_Breach = BREACH_NONE;
@@ -166,7 +172,7 @@ void KatanaArm::SlashTargets()
 		m_Hits.TryAdd(i);
 		const bool applied = GetFighters().Launch(i, GetSlot(), AreaCalcLaunchDirection(m_Direction, IAI_UP), TAP_DAMAGE, TAP_POWER);
 		if (applied && !m_IaiConsumed) {
-			ConsumeUse();
+			ConsumeDurability(TAP_HIT_COST);
 			m_IaiConsumed = true;
 		}
 		m_SlashDirections[i] = m_Direction;
@@ -192,6 +198,10 @@ void KatanaArm::IaiTargets()
 		slash.Power = IAI_POWER;
 		slash.Seconds = IAI_DELAY_SECONDS;
 		m_Delayed.Add(slash);
+		if (!m_DashHitConsumed) {
+			ConsumeDurability(DASH_HIT_COST);
+			m_DashHitConsumed = true;
+		}
 		m_SlashDirections[i] = m_IaiDirection;
 		hit = true;
 	}
@@ -208,7 +218,10 @@ void KatanaArm::DashTargets(const VEC3& from, const VEC3& to)
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		const TENTACLE_TARGET target = GetFighters().GetTarget(i, GetSlot());
 		if (!target.Available || !CollisionCapsuleCapsule(path, target.Body).Hit || !m_Hits.TryAdd(i)) continue;
-		GetFighters().Launch(i, GetSlot(), AreaCalcLaunchDirection(flat, DASH_UP), DASH_DAMAGE, DASH_POWER);
+		if (GetFighters().Launch(i, GetSlot(), AreaCalcLaunchDirection(flat, DASH_UP), DASH_DAMAGE, DASH_POWER) && !m_DashHitConsumed) {
+			ConsumeDurability(DASH_HIT_COST);
+			m_DashHitConsumed = true;
+		}
 		m_SlashDirections[i] = flat;
 		m_SlashSeconds[i] = SLASH_SHOW_SECONDS;
 		hit = true;
@@ -222,11 +235,7 @@ void KatanaArm::StepDelayedHits(float dt)
 	const int count = m_Delayed.Step(dt, hits, DELAYED_HIT_MAX);
 	for (int i = 0; i < count; ++i) {
 		if (!GetFighters().GetTarget(hits[i].Target, GetSlot()).Available) continue;
-		const bool applied = GetFighters().Launch(hits[i].Target, GetSlot(), hits[i].Direction, hits[i].Damage, hits[i].Power);
-		if (applied && !m_IaiConsumed) {
-			ConsumeUse();
-			m_IaiConsumed = true;
-		}
+		GetFighters().Launch(hits[i].Target, GetSlot(), hits[i].Direction, hits[i].Damage, hits[i].Power);
 		m_SlashSeconds[hits[i].Target] = SLASH_SHOW_SECONDS;
 		Rumble(SLASH_RUMBLE_SMALL, SLASH_RUMBLE_LARGE, SLASH_RUMBLE_SECONDS);
 	}
@@ -239,6 +248,10 @@ void KatanaArm::StepIai(float dt)
 	const ARM_PHASE_STEP step = m_Phase.Step(dt, IAI_SECONDS, IAI_PHASE_COUNT);
 	if (step.Entered == IAI_DRAW) BeginDraw();
 	if (m_Phase.GetPhase() == IAI_DRAW) SlashTargets();
+	if (step.Finished && !m_IaiConsumed) {
+		ConsumeDurability(TAP_MISS_COST);
+		m_IaiConsumed = true;
+	}
 }
 
 void KatanaArm::UpdateLanding()
@@ -286,8 +299,8 @@ void KatanaArm::StartDash()
 	m_Hits.Clear();
 	GetPlayer().SetPulled(true);
 	m_OwnPull = true;
-	ConsumeUse();
-	m_IaiConsumed = true; // 使用回数は飛んだときに減らし、着いたあとの一閃では減らさない。
+	ConsumeDurability(DASH_COST);
+	m_DashHitConsumed = false;
 	Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
 }
 
@@ -498,7 +511,7 @@ bool KatanaArm::IsBusy() const
 
 bool KatanaArm::CanTakeTap() const
 {
-	return !IsActive() && (GetRemainingUses() < 0 || m_Delayed.GetCount() == 0);
+	return !IsActive() && (GetDurability() < 0 || m_Delayed.GetCount() == 0);
 }
 
 bool KatanaArm::IsHolding() const

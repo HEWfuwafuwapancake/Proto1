@@ -9,7 +9,7 @@ enum PARRY_RESULT
 {
 	PARRY_NONE, ///< 構えていない、または攻撃を防いでいない
 	PARRY_SUCCESS, ///< パリィに成功し、腕を残す
-	PARRY_BREAK_ARM ///< 通常のガードで腕を失う（DEBUG では残す）
+	PARRY_BREAK_ARM ///< パリィできずに防ぎ、耐久が減る
 };
 
 /// @brief 片手のガード開始からの受付時間と、構え直すまでの待ち時間を管理する

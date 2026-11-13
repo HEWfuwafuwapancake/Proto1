@@ -372,7 +372,7 @@ void Game::Update()
 			if (fighter.IsHuman()) {
 				for (int hand = 0; hand < 2; ++hand) {
 					states[slot].ArmTypes[hand] = arms.GetType(hand);
-					states[slot].ArmUses[hand] = arms.GetRemainingUses(hand);
+					states[slot].ArmUses[hand] = arms.GetDurability(hand);
 				}
 			}
 		}

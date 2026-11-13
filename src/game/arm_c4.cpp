@@ -7,6 +7,11 @@
 #include "render/shape.h"
 
 // 調整用の値
+static constexpr int BOMB_HIT_COST = 34;
+static constexpr int BOMB_MISS_COST = 15;
+static constexpr int LARGE_HIT_COST = 50;
+static constexpr int LARGE_MISS_COST = 25;
+static constexpr int LOST_BOMB_COST = 5;
 static constexpr float C4_SECONDS[] = { 1.0f, 0.3f }; // 大型のため・投げたあとの構え（ハンマーの強攻撃より速く強くならないようにする）
 static constexpr PROJECTILE_PARAMS BOMB_PARAMS{ 0.2f, 20.0f, 5.0f, 0.0f, false };
 static constexpr float THROW_SPEED = 12.0f;
@@ -88,7 +93,9 @@ void C4Arm::StepBombs(float dt)
 	TENTACLE_TARGET targets[FIGHTER_COUNT];
 	for (int i = 0; i < FIGHTER_COUNT; ++i) targets[i] = GetFighters().GetTarget(i, GetSlot());
 	C4_IMPACT impacts[PROJECTILE_MAX];
-	const int count = m_Bombs.Step(dt, targets, FIGHTER_COUNT, GetStage().GetStage(), BOMB_PARAMS, impacts, PROJECTILE_MAX);
+	int expired = 0;
+	const int count = m_Bombs.Step(dt, targets, FIGHTER_COUNT, GetStage().GetStage(), BOMB_PARAMS, impacts, PROJECTILE_MAX, &expired);
+	for (int i = 0; i < expired; ++i) ConsumeDurability(LOST_BOMB_COST);
 	m_RangeSeconds = fmaxf(0.0f, m_RangeSeconds - dt);
 	if (count == 0) return;
 	m_RangeCount = count;
@@ -96,11 +103,12 @@ void C4Arm::StepBombs(float dt)
 		const bool large = impacts[i].Large;
 		m_RangeCenters[i] = Vec3Add(impacts[i].Position, { 0.0f, BLAST_HEIGHT, 0.0f });
 		m_RangeRadii[i] = large ? LARGE_BLAST_RADIUS : BLAST_RADIUS;
+		int affected = 0;
 		Explode(m_RangeCenters[i], m_RangeRadii[i], large ? LARGE_BLAST_DAMAGE : BLAST_DAMAGE,
-			large ? LARGE_BLAST_POWER : BLAST_POWER, large ? LARGE_BLAST_UP : BLAST_UP);
+			large ? LARGE_BLAST_POWER : BLAST_POWER, large ? LARGE_BLAST_UP : BLAST_UP, &affected);
+		ConsumeDurability(large ? (affected > 0 ? LARGE_HIT_COST : LARGE_MISS_COST)
+			: (affected > 0 ? BOMB_HIT_COST : BOMB_MISS_COST));
 	}
-	// 相手に効いたかによらず、爆発の数だけ減る。場外で消えた弾は count に入らない。
-	ConsumeUse(count);
 	m_RangeSeconds = RANGE_SHOW_SECONDS;
 	Rumble(BLAST_RUMBLE_SMALL, BLAST_RUMBLE_LARGE, BLAST_RUMBLE_SECONDS);
 }

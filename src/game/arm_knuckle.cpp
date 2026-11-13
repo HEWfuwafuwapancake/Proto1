@@ -8,6 +8,11 @@
 #include "physics/armcalc.h"
 
 // 調整用の値
+static constexpr int TAP_HIT_COST = 34;
+static constexpr int TAP_MISS_COST = 15;
+static constexpr int RUSH_HIT_COST = 50;
+static constexpr int RUSH_MISS_COST = 25;
+static constexpr int AIR_RUSH_COST = 50;
 static constexpr float PUNCH_SECONDS[] = { 0.15f, 0.1f, 0.2f }; // 単押し：ため・殴り・休み
 static constexpr float RUSH_SECONDS[] = { 0.4f, 0.35f, 0.3f }; // 長押し：ため・突進・休み
 static constexpr float PUNCH_CLIP_SECONDS[] = { 4.0f / 24.0f, 3.0f / 24.0f, 5.0f / 24.0f }; // 単押しのクリップの区切り（knuckle_punch）
@@ -56,6 +61,8 @@ void KnuckleArm::StopAirRush()
 
 void KnuckleArm::Reset()
 {
+	if (!m_Phase.IsIdle() && !m_UseConsumed) ConsumeDurability(m_Rush ? RUSH_MISS_COST : TAP_MISS_COST);
+	m_UseConsumed = true;
 	StopAirRush();
 	m_Phase.Reset();
 	m_Rush = false;
@@ -82,7 +89,7 @@ void KnuckleArm::Strike(int target, float up, float damage, float power)
 {
 	// 空中の突進で使用回数を減らしていたら、当たっても重ねて減らさない。
 	if (GetFighters().Launch(target, GetSlot(), AreaCalcLaunchDirection(m_Direction, up), damage, power) && !m_UseConsumed) {
-		ConsumeUse();
+		ConsumeDurability(m_Rush ? RUSH_HIT_COST : TAP_HIT_COST);
 		m_UseConsumed = true;
 	}
 	Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
@@ -101,6 +108,10 @@ void KnuckleArm::Update(const ARM_INPUT& input)
 	const ARM_PHASE_STEP step = m_Phase.Step(dt, m_Rush ? RUSH_SECONDS : PUNCH_SECONDS, KNUCKLE_PHASE_COUNT);
 	if (step.Entered == KNUCKLE_STRIKE) {
 		m_Direction = GetAim(false);
+		if (m_Rush && !GetPlayer().IsOnGround()) {
+			ConsumeDurability(AIR_RUSH_COST);
+			m_UseConsumed = true;
+		}
 		if (!m_Rush) {
 			const int target = FindTarget(PUNCH_REACH, PUNCH_RADIUS);
 			if (target >= 0) Strike(target, PUNCH_UP, PUNCH_DAMAGE, PUNCH_POWER);
@@ -113,8 +124,6 @@ void KnuckleArm::Update(const ARM_INPUT& input)
 			m_Rise.Start({ feet.x, feet.y, feet.z }, RiseCalcSlopeOffset(m_Direction, AIR_RUSH_PITCH, distance), RUSH_SECONDS[KNUCKLE_STRIKE], false);
 			m_AirRush = true;
 			GetPlayer().SetPulled(true);
-			ConsumeUse(); // 復帰に使ったら、当たらなくても1回減る。
-			m_UseConsumed = true;
 		}
 	}
 	if (m_AirRush) {
@@ -131,6 +140,10 @@ void KnuckleArm::Update(const ARM_INPUT& input)
 			m_Phase.Start(KNUCKLE_RECOVER); // 当たったら止まる。
 			StopAirRush();
 		}
+	}
+	if (step.Finished && !m_UseConsumed) {
+		ConsumeDurability(m_Rush ? RUSH_MISS_COST : TAP_MISS_COST);
+		m_UseConsumed = true;
 	}
 	const float speed = dt / STRAIGHTEN_SECONDS;
 	m_Straighten = m_Phase.IsIdle() ? fmaxf(0.0f, m_Straighten - speed) : fminf(1.0f, m_Straighten + speed);

@@ -42,11 +42,13 @@ public:
 	VEC3 GetRushVelocity() const override;
 
 private:
+	void FinishRush();
 	void Fire();
 	void StepRush();
 	void StepImpale(const GUNLANCE_STEP& step);
 	void ReleaseHeld();
 	void StepShots(float dt);
+	bool m_RushPending = false; // 突進の当たり外れが未確定ならtrue
 	GunlanceCalc m_Calc;
 	ProjectileCalc m_Shots;
 	int m_ArmModel = -1;
