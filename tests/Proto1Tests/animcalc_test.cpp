@@ -1,6 +1,23 @@
 ﻿#include <gtest/gtest.h>
 #include "render/animcalc.h"
 
+// 追加した攻撃も左右の組で並び、やられのクリップを攻撃に含めない。
+TEST(AnimCalcTest, AddedAttacksKeepContiguousHandPairs)
+{
+	EXPECT_EQ(SKINNED_CLIP::C4ThrowLeft, AnimCalcAttackClip(ATTACK_CLIP::C4Throw, 0));
+	EXPECT_EQ(SKINNED_CLIP::C4ChargeRight, AnimCalcAttackClip(ATTACK_CLIP::C4Charge, 1));
+	EXPECT_EQ(SKINNED_CLIP::TentacleReachLeft, AnimCalcAttackClip(ATTACK_CLIP::TentacleReach, 0));
+	EXPECT_EQ(SKINNED_CLIP::TentacleThrowRight, AnimCalcAttackClip(ATTACK_CLIP::TentacleThrow, 1));
+	EXPECT_TRUE(AnimCalcIsAttackClip(AnimCalcAttackClip(ATTACK_CLIP::TentacleSpin, 1)));
+	EXPECT_EQ(SKINNED_CLIP::GuardRaiseLeft, AnimCalcAttackClip(ATTACK_CLIP::GuardRaise, 0));
+	EXPECT_EQ(SKINNED_CLIP::GuardHitRight, AnimCalcAttackClip(ATTACK_CLIP::GuardHit, 1));
+	EXPECT_TRUE(AnimCalcIsAttackClip(AnimCalcAttackClip(ATTACK_CLIP::Parry, 1)));
+	EXPECT_EQ(SKINNED_CLIP::HammerHopLeft, AnimCalcAttackClip(ATTACK_CLIP::HammerHop, 0));
+	EXPECT_EQ(SKINNED_CLIP::KnuckleAirRushRight, AnimCalcAttackClip(ATTACK_CLIP::KnuckleAirRush, 1));
+	EXPECT_TRUE(AnimCalcIsAttackClip(SKINNED_CLIP::KnuckleAirRushRight));
+	EXPECT_FALSE(AnimCalcIsAttackClip(SKINNED_CLIP::HitFlinch));
+}
+
 // 末尾の重複キーの時刻で次の周の0番に戻る。
 TEST(AnimCalcTest, LoopsAtDuplicateLastFrame)
 {

@@ -26,6 +26,11 @@ static constexpr float LOOK_UP_SINE = 0.09f; // カメラの向きの Y がこ�
 static constexpr TENTACLE_PULL_PARAMS PULL_PARAMS{ 20.0f, 0.8f, 1.5f };
 static constexpr float LANDING_INSET = 0.8f; // 足場のふちから内側へ寄せて着地する距離
 static constexpr float SPIN_PHASE_SECONDS[] = { 0.25f, 0.4f, 0.2f }; // 溜め・回転・休み
+static constexpr float SPIN_CLIP_SECONDS[] = { 6.0f / 24.0f, 10.0f / 24.0f, 5.0f / 24.0f };
+static constexpr float REACH_CLIP_SECONDS = 6.0f / 24.0f;
+static constexpr float THROW_CLIP_SECONDS[] = { 8.0f / 24.0f, 8.0f / 24.0f }; // 保持・投げ
+static constexpr float THROW_ANIM_SECONDS = 0.3f; // 投げた直後の描画だけの長さ
+static constexpr float THROW_PHASE_SECONDS[] = { PARAMS.ThrowSeconds, THROW_ANIM_SECONDS };
 static constexpr float SPIN_RADIUS = 3.5f;
 static constexpr float SPIN_DAMAGE = 10.0f;
 static constexpr float SPIN_POWER = 2.0f;
@@ -117,6 +122,9 @@ void TentacleArm::Reset()
 	TentacleCalc& arm = m_Arm;
 	GetFighters().Release(arm.GetTarget(), GetSlot(), false, {}, 0.0f, 0.0f);
 	arm.Reset();
+	m_ClipState = TENTACLE_IDLE;
+	m_StateClipElapsed = 0.0f;
+	m_ThrowClipElapsed = -1.0f;
 	m_Spin.Reset();
 	StopPulling();
 }
@@ -214,6 +222,7 @@ void TentacleArm::StepSpin(const ARM_INPUT& input, float dt)
 		m_SpinHits.Clear();
 		m_SpinConsumed = false;
 		m_Spin.Start(SPIN_CHARGE);
+		m_ThrowClipElapsed = -1.0f;
 	}
 	const ARM_PHASE_STEP step = m_Spin.Step(dt, SPIN_PHASE_SECONDS, SPIN_PHASE_COUNT);
 	if (step.Finished && !m_SpinConsumed) {
@@ -266,6 +275,7 @@ void TentacleArm::Update(const ARM_INPUT& input)
 	const bool trigger = input.Tap && m_Spin.IsIdle();
 	if (trigger && arm.GetState() == TENTACLE_IDLE) {
 		m_ReachPending = true;
+		m_ThrowClipElapsed = -1.0f;
 		StartReach(targets, origin, cameraForward, aim, grip, hasGrip);
 	}
 	const float dt = GameTimeGetDeltaTime();
@@ -293,6 +303,17 @@ void TentacleArm::Update(const ARM_INPUT& input)
 		const VEC3 throwForward{ sinf(throwYaw), 0.0f, cosf(throwYaw) };
 		GetFighters().Release(event.Released, GetSlot(), event.Throw, throwForward, THROW_DAMAGE, THROW_POWER);
 		if (event.Throw) Rumble(THROW_RUMBLE_SMALL, THROW_RUMBLE_LARGE, THROW_RUMBLE_SECONDS);
+	}
+	// 判定の状態は変えず、描画用の経過秒だけを数える。投げたフレームは後半の先頭を見せる。
+	const float clipDt = fmaxf(0.0f, dt);
+	const TENTACLE_STATE state = arm.GetState();
+	m_StateClipElapsed = state == m_ClipState ? m_StateClipElapsed + clipDt : 0.0f;
+	m_ClipState = state;
+	if (cancel) m_ThrowClipElapsed = -1.0f;
+	else if (event.Throw) m_ThrowClipElapsed = 0.0f;
+	else if (m_ThrowClipElapsed >= 0.0f) {
+		m_ThrowClipElapsed += clipDt;
+		if (m_ThrowClipElapsed >= THROW_ANIM_SECONDS) m_ThrowClipElapsed = -1.0f;
 	}
 	if (arm.GetTarget() >= 0) GetFighters().MoveHeld(arm.GetTarget(), GetSlot(), arm.GetTip());
 	if (arm.GetState() == TENTACLE_EXTENDING) {
@@ -473,6 +494,26 @@ bool TentacleArm::CanTakeTap() const
 bool TentacleArm::CanTakeHold() const
 {
 	return m_Spin.IsIdle() && m_Arm.GetState() == TENTACLE_IDLE;
+}
+
+ARM_BODY_CLIP TentacleArm::GetBodyClip() const
+{
+	if (!m_Spin.IsIdle()) {
+		return { true, ATTACK_CLIP::TentacleSpin,
+			ArmCalcClipTime(m_Spin.GetPhase(), m_Spin.GetTime(), SPIN_PHASE_SECONDS, SPIN_CLIP_SECONDS), true };
+	}
+	if (m_ThrowClipElapsed >= 0.0f) {
+		return { true, ATTACK_CLIP::TentacleThrow,
+			ArmCalcClipTime(1, m_ThrowClipElapsed, THROW_PHASE_SECONDS, THROW_CLIP_SECONDS), false };
+	}
+	if (m_Arm.GetState() == TENTACLE_HOLDING) {
+		return { true, ATTACK_CLIP::TentacleThrow,
+			ArmCalcClipTime(0, m_StateClipElapsed, THROW_PHASE_SECONDS, THROW_CLIP_SECONDS), false };
+	}
+	if (m_Arm.GetState() == TENTACLE_EXTENDING || m_Arm.GetState() == TENTACLE_PULLING) {
+		return { true, ATTACK_CLIP::TentacleReach, fminf(m_StateClipElapsed, REACH_CLIP_SECONDS), false };
+	}
+	return {};
 }
 
 bool TentacleArm::IsHolding() const

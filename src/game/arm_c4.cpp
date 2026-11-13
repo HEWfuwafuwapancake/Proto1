@@ -10,6 +10,8 @@
 // 耐久の減る量は physics/armcostcalc の表のC4の行（弱：通常の爆弾、強：大きい爆弾、そのほか：場外で消えた爆弾1つ）。
 static constexpr ARM_COST_ROW COST_ROW = ARM_COST_ROW_C4;
 static constexpr float C4_SECONDS[] = { 1.0f, 0.3f }; // 大型のため・投げたあとの構え（ハンマーの強攻撃より速く強くならないようにする）
+static constexpr float THROW_CLIP_SECONDS[] = { 0.0f, 8.0f / 24.0f }; // 単押しの投げ
+static constexpr float CHARGE_CLIP_SECONDS[] = { 24.0f / 24.0f, 8.0f / 24.0f }; // 長押しのため・投げ
 static constexpr PROJECTILE_PARAMS BOMB_PARAMS{ 0.2f, 20.0f, 5.0f, 0.0f, false };
 static constexpr float THROW_SPEED = 12.0f;
 static constexpr float THROW_RANGE = 10.0f;
@@ -54,6 +56,7 @@ C4Arm::C4Arm(int hand, const ARM_LINKS& links) : Arm(hand, links)
 void C4Arm::Reset()
 {
 	m_Bombs.Reset();
+	m_ChargedClip = false;
 	m_Phase.Reset();
 	m_Straighten = 0.0f;
 	m_RangeSeconds = 0.0f;
@@ -83,6 +86,7 @@ void C4Arm::ThrowBomb(bool large)
 	}
 	m_Bombs.Throw(origin, ProjectileCalcLobVelocity(origin, goal, speed, BOMB_PARAMS.Gravity, range), BOMB_PARAMS, large);
 	m_Phase.Start(C4_THROW);
+	m_ChargedClip = large;
 }
 
 void C4Arm::StepBombs(float dt)
@@ -121,6 +125,7 @@ void C4Arm::Update(const ARM_INPUT& input)
 		else if (input.HoldStarted) {
 			m_Direction = GetAim(false);
 			m_Phase.Start(C4_CHARGE);
+			m_ChargedClip = true;
 		}
 	}
 	const ARM_PHASE_STEP step = m_Phase.Step(dt, C4_SECONDS, C4_PHASE_COUNT);
@@ -166,6 +171,14 @@ void C4Arm::Draw()
 bool C4Arm::IsActive() const
 {
 	return !m_Phase.IsIdle();
+}
+
+ARM_BODY_CLIP C4Arm::GetBodyClip() const
+{
+	if (m_Phase.IsIdle()) return {};
+	return { true, m_ChargedClip ? ATTACK_CLIP::C4Charge : ATTACK_CLIP::C4Throw,
+		ArmCalcClipTime(m_Phase.GetPhase(), m_Phase.GetTime(), C4_SECONDS,
+			m_ChargedClip ? CHARGE_CLIP_SECONDS : THROW_CLIP_SECONDS), false };
 }
 
 bool C4Arm::IsBusy() const

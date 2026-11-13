@@ -13,6 +13,7 @@ TEST(ParryCalcTest, StartParriesThenNormalGuardBreaksArm)
 	calc.Step(true, dt);
 	EXPECT_EQ(PARRY_BREAK_ARM, calc.OnHit(true));
 	EXPECT_TRUE(calc.IsGuarding());
+	EXPECT_NEAR(13.0f * dt, calc.GetGuardSeconds(), 0.0001f);
 	EXPECT_EQ(PARRY_NONE, calc.OnHit(false));
 }
 
@@ -23,6 +24,7 @@ TEST(ParryCalcTest, RepeatedGuardNeedsTimeBeforeNextParry)
 	const float dt = 1.0f / 60.0f;
 	calc.Step(true, dt);
 	calc.Step(false, dt);
+	EXPECT_FLOAT_EQ(0.0f, calc.GetGuardSeconds());
 	EXPECT_EQ(PARRY_NONE, calc.OnHit(true));
 	calc.Step(true, dt);
 	EXPECT_EQ(PARRY_BREAK_ARM, calc.OnHit(true));

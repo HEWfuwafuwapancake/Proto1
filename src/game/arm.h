@@ -56,6 +56,7 @@ struct GUARD_FEEDBACK
 	bool Active = false; ///< 結果を表示中ならtrue
 	bool Parry = false; ///< 結果を設定する（true：パリィ、false：通常のガード）
 	float Elapsed = 0.0f; ///< 防いだ瞬間からの経過秒数
+	int Hand = -1; ///< 防いだ手（左0・右1・記録なし-1。描画専用）
 };
 
 /// @brief 片手の腕の基本クラス。左 0・右 1 を1インスタンスずつ受け持つ
@@ -229,9 +230,9 @@ public:
 	bool IsActive(void) const;
 	/// @brief 効いている手をビットで取得する（左 1・右 2。どちらも待機なら 0）
 	int GetActiveHands(void) const;
-	/// @brief 今使っている手を取得する（左 0・右 1・なし -1。両手なら後から使った手）
+	/// @brief 描画に使う手を取得する（左0・右1・なし-1。攻撃開始とガード開始のうち後の手を優先）
 	int GetActiveHand() const;
-	/// @brief 片手の装備が体に見せる攻撃クリップを取得する
+	/// @brief 片手のガード結果・構え・装備の攻撃の順で、体に重ねる描画クリップを取得する
 	/// @param hand 左 0・右 1
 	/// @return 攻撃クリップの指定（手が範囲外なら使わない指定）
 	ARM_BODY_CLIP GetBodyClip(int hand) const;
@@ -277,6 +278,7 @@ private:
 	ARM_COST_TABLE m_Costs = ArmCostCalcDefault();
 	int m_SelectedHand = 0;
 	int m_LastActiveHand = -1;
+	int m_LastBodyHand = -1; // 攻撃・ガードのうち後から始めた手（描画だけ。突進速度の選択とは分ける）
 	int m_ChangeDirections[2] = { 1, 1 };
 	ARM_TYPE m_Types[2] = { ARM_TYPE_TENTACLE, ARM_TYPE_TENTACLE };
 	// 左右それぞれ全種類を起動時に作る。装備切り替えでは作り直さない。
@@ -286,6 +288,7 @@ private:
 	ParryCalc m_Guards[2];
 	float m_GuardFeedbackSeconds = 0.0f; // 描画だけの残り秒数
 	bool m_GuardFeedbackParry = false;
+	int m_GuardFeedbackHand = -1; // 最後に防いだ手（構えを解いたあとも描画する）
 	VEC3 m_GuardFeedbackPosition = {}; // 防いだ瞬間の肩の前の座標
 	int m_GuardHand = -1; // 両手なら後から構えた手で受ける
 };
