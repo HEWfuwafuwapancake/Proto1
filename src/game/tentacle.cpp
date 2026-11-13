@@ -164,7 +164,9 @@ void TentacleArm::StartReach(const TENTACLE_TARGET* targets, const VEC3& origin,
 	hasGrip = CanAnchor() && (recovering || target < 0 || Vec3Length(Vec3Sub(center, origin)) > PARAMS.MaxLength)
 		&& StageCalcFindGrip(GetStage().GetStage(), origin, { p.x, p.y, p.z }, viewForward, GRIP_RANGE, GRIP_HALF_ANGLE, grip);
 	// 各肩からの向きを開始時だけ決める。伸長中は追いかけず、投げる向きとも分ける。
-	aim = hasGrip ? Vec3Sub(grip.Point, origin) : (target >= 0 ? Vec3Sub(center, origin) : viewForward);
+	// 足場のふちはカメラで狙うが、フリーカメラで足場がなければ体の向き（スティックの向き）へ伸ばす。
+	const VEC3 reachForward = GetCamera().IsFreeLook() ? GetAim(false) : viewForward;
+	aim = hasGrip ? Vec3Sub(grip.Point, origin) : (target >= 0 ? Vec3Sub(center, origin) : reachForward);
 }
 
 void TentacleArm::StepPull(const TENTACLE_EVENT& event, float dt)
@@ -286,7 +288,10 @@ void TentacleArm::Update(const ARM_INPUT& input)
 	StepPull(event, dt);
 	StepSpin(input, dt);
 	if (event.Released >= 0) {
-		GetFighters().Release(event.Released, GetSlot(), event.Throw, cameraForward, THROW_DAMAGE, THROW_POWER);
+		// フリーカメラでは、投げる瞬間のスティックの向き（なければ体の向き）へ投げる。
+		const float throwYaw = GetCamera().IsFreeLook() ? GetPlayer().GetFreeAimYaw(yaw) : yaw;
+		const VEC3 throwForward{ sinf(throwYaw), 0.0f, cosf(throwYaw) };
+		GetFighters().Release(event.Released, GetSlot(), event.Throw, throwForward, THROW_DAMAGE, THROW_POWER);
 		if (event.Throw) Rumble(THROW_RUMBLE_SMALL, THROW_RUMBLE_LARGE, THROW_RUMBLE_SECONDS);
 	}
 	if (arm.GetTarget() >= 0) GetFighters().MoveHeld(arm.GetTarget(), GetSlot(), arm.GetTip());

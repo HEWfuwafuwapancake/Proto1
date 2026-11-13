@@ -136,6 +136,9 @@ public:
 	ACTION_EQUIP_KEY GetEquipInput() const { return m_Input.Equip; }
 	/// @brief この体に渡された移動入力を取得する
 	ACTION_AXIS GetMoveInput() const;
+	/// @brief フリーカメラのときの攻撃の左右の向きを取得する（左スティックを倒していればその向き、なければ体の向き）
+	/// @param cameraYaw この体のカメラの左右の向き（ラジアン）
+	float GetFreeAimYaw(float cameraYaw) const;
 	/// @brief この体に渡されたカメラ入力を取得する
 	ACTION_AXIS GetLookInput() const;
 	/// @brief この体に渡されたボタンが押されているか取得する
@@ -163,6 +166,7 @@ private:
 	int m_HeldBy = -1;
 	bool m_Pulled = false;
 	bool m_Respawned = false;
+	int m_ArmActiveHands = 0;	// 前のフレームで使っていた手（左 1・右 2 のビット。使い始めを見つける）
 	int m_Device = VERSUS_DEVICE_DUMMY;
 	int m_Slot = 0;
 	const SkinnedModel* m_Models = nullptr;

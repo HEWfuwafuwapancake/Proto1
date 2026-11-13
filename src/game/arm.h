@@ -138,7 +138,7 @@ protected:
 	VEC3 GetRestDirection(float pitchOffset = 0.0f) const;
 	/// @brief キャラの向きの水平の単位方向を取得する
 	VEC3 GetForward() const;
-	/// @brief 肩からの狙いの単位方向を取得する（ロックオン中は相手の体の中心へ、いなければ画面の正面へ水平）
+	/// @brief 肩からの狙いの単位方向を取得する（ロックオン中は相手の体の中心へ、いなければ画面の正面へ水平。フリーカメラでは体の向きへ水平。使い始めはスティックの向き）
 	/// @param keepHeight 上下の扱いを設定する（true：相手への上下も含める、false：水平だけ）
 	VEC3 GetAim(bool keepHeight) const;
 	/// @brief ロックオン中の相手のスロット番号を取得する（なし・つかめない相手は -1）
@@ -227,6 +227,8 @@ public:
 	void Draw(void) const;
 	/// @brief どちらかの腕が効いているか（待機以外なら true）
 	bool IsActive(void) const;
+	/// @brief 効いている手をビットで取得する（左 1・右 2。どちらも待機なら 0）
+	int GetActiveHands(void) const;
 	/// @brief 今使っている手を取得する（左 0・右 1・なし -1。両手なら後から使った手）
 	int GetActiveHand() const;
 	/// @brief 片手の装備が体に見せる攻撃クリップを取得する

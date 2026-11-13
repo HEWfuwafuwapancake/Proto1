@@ -40,6 +40,27 @@ float PlayerCalcFall(float velocityY, float gravity, float maxFallSpeed, float d
 float PlayerCalcFacing(float current, float moveX, float moveZ, float cameraYaw,
 	bool armActive, float speed, float dt, bool hasTarget = false, float targetYaw = 0.0f);
 
+/// @brief フリーカメラのときの攻撃の向きを求める（左スティックを倒していればその向き、倒していなければ体の向き）
+/// @param current 今の体の左右の向き（ラジアン。0で+Z方向、プラスで右回り）
+/// @param stickX 左スティックの左右（画面から見た向き。右がプラス）
+/// @param stickY 左スティックの前後（画面から見た向き。前がプラス）
+/// @param cameraYaw 画面の正面の左右の向き（ラジアン）
+/// @return 攻撃の左右の向き（ラジアン。-π〜π）
+float PlayerCalcFreeAimYaw(float current, float stickX, float stickY, float cameraYaw);
+
+/// @brief フリーカメラのときの体の向き（腕を使い始めた瞬間は攻撃の向きへ即座に向き、使っている間は回さない）
+/// @param current 今の左右の向き（ラジアン。0で+Z方向、プラスで右回り）
+/// @param moveX 移動の向きの X（ワールド座標。速度でもよい）
+/// @param moveZ 移動の向きの Z（ワールド座標。速度でもよい）
+/// @param aimYaw 攻撃の向き（ラジアン。PlayerCalcFreeAimYaw の結果）
+/// @param armActive 腕を使っているかを設定する（true：使っている間は向きを変えない、false：歩く方向へ向く）
+/// @param armStarted 腕を使い始めたフレームかを設定する（true：aimYaw へ即座に向く、false：armActive に従う）
+/// @param speed 1秒に回る角度の上限（ラジアン。0以下なら歩く方向へは回らない）
+/// @param dt 1フレームの秒数（0以下なら歩く方向へは回らない）
+/// @return 更新後の左右の向き
+float PlayerCalcFreeLookFacing(float current, float moveX, float moveZ, float aimYaw,
+	bool armActive, bool armStarted, float speed, float dt);
+
 /// @brief プレイヤーの体（位置・速度・立っているか）
 class PlayerBodyCalc
 {

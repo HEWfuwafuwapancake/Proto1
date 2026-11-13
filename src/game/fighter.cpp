@@ -110,6 +110,7 @@ void Fighter::PlaceAtSpawn()
 	m_Dash.Reset();
 	m_HeldBy = -1;
 	m_Pulled = false;
+	m_ArmActiveHands = 0;
 	m_Status.Reset();
 	m_Models[m_Character].Reset(m_Pose);
 	m_Motion.Reset(m_Yaw);
@@ -125,6 +126,12 @@ void Fighter::Reset()
 ACTION_AXIS Fighter::GetMoveInput() const
 {
 	return ActionCalcPlayerMove(m_Input);
+}
+
+float Fighter::GetFreeAimYaw(float cameraYaw) const
+{
+	const ACTION_AXIS move = GetMoveInput();
+	return PlayerCalcFreeAimYaw(m_Yaw, move.X, move.Y, cameraYaw);
 }
 
 ACTION_AXIS Fighter::GetLookInput() const
@@ -223,13 +230,23 @@ DUMMY_EVENT Fighter::Update(const Camera* camera, const ArmManager* arms)
 
 void Fighter::UpdateFacing(const Camera& camera, const ArmManager& arms, const FighterManager& fighters, int slot)
 {
+	// 使い始めた手を見つける（もう片手を使っている途中に始めても見つける）。
+	const int activeHands = arms.GetActiveHands();
+	const bool armStarted = (activeHands & ~m_ArmActiveHands) != 0;
+	m_ArmActiveHands = activeHands;
 	if (!CanUseArms() || m_Status.IsActive(STATUS_STUN)) return;
 	if (m_Respawned) {
 		m_Yaw = camera.GetYaw();
 		return;
 	}
 	// 単押しは離したときに始まるので、押した瞬間では向きを変えない。
-	const bool armActive = arms.IsActive();
+	const bool armActive = activeHands != 0;
+	// フリーカメラでは、攻撃は画面の正面ではなく体の向き（使い始めた瞬間のスティックの向き）へ出す。
+	if (camera.IsFreeLook()) {
+		m_Yaw = PlayerCalcFreeLookFacing(m_Yaw, m_Body.GetVelocityX(), m_Body.GetVelocityZ(),
+			GetFreeAimYaw(camera.GetYaw()), armActive, armStarted, TURN_SPEED, GameTimeGetDeltaTime());
+		return;
+	}
 	const int target = camera.GetTarget();
 	float targetYaw = m_Yaw;
 	if (target >= 0) {

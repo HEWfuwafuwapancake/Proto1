@@ -103,6 +103,25 @@ namespace Proto1Tests
 		EXPECT_NEAR(1.0f, PlayerCalcFacing(yaw, 1, 0, -0.7f, false, 10, 1, true, 1), PLAYER_EPSILON);
 	}
 
+	// フリーカメラの攻撃の向き：スティックを倒していれば画面から見たその向き、倒していなければ体の向き
+	TEST(PlayerCalcTest, FreeAimYaw_UsesStickElseBodyYaw)
+	{
+		const float pi = 3.14159265f;
+		EXPECT_NEAR(0.3f + pi * 0.5f, PlayerCalcFreeAimYaw(-1.0f, 1.0f, 0.0f, 0.3f), PLAYER_EPSILON);
+		EXPECT_NEAR(0.3f, PlayerCalcFreeAimYaw(-1.0f, 0.0f, 0.5f, 0.3f), PLAYER_EPSILON);
+		EXPECT_NEAR(-1.0f, PlayerCalcFreeAimYaw(-1.0f, 0.0f, 0.0f, 0.3f), PLAYER_EPSILON);
+	}
+
+	// フリーカメラ：使い始めは攻撃の向きへ即座に向き、使っている間は回らず、終わると歩く向きへ戻る
+	TEST(PlayerCalcTest, FreeLookFacing_SnapsOnStartThenHoldsWhileArmActive)
+	{
+		float yaw = PlayerCalcFreeLookFacing(0.0f, 1.0f, 0.0f, -0.9f, true, true, 0.1f, PLAYER_DT);
+		EXPECT_NEAR(-0.9f, yaw, PLAYER_EPSILON);
+		yaw = PlayerCalcFreeLookFacing(yaw, 1.0f, 0.0f, 0.5f, true, false, 10.0f, 1.0f);
+		EXPECT_NEAR(-0.9f, yaw, PLAYER_EPSILON);
+		EXPECT_NEAR(-0.9f + 0.1f, PlayerCalcFreeLookFacing(yaw, 1.0f, 0.0f, 0.5f, false, false, 0.1f, 1.0f), PLAYER_EPSILON);
+	}
+
 	// 1秒歩くと、歩く速さの分だけ進む
 	TEST(PlayerCalcTest, Step_WalksAtMoveSpeed)
 	{
