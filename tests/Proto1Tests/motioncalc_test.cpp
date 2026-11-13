@@ -144,17 +144,17 @@ TEST(MotionCalcTest, HitReactionsAreNotAttackClips)
 	EXPECT_FALSE(AnimCalcIsAttackClip(SKINNED_CLIP::HitHeld));
 }
 
-// 地面でダッシュを始めると、1フレーム目から脚がダッシュの向きにそろい、経過秒の位置でダッシュのクリップを見せる。
+// 地面で斜め前へダッシュを始めると、1フレーム目から脚がダッシュの向きにそろい、経過秒の位置でダッシュのクリップを見せる。
 TEST(MotionCalcTest, GroundDashFacesDashDirection)
 {
 	MotionCalc motion;
 	motion.Reset(0.0f);
-	MOTION_INPUT input = Moving(18.0f, 0.0f, 0.0f);
+	MOTION_INPUT input = Moving(10.0f, 15.0f, 0.0f);
 	input.DashElapsed = 0.1f;
-	input.DashYaw = PI * 0.5f;
+	input.DashYaw = PI * 0.2f;
 	StepFrames(motion, input, 1);
 	EXPECT_EQ(SKINNED_CLIP::Dash, motion.GetClip());
-	EXPECT_NEAR(motion.GetLegYaw(), PI * 0.5f, 0.001f);
+	EXPECT_NEAR(motion.GetLegYaw(), PI * 0.2f, 0.001f);
 	EXPECT_NEAR(motion.GetClipTime(), 0.1f, 0.0001f);
 }
 
@@ -179,7 +179,7 @@ TEST(MotionCalcTest, AirDashTurnsBodyBackward)
 TEST(MotionCalcTest, DashEndsAfterClipSeconds)
 {
 	const MOTION_PARAMS params;
-	EXPECT_TRUE(MotionCalcDash(params.DashClipSeconds - 0.01f, false, params.DashClipSeconds).Active);
+	EXPECT_TRUE(MotionCalcDash(params.DashClipSeconds - 0.01f, false, 0.0f, params).Active);
 	MotionCalc motion;
 	motion.Reset(0.0f);
 	MOTION_INPUT input = Moving(0.0f, 6.0f, 0.0f);
@@ -187,4 +187,20 @@ TEST(MotionCalcTest, DashEndsAfterClipSeconds)
 	StepFrames(motion, input, 1);
 	EXPECT_EQ(SKINNED_CLIP::Run, motion.GetClip());
 	EXPECT_LT(motion.GetClipTime(), 0.0f);
+}
+
+// 狙いから見て右へダッシュすると、体は狙いの向きのまま（ねじれなし）右の横ダッシュを見せる。左へは左の横ダッシュ。
+TEST(MotionCalcTest, SideDashKeepsBodyOnAim)
+{
+	MotionCalc motion;
+	motion.Reset(0.0f);
+	MOTION_INPUT input = Moving(18.0f, 0.0f, 0.0f);
+	input.DashElapsed = 0.1f;
+	input.DashYaw = PI * 0.5f;
+	StepFrames(motion, input, 1);
+	EXPECT_EQ(SKINNED_CLIP::SideDashRight, motion.GetClip());
+	EXPECT_NEAR(motion.GetLegYaw(), 0.0f, 0.001f);
+	EXPECT_NEAR(motion.GetTwist(), 0.0f, 0.001f);
+	const MOTION_PARAMS params;
+	EXPECT_EQ(SKINNED_CLIP::SideDashLeft, MotionCalcDash(0.1f, true, -PI * 0.5f, params).Clip);
 }

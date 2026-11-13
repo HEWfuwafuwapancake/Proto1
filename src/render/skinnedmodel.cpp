@@ -17,6 +17,7 @@ static bool IsLoopClip(SKINNED_CLIP clip)
 {
 	return clip != SKINNED_CLIP::Jump && clip != SKINNED_CLIP::Land
 		&& clip != SKINNED_CLIP::HitFlinch && clip != SKINNED_CLIP::Dash && clip != SKINNED_CLIP::AirDash
+		&& clip != SKINNED_CLIP::SideDashLeft && clip != SKINNED_CLIP::SideDashRight
 		&& !AnimCalcIsAttackClip(clip);
 }
 
@@ -33,7 +34,9 @@ static SKINNED_CLIP FallbackClip(SKINNED_CLIP clip)
 		const bool left = (static_cast<int>(clip) - static_cast<int>(SKINNED_CLIP::KatanaIaiLeft)) % 2 == 0;
 		return left ? SKINNED_CLIP::Left : SKINNED_CLIP::Right;
 	}
-	return clip == SKINNED_CLIP::RunBack || clip == SKINNED_CLIP::Dash ? SKINNED_CLIP::Run : SKINNED_CLIP::Idle;
+	const bool run = clip == SKINNED_CLIP::RunBack || clip == SKINNED_CLIP::Dash
+		|| clip == SKINNED_CLIP::SideDashLeft || clip == SKINNED_CLIP::SideDashRight;
+	return run ? SKINNED_CLIP::Run : SKINNED_CLIP::Idle;
 }
 static constexpr unsigned IMPORT_FLAGS = aiProcess_ConvertToLeftHanded | aiProcess_LimitBoneWeights
 	| aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_JoinIdenticalVertices;

@@ -37,6 +37,8 @@ struct MOTION_PARAMS
 	float LeanSideMax = 0.17f; ///< 内側への傾きの上限（ラジアン）
 	float LeanRate = 8.0f; ///< 傾きが目標へ近づく速さ（1秒あたりの割合）
 	float DashClipSeconds = 0.375f; ///< ダッシュのクリップを見せる秒数（飛び出し・進む・止まる）
+	float SideDashMinAngle = 0.785398f; ///< ダッシュの向きと狙いの差がこれ以上なら横ダッシュ（約45度。ラジアン）
+	float SideDashMaxAngle = 2.356194f; ///< ダッシュの向きと狙いの差がこれ以下なら横ダッシュ（約135度。ラジアン）
 };
 
 /// @brief やられの全身クリップの指定（描画だけ）
@@ -62,14 +64,17 @@ struct MOTION_DASH_CLIP
 	bool Active = false; ///< ダッシュのクリップを使うか（true：使う、false：通常の動きを使う）
 	SKINNED_CLIP Clip = SKINNED_CLIP::Idle; ///< 全身で再生するクリップ
 	float ClipTime = -1.0f; ///< 再生位置の秒（使わないときは負）
+	bool Side = false; ///< 横ダッシュか（true：体は狙いの向きのまま横へ滑る、false：脚をダッシュの向きへ回す）
 };
 
-/// @brief ダッシュを始めてからの秒数から、ダッシュのクリップと再生位置を選ぶ
+/// @brief ダッシュを始めてからの秒数と向きから、ダッシュのクリップと再生位置を選ぶ
+/// @details 狙いから見て横（SideDashMinAngle〜SideDashMaxAngle）へのダッシュは、地面・空中とも横ダッシュにする
 /// @param elapsed ダッシュを始めてからの秒数（負ならダッシュしていない）
 /// @param air 空中で始めたダッシュか（true：空中のダッシュ、false：地面のダッシュ）
-/// @param clipSeconds クリップを見せる秒数（これを過ぎたら使わない）
-/// @return 使うか・クリップ・再生位置
-MOTION_DASH_CLIP MotionCalcDash(float elapsed, bool air, float clipSeconds);
+/// @param relativeYaw 狙いから見たダッシュの向き（ラジアン。プラスで右）
+/// @param params 調整用の値（クリップを見せる秒数と横ダッシュの角度）
+/// @return 使うか・クリップ・再生位置・横ダッシュか
+MOTION_DASH_CLIP MotionCalcDash(float elapsed, bool air, float relativeYaw, const MOTION_PARAMS& params);
 
 /// @brief 1体分の見た目の動き（Fighter ごとに持つ）
 class MotionCalc

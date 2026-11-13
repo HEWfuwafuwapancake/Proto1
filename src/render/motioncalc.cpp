@@ -14,10 +14,14 @@ MOTION_HIT_REACTION MotionCalcHitReaction(bool held, bool stunned, bool launched
 	return {};
 }
 
-MOTION_DASH_CLIP MotionCalcDash(float elapsed, bool air, float clipSeconds)
+MOTION_DASH_CLIP MotionCalcDash(float elapsed, bool air, float relativeYaw, const MOTION_PARAMS& params)
 {
-	if (elapsed < 0.0f || elapsed >= clipSeconds) return {};
-	return { true, air ? SKINNED_CLIP::AirDash : SKINNED_CLIP::Dash, elapsed };
+	if (elapsed < 0.0f || elapsed >= params.DashClipSeconds) return {};
+	const float side = fabsf(WrapYaw(relativeYaw));
+	if (side >= params.SideDashMinAngle && side <= params.SideDashMaxAngle) {
+		return { true, WrapYaw(relativeYaw) > 0.0f ? SKINNED_CLIP::SideDashRight : SKINNED_CLIP::SideDashLeft, elapsed, true };
+	}
+	return { true, air ? SKINNED_CLIP::AirDash : SKINNED_CLIP::Dash, elapsed, false };
 }
 
 void MotionCalc::Reset(float yaw)
@@ -42,11 +46,13 @@ void MotionCalc::Step(const MOTION_INPUT& input, const MOTION_PARAMS& params, fl
 	const bool moving = input.Locomotion && speed > params.RunThreshold;
 	m_ClipTime = -1.0f;
 
-	// 0. ダッシュ中は、脚（モデル全体）をダッシュの向きへすぐそろえ、ダッシュのクリップを見せる。
-	//    上半身は狙いの方へ上限までねじる（脚は引っぱらない）。傾きはクリップに任せて戻す。
-	const MOTION_DASH_CLIP dash = input.Locomotion ? MotionCalcDash(input.DashElapsed, input.DashAir, params.DashClipSeconds) : MOTION_DASH_CLIP{};
+	// 0. ダッシュ中は、ダッシュのクリップを見せる。横ダッシュは体ごと狙いの向きのまま横へ滑り、
+	//    ほかは脚（モデル全体）をダッシュの向きへすぐそろえて、上半身だけ狙いの方へ上限までねじる（脚は引っぱらない）。
+	//    傾きはクリップに任せて戻す。
+	const MOTION_DASH_CLIP dash = input.Locomotion
+		? MotionCalcDash(input.DashElapsed, input.DashAir, WrapYaw(input.DashYaw - aim), params) : MOTION_DASH_CLIP{};
 	if (dash.Active) {
-		m_LegYaw = WrapYaw(input.DashYaw);
+		m_LegYaw = dash.Side ? aim : WrapYaw(input.DashYaw);
 		m_Twist = std::max(-params.MaxTwist, std::min(params.MaxTwist, WrapYaw(aim - m_LegYaw)));
 		m_Backward = false;
 		m_LandTimer = 0.0f;
