@@ -36,6 +36,8 @@ public:
 	bool CanTakeTap() const override;
 	/// @brief 腕が待機で回転もしていないなら true を返す
 	bool CanTakeHold() const override;
+	/// @brief 伸長・保持・投げ・回転のクリップを取得する（回転を優先）
+	ARM_BODY_CLIP GetBodyClip() const override;
 
 protected:
 	/// @brief 付け根の箱の中央が体の取付口に来るよう、取付位置を上げる
@@ -59,6 +61,9 @@ private:
 	TentacleArm* m_OtherArm = nullptr; // 反対の手の触手（起動時につなぐ）
 	bool m_Pulling = false; // 左右のうち、後から付いて引っぱりを受け持つ手だけ true
 	TentacleCalc m_Arm;
+	TENTACLE_STATE m_ClipState = TENTACLE_IDLE; // 描画用の経過秒を数える状態
+	float m_StateClipElapsed = 0.0f; // 今の状態になってからの秒（描画だけ）
+	float m_ThrowClipElapsed = -1.0f; // 投げてからの秒（負なら投げの描画なし）
 	int m_BaseModel = -1;
 	int m_SegmentModel = -1;
 	int m_TipModel = -1;

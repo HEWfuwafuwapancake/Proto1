@@ -31,7 +31,8 @@ static SKINNED_CLIP FallbackClip(SKINNED_CLIP clip)
 		const bool left = (static_cast<int>(clip) - static_cast<int>(SKINNED_CLIP::KatanaIaiLeft)) % 2 == 0;
 		return left ? SKINNED_CLIP::Left : SKINNED_CLIP::Right;
 	}
-	return clip == SKINNED_CLIP::RunBack ? SKINNED_CLIP::Run : SKINNED_CLIP::Idle;
+	return clip == SKINNED_CLIP::RunBack || clip == SKINNED_CLIP::StrafeLeft || clip == SKINNED_CLIP::StrafeRight
+		? SKINNED_CLIP::Run : SKINNED_CLIP::Idle;
 }
 static constexpr unsigned IMPORT_FLAGS = aiProcess_ConvertToLeftHanded | aiProcess_LimitBoneWeights
 	| aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_JoinIdenticalVertices;

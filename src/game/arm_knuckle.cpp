@@ -63,6 +63,7 @@ void KnuckleArm::Reset()
 	StopAirRush();
 	m_Phase.Reset();
 	m_Rush = false;
+	m_AirRushClip = false;
 	m_Straighten = 0.0f;
 	m_Extend = 0.0f;
 }
@@ -98,6 +99,8 @@ void KnuckleArm::Update(const ARM_INPUT& input)
 	if (GetPlayer().DidRespawn()) Reset();
 	if (m_Phase.IsIdle() && (input.Tap || input.HoldStarted)) {
 		m_Rush = input.HoldStarted;
+		// 判定で使う m_AirRush と分け、ため中に場外へ出入りしてもクリップは切り替えない。
+		m_AirRushClip = m_Rush && !GetPlayer().IsOnGround() && !GetPlayer().IsPulled() && IsOffStage();
 		m_UseConsumed = false;
 		m_Direction = GetAim(false);
 		m_Phase.Start(KNUCKLE_CHARGE);
@@ -175,7 +178,7 @@ ARM_BODY_CLIP KnuckleArm::GetBodyClip() const
 	ARM_BODY_CLIP clip;
 	if (m_Phase.IsIdle()) return clip;
 	clip.Active = true;
-	clip.Kind = m_Rush ? ATTACK_CLIP::KnuckleRush : ATTACK_CLIP::KnucklePunch;
+	clip.Kind = m_Rush ? (m_AirRushClip ? ATTACK_CLIP::KnuckleAirRush : ATTACK_CLIP::KnuckleRush) : ATTACK_CLIP::KnucklePunch;
 	clip.FullBody = m_Rush;
 	clip.Time = ArmCalcClipTime(m_Phase.GetPhase(), m_Phase.GetTime(), m_Rush ? RUSH_SECONDS : PUNCH_SECONDS, m_Rush ? RUSH_CLIP_SECONDS : PUNCH_CLIP_SECONDS);
 	return clip;

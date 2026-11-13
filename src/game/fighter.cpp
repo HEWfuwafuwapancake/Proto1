@@ -31,6 +31,7 @@ static constexpr float HIT_BLEND_SECONDS = 0.05f; // のけぞりへ切り替え
 static constexpr float LEG_TURN_SPEED = XMConvertToRadians(900.0f); // 走るとき脚が進む向きへ回る速さ（体の向きより速く、脚が先に向く）
 static constexpr float LEG_IDLE_TURN_SPEED = XMConvertToRadians(360.0f); // 止まっているとき脚が狙いの向きへ回る速さ
 static constexpr float MAX_TWIST = XMConvertToRadians(75.0f); // 上半身を脚からねじれる角度の上限
+static constexpr float STRAFE_ANGLE = XMConvertToRadians(50.0f); // 地面で横走りを始める狙いとの差
 static constexpr float BACK_RUN_ANGLE = XMConvertToRadians(110.0f); // 進む向きと狙いの差がこれを超えると後ろ走り
 static constexpr float BACK_RUN_HYSTERESIS = XMConvertToRadians(10.0f);
 static constexpr float LAND_SECONDS = 0.2f; // 着地の動きを見せる秒数
@@ -255,6 +256,7 @@ void Fighter::UpdateAnimation(const ArmManager* arms, float dt)
 	params.LegTurnSpeed = LEG_TURN_SPEED;
 	params.IdleTurnSpeed = LEG_IDLE_TURN_SPEED;
 	params.MaxTwist = MAX_TWIST;
+	params.StrafeAngle = STRAFE_ANGLE;
 	params.BackAngle = BACK_RUN_ANGLE;
 	params.BackHysteresis = BACK_RUN_HYSTERESIS;
 	params.LandSeconds = LAND_SECONDS;

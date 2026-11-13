@@ -41,6 +41,7 @@ private:
 	ArmPhaseCalc m_Phase;
 	RiseCalc m_Rise; // 空中の突進で体を動かす計算
 	bool m_AirRush = false; // true：空中の突進で体を自分で動かしている
+	bool m_AirRushClip = false; // 長押し開始時に決め、休みが終わるまで保つ空中クリップの指定（描画だけ）
 	bool m_UseConsumed = false; // 今の動作で耐久を消費したか
 	int m_ArmModel = -1;
 	int m_FistModel = -1;
