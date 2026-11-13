@@ -38,9 +38,10 @@ DOWN_R = (-0.28, -0.94, 0.2)
 DOWN_L = (0.28, -0.94, 0.2)
 
 
-def rpose(torso=(0, 0, 0), hips=(0, 0, 0), ty=0.0, tz=0.0, stance=None, arm_r=DOWN_R, arm_l=DOWN_L, head=(0, 0, 0)):
-    """両腕と頭の向きも決める姿勢（head は首と頭に半分ずつ足す度数）。"""
-    p = w.pose(torso=torso, hips=hips, ty=ty, tz=tz, stance=stance, arm=arm_r, off=arm_l)
+def rpose(torso=(0, 0, 0), hips=(0, 0, 0), ty=0.0, tz=0.0, stance=None, arm_r=DOWN_R, arm_l=DOWN_L, head=(0, 0, 0),
+          fore_r=None, fore_l=None):
+    """両腕と頭の向きも決める姿勢（head は首と頭に半分ずつ足す度数。fore_r・fore_l は前腕の向きで、省くとひじを伸ばす）。"""
+    p = w.pose(torso=torso, hips=hips, ty=ty, tz=tz, stance=stance, arm=arm_r, off=arm_l, fore=fore_r, off_fore=fore_l)
     for joint in ('neck', 'head'):
         base = p['joints'][joint]
         p['joints'][joint] = (base[0] + head[0] * 0.5, base[1] + head[1] * 0.5, base[2] + head[2] * 0.5)

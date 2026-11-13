@@ -58,8 +58,9 @@ def counter_arm(torso, stance):
     return (0.32 + abs(twist) * 0.004, -0.9 + abs(twist) * 0.012, 0.18 - twist * 0.02)
 
 
-def pose(torso=(0, 0, 0), hips=(0, 0, 0), ty=0.0, tz=0.0, stance=None, arm=None, weapon=None, off=None):
-    """1つのキーの姿勢を作る。"""
+def pose(torso=(0, 0, 0), hips=(0, 0, 0), ty=0.0, tz=0.0, stance=None, arm=None, weapon=None, off=None,
+         fore=None, off_fore=None):
+    """1つのキーの姿勢を作る（fore・off_fore は前腕の向き。省くと上腕と同じ向き＝ひじを伸ばす）。"""
     joints = {}
     joints['pelvis'] = hips
     for name in ('spine_01', 'spine_02', 'chest'):
@@ -68,7 +69,7 @@ def pose(torso=(0, 0, 0), hips=(0, 0, 0), ty=0.0, tz=0.0, stance=None, arm=None,
     joints['neck'] = (-torso[0] * 0.3, -torso[1] * 0.3, -torso[2] * 0.3)
     joints['head'] = (-torso[0] * 0.2, -torso[1] * 0.2, -torso[2] * 0.2)
     return {'joints': joints, 'ty': ty, 'tz': tz, 'stance': stance, 'arm': arm, 'weapon': weapon,
-            'off': off or counter_arm(torso, stance)}
+            'off': off or counter_arm(torso, stance), 'fore': fore, 'off_fore': off_fore}
 
 
 # 垂らした腕（攻撃の前後のつなぎ）
@@ -327,18 +328,18 @@ def solve_pose(p, idle, pelvis_t):
         offsets = STANCES[p['stance']]
         solve_leg('r', offsets[0], p, local, world, pelvis_t)
         solve_leg('l', offsets[1], p, local, world, pelvis_t)
-    def solve_arm(side, arm, weapon):
+    def solve_arm(side, arm, weapon, fore=None):
         upper, lower, hand = ['%s_%s' % (n, side) for n in ('upperarm', 'lowerarm', 'hand')]
-        for joint in (upper, lower):
-            target = unit(arm).rotateBy(world(ROOT_CHAIN[joint]).inverse())
+        for joint, direction in ((upper, arm), (lower, fore or arm)):
+            target = unit(direction).rotateBy(world(ROOT_CHAIN[joint]).inverse())
             # 骨は軸に沿っていないので、子の骨への実際の向きを合わせる。
             local[joint] = om.MVector(RIG['t'][CHILD[joint]]).normal().rotateTo(target)
-        target = unit(weapon or arm).rotateBy(world(lower).inverse())
+        target = unit(weapon or fore or arm).rotateBy(world(lower).inverse())
         local[hand] = om.MVector(RIG['t']['hand_end_' + side]).normal().rotateTo(target)
 
     if p['arm']:
-        solve_arm('r', p['arm'], p['weapon'])
-    solve_arm('l', p['off'], None)
+        solve_arm('r', p['arm'], p['weapon'], p.get('fore'))
+    solve_arm('l', p['off'], None, p.get('off_fore'))
     return local
 
 
