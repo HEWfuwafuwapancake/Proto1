@@ -31,6 +31,16 @@ enum class SKINNED_CLIP
 	KnuckleRushRight, ///< ナックルの爆速突進（右手）
 	GunlanceImpaleLeft, ///< ガンランスの突き上げと撃ち込み（左手）
 	GunlanceImpaleRight, ///< ガンランスの突き上げと撃ち込み（右手）
+	C4ThrowLeft, ///< C4 の投げ（左手）
+	C4ThrowRight, ///< C4 の投げ（右手）
+	C4ChargeLeft, ///< C4 のため投げ（左手）
+	C4ChargeRight, ///< C4 のため投げ（右手）
+	TentacleReachLeft, ///< 触手の伸長（左手）
+	TentacleReachRight, ///< 触手の伸長（右手）
+	TentacleThrowLeft, ///< 触手の投げ（左手）
+	TentacleThrowRight, ///< 触手の投げ（右手）
+	TentacleSpinLeft, ///< 触手の回転（左手）
+	TentacleSpinRight, ///< 触手の回転（右手）
 	HitFlinch, ///< 吹っ飛ばされた直後ののけぞり
 	HitLaunched, ///< 吹っ飛び中
 	HitStun, ///< しびれ中
@@ -50,6 +60,11 @@ enum class ATTACK_CLIP
 	KnucklePunch, ///< ナックルの殴り
 	KnuckleRush, ///< ナックルの爆速突進
 	GunlanceImpale, ///< ガンランスの突き上げと撃ち込み
+	C4Throw, ///< C4 の投げ
+	C4Charge, ///< C4 のため投げ
+	TentacleReach, ///< 触手の伸長
+	TentacleThrow, ///< 触手の投げ
+	TentacleSpin, ///< 触手の回転
 };
 
 /// @brief 攻撃の種類と手から、再生するクリップを求める
@@ -66,7 +81,7 @@ inline SKINNED_CLIP AnimCalcAttackClip(ATTACK_CLIP kind, int hand)
 /// @return 攻撃クリップなら true
 inline bool AnimCalcIsAttackClip(SKINNED_CLIP clip)
 {
-	return clip >= SKINNED_CLIP::KatanaIaiLeft && clip <= SKINNED_CLIP::GunlanceImpaleRight;
+	return clip >= SKINNED_CLIP::KatanaIaiLeft && clip <= SKINNED_CLIP::TentacleSpinRight;
 }
 
 /// @brief アニメで使う3成分

@@ -32,6 +32,8 @@ public:
 	bool IsHolding() const override;
 	/// @brief 大型の爆弾をためている間だけ歩く速さを半分にする
 	float GetMoveScale() const override;
+	/// @brief 単押しと長押しの段階に対応する上半身のクリップを取得する
+	ARM_BODY_CLIP GetBodyClip() const override;
 
 private:
 	void ThrowBomb(bool large);
@@ -39,6 +41,7 @@ private:
 	void DrawBomb(const VEC3& feet, bool large, const XMFLOAT4& color) const;
 	C4Calc m_Bombs;
 	ArmPhaseCalc m_Phase;
+	bool m_ChargedClip = false; // 長押しの投げまで同じクリップを使う（描画だけ）
 	int m_ArmModel = -1;
 	int m_BodyModel = -1;
 	VEC3 m_Direction = { 0.0f, 0.0f, 1.0f }; // 投げる水平の向き（描画用）

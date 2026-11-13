@@ -328,9 +328,13 @@ bool ArmManager::IsHolding(void) const
 
 int ArmManager::GetActiveHand() const
 {
-	if (m_LastActiveHand >= 0 && m_Arms[m_LastActiveHand][m_Types[m_LastActiveHand]]->IsActive()) return m_LastActiveHand;
+	// 投げ終わって判定が待機へ戻っても、描画だけの振り抜きは最後まで見せる。
+	const auto active = [this](int hand) {
+		return m_Arms[hand][m_Types[hand]]->IsActive() || GetBodyClip(hand).Active;
+	};
+	if (m_LastActiveHand >= 0 && active(m_LastActiveHand)) return m_LastActiveHand;
 	for (int hand = 0; hand < 2; ++hand) {
-		if (m_Arms[hand][m_Types[hand]]->IsActive()) return hand;
+		if (active(hand)) return hand;
 	}
 	return -1;
 }
