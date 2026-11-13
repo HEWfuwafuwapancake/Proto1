@@ -35,13 +35,6 @@ struct MOTION_PARAMS
 	float LeanRate = 8.0f; ///< 傾きが目標へ近づく速さ（1秒あたりの割合）
 };
 
-/// @brief やられの状態から、全身で再生するクリップを選ぶ（つかまれ・しびれ・吹っ飛びの順に優先）
-/// @param held つかまれているか（true：つかまれ・引っぱられ中、false：そうでない）
-/// @param stunned しびれているか（true：しびれ中、false：そうでない）
-/// @param launched 吹っ飛び中か（true：吹っ飛び中、false：そうでない）
-/// @return 再生するクリップ（やられでなければ SKINNED_CLIP::Count）
-SKINNED_CLIP MotionCalcReactionClip(bool held, bool stunned, bool launched);
-
 /// @brief 1体分の見た目の動き（Fighter ごとに持つ）
 class MotionCalc
 {

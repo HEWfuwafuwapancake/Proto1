@@ -94,12 +94,3 @@ TEST(MotionCalcTest, NoLocomotionKeepsLegsOnAim)
 	EXPECT_NEAR(motion.GetLegYaw(), 1.0f, 0.001f);
 	EXPECT_EQ(SKINNED_CLIP::Fall, motion.GetClip());
 }
-
-// やられのクリップは、つかまれ・しびれ・吹っ飛びの順に優先し、どれでもなければ選ばない。
-TEST(MotionCalcTest, ReactionClipPriority)
-{
-	EXPECT_EQ(SKINNED_CLIP::Held, MotionCalcReactionClip(true, true, true));
-	EXPECT_EQ(SKINNED_CLIP::Stunned, MotionCalcReactionClip(false, true, true));
-	EXPECT_EQ(SKINNED_CLIP::Launched, MotionCalcReactionClip(false, false, true));
-	EXPECT_EQ(SKINNED_CLIP::Count, MotionCalcReactionClip(false, false, false));
-}

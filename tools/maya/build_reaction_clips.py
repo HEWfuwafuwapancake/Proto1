@@ -10,7 +10,8 @@
 
 姿勢の作り方・向きの書き方は build_weapon_clips.py と同じ（+Z が前、-X がキャラの右、+Y が上）。
 全身のクリップで左右の組はない。フレームは 3001 から 100 フレームずつ（24fps）。
-ゲームの秒数は fighter.cpp の HIT_FLINCH_SECONDS（hit_flinch の長さ）にそろえる。
+ゲームの秒数は fighter.cpp の FLINCH_ANIM_SECONDS（hit_flinch の長さ）にそろえる。
+クリップの名前・フレーム・長さの約束は docs/plan/07_アニメの追加/138_やられのアニメ.md。
 """
 import os
 import sys
@@ -48,14 +49,14 @@ def rpose(torso=(0, 0, 0), hips=(0, 0, 0), ty=0.0, tz=0.0, stance=None, arm_r=DO
 
 # name, [(フレーム, 姿勢, 'lin' ならこのキーへ等速で動く)]。ループするクリップは最初と最後を同じ姿勢にする。
 CLIPS = [
-    # のけぞり（当たった瞬間）：はじかれる 0-2・のけぞる 2-4・戻る 4-10
+    # のけぞり（当たった瞬間）：はじかれる 0-2・のけぞる 2-4・戻る 4-8
     ('flinch', [
         (0, rpose()),
         (2, rpose(torso=(-24, 0, 4), hips=(-6, 0, 0), ty=-4, tz=-4, stance='recoil', head=(-24, 0, 0),
                   arm_r=(-0.42, 0.28, 0.86), arm_l=(0.42, 0.24, 0.87)), 'lin'),
         (4, rpose(torso=(-30, 4, 6), hips=(-8, 0, 0), ty=-5, tz=-5, stance='recoil', head=(-28, 0, 0),
                   arm_r=(-0.56, 0.42, 0.71), arm_l=(0.54, 0.36, 0.76))),
-        (10, rpose(torso=(-8, 0, 0), ty=-2, stance='low', head=(-6, 0, 0),
+        (8, rpose(torso=(-8, 0, 0), ty=-2, stance='low', head=(-6, 0, 0),
                    arm_r=(-0.4, -0.78, 0.48), arm_l=(0.4, -0.78, 0.48))),
     ]),
     # 吹っ飛び中（ループ）：反ったまま手足をばたつかせる
@@ -72,7 +73,7 @@ CLIPS = [
                    arm_r=(-0.7, 0.62, 0.35), arm_l=(0.6, 0.3, 0.74))),
     ]),
     # しびれ（ループ）：前へ折れて膝が抜け、腕をだらりと下げてゆっくり揺れる
-    ('stunned', [
+    ('stun', [
         (0, rpose(torso=(28, 0, 6), hips=(8, 0, 0), ty=-12, stance='slump', head=(24, 0, 6),
                   arm_r=(-0.12, -0.98, 0.16), arm_l=(0.12, -0.98, 0.16))),
         (12, rpose(torso=(32, 4, 0), hips=(9, 2, 0), ty=-13, stance='slump', head=(30, 8, 0),
