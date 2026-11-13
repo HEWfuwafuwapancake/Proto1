@@ -25,8 +25,9 @@ struct MOTION_PARAMS
 	float LegTurnSpeed = 9.4f; ///< 走っているとき脚が回る速さ（ラジアン／秒）
 	float IdleTurnSpeed = 6.3f; ///< 止まっているとき脚が狙いの向きへ回る速さ（ラジアン／秒）
 	float MaxTwist = 1.3f; ///< 上半身を脚からねじれる角度の上限（ラジアン）
+	float StrafeAngle = 0.872665f; ///< 地面で横走りを始める、進む向きと狙いの差（約50度。ラジアン）
 	float BackAngle = 1.92f; ///< 進む向きと狙いの差がこれを超えると後ろ走りにする（ラジアン）
-	float BackHysteresis = 0.17f; ///< 後ろ走りをやめるときの余裕（ラジアン。境目で行ったり来たりしないように）
+	float BackHysteresis = 0.17f; ///< 後ろ走り・横走りをやめるときの余裕（ラジアン。境目で行ったり来たりしないように）
 	float LandSeconds = 0.2f; ///< 着地の動きを見せる秒数
 	float MinPlaySpeed = 0.5f; ///< 走りの再生速度の下限
 	float LeanForward = 0.12f; ///< 全速で走ったときの前傾（ラジアン。後ろ走りは半分だけ後ろへ）
@@ -87,6 +88,7 @@ private:
 	float m_LandTimer = 0.0f;
 	float m_PlaySpeed = 1.0f;
 	bool m_Backward = false;
+	bool m_Strafing = false;
 	bool m_WasOnGround = true;
 	SKINNED_CLIP m_Clip = SKINNED_CLIP::Idle;
 };

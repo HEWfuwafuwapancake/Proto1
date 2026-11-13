@@ -15,6 +15,7 @@ static constexpr float WAVE_SECONDS[] = { 1.2f, 0.1f, 0.5f }; // 長押し：た
 static constexpr float TAP_CLIP_SECONDS[] = { 16.0f / 24.0f, 4.0f / 24.0f, 10.0f / 24.0f }; // 単押しのクリップの区切り（hammer_tap）
 static constexpr float WAVE_CLIP_SECONDS[] = { 22.0f / 24.0f, 4.0f / 24.0f, 14.0f / 24.0f }; // 長押しのクリップの区切り（hammer_slam）
 static constexpr float AIR_TAP_SECONDS[] = { 0.3f, 0.1f, 0.4f }; // 空中の単押し：短いため・叩き・休み
+static constexpr float AIR_TAP_CLIP_SECONDS[] = { 7.0f / 24.0f, 3.0f / 24.0f, 10.0f / 24.0f }; // 空中の跳ね
 static constexpr float HOP_HEIGHT = 6.0f; // 空中の単押しで上へ跳ねる高さ（場外から戻る）。
 static constexpr float HOP_SIDE = 3.5f; // 跳ねる間に、移動の入力の向きへ進む距離。
 static constexpr float HOP_SECONDS = 0.3f; // 跳ね上がるのにかける秒数。
@@ -182,9 +183,10 @@ ARM_BODY_CLIP HammerArm::GetBodyClip() const
 	ARM_BODY_CLIP clip;
 	if (m_Phase.IsIdle()) return clip;
 	clip.Active = true;
-	clip.Kind = m_Wave ? ATTACK_CLIP::HammerSlam : ATTACK_CLIP::HammerTap;
-	clip.FullBody = m_Wave;
-	clip.Time = ArmCalcClipTime(m_Phase.GetPhase(), m_Phase.GetTime(), GetSeconds(), m_Wave ? WAVE_CLIP_SECONDS : TAP_CLIP_SECONDS);
+	clip.Kind = m_Wave ? ATTACK_CLIP::HammerSlam : (m_AirTap ? ATTACK_CLIP::HammerHop : ATTACK_CLIP::HammerTap);
+	clip.FullBody = m_Wave || m_AirTap;
+	clip.Time = ArmCalcClipTime(m_Phase.GetPhase(), m_Phase.GetTime(), GetSeconds(),
+		m_Wave ? WAVE_CLIP_SECONDS : (m_AirTap ? AIR_TAP_CLIP_SECONDS : TAP_CLIP_SECONDS));
 	return clip;
 }
 

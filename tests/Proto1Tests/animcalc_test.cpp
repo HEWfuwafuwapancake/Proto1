@@ -12,6 +12,9 @@ TEST(AnimCalcTest, AddedAttacksKeepContiguousHandPairs)
 	EXPECT_EQ(SKINNED_CLIP::GuardRaiseLeft, AnimCalcAttackClip(ATTACK_CLIP::GuardRaise, 0));
 	EXPECT_EQ(SKINNED_CLIP::GuardHitRight, AnimCalcAttackClip(ATTACK_CLIP::GuardHit, 1));
 	EXPECT_TRUE(AnimCalcIsAttackClip(AnimCalcAttackClip(ATTACK_CLIP::Parry, 1)));
+	EXPECT_EQ(SKINNED_CLIP::HammerHopLeft, AnimCalcAttackClip(ATTACK_CLIP::HammerHop, 0));
+	EXPECT_EQ(SKINNED_CLIP::KnuckleAirRushRight, AnimCalcAttackClip(ATTACK_CLIP::KnuckleAirRush, 1));
+	EXPECT_TRUE(AnimCalcIsAttackClip(SKINNED_CLIP::KnuckleAirRushRight));
 	EXPECT_FALSE(AnimCalcIsAttackClip(SKINNED_CLIP::HitFlinch));
 }
 

@@ -47,10 +47,16 @@ enum class SKINNED_CLIP
 	GuardHitRight, ///< ガードの受け（右手）
 	ParryLeft, ///< パリィのはじき（左手）
 	ParryRight, ///< パリィのはじき（右手）
+	HammerHopLeft, ///< ハンマーの空中の跳ね（左手）
+	HammerHopRight, ///< ハンマーの空中の跳ね（右手）
+	KnuckleAirRushLeft, ///< ナックルの空中突進（左手）
+	KnuckleAirRushRight, ///< ナックルの空中突進（右手）
 	HitFlinch, ///< 吹っ飛ばされた直後ののけぞり
 	HitLaunched, ///< 吹っ飛び中
 	HitStun, ///< しびれ中
 	HitHeld, ///< つかまれ中
+	StrafeLeft, ///< 左横走り（ファイルがなければ走り）
+	StrafeRight, ///< 右横走り（ファイルがなければ走り）
 	Count ///< クリップの数
 };
 
@@ -74,6 +80,8 @@ enum class ATTACK_CLIP
 	GuardRaise, ///< ガードの構え
 	GuardHit, ///< ガードの受け
 	Parry, ///< パリィのはじき
+	HammerHop, ///< ハンマーの空中の跳ね
+	KnuckleAirRush, ///< ナックルの空中突進
 };
 
 /// @brief 攻撃の種類と手から、再生するクリップを求める
@@ -90,7 +98,7 @@ inline SKINNED_CLIP AnimCalcAttackClip(ATTACK_CLIP kind, int hand)
 /// @return 攻撃クリップなら true
 inline bool AnimCalcIsAttackClip(SKINNED_CLIP clip)
 {
-	return clip >= SKINNED_CLIP::KatanaIaiLeft && clip <= SKINNED_CLIP::ParryRight;
+	return clip >= SKINNED_CLIP::KatanaIaiLeft && clip <= SKINNED_CLIP::KnuckleAirRushRight;
 }
 
 /// @brief アニメで使う3成分
