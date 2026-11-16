@@ -28,6 +28,7 @@ static constexpr float IMPACT_POWER = 2.8f;
 static constexpr float IMPACT_UP = 1.25f; // 外への水平の単位方向に足す上向きの量。
 static constexpr float WAVE_HEIGHT = 0.3f; // 衝撃波の中心の足元からの高さ。
 static constexpr float WAVE_RADIUS = 4.5f;
+static constexpr float WAVE_HALF_HEIGHT = 1.0f; // 衝撃波の中心から上下それぞれに届く幅（横は広く、縦は薄い）。
 static constexpr float WAVE_DAMAGE = 18.0f;
 static constexpr float WAVE_POWER = 2.4f;
 static constexpr float WAVE_UP = 0.8f;
@@ -102,7 +103,12 @@ void HammerArm::Impact()
 	bool affected = false;
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		const TENTACLE_TARGET target = GetFighters().GetTarget(i, GetSlot());
-		if (!target.Available || !CollisionSphereCapsule({ m_RangeCenter, m_RangeRadius }, target.Body).Hit) continue;
+		if (!target.Available) continue;
+		// 衝撃波は地面を這う薄い円柱にし、高台の上など縦に離れた相手には届かない。
+		const bool inside = m_Wave
+			? AreaCalcInSector(m_RangeCenter, m_Direction, 0.0f, m_RangeRadius, XM_PI, WAVE_HALF_HEIGHT, target.Body)
+			: CollisionSphereCapsule({ m_RangeCenter, m_RangeRadius }, target.Body).Hit;
+		if (!inside) continue;
 		// 衝撃波はまわりへ押し出し、単押しは叩いた相手を叩いた向きへ飛ばす。
 		const VEC3 launch = m_Wave ? AreaCalcRadialDirection(m_RangeCenter, target.Body, WAVE_UP, m_Direction)
 			: AreaCalcLaunchDirection(m_Direction, IMPACT_UP);
