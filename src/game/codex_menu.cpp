@@ -1,0 +1,328 @@
+﻿#include "game/codex_menu.h"
+#include "game/netsession.h"
+#include "input/action.h"
+#include "render/number2d.h"
+#include "render/text2d.h"
+#include <cmath>
+#include <cstdio>
+
+// 調整用の値（1280×720 の共通座標。文字と背景は試合の描画に依存しない）
+static constexpr XMFLOAT4 INK{ 0.018f, 0.032f, 0.065f, 1.0f };
+static constexpr XMFLOAT4 PANEL{ 0.033f, 0.063f, 0.105f, 1.0f };
+static constexpr XMFLOAT4 LINE{ 0.10f, 0.21f, 0.28f, 1.0f };
+static constexpr XMFLOAT4 CYAN{ 0.24f, 0.93f, 0.92f, 1.0f };
+static constexpr XMFLOAT4 WHITE{ 0.91f, 0.96f, 1.0f, 1.0f };
+static constexpr XMFLOAT4 MUTED{ 0.51f, 0.65f, 0.73f, 1.0f };
+static constexpr XMFLOAT4 GOLD{ 1.0f, 0.73f, 0.34f, 1.0f };
+static constexpr float LEFT = 64.0f;
+static constexpr float ROW_WIDTH = 580.0f;
+static constexpr float RIGHT = 708.0f;
+static constexpr float OPTION_TOP = 156.0f;
+static constexpr float OPTION_GAP = 46.0f;
+static constexpr float TEXT_SCALE = 1.35f; // 文字画像の上下の余白を見込み、メニューの文字を大きくする。
+static constexpr float PI = 3.14159265f;
+static constexpr const char* OPTION_NAMES[] = {
+	"突進・移動技の距離", "吹っ飛びの強さ", "ハンマーのしびれ時間", "ダメージの倍率",
+	"マップの広さ", "カプセルの出現量", "腕の耐久の持ち"
+};
+static constexpr const char* OPTION_HELP[][3] = {
+	{ "長押しで使う移動技の距離を変えます。", "大きくすると、遠くまで踏み込めます。", "場外からの復帰にも影響します。" },
+	{ "攻撃が当たったときの飛ぶ強さです。", "大きくすると、場外へ飛ばしやすくなります。", "ダメージの増え方は変わりません。" },
+	{ "ハンマーの長押しでしびれる時間です。", "0 秒なら、しびれは発生しません。", "動きを止める長さを調整できます。" },
+	{ "攻撃で増えるダメージ％の倍率です。", "大きくすると、短時間で％が上がります。", "腕ごとの基本ダメージに掛かります。" },
+	{ "ステージ全体の広さを変えます。", "広いと移動に余裕が生まれます。", "狭いと相手と出会いやすくなります。" },
+	{ "最初の個数と、追加される間隔です。", "多くすると、腕を拾いやすくなります。", "GAME ルールで使う設定です。" },
+	{ "腕が壊れるまでの持ちを変えます。", "倍率が大きいほど、長く使えます。", "無制限なら、耐久が減りません。" }
+};
+static constexpr const char* MODE_NAMES[] = {
+	"ひとりで遊ぶ", "この PC で対戦", "オンラインを開催", "オンラインに参加", "オプション", "タイトルへ戻る"
+};
+static constexpr const char* MODE_SUBTITLES[] = {
+	"SOLO / ダミー相手に練習", "LOCAL VS / 最大 4 人・画面分割", "HOST / 参加者を待つ", "JOIN / ホストの IP を入力", "OPTIONS / 次の試合を調整", "BACK / 最初の画面へ"
+};
+static constexpr const char* MODE_HELP[][3] = {
+	{ "決定した機器を 1P にして始めます。", "ほかのキャラは練習用のダミーです。", "操作や腕の動きを試すのにおすすめ。" },
+	{ "パッドやキーボードで参加します。", "人数に合わせて画面を分割します。", "参加後、1P のもう一度の決定で開始。" },
+	{ "この PC をホストにして待機します。", "表示された IP を相手に伝えます。", "離れた相手とは Tailscale で接続。" },
+	{ "ホストの IPv4 アドレスを入力します。", "接続後はロビーで参加を待ちます。", "ホストと同じ版のゲームを使います。" },
+	{ "試合の遊び心地を調整できます。", "変更は次の試合から適用されます。", "オンラインはホストの設定を使用。" },
+	{ "キャラとルールは選び直せます。", "オプションは起動中そのまま保持。", "終了は Esc キーから行えます。" }
+};
+
+void CodexMenu::Initialize()
+{
+	// くり返し表示する説明は、最初に画像へ変えておく。Text2D が画像の寿命を管理する。
+	for (const auto* name : OPTION_NAMES) Text2DCreate(name);
+	for (const auto& lines : OPTION_HELP) for (const auto* text : lines) Text2DCreate(text);
+	for (const auto* name : MODE_NAMES) Text2DCreate(name);
+	for (const auto* text : MODE_SUBTITLES) Text2DCreate(text);
+	for (const auto& lines : MODE_HELP) for (const auto* text : lines) Text2DCreate(text);
+}
+
+void CodexMenu::Text(const char* text, float x, float y, float height, const XMFLOAT4& color) const
+{
+	// 固定文字列はキャッシュされる。IP と設定値も同じ値なら画像を作り直さない。
+	Text2DDraw(Text2DCreate(text), x, y, height * TEXT_SCALE, GLYPH_ALIGN_LEFT, color);
+}
+
+void CodexMenu::Background() const
+{
+	Number2DDrawBox({ 0, 0, 1280, 720 }, INK);
+	Number2DDrawBox({ 676, 0, 604, 720 }, { 0.023f, 0.044f, 0.079f, 1 });
+	RECT2D grid[80]{};
+	int count = 0;
+	for (int x = 4; x < 1280; x += 48) grid[count++] = { static_cast<float>(x), 0, 1, 720 };
+	for (int y = 0; y < 720; y += 48) grid[count++] = { 0, static_cast<float>(y), 1280, 1 };
+	Number2DDrawRects(grid, count, { 0.10f, 0.25f, 0.34f, 0.16f });
+	Number2DDrawBox({ LEFT, 30, 32, 4 }, CYAN);
+	Number2DDrawBox({ 102, 30, 10, 4 }, GOLD);
+	Text("WONDERFUL ARMS", 124, 20, 19, WHITE);
+	Text("BATTLE SYSTEM / 01", 1005, 22, 16, MUTED);
+	Number2DDrawBox({ LEFT, 58, 1152, 1 }, LINE);
+	Number2DDrawBox({ LEFT, 641, 1152, 1 }, LINE);
+	Text("PROTO1  /  腕ダフルアームズ", LEFT, 693, 13, MUTED);
+	Text("READY TO CONNECT", 1052, 693, 13, CYAN);
+}
+
+void CodexMenu::Reactor(float x, float y, float radius) const
+{
+	// 円弧・目盛りを四角の一覧にして描く。ゲームのモデルを背景に使わない。
+	RECT2D marks[512]{};
+	int count = 0;
+	for (int ring = 0; ring < 3; ++ring) {
+		const float r = radius - ring * 22.0f;
+		for (int i = 0; i < 120; ++i) {
+			if ((i / 15 + ring) % 4 == 0) continue;
+			const float angle = static_cast<float>(i) * PI / 60.0f;
+			marks[count++] = { x + cosf(angle) * r, y + sinf(angle) * r, ring == 1 ? 3.0f : 2.0f, 3 };
+		}
+	}
+	Number2DDrawRects(marks, count, { CYAN.x, CYAN.y, CYAN.z, 0.40f });
+	Number2DDrawBox({ x - radius - 25, y, radius * 2 + 50, 1 }, LINE);
+	Number2DDrawBox({ x, y - radius - 25, 1, radius * 2 + 50 }, LINE);
+	// 左右へ広がる腕と中央のコアを、回路のような直線で組む。
+	Number2DDrawBox({ x - 28, y - 55, 56, 110 }, PANEL);
+	Number2DDrawBox({ x - 16, y - 39, 32, 78 }, CYAN);
+	for (int side = -1; side <= 1; side += 2) {
+		const float left = side < 0 ? x - 104 : x + 28;
+		Number2DDrawBox({ left, y - 8, 76, 16 }, CYAN);
+		Number2DDrawBox({ side < 0 ? x - 116 : x + 104, y - 45, 12, 53 }, CYAN);
+		Number2DDrawBox({ side < 0 ? x - 124 : x + 100, y - 59, 28, 14 }, GOLD);
+	}
+	Text("ARM LINK", x - 52, y + 77, 19, WHITE);
+	Text("DUAL EQUIPMENT SYSTEM", x - 110, y + radius + 36, 15, MUTED);
+}
+
+void CodexMenu::Header(const char* title, const char* eyebrow, int step) const
+{
+	Text(eyebrow, LEFT, 79, 15, CYAN);
+	Text(title, LEFT, 101, 34, WHITE);
+	if (step > 0) {
+		const char* names[] = { "01  キャラクター", "02  ルール", "03  対戦方法" };
+		for (int i = 0; i < 3; ++i) {
+			const float x = RIGHT + i * 172.0f;
+			Number2DDrawBox({ x, 100, 154, 3 }, i + 1 == step ? CYAN : LINE);
+			Text(names[i], x, 112, 16, i + 1 == step ? WHITE : MUTED);
+		}
+	}
+}
+
+void CodexMenu::Row(const char* title, const char* subtitle, int index, bool selected, float y, float height) const
+{
+	Number2DDrawBox({ LEFT, y, ROW_WIDTH, height }, selected ? XMFLOAT4{ 0.055f, 0.20f, 0.25f, 1 } : PANEL);
+	Number2DDrawBox({ LEFT, y, selected ? 4.0f : 1.0f, height }, selected ? CYAN : LINE);
+	Number2DDrawBox({ LEFT, y + height - 1, ROW_WIDTH, 1 }, selected ? CYAN : LINE);
+	char number[8];
+	sprintf_s(number, "%02d", index + 1);
+	Text(number, LEFT + 20, y + 15, 17, selected ? CYAN : MUTED);
+	Text(title, LEFT + 67, y + 7, subtitle[0] ? 25.0f : 24.0f, selected ? WHITE : MUTED);
+	if (subtitle[0]) Text(subtitle, LEFT + 68, y + 38, 14, selected ? CYAN : MUTED);
+	if (selected) Text(">", LEFT + ROW_WIDTH - 32, y + 14, 22, CYAN);
+}
+
+void CodexMenu::Detail(const char* tag, const char* title, const char* line1, const char* line2, const char* line3) const
+{
+	Number2DDrawBox({ RIGHT, 204, 508, 324 }, PANEL);
+	Number2DDrawBox({ RIGHT, 204, 40, 3 }, CYAN);
+	Text(tag, RIGHT + 28, 234, 15, CYAN);
+	Text(title, RIGHT + 28, 274, 28, WHITE);
+	Text(line1, RIGHT + 28, 342, 20, WHITE);
+	Text(line2, RIGHT + 28, 381, 20, MUTED);
+	Text(line3, RIGHT + 28, 420, 20, MUTED);
+}
+
+void CodexMenu::Footer(const char* help) const
+{
+	Text(help, LEFT, 659, 18, WHITE);
+	Text("Esc  終了  /  F11  全画面", 973, 660, 16, MUTED);
+}
+
+void CodexMenu::DrawOptions(const SceneCalc& scene, const MATCH_TUNING& tuning) const
+{
+	Header("オプション", "OPTIONS / MATCH SETTINGS", 0);
+	for (int i = 0; i < TUNING_ITEM_COUNT + 2; ++i) {
+		const float y = OPTION_TOP + i * OPTION_GAP;
+		Row(i < TUNING_ITEM_COUNT ? OPTION_NAMES[i] : i == TUNING_ITEM_COUNT ? "標準に戻す" : "戻る",
+			"", i, scene.GetCursor() == i, y, 41);
+		if (i >= TUNING_ITEM_COUNT) continue;
+		const auto item = static_cast<TUNING_ITEM>(i);
+		char value[80];
+		if (item == TUNING_ARM_USES && TuningCalcIsUnlimitedUses(tuning)) sprintf_s(value, "無制限");
+		else if (item == TUNING_HAMMER_STUN) sprintf_s(value, "%.1f 秒", TuningCalcValue(tuning, item));
+		else if (item == TUNING_CAPSULES) sprintf_s(value, "%d 個 / %.1f 秒", TuningCalcCapsuleCount(tuning), TuningCalcCapsuleSeconds(tuning));
+		else sprintf_s(value, "× %.2f", TuningCalcValue(tuning, item));
+		Text(value, 458, y + 9, 20, scene.GetCursor() == i ? CYAN : WHITE);
+		if (scene.GetCursor() == i) Text("<", 428, y + 9, 20, CYAN);
+	}
+	const int selected = scene.GetCursor();
+	if (selected < TUNING_ITEM_COUNT) {
+		Detail("PARAMETER", OPTION_NAMES[selected], OPTION_HELP[selected][0], OPTION_HELP[selected][1], OPTION_HELP[selected][2]);
+		const int levels = TuningCalcLevelCount(static_cast<TUNING_ITEM>(selected));
+		for (int level = 0; level < levels; ++level) {
+			Number2DDrawBox({ RIGHT + 28 + level * 60.0f, 481, 48, 5 }, level <= tuning.Levels[selected] ? CYAN : LINE);
+		}
+	}
+	else Detail("SETTINGS", selected == TUNING_ITEM_COUNT ? "標準設定に戻す" : "設定を閉じる",
+		selected == TUNING_ITEM_COUNT ? "すべての項目を標準の値へ戻します。" : "変更した値は、そのまま保持されます。",
+		"Enter / ○ で決定します。", "ファイルへの保存は行いません。");
+	Text("変更は次の試合から適用", RIGHT, 560, 23, GOLD);
+	Text("オンラインはホストの設定を全員に適用します。", RIGHT, 598, 17, MUTED);
+	Footer("↑↓ / W S  選択    ←→ / A D  変更    Enter / ○  決定    Backspace / ×  戻る");
+}
+
+void CodexMenu::DrawLobby(const VersusCalc& participants, const NetSession& net,
+	const std::array<CHARACTER_TYPE, FIGHTER_COUNT>& characters) const
+{
+	Header(net.IsOnline() ? "オンラインロビー" : "参加するプレイヤー", "LOBBY / WAITING FOR PLAYERS", 0);
+	for (int slot = 0; slot < FIGHTER_COUNT; ++slot) {
+		const float y = 180 + slot * 91.0f;
+		const bool joined = participants.IsHuman(slot) || (net.IsOnline() && (net.GetMask() & (1u << slot)));
+		const int device = participants.GetDevice(slot);
+		char title[64];
+		sprintf_s(title, "%dP   %s", slot + 1, joined ? (characters[slot] == CHARACTER_MEKA ? "MEKA" : "MEKAGIRL") : "参加待ち");
+		const char* subtitle = !joined ? "Enter / ○ を押して参加" : device == VERSUS_DEVICE_REMOTE ? "ONLINE / 接続済み"
+			: device == ACTION_DEVICE_KEYBOARD ? "KEYBOARD / 参加済み" : "CONTROLLER / 参加済み";
+		Row(title, subtitle, slot, joined, y, 76);
+	}
+	Detail(net.IsOnline() ? "ONLINE SESSION" : "LOCAL SESSION", net.IsHost() ? "ホストとして待機中" : "みんなの準備ができたら",
+		"1P が Enter / ○ をもう一度押すと開始。", "空いている枠はダミーになります。",
+		net.IsOnline() ? "キャラは接続前に選んだものを使います。" : "参加後は A D / 十字キー左右でキャラ変更。");
+	if (net.IsHost()) {
+		Text("HOST IP / 相手に伝えるアドレス", RIGHT, 546, 17, CYAN);
+		// 各アドレスを別々の行に収め、横方向にはみ出さない。
+		const std::string& addresses = net.GetAddresses();
+		size_t begin = 0;
+		int line = 0;
+		while (begin < addresses.size() && line < 3) {
+			const size_t end = addresses.find(" / ", begin);
+			Text(addresses.substr(begin, end == std::string::npos ? end : end - begin).c_str(), RIGHT, 570 + line * 20.0f, 17, WHITE);
+			++line;
+			if (end == std::string::npos) break;
+			begin = end + 3;
+		}
+	}
+	Footer("Enter / ○  参加・1P が開始    Backspace / ×  対戦方法へ戻る");
+}
+
+void CodexMenu::DrawResult(const SceneCalc& scene, const VersusCalc& participants) const
+{
+	Header("対戦結果", "RESULT / KNOCKOUT RANKING", 0);
+	Text("順位", LEFT + 20, 165, 18, MUTED);
+	Text("プレイヤー", LEFT + 180, 165, 18, MUTED);
+	Text("KO", LEFT + 470, 165, 18, MUTED);
+	for (int order = 0; order < participants.GetHumanCount(); ++order) {
+		const int slot = participants.GetRankedSlot(order);
+		const float y = 206 + order * 58.0f;
+		Number2DDrawBox({ LEFT, y, ROW_WIDTH, 50 }, PANEL);
+		char score[80];
+		sprintf_s(score, "%02d", participants.GetRank(slot));
+		Text(score, LEFT + 20, y + 9, 23, order == 0 ? GOLD : WHITE);
+		sprintf_s(score, "%dP", slot + 1);
+		Text(score, LEFT + 180, y + 9, 23, WHITE);
+		sprintf_s(score, "%d", participants.GetScore(slot));
+		Text(score, LEFT + 470, y + 9, 23, WHITE);
+	}
+	Row("もう一度遊ぶ", "RETRY / 同じ参加者で再戦", 0, scene.GetCursor() == RESULT_ITEM_RETRY, 474);
+	Row("メニューへ戻る", "TITLE / オンラインはロビーへ", 1, scene.GetCursor() == RESULT_ITEM_TITLE, 550);
+	Reactor(961, 350, 143);
+	Footer("1P : ↑↓ / W S  選択    Enter / ○  決定");
+}
+
+void CodexMenu::Draw(const SceneCalc& scene, const VersusCalc& participants, const NetSession& net,
+	const SessionAddressCalc& address, const std::array<CHARACTER_TYPE, FIGHTER_COUNT>& characters,
+	const MATCH_TUNING& tuning) const
+{
+	Background();
+	const SCENE current = scene.GetScene();
+	if (current == SCENE_OPTIONS) { DrawOptions(scene, tuning); return; }
+	if (current == SCENE_TITLE) { DrawLobby(participants, net, characters); return; }
+	if (current == SCENE_RESULT) { DrawResult(scene, participants); return; }
+	if (current == SCENE_GAME_START) {
+		Text("PICK UP. POWER UP. KNOCK OUT.", LEFT, 139, 18, CYAN);
+		Text("腕ダフルアームズ", LEFT - 3, 178, 59, WHITE);
+		Text("変な腕で、ぶっ飛ばせ。", LEFT, 257, 31, WHITE);
+		Text("腕を拾って装着。相手を場外へ飛ばす、3 分間の乱闘。", LEFT, 318, 19, MUTED);
+		Row("ゲームを始める", "PLAY / キャラクター → ルール → 対戦方法", 0, scene.GetCursor() == 0, 398, 76);
+		Row("オプション", "OPTIONS / 次の試合の遊び心地を調整", 1, scene.GetCursor() == 1, 488, 76);
+		Text("MOVE  WASD    JUMP  Space    ARMS  左右クリック / L1 R1", LEFT, 597, 16, MUTED);
+		Reactor(962, 342, 179);
+		Footer("↑↓ / W S / 左スティック  選択    Enter / ○  決定");
+		return;
+	}
+	if (current == SCENE_CHARACTER_SELECT) {
+		Header("キャラクターを選択", "CHARACTER SELECT", 1);
+		for (int i = 0; i < CHARACTER_COUNT; ++i) {
+			const bool selected = scene.GetCharacter() == i;
+			const float x = LEFT + i * 300.0f;
+			Number2DDrawBox({ x, 222, 280, 288 }, selected ? XMFLOAT4{ 0.055f, 0.20f, 0.25f, 1 } : PANEL);
+			Number2DDrawBox({ x, 222, 280, 3 }, selected ? CYAN : LINE);
+			Text(i == CHARACTER_MEKA ? "01 / MEKA" : "02 / MEKAGIRL", x + 24, 251, 20, selected ? CYAN : MUTED);
+			// キャラクター選択の印。試合のモデルやアームを読み替えない。
+			Number2DDrawBox({ x + 112, 302, 56, 46 }, selected ? CYAN : LINE);
+			Number2DDrawBox({ x + 94, 359, 92, 62 }, selected ? CYAN : LINE);
+			Number2DDrawBox({ x + 94, 429, 36, 20 }, GOLD);
+			Number2DDrawBox({ x + 150, 429, 36, 20 }, GOLD);
+			Text(selected ? "SELECTED / 選択中" : "左右で切り替え", x + 24, 469, 17, selected ? WHITE : MUTED);
+		}
+		Detail("YOUR FIGHTER", scene.GetCharacter() == CHARACTER_MEKA ? "MEKA" : "MEKAGIRL",
+			"左右キー / A D / 十字キーで切り替え。", "Enter / ○ で、このキャラに決定。", "次に試合のルールを選びます。");
+		Footer("←→ / A D / 十字キー  キャラ変更    Enter / ○  決定    Backspace / ×  戻る");
+	}
+	else if (current == SCENE_RULE_SELECT) {
+		Header("遊び方を選択", "RULE SELECT", 2);
+		Row("通常の対戦", "GAME / 腕を拾って戦う・耐久あり", 0, scene.GetCursor() == GAME_RULE_GAME, 236, 87);
+		Row("腕を自由に試す", "DEBUG / 装備を切り替えて練習", 1, scene.GetCursor() == GAME_RULE_DEBUG, 340, 87);
+		const bool normal = scene.GetCursor() == GAME_RULE_GAME;
+		Detail(normal ? "GAME" : "DEBUG", normal ? "腕を拾って、ぶっ飛ばす" : "お気に入りの腕を探そう",
+			normal ? "素手でスタート。カプセルで腕を装着。" : "好きな腕を自由に切り替えられます。",
+			normal ? "耐久がなくなったら、新しい腕を探そう。" : "数字キー / 十字キーで装備を変更。",
+			normal ? "3 分間で、いちばん多く KO を取ろう。" : "耐久が 0 になっても腕を使えます。");
+		Footer("↑↓ / W S / 左スティック  選択    Enter / ○  決定    Backspace / ×  戻る");
+	}
+	else if (current == SCENE_MODE_SELECT) {
+		Header("対戦方法を選択", "MODE SELECT", 3);
+		for (int i = 0; i < MODE_ITEM_COUNT; ++i) Row(MODE_NAMES[i], MODE_SUBTITLES[i], i, scene.GetCursor() == i, 168 + i * 75.0f);
+		const int cursor = scene.GetCursor();
+		Detail("HOW TO PLAY", MODE_NAMES[cursor], MODE_HELP[cursor][0], MODE_HELP[cursor][1], MODE_HELP[cursor][2]);
+		Text(scene.GetRule() == GAME_RULE_GAME ? "RULE / 通常の対戦" : "RULE / 腕を自由に試す", RIGHT, 557, 20, GOLD);
+		Text("設定を変えるには「オプション」へ。", RIGHT, 592, 18, MUTED);
+		Footer("↑↓ / W S / 左スティック  選択    Enter / ○  決定    Backspace / ×  戻る");
+	}
+	else if (current == SCENE_JOIN_ADDRESS) {
+		Header("オンラインに参加", "ONLINE JOIN / HOST ADDRESS", 0);
+		Text("ホストの IPv4 アドレス", LEFT, 218, 24, WHITE);
+		for (int part = 0; part < 4; ++part) {
+			const float x = LEFT + part * 146.0f;
+			const bool selected = part == address.GetCursor();
+			Number2DDrawBox({ x, 276, 125, 80 }, PANEL);
+			Number2DDrawBox({ x, 354, 125, 2 }, selected ? CYAN : LINE);
+			Text(address.GetPart(part).c_str(), x + 14, 295, 36, selected ? CYAN : WHITE);
+			if (part < 3) Text(".", x + 130, 307, 24, MUTED);
+		}
+		Text(address.IsValid() ? "Enter / ○ で接続する" : "各区切りに 0 ～ 255 を入力してください", LEFT, 393, 23, address.IsValid() ? CYAN : GOLD);
+		Detail("CONNECTION GUIDE", "ホストに IP を聞こう",
+			"キーボードで数字とピリオドを入力。", "パッドは左右で区切り、上下で数値変更。", "離れた相手とは Tailscale で接続します。");
+		Text("Backspace は削除 / 空欄から戻る", LEFT, 475, 19, MUTED);
+		Footer("←→  区切りを選択    ↑↓  数値変更    Enter / ○  接続    ×  戻る");
+	}
+}
