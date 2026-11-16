@@ -46,6 +46,7 @@ bool Game::Initialize(const NET_OPTIONS& options)
 		m_Huds[i].Initialize(m_Cameras[i], m_Fighters, i, m_Match, m_Scene, m_Arms);
 	}
 	ConfigurePlayers();
+	m_CodexMenu.Initialize();
 	const bool connected = m_Net.Initialize(options);
 	if (connected && m_Net.IsHost()) m_Net.SetTuning(m_Tuning);
 	m_Scene.Start(m_Net.IsOnline());
@@ -238,6 +239,16 @@ void Game::UpdateMenu()
 	}
 	input.AddressValid = m_JoinAddress.IsValid();
 	const SCENE_EVENT event = m_Scene.Step(input, false);
+	if (event == SCENE_EVENT_TUNING_RESET) SetTuning(TuningCalcDefault());
+	else if (event == SCENE_EVENT_TUNING_CHANGE) {
+		MATCH_TUNING tuning = GetTuning();
+		const auto item = static_cast<TUNING_ITEM>(m_Scene.GetCursor());
+		const int next = tuning.Levels[item] + input.CharacterDirection;
+		if (next >= 0 && next < TuningCalcLevelCount(item)) {
+			tuning.Levels[item] = static_cast<uint8_t>(next);
+			SetTuning(tuning);
+		}
+	}
 	if (oldScene != SCENE_JOIN_ADDRESS && m_Scene.GetScene() == SCENE_JOIN_ADDRESS) {
 		const std::string addresses = NetSocket::GetLocalAddresses();
 		m_JoinAddress.Initialize(addresses.substr(0, addresses.find(" / ")));
@@ -283,7 +294,7 @@ void Game::Update()
 	for (auto& arms : m_Arms) arms.SetCosts(costs);
 	const SCENE oldScene = m_Scene.GetScene();
 	if (oldScene == SCENE_GAME_START || oldScene == SCENE_CHARACTER_SELECT
-		|| oldScene == SCENE_RULE_SELECT || oldScene == SCENE_MODE_SELECT || oldScene == SCENE_JOIN_ADDRESS) {
+		|| oldScene == SCENE_RULE_SELECT || oldScene == SCENE_MODE_SELECT || oldScene == SCENE_JOIN_ADDRESS || oldScene == SCENE_OPTIONS) {
 		UpdateMenu();
 		return;
 	}
@@ -423,6 +434,18 @@ void Game::Draw() const
 	light.Ambient = { 0.3f, 0.3f, 0.3f, 1.0f };
 	light.Direction = { 0.5f, -1.0f, 0.8f, 0.0f };
 	const SCENE scene = m_Scene.GetScene();
+	if (scene != SCENE_MATCH) {
+		// メニューではゲームの背景を描かず、Codex 用の専用 UI だけを描く。
+		SetViewport(0.0f, 0.0f, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT);
+		SetDepthEnable(false);
+		light.Enable = FALSE;
+		Shader_SetLight(light);
+		m_CodexMenu.Draw(m_Scene, scene == SCENE_RESULT ? m_Fighters.GetVersus() : m_Participants,
+			m_Net, m_JoinAddress, m_LobbyCharacters, GetTuning());
+		// 接続の問題はウィンドウ表示中にも読めるよう、メニューの上へ出す。
+		m_Huds[0].DrawCornerWarning(m_Net);
+		return;
+	}
 	const bool drawCapsules = GetRule() == GAME_RULE_GAME && (scene == SCENE_MATCH || scene == SCENE_RESULT);
 
 	// 人ごとに「ビューポート → そのカメラ → 3D → その人の HUD」の順に描く。

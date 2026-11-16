@@ -4,6 +4,7 @@
 /// @brief 起動・ルールとモードの選択・IP 入力・ロビー・試合・結果の流れ（DirectX・Windows 不使用）
 
 #include <cstdint>
+#include "physics/tuningcalc.h"
 
 /// @brief キャラ選択・ロビーで使うキャラ番号
 enum CHARACTER_TYPE
@@ -35,6 +36,7 @@ enum SCENE
 	SCENE_RULE_SELECT, ///< 試合のルールの選択
 	SCENE_MODE_SELECT, ///< 対戦方法の選択
 	SCENE_JOIN_ADDRESS, ///< 参加先の IPv4 入力
+	SCENE_OPTIONS, ///< 次の試合の設定
 };
 
 /// @brief シーンの更新後にゲーム側で行う処理
@@ -47,6 +49,8 @@ enum SCENE_EVENT
 	SCENE_EVENT_BACK_MENU, ///< 通信と参加を閉じてモード選択へ戻す
 	SCENE_EVENT_HOST, ///< ホストを開く（成功したら OpenLobby を呼ぶ）
 	SCENE_EVENT_JOIN, ///< 入力したアドレスへ接続する（成功したら OpenLobby を呼ぶ）
+	SCENE_EVENT_TUNING_CHANGE, ///< 選択した設定を左右の入力方向へ変更する
+	SCENE_EVENT_TUNING_RESET, ///< 全設定をふつうの段へ戻す
 };
 
 /// @brief モード選択の項目
@@ -56,6 +60,7 @@ enum MODE_ITEM
 	MODE_ITEM_LOCAL, ///< この PC で参加を募る
 	MODE_ITEM_HOST, ///< オンラインのホストを開く
 	MODE_ITEM_JOIN, ///< 参加先の IP を入力する
+	MODE_ITEM_OPTIONS, ///< 次の試合の設定を開く
 	MODE_ITEM_BACK, ///< GAME START へ戻る
 	MODE_ITEM_COUNT, ///< 項目数
 };
@@ -110,6 +115,7 @@ private:
 	CHARACTER_TYPE m_Character = CHARACTER_DEFAULT;
 	GAME_RULE m_Rule = GAME_RULE_GAME;
 	SCENE m_Scene = SCENE_GAME_START;
+	SCENE m_OptionsReturn = SCENE_GAME_START;
 	int m_Cursor = RESULT_ITEM_RETRY;
 	bool m_MenuReady = true;
 	bool m_Online = false;

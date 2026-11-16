@@ -158,6 +158,46 @@ namespace Proto1Tests
 		EXPECT_EQ((int)SCENE_GAME_START, (int)scene.GetScene());
 	}
 
+	// オプションから元のメニューへ戻り、値変更と標準への復帰をゲーム側に伝える。
+	TEST(SceneCalcTest, Options_HomeChangesResetsAndReturnsWithoutStartingMatch)
+	{
+		SceneCalc scene;
+		scene.Start();
+		scene.Step({ false, false, -1 }, false);
+		scene.Step({ true, false, 0 }, false);
+		ASSERT_EQ(SCENE_OPTIONS, scene.GetScene());
+		EXPECT_EQ(SCENE_EVENT_TUNING_CHANGE, scene.Step({ false, false, 0, false, false, 1 }, false));
+		for (int i = 0; i < TUNING_ITEM_COUNT; ++i) {
+			scene.Step({ false, false, 0 }, false);
+			scene.Step({ false, false, -1 }, false);
+		}
+		EXPECT_EQ(SCENE_EVENT_TUNING_RESET, scene.Step({ true, false, 0 }, false));
+		scene.Step({ false, false, -1 }, false);
+		EXPECT_EQ(SCENE_EVENT_NONE, scene.Step({ true, false, 0 }, false));
+		EXPECT_EQ(SCENE_GAME_START, scene.GetScene());
+		EXPECT_EQ(1, scene.GetCursor());
+	}
+
+	// モード選択からの設定変更でも、キャラとルールと戻り先のカーソルを保つ。
+	TEST(SceneCalcTest, Options_ModesKeepRuleAndReturnToOptionsRow)
+	{
+		SceneCalc scene;
+		scene.Start();
+		scene.Step({ true, false, 0 }, false);
+		scene.Step({ true, false, 0, false, false, 1 }, false);
+		scene.Step({ false, false, -1 }, false);
+		scene.Step({ true, false, 0 }, false);
+		ASSERT_EQ(GAME_RULE_DEBUG, scene.GetRule());
+		SelectMode(scene, MODE_ITEM_OPTIONS);
+		scene.Step({ true, false, 0 }, false);
+		ASSERT_EQ(SCENE_OPTIONS, scene.GetScene());
+		scene.Step({ false, false, 0, true }, false);
+		EXPECT_EQ(SCENE_MODE_SELECT, scene.GetScene());
+		EXPECT_EQ(MODE_ITEM_OPTIONS, scene.GetCursor());
+		EXPECT_EQ(GAME_RULE_DEBUG, scene.GetRule());
+		EXPECT_EQ(CHARACTER_MEKA, scene.GetCharacter());
+	}
+
 	TEST(SceneCalcTest, Modes_HostAndValidatedJoinOpenLobby)
 	{
 		SceneCalc scene;

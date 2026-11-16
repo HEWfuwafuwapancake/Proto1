@@ -7,6 +7,7 @@
 #include "game/armcapsule.h"
 #include "game/match.h"
 #include "game/hud.h"
+#include "game/codex_menu.h"
 #include "physics/scenecalc.h"
 #include "input/action.h"
 #include "game/netsession.h"
@@ -80,6 +81,7 @@ private:
 	PLAYER_INPUT m_DeviceInputs[ACTION_DEVICE_COUNT]; // 参加前の決定にも使う
 	Match m_Match;
 	SceneCalc m_Scene;
+	CodexMenu m_CodexMenu;
 	NetSession m_Net;
 	SessionAddressCalc m_JoinAddress;
 	uint32_t m_OfflineSeed = 0;

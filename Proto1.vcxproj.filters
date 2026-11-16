@@ -60,6 +60,9 @@
     <ClCompile Include="src\core\timer.cpp">
       <Filter>src\core</Filter>
     </ClCompile>
+    <ClCompile Include="src\game\codex_menu.cpp">
+      <Filter>src\game</Filter>
+    </ClCompile>
     <ClCompile Include="src\game\game.cpp">
       <Filter>src\game</Filter>
     </ClCompile>
@@ -190,6 +193,9 @@
     </ClInclude>
     <ClInclude Include="src\core\timer.h">
       <Filter>src\core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\game\codex_menu.h">
+      <Filter>src\game</Filter>
     </ClInclude>
     <ClInclude Include="src\game\game.h">
       <Filter>src\game</Filter>

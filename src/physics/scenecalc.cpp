@@ -15,6 +15,7 @@ void SceneCalc::Start(bool online)
 	m_Cursor = RESULT_ITEM_RETRY;
 	m_MenuReady = true;
 	m_Online = online;
+	m_OptionsReturn = SCENE_GAME_START;
 }
 
 void SceneCalc::OpenLobby()
@@ -49,11 +50,28 @@ CHARACTER_TYPE SceneCalc::CycleCharacter(CHARACTER_TYPE character, int direction
 SCENE_EVENT SceneCalc::Step(const SCENE_INPUT& input, bool matchFinished)
 {
 	if (m_Scene == SCENE_GAME_START) {
-		if (input.Decide) m_Scene = SCENE_CHARACTER_SELECT;
+		MoveCursor(input.MoveY, 2);
+		if (input.Decide) {
+			m_OptionsReturn = SCENE_GAME_START;
+			m_Scene = m_Cursor == 0 ? SCENE_CHARACTER_SELECT : SCENE_OPTIONS;
+			m_Cursor = 0;
+			m_MenuReady = false;
+		}
+		return SCENE_EVENT_NONE;
+	}
+	if (m_Scene == SCENE_OPTIONS) {
+		MoveCursor(input.MoveY, TUNING_ITEM_COUNT + 2);
+		if (input.Back || (input.Decide && m_Cursor == TUNING_ITEM_COUNT + 1)) {
+			m_Scene = m_OptionsReturn;
+			m_Cursor = m_Scene == SCENE_GAME_START ? 1 : MODE_ITEM_OPTIONS;
+			m_MenuReady = false;
+		}
+		else if (input.Decide && m_Cursor == TUNING_ITEM_COUNT) return SCENE_EVENT_TUNING_RESET;
+		else if (m_Cursor < TUNING_ITEM_COUNT && input.CharacterDirection != 0) return SCENE_EVENT_TUNING_CHANGE;
 		return SCENE_EVENT_NONE;
 	}
 	if (m_Scene == SCENE_CHARACTER_SELECT) {
-		if (input.Back) m_Scene = SCENE_GAME_START;
+		if (input.Back) { m_Scene = SCENE_GAME_START; m_Cursor = 0; m_MenuReady = false; }
 		else {
 			m_Character = CycleCharacter(m_Character, input.CharacterDirection);
 			if (input.Decide) {
@@ -77,6 +95,8 @@ SCENE_EVENT SceneCalc::Step(const SCENE_INPUT& input, bool matchFinished)
 		MoveCursor(input.MoveY, MODE_ITEM_COUNT);
 		if (input.Back || (input.Decide && m_Cursor == MODE_ITEM_BACK)) {
 			m_Scene = SCENE_GAME_START;
+			m_Cursor = 0;
+			m_MenuReady = false;
 			return SCENE_EVENT_NONE;
 		}
 		if (!input.Decide) return SCENE_EVENT_NONE;
@@ -87,6 +107,12 @@ SCENE_EVENT SceneCalc::Step(const SCENE_INPUT& input, bool matchFinished)
 		case MODE_ITEM_LOCAL: m_Scene = SCENE_TITLE; break;
 		case MODE_ITEM_HOST: return SCENE_EVENT_HOST;
 		case MODE_ITEM_JOIN: m_Scene = SCENE_JOIN_ADDRESS; break;
+		case MODE_ITEM_OPTIONS:
+			m_OptionsReturn = SCENE_MODE_SELECT;
+			m_Scene = SCENE_OPTIONS;
+			m_Cursor = 0;
+			m_MenuReady = false;
+			break;
 		default: break;
 		}
 		return SCENE_EVENT_NONE;
@@ -118,7 +144,7 @@ SCENE_EVENT SceneCalc::Step(const SCENE_INPUT& input, bool matchFinished)
 	}
 	if (input.Decide) {
 		if (m_Online) m_Scene = SCENE_TITLE;
-		else m_Scene = SCENE_GAME_START;
+		else { m_Scene = SCENE_GAME_START; m_Cursor = 0; m_MenuReady = false; }
 		return SCENE_EVENT_BACK_TITLE;
 	}
 	return SCENE_EVENT_NONE;
