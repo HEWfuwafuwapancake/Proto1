@@ -86,6 +86,7 @@ private:
 	VEC3 LockFocusPoint(const VEC3& player, const CAMERA_FOCUS_TARGET* targets) const;
 	void UpdateLockTarget(const CAMERA_FOCUS_TARGET* targets);
 	void PlaceCamera(float dt);
+	void UpdateWaiting(float dt); // 復活待ちの間、浮島の高さへ戻して場外にした相手を映す
 	void SnapToPlayer(void);
 	void MakeMatrices(XMMATRIX* view, XMMATRIX* projection) const;
 	XMFLOAT3 m_Position = {};		// カメラの位置

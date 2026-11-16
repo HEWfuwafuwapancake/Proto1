@@ -318,6 +318,8 @@ void ArmManager::Draw(void) const
 		for (int type = 0; type < ARM_TYPE_COUNT; ++type) m_Arms[hand][type]->DrawLeftover();
 	}
 	if (!m_Links.Fighters->IsActive(m_Links.Slot)) return;
+	// 復活後の無敵中は、体と同じく点滅させる。
+	if (m_Links.Fighters->GetFighter(m_Links.Slot).IsBlinkHidden()) return;
 	for (int hand = 0; hand < 2; ++hand) m_Arms[hand][m_Types[hand]]->Draw();
 	const Fighter& player = m_Links.Fighters->GetFighter(m_Links.Slot);
 	const GUARD_FEEDBACK feedback = GetGuardFeedback();

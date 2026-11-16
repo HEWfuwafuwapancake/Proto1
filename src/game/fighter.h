@@ -80,6 +80,15 @@ public:
 	float GetYaw() const { return m_Yaw; }
 	/// @brief このフレームで復活したか取得する
 	bool DidRespawn() const { return m_Respawned; }
+	/// @brief 復活したあとの無敵時間中なら true を返す（攻撃を受けない）
+	bool IsInvincible() const { return IsActive() && m_InvincibleTime > 0.0f; }
+	/// @brief 無敵中の点滅で、今のフレームは体と腕を描かないなら true を返す（描画だけ）
+	bool IsBlinkHidden() const;
+	/// @brief 場外にした相手を設定する（復活待ちのカメラが映す）
+	/// @param slot 相手のスロット番号（いなければ -1）
+	void SetKoBy(int slot) { m_KoBy = slot; }
+	/// @brief 場外にした相手のスロット番号を取得する（いない・復活したら -1）
+	int GetKoBy() const { return m_KoBy; }
 	/// @brief 復活待ち以外ならtrueを返す
 	bool IsActive() const { return m_Life.GetState() == DUMMY_STATE_ACTIVE; }
 	/// @brief 保持されているか取得する
@@ -158,6 +167,8 @@ private:
 	StatusCalc m_Status;
 	DummyLifeCalc m_Life;
 	VEC3 m_Spawn = {};
+	float m_InvincibleTime = 0.0f; // 復活後の無敵の残り秒数
+	int m_KoBy = -1; // 場外にした相手のスロット番号（復活待ちのカメラが映す。いなければ -1）
 	float m_Percent = 0.0f;
 	float m_DamageScale = 1.0f;
 	float m_KnockbackScale = 1.0f;

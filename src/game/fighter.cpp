@@ -23,7 +23,9 @@ static constexpr float THORN_DASH_SCALE = 0.5f; // 茨の中のダッシュで�
 static constexpr int FLINCH_FRAMES = 2; // 吹っ飛ばされた直後に腕を使えないフレーム数（出していた腕を中断させるため。次のフレームから動ける）
 static constexpr float BODY_RADIUS = 0.5f;
 static constexpr float BODY_HEIGHT = 1.8f;
-static constexpr float RESPAWN_SECONDS = 2.0f;
+static constexpr float RESPAWN_SECONDS = 1.5f; // 場外に落ちてから復活するまでの秒数
+static constexpr float INVINCIBLE_SECONDS = 2.0f; // 復活してから攻撃を受けない秒数（その間は体が点滅する）
+static constexpr float INVINCIBLE_BLINK_SECONDS = 0.08f; // 無敵中に見える・消えるを切り替える秒数
 static constexpr float RUN_SPEED_THRESHOLD = 0.25f;
 static constexpr float RUN_CLIP_SPEED = 6.0f; // 走りのクリップが再生速度 1 で足をすべらせずに進む速さ（速く走ると、そのぶん速く再生する）
 static constexpr float ANIMATION_BLEND_SECONDS = 0.15f;
@@ -125,6 +127,7 @@ void Fighter::PlaceAtSpawn()
 	m_Models[m_Character].Reset(m_Pose);
 	m_Motion.Reset(m_Yaw);
 	m_LaunchAnimElapsed = (std::numeric_limits<float>::max)(); // 復活時はのけぞらせない。
+	m_InvincibleTime = 0.0f;
 	m_DashAnimElapsed = -1.0f;
 }
 
@@ -133,6 +136,7 @@ void Fighter::Reset()
 	m_Life.Reset();
 	m_Respawned = false;
 	PlaceAtSpawn();
+	m_KoBy = -1;
 }
 
 ACTION_AXIS Fighter::GetMoveInput() const
@@ -171,6 +175,7 @@ DUMMY_EVENT Fighter::Update(const Camera* camera, const ArmManager* arms)
 {
 	m_Respawned = false;
 	const float dt = GameTimeGetDeltaTime();
+	if (m_InvincibleTime > 0.0f) m_InvincibleTime = fmaxf(0.0f, m_InvincibleTime - dt);
 	const STAGE& stage = m_Stage->GetStage();
 	if (m_FlinchFrames > 0) --m_FlinchFrames;
 	// 茨の中はダッシュの距離が短い。
@@ -245,6 +250,8 @@ DUMMY_EVENT Fighter::Update(const Camera* camera, const ArmManager* arms)
 	else if (event == DUMMY_EVENT_RESPAWN) {
 		PlaceAtSpawn();
 		m_Respawned = true;
+		m_InvincibleTime = INVINCIBLE_SECONDS;
+		m_KoBy = -1;
 	}
 	return event;
 }
@@ -377,7 +384,7 @@ void Fighter::StartDashAnimation(bool onGround)
 
 void Fighter::Draw(bool highlighted) const
 {
-	if (!IsActive()) return;
+	if (!IsActive() || IsBlinkHidden()) return;
 	// 人の体は吹っ飛び中・ターゲット中も本人の色を保つ。
 	const XMFLOAT4 color = IsHuman() ? GetPlayerColor(m_Slot)
 		: (m_Launched ? LAUNCHED_COLOR : (highlighted ? TARGET_COLOR : DUMMY_COLOR));
@@ -425,6 +432,11 @@ XMFLOAT3 Fighter::GetStunShake() const
 }
 
 // しびれ中だけ、頭の上に黄色い星を回す。
+bool Fighter::IsBlinkHidden() const
+{
+	return m_InvincibleTime > 0.0f && fmodf(m_InvincibleTime, INVINCIBLE_BLINK_SECONDS * 2.0f) < INVINCIBLE_BLINK_SECONDS;
+}
+
 void Fighter::DrawStunStars() const
 {
 	if (!m_Status.IsActive(STATUS_STUN)) return;
