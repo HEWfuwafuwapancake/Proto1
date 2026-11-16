@@ -17,7 +17,7 @@
 // 耐久の減る量は physics/armcostcalc の表の刀の行（弱：居合、強：飛んだ瞬間に「強・外れ」、当たったら差の分を足す）。
 static constexpr ARM_COST_ROW COST_ROW = ARM_COST_ROW_KATANA;
 // 単押し：ただの斬撃（押したらすぐ振る。当たった瞬間にダメージ）
-static constexpr float IAI_SECONDS[] = { 0.1f, 0.1f, 0.25f }; // 振りかぶり・斬る・休み
+static constexpr float IAI_SECONDS[] = { 0.1f, 0.1f, 0.19f }; // 振りかぶり・斬る・休み
 static constexpr float IAI_CLIP_SECONDS[] = { 8.0f / 24.0f, 6.0f / 24.0f, 12.0f / 24.0f }; // クリップの区切り（katana_iai の抜いて斬る動きを使う）
 static constexpr float TAP_MOVE_SCALE = 0.6f; // 斬撃の間の歩く速さの倍率。
 static constexpr float TAP_RADIUS = 2.2f;
@@ -53,10 +53,10 @@ static constexpr float DASH_POWER = 1.4f;
 static constexpr float DASH_UP = 0.6f;
 static constexpr float BREACH_SPEED = 60.0f; // 飛ぶ速さ。
 static constexpr float BREACH_ARRIVE_DISTANCE = 0.5f; // これより近づいたら着いたことにする。
-static constexpr float BREACH_RAISE_SECONDS = 0.25f; // 刀を構えるまでの秒数。
-static constexpr float BREACH_CUT_SECONDS = 0.38f; // 飛ぶ前に空間を斬る秒数。
+static constexpr float BREACH_RAISE_SECONDS = 0.19f; // 刀を構えるまでの秒数。
+static constexpr float BREACH_CUT_SECONDS = 0.28f; // 飛ぶ前に空間を斬る秒数。
 static constexpr float BREACH_DASH_POSE_SECONDS = 0.08f; // 飛ぶ形になるまでの秒数。
-static constexpr float BREACH_RECOVER_SECONDS = 0.2f; // 着いたあとの休み。
+static constexpr float BREACH_RECOVER_SECONDS = 0.15f; // 着いたあとの休み。
 static constexpr float BREACH_EYE_RATE = 0.8f; // 狙いの線の始まりの高さ（体の高さに対する割合）。
 static constexpr float BREACH_RING_RADIUS = 1.0f; // 着地点に出す輪の半径。
 static constexpr float BREACH_CLIP_SECONDS[] = { 8.0f / 24.0f, 12.0f / 24.0f, 4.0f / 24.0f, 10.0f / 24.0f }; // クリップの区切り（katana_assault。構え・斬る・飛ぶ・着地）

@@ -11,8 +11,8 @@
 // 調整用の値
 // 耐久の減る量は physics/armcostcalc の表のナックルの行（弱：単押し、強：突進。空中の突進も地上と同じく、当たりか外れで1回だけ減らす）。
 static constexpr ARM_COST_ROW COST_ROW = ARM_COST_ROW_KNUCKLE;
-static constexpr float PUNCH_SECONDS[] = { 0.15f, 0.1f, 0.2f }; // 単押し：ため・殴り・休み
-static constexpr float RUSH_SECONDS[] = { 0.4f, 0.35f, 0.3f }; // 長押し：ため・突進・休み
+static constexpr float PUNCH_SECONDS[] = { 0.12f, 0.1f, 0.15f }; // 単押し：ため・殴り・休み
+static constexpr float RUSH_SECONDS[] = { 0.3f, 0.35f, 0.22f }; // 長押し：ため・突進・休み
 static constexpr float PUNCH_CLIP_SECONDS[] = { 4.0f / 24.0f, 3.0f / 24.0f, 5.0f / 24.0f }; // 単押しのクリップの区切り（knuckle_punch）
 static constexpr float RUSH_CLIP_SECONDS[] = { 10.0f / 24.0f, 8.0f / 24.0f, 8.0f / 24.0f }; // 長押しのクリップの区切り（knuckle_rush）
 static constexpr float PUNCH_REACH = 1.6f; // 肩から殴りの届く距離。
