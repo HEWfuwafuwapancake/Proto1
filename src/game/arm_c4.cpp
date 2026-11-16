@@ -7,7 +7,7 @@
 #include "render/shape.h"
 
 // 調整用の値
-// 耐久の減る量は physics/armcostcalc の表のC4の行（弱：通常の爆弾、強：大きい爆弾、そのほか：場外で消えた爆弾1つ）。
+// 耐久の減る量は physics/armcostcalc の表のC4の行（投げた瞬間に、弱外れ：通常の爆弾、強外れ：大きい爆弾。爆発では減らない）。
 static constexpr ARM_COST_ROW COST_ROW = ARM_COST_ROW_C4;
 static constexpr float C4_SECONDS[] = { 1.0f, 0.3f }; // 大型のため・投げたあとの構え（ハンマーの強攻撃より速く強くならないようにする）
 static constexpr float THROW_CLIP_SECONDS[] = { 0.0f, 8.0f / 24.0f }; // 単押しの投げ
@@ -85,6 +85,7 @@ void C4Arm::ThrowBomb(bool large)
 		goal = { body.Start.X, body.Start.Y - body.Radius, body.Start.Z };
 	}
 	m_Bombs.Throw(origin, ProjectileCalcLobVelocity(origin, goal, speed, BOMB_PARAMS.Gravity, range), BOMB_PARAMS, large);
+	ConsumeDurability(GetCost(COST_ROW, large ? ARM_COST_HOLD_MISS : ARM_COST_TAP_MISS));
 	m_Phase.Start(C4_THROW);
 	m_ChargedClip = large;
 }
@@ -94,9 +95,7 @@ void C4Arm::StepBombs(float dt)
 	TENTACLE_TARGET targets[FIGHTER_COUNT];
 	for (int i = 0; i < FIGHTER_COUNT; ++i) targets[i] = GetFighters().GetTarget(i, GetSlot());
 	C4_IMPACT impacts[PROJECTILE_MAX];
-	int expired = 0;
-	const int count = m_Bombs.Step(dt, targets, FIGHTER_COUNT, GetStage().GetStage(), BOMB_PARAMS, impacts, PROJECTILE_MAX, &expired);
-	for (int i = 0; i < expired; ++i) ConsumeDurability(GetCost(COST_ROW, ARM_COST_EXTRA));
+	const int count = m_Bombs.Step(dt, targets, FIGHTER_COUNT, GetStage().GetStage(), BOMB_PARAMS, impacts, PROJECTILE_MAX, nullptr);
 	m_RangeSeconds = fmaxf(0.0f, m_RangeSeconds - dt);
 	if (count == 0) return;
 	m_RangeCount = count;
@@ -104,11 +103,8 @@ void C4Arm::StepBombs(float dt)
 		const bool large = impacts[i].Large;
 		m_RangeCenters[i] = Vec3Add(impacts[i].Position, { 0.0f, BLAST_HEIGHT, 0.0f });
 		m_RangeRadii[i] = large ? LARGE_BLAST_RADIUS : BLAST_RADIUS;
-		int affected = 0;
 		Explode(m_RangeCenters[i], m_RangeRadii[i], large ? LARGE_BLAST_DAMAGE : BLAST_DAMAGE,
-			large ? LARGE_BLAST_POWER : BLAST_POWER, large ? LARGE_BLAST_UP : BLAST_UP, &affected);
-		ConsumeDurability(GetCost(COST_ROW, large ? (affected > 0 ? ARM_COST_HOLD_HIT : ARM_COST_HOLD_MISS)
-			: (affected > 0 ? ARM_COST_TAP_HIT : ARM_COST_TAP_MISS)));
+			large ? LARGE_BLAST_POWER : BLAST_POWER, large ? LARGE_BLAST_UP : BLAST_UP, nullptr);
 	}
 	m_RangeSeconds = RANGE_SHOW_SECONDS;
 	Rumble(BLAST_RUMBLE_SMALL, BLAST_RUMBLE_LARGE, BLAST_RUMBLE_SECONDS);
