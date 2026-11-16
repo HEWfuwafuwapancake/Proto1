@@ -12,6 +12,7 @@
 #include "render/number2d.h"
 #include "render/text2d.h"
 #include <cmath>
+#include <cstdio>
 
 
 //------------------------------------------------------------------------------
@@ -53,6 +54,23 @@ static constexpr float GUARD_TEXT_HEAD_OFFSET = 0.4f;
 static constexpr float GUARD_TEXT_RISE = 0.8f;
 static constexpr XMFLOAT4 PARRY_TEXT_COLOR{ 1.0f, 0.9f, 0.2f, 1.0f };
 static constexpr XMFLOAT4 GUARD_TEXT_COLOR{ 0.6f, 0.6f, 0.6f, 1.0f };
+
+// レティクル（ロックオン中は相手を囲むかぎ括弧、フリーカメラでは画面の真ん中の十字）
+static constexpr XMFLOAT4 LOCK_RETICLE_COLOR{ 1.0f, 0.78f, 0.2f, 1.0f };	// ロックオンのかぎ括弧・文字の色（黄色）
+static constexpr float LOCK_RETICLE_PADDING = 1.15f;	// 体の上下の幅に対する、かぎ括弧の高さの倍率
+static constexpr float LOCK_RETICLE_ASPECT = 0.8f;		// かぎ括弧の幅 ÷ 高さ
+static constexpr float LOCK_RETICLE_MIN_HALF = 16.0f;	// かぎ括弧の高さの半分の最小（遠い相手）
+static constexpr float LOCK_RETICLE_MAX_HALF = 220.0f;	// かぎ括弧の高さの半分の最大（近い相手）
+static constexpr float LOCK_RETICLE_CORNER = 0.35f;		// 角の線の長さ（幅・高さの半分のうち短い方に対する割合）
+static constexpr float LOCK_RETICLE_THICKNESS = 3.0f;	// 角の線の太さ
+static constexpr float LOCK_TEXT_DOT = 2.5f;			// 「LOCK / 11M」のドットの大きさ
+static constexpr float LOCK_TEXT_GAP = 6.0f;			// かぎ括弧の下端から文字までのすき間
+static constexpr XMFLOAT4 FREE_RETICLE_COLOR{ 0.2f, 0.9f, 1.0f, 1.0f };	// フリーカメラの十字の色（水色）
+static constexpr XMFLOAT4 FREE_RETICLE_DOT_COLOR{ 1.0f, 1.0f, 1.0f, 1.0f };	// 十字の真ん中の点の色（白）
+static constexpr float FREE_RETICLE_LENGTH = 14.0f;		// 十字の線1本の長さ
+static constexpr float FREE_RETICLE_GAP = 6.0f;			// 真ん中から線までのすき間
+static constexpr float FREE_RETICLE_THICKNESS = 2.0f;	// 十字の線の太さ
+static constexpr float FREE_RETICLE_DOT = 4.0f;			// 真ん中の点の大きさ
 
 static constexpr float PERCENT_DIGIT_WIDTH = 14.0f;	// 頭の上の % の桁の幅
 static constexpr float PERCENT_HEAD_OFFSET = 0.4f;	// 頭のてっぺんから、% を出す点までの高さ（ワールド）
@@ -267,6 +285,53 @@ void Hud::DrawGuardFeedback(int slot) const
 		screen.y / m_Scale - GUARD_TEXT_DOT * 7.0f, GUARD_TEXT_DOT, GLYPH_ALIGN_CENTER, color);
 }
 
+// ロックオン中は相手の体をかぎ括弧で囲み、下に距離を出す。フリーカメラ（と狙う相手がいないとき）は画面の真ん中に十字を出す。
+void Hud::DrawReticle(void) const
+{
+	const int target = m_Camera->GetTarget();
+	if (!m_Camera->IsFreeLook() && target >= 0 && m_Fighters->IsActive(target) && !m_Fighters->IsHidden(target)) {
+		const CAPSULE body = m_Fighters->GetTarget(target, m_Slot).Body;
+		const float top = (body.Start.Y > body.End.Y ? body.Start.Y : body.End.Y) + body.Radius;
+		const float bottom = (body.Start.Y < body.End.Y ? body.Start.Y : body.End.Y) - body.Radius;
+		XMFLOAT2 topScreen, bottomScreen;
+		if (!m_Camera->WorldToScreen({ body.Start.X, top, body.Start.Z }, &topScreen)) return;
+		if (!m_Camera->WorldToScreen({ body.Start.X, bottom, body.Start.Z }, &bottomScreen)) return;
+		const float centerX = (topScreen.x + bottomScreen.x) * 0.5f / m_Scale;
+		const float centerY = (topScreen.y + bottomScreen.y) * 0.5f / m_Scale;
+		float halfH = fabsf(bottomScreen.y - topScreen.y) * 0.5f / m_Scale * LOCK_RETICLE_PADDING;
+		halfH = halfH < LOCK_RETICLE_MIN_HALF ? LOCK_RETICLE_MIN_HALF : (halfH > LOCK_RETICLE_MAX_HALF ? LOCK_RETICLE_MAX_HALF : halfH);
+		const float halfW = halfH * LOCK_RETICLE_ASPECT;
+		const float corner = (halfW < halfH ? halfW : halfH) * LOCK_RETICLE_CORNER;
+		const float t = LOCK_RETICLE_THICKNESS;
+		const float left = centerX - halfW, right = centerX + halfW;
+		const float upper = centerY - halfH, lower = centerY + halfH;
+		const RECT2D corners[] = {
+			{ left, upper, corner, t }, { left, upper, t, corner },						// 左上
+			{ right - corner, upper, corner, t }, { right - t, upper, t, corner },		// 右上
+			{ left, lower - t, corner, t }, { left, lower - corner, t, corner },		// 左下
+			{ right - corner, lower - t, corner, t }, { right - t, lower - corner, t, corner },	// 右下
+		};
+		Number2DDrawRects(corners, (int)(sizeof(corners) / sizeof(corners[0])), LOCK_RETICLE_COLOR);
+
+		// 自分の足元から相手の足元までの距離（メートル）
+		const XMFLOAT3 self = m_Fighters->GetFighter(m_Slot).GetPosition();
+		const float dx = body.Start.X - self.x, dy = bottom - self.y, dz = body.Start.Z - self.z;
+		char text[32];
+		snprintf(text, sizeof(text), "LOCK / %dM", (int)(sqrtf(dx * dx + dy * dy + dz * dz) + 0.5f));
+		Number2DDrawText(text, left, lower + LOCK_TEXT_GAP, LOCK_TEXT_DOT, GLYPH_ALIGN_LEFT, LOCK_RETICLE_COLOR);
+		return;
+	}
+
+	const float cx = m_Width * 0.5f, cy = m_Height * 0.5f;
+	const float g = FREE_RETICLE_GAP, l = FREE_RETICLE_LENGTH, t = FREE_RETICLE_THICKNESS;
+	const RECT2D cross[] = {
+		{ cx - g - l, cy - t * 0.5f, l, t }, { cx + g, cy - t * 0.5f, l, t },	// 左・右
+		{ cx - t * 0.5f, cy - g - l, t, l }, { cx - t * 0.5f, cy + g, t, l },	// 上・下
+	};
+	Number2DDrawRects(cross, (int)(sizeof(cross) / sizeof(cross[0])), FREE_RETICLE_COLOR);
+	Number2DDrawBox({ cx - FREE_RETICLE_DOT * 0.5f, cy - FREE_RETICLE_DOT * 0.5f, FREE_RETICLE_DOT, FREE_RETICLE_DOT }, FREE_RETICLE_DOT_COLOR);
+}
+
 void Hud::DrawMenuItem(const char* text, float y, bool selected) const
 {
 	const float centerX = (float)SCREEN_WIDTH * 0.5f;
@@ -441,6 +506,8 @@ void Hud::Draw(void) const
 		DrawFighterPercent(i);
 		DrawGuardFeedback(i);
 	}
+
+	if (m_Match->GetState() != MATCH_STATE_FINISHED) DrawReticle();
 
 	if (m_Match->GetState() == MATCH_STATE_FINISHED) {
 		// 時間切れ：おおいの上に TIME UP・自分の KO 数・結果への案内（左上の KO 数は出さない）
