@@ -18,7 +18,7 @@ class ArmManager;
 class Camera;
 class Stage;
 
-/// @brief 腕の種類（1段目の数字キー 1〜6 の順）
+/// @brief 腕の種類（1段目の数字キー 1〜7 の順）
 enum ARM_TYPE
 {
 	ARM_TYPE_TENTACLE, ///< 触手（1段目 1）
@@ -27,6 +27,7 @@ enum ARM_TYPE
 	ARM_TYPE_SPIKE, ///< トゲ（1段目 4）
 	ARM_TYPE_GUNLANCE, ///< ガンランス（1段目 5）
 	ARM_TYPE_KATANA, ///< 刀（1段目 6）
+	ARM_TYPE_FLAIL, ///< モーニングスター（1段目 7）
 	ARM_TYPE_NONE, ///< 素手（装備なし）
 	ARM_TYPE_COUNT ///< 腕の種類の数（装備ではない）
 };
@@ -98,6 +99,8 @@ public:
 	virtual bool CanTakeHold() const { return !IsActive(); }
 	/// @brief 歩く速さの倍率を取得する（基本は 1.0、派生クラスで変更できる）
 	virtual float GetMoveScale() const { return 1.0f; }
+	/// @brief この腕の動作中、ジャンプとダッシュをできなくするなら true を返す（基本は false）
+	virtual bool BlocksJumpAndDash() const { return false; }
 	/// @brief 突進のワールド速度を取得する（水平のみ。突進していなければゼロ）
 	virtual VEC3 GetRushVelocity() const { return {}; }
 	/// @brief 今のガードを取得する（基本はガードなし）
@@ -250,6 +253,8 @@ public:
 	GUARD GetGuard() const;
 	/// @brief 左右の装備している腕の、歩く速さの倍率の小さいほうを取得する
 	float GetMoveScale() const;
+	/// @brief 左右どちらかの装備が、ジャンプとダッシュをできなくしているなら true を返す
+	bool BlocksJumpAndDash() const;
 	/// @brief 左右の装備の突進速度を取得する（両手なら後から使った手を優先）
 	VEC3 GetRushVelocity() const;
 	/// @brief 片手の装備を取得する

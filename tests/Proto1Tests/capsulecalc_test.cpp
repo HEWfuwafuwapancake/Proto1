@@ -17,18 +17,18 @@ static int CountActive(const ArmCapsuleCalc& calc)
 	return count;
 }
 
-// 最初に8個置き、最初の6個だけで全種類がそろう。
+// 最初に8個置き、最初の7個だけで全種類がそろう。
 TEST(ArmCapsuleCalcTest, StartsWithEightAndDrawsEveryTypeInFirstBag)
 {
 	ArmCapsuleCalc calc;
 	calc.Start(MakeCapsuleStage(), 42u);
 	EXPECT_EQ(CountActive(calc), 8);
-	bool seen[6]{};
-	for (int i = 0; i < 6; ++i) {
+	bool seen[ArmCapsuleCalc::TYPE_COUNT]{};
+	for (int i = 0; i < ArmCapsuleCalc::TYPE_COUNT; ++i) {
 		const auto& item = calc.GetItems()[i];
 		ASSERT_TRUE(item.Active);
 		ASSERT_GE(item.Type, 0);
-		ASSERT_LT(item.Type, 6);
+		ASSERT_LT(item.Type, ArmCapsuleCalc::TYPE_COUNT);
 		EXPECT_FALSE(seen[item.Type]);
 		seen[item.Type] = true;
 	}

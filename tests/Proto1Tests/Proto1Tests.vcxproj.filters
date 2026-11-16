@@ -62,6 +62,7 @@
     <ClCompile Include="delayedhitcalc_test.cpp" />
     <ClCompile Include="gunlancecalc_test.cpp" />
     <ClCompile Include="spikecalc_test.cpp" />
+    <ClCompile Include="flailcalc_test.cpp" />
     <ClCompile Include="armpresscalc_test.cpp" />
     <ClCompile Include="armcostcalc_test.cpp" />
     <ClCompile Include="armusecalc_test.cpp" />
@@ -157,6 +158,9 @@
       <Filter>src\physics</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\physics\spikecalc.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\physics\flailcalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
   </ItemGroup>
