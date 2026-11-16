@@ -85,7 +85,11 @@ void FighterManager::Update()
 {
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		const DUMMY_EVENT event = m_Fighters[i].Update(m_Cameras[i], m_Arms[i]);
-		if (event == DUMMY_EVENT_OUT) m_Versus.RecordOut(i);
+		if (event == DUMMY_EVENT_OUT) {
+			// 得点を数えると最後の攻撃者が消えるので、その前に場外にした相手を覚える（復活待ちのカメラが映す）。
+			m_Fighters[i].SetKoBy(m_Versus.GetLastAttacker(i));
+			m_Versus.RecordOut(i);
+		}
 		else if (event == DUMMY_EVENT_RESPAWN && m_Rule == GAME_RULE_GAME) RespawnAtSafePoint(i);
 #ifdef _DEBUG
 		if (event == DUMMY_EVENT_OUT || event == DUMMY_EVENT_RESPAWN) {
@@ -208,6 +212,8 @@ TENTACLE_TARGET FighterManager::GetTarget(int index, int self) const
 bool FighterManager::CanAttack(int index, int attacker)
 {
 	if (!m_Versus.IsOpponent(attacker, index) || !IsActive(attacker) || !IsActive(index)) return false;
+	// 復活したあとの無敵時間中は攻撃を受けない。
+	if (m_Fighters[index].IsInvincible()) return false;
 	// ガードされた攻撃は効かない（No.80）。燃える % と投げ（Release）はここを通らない。
 	if (IsGuarded(index, attacker)) {
 		m_GuardedHit[index] = true;

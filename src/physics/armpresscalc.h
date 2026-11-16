@@ -5,6 +5,7 @@ struct ARM_INPUT
 {
 	bool Tap = false; ///< 長押しになる前に離したフレーム（腕が動作中なら、受け付けられるようになったフレーム）だけ true
 	bool HoldStarted = false; ///< 長押しに達したフレーム（腕が動作中なら、受け付けられるようになったフレーム）だけ true
+	bool HoldReleased = false; ///< 長押しを渡したあと、ボタンを離したフレームだけ true（離して発動する長押しに使う。中断した押下では true にならない）
 	bool Pressed = false; ///< ボタンを押している間は true
 };
 
@@ -27,4 +28,5 @@ private:
 	State m_State = State::Idle;
 	double m_Seconds = 0.0;
 	double m_TapBuffer = 0.0; // 渡せなかった単押しを覚えている残りの秒数。
+	bool m_HoldGiven = false; // 長押しを渡し、まだ離していない（離したら HoldReleased を渡す）。
 };

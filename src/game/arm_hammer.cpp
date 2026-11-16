@@ -123,8 +123,9 @@ void HammerArm::Update(const ARM_INPUT& input)
 {
 	const float dt = fmaxf(0.0f, GameTimeGetDeltaTime());
 	if (GetPlayer().DidRespawn()) Reset();
-	if (m_Phase.IsIdle() && (input.Tap || input.HoldStarted)) {
-		m_Wave = input.HoldStarted;
+	// 長押しは離したときに出す。
+	if (m_Phase.IsIdle() && (input.Tap || input.HoldReleased)) {
+		m_Wave = input.HoldReleased;
 		// 空中の単押しは、ためを短くして、振った瞬間に上へ跳ねる。
 		m_AirTap = !m_Wave && !GetPlayer().IsOnGround();
 		m_UseConsumed = false;

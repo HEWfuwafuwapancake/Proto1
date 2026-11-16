@@ -35,6 +35,8 @@ static constexpr float SWITCH_SMOOTH_TIME = 0.06f;					// 切り替え直後の�
 static constexpr float SWITCH_TIME = 0.3f;							// 角度のバネを速める秒数
 static constexpr float TARGET_POINT_RATE = 0.25f;					// 見ている点を敵へずらす割合
 static constexpr float TARGET_SCREEN_MARGIN = 0.15f;				// 画面の端に残す余白
+static constexpr float RESPAWN_LOOK_SMOOTH_TIME = 0.35f;				// 復活を待つ間、見ている点が浮島の高さ（場外にした相手）へ戻るまでのおよその秒数
+static constexpr float RESPAWN_DISTANCE = 7.0f;						// 復活を待つ間、見ている点からカメラまでの距離（少し引いて見渡す）
 static constexpr float TARGET_FALL_MARGIN = 0.1f;					// 敵の足元が浮島の上面からこれだけ下へ落ちたら、ターゲットから外す（追いかけない）
 
 static constexpr float FOV = XMConvertToRadians(60.0f);				// 視野角（縦）
@@ -131,6 +133,27 @@ void Camera::UpdateLockTarget(const CAMERA_FOCUS_TARGET* targets)
 	m_WasHolding = holding;
 }
 
+// 復活を待つ間は、落ちた下から浮島の高さへ戻し、場外にした相手（いなければ浮島の中心）を映す。
+void Camera::UpdateWaiting(float dt)
+{
+	const STAGE& stage = m_Stage->GetStage();
+	VEC3 focus{ stage.CenterX, stage.TopY + m_Player->GetHeight() * TARGET_HEIGHT_RATE, stage.CenterZ };
+	const int killer = m_Player->GetKoBy();
+	if (killer >= 0 && m_Fighters->IsActive(killer)) {
+		const XMFLOAT3 feet = m_Fighters->GetFighter(killer).GetPosition();
+		focus = { feet.x, feet.y + m_Fighters->GetFighter(killer).GetHeight() * TARGET_HEIGHT_RATE, feet.z };
+	}
+	m_PitchGoal = START_PITCH;
+	m_Pitch = CameraCalcSmoothDamp(m_Pitch, m_PitchGoal, m_PitchVelocity, PITCH_SMOOTH_TIME, dt);
+	m_Target.X = CameraCalcSmoothDamp(m_Target.X, focus.X, m_TargetVelocity.X, RESPAWN_LOOK_SMOOTH_TIME, dt);
+	m_Target.Y = CameraCalcSmoothDamp(m_Target.Y, focus.Y, m_TargetVelocity.Y, RESPAWN_LOOK_SMOOTH_TIME, dt);
+	m_Target.Z = CameraCalcSmoothDamp(m_Target.Z, focus.Z, m_TargetVelocity.Z, RESPAWN_LOOK_SMOOTH_TIME, dt);
+	m_TargetGoal = focus;
+	m_Distance = CameraCalcSmoothDamp(m_Distance, RESPAWN_DISTANCE, m_DistanceVelocity, RESPAWN_LOOK_SMOOTH_TIME, dt);
+	const VEC3 pos = CameraCalcOrbitPosition(m_Target, m_Yaw, m_Pitch, m_Distance);
+	m_Position = { pos.X, pos.Y, pos.Z };
+}
+
 // 見ている点のまわりの、向きと距離で決まる位置に置き、浮島にめり込むなら手前まで近づける
 void Camera::PlaceCamera(float dt)
 {
@@ -192,7 +215,10 @@ void Camera::Update(void)
 		SnapToPlayer();
 		return;
 	}
-	if (!m_Player->IsActive()) return;
+	if (!m_Player->IsActive()) {
+		UpdateWaiting(GameTimeGetDeltaTime());
+		return;
+	}
 	const float dt = GameTimeGetDeltaTime();
 	CAMERA_FOCUS_TARGET targets[FIGHTER_COUNT];
 	CollectTargets(targets);
