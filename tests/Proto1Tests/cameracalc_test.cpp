@@ -240,4 +240,25 @@ namespace Proto1Tests
 			}
 		}
 	}
+
+	// ロックオン中は右へ寄せ、フリーカメラでは真ん中。右へ動くとカメラを左へ残してキャラを右へ流す。
+	TEST(CameraCalcTest, SideOffsetGoal_ShouldersOnLockAndDriftsWithMove)
+	{
+		EXPECT_NEAR(0.9f, CameraCalcSideOffsetGoal(true, 0.0f, 0.9f, 1.2f), CAMERA_EPSILON);
+		EXPECT_NEAR(0.0f, CameraCalcSideOffsetGoal(false, 0.0f, 0.9f, 1.2f), CAMERA_EPSILON);
+		EXPECT_NEAR(-0.3f, CameraCalcSideOffsetGoal(true, 1.0f, 0.9f, 1.2f), CAMERA_EPSILON);
+		EXPECT_NEAR(1.2f, CameraCalcSideOffsetGoal(false, -1.0f, 0.9f, 1.2f), CAMERA_EPSILON);
+	}
+
+	// 正面が +Z なら右は +X、正面が +X なら右は -Z。
+	TEST(CameraCalcTest, SideShift_MovesToCameraRight)
+	{
+		const VEC3 a = CameraCalcSideShift({1, 2, 3}, 0.0f, 2.0f);
+		EXPECT_NEAR(3.0f, a.X, CAMERA_EPSILON);
+		EXPECT_NEAR(2.0f, a.Y, CAMERA_EPSILON);
+		EXPECT_NEAR(3.0f, a.Z, CAMERA_EPSILON);
+		const VEC3 b = CameraCalcSideShift({0, 0, 0}, CAMERA_PI / 2, 2.0f);
+		EXPECT_NEAR(0.0f, b.X, CAMERA_EPSILON);
+		EXPECT_NEAR(-2.0f, b.Z, CAMERA_EPSILON);
+	}
 }
