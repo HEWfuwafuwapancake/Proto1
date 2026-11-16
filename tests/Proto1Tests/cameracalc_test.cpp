@@ -261,4 +261,37 @@ namespace Proto1Tests
 		EXPECT_NEAR(0.0f, b.X, CAMERA_EPSILON);
 		EXPECT_NEAR(-2.0f, b.Z, CAMERA_EPSILON);
 	}
+
+	// カメラの状態はハード → ソフト → フリー → ハードの順に回る。
+	TEST(CameraCalcTest, NextModeCycles)
+	{
+		EXPECT_EQ(CAMERA_MODE_SOFT, CameraCalcNextMode(CAMERA_MODE_HARD));
+		EXPECT_EQ(CAMERA_MODE_FREE, CameraCalcNextMode(CAMERA_MODE_SOFT));
+		EXPECT_EQ(CAMERA_MODE_HARD, CameraCalcNextMode(CAMERA_MODE_FREE));
+	}
+
+	// ソフトロックは画面に映っている相手のうち真ん中に近い相手を選び、後ろ・画面の外・高台の上で画面の外の相手は選ばない。
+	// 今狙っている相手は、少しだけ真ん中から離れていても選び続ける。
+	TEST(CameraCalcTest, PickVisible_CenterMostOnScreen)
+	{
+		const float fov = CAMERA_PI / 3.0f;	// 縦 60°
+		const float aspect = 16.0f / 9.0f;
+		CAMERA_FOCUS_TARGET targets[4] = {
+			{ { 0.0f, 0.0f, -10.0f }, true },	// 後ろ
+			{ { 3.0f, 0.0f, 10.0f }, true },	// 右前（画面の中）
+			{ { 30.0f, 0.0f, 10.0f }, true },	// 右の画面の外
+			{ { 0.0f, 15.0f, 10.0f }, true },	// 上の画面の外（高台の上の高すぎる相手）
+		};
+		EXPECT_EQ(1, CameraCalcPickVisible({ 0, 0, 0 }, 0.0f, 0.0f, fov, aspect, 0.05f, 40.0f, targets, 4, -1, 0.0f));
+		// 上を向けば、高いところの相手が画面に入って選ばれる。
+		EXPECT_EQ(3, CameraCalcPickVisible({ 0, 0, 0 }, 0.0f, CAMERA_PI / 4.0f, fov, aspect, 0.05f, 40.0f, targets, 4, -1, 0.0f));
+		// 上の画面の外の相手しかいなければ選ばない。
+		EXPECT_EQ(-1, CameraCalcPickVisible({ 0, 0, 0 }, 0.0f, 0.0f, fov, aspect, 0.05f, 40.0f, &targets[3], 1, -1, 0.0f));
+		// 遠すぎれば選ばない。
+		EXPECT_EQ(-1, CameraCalcPickVisible({ 0, 0, 0 }, 0.0f, 0.0f, fov, aspect, 0.05f, 5.0f, targets, 4, -1, 0.0f));
+
+		CAMERA_FOCUS_TARGET two[2] = { { { 1.0f, 0.0f, 10.0f }, true }, { { -2.0f, 0.0f, 10.0f }, true } };
+		EXPECT_EQ(0, CameraCalcPickVisible({ 0, 0, 0 }, 0.0f, 0.0f, fov, aspect, 0.05f, 40.0f, two, 2, -1, 0.0f));
+		EXPECT_EQ(1, CameraCalcPickVisible({ 0, 0, 0 }, 0.0f, 0.0f, fov, aspect, 0.05f, 40.0f, two, 2, 1, 0.25f));
+	}
 }

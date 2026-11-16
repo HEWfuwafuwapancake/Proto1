@@ -167,3 +167,39 @@ VEC3 CameraCalcSideShift(const VEC3& point, float yaw, float offset)
 	// 正面 (sin yaw, 0, cos yaw) に対する右は (cos yaw, 0, -sin yaw)（左手系）。
 	return { point.X + cosf(yaw) * offset, point.Y, point.Z - sinf(yaw) * offset };
 }
+
+CAMERA_MODE CameraCalcNextMode(CAMERA_MODE mode)
+{
+	return (CAMERA_MODE)(((int)mode + 1) % CAMERA_MODE_COUNT);
+}
+
+int CameraCalcPickVisible(const VEC3& eye, float yaw, float pitch, float fov, float aspect, float margin,
+	float maxDistance, const CAMERA_FOCUS_TARGET* targets, int count, int current, float bonus)
+{
+	// カメラの正面・右・上（左手系。右は正面と真上の外積）。
+	const VEC3 forward{ cosf(pitch) * sinf(yaw), sinf(pitch), cosf(pitch) * cosf(yaw) };
+	const VEC3 right{ cosf(yaw), 0.0f, -sinf(yaw) };
+	const VEC3 up{ -sinf(pitch) * sinf(yaw), cosf(pitch), -sinf(pitch) * cosf(yaw) };
+	const float tanY = tanf(fov * 0.5f);
+	const float tanX = tanY * aspect;
+	const float inside = 1.0f - margin;
+	int best = -1;
+	float bestScore = 0.0f;
+	for (int i = 0; i < count; ++i) {
+		if (!targets[i].Available) continue;
+		const VEC3 offset = Vec3Sub(targets[i].Position, eye);
+		const float depth = Vec3Dot(offset, forward);
+		if (depth <= 0.0f || Vec3Length(offset) > maxDistance) continue;
+		// 画面の半分の幅・高さを1とした位置。
+		const float x = Vec3Dot(offset, right) / (depth * tanX);
+		const float y = Vec3Dot(offset, up) / (depth * tanY);
+		if (fabsf(x) > inside || fabsf(y) > inside) continue;
+		float score = sqrtf(x * x + y * y);
+		if (i == current) score -= bonus;
+		if (best < 0 || score < bestScore) {
+			best = i;
+			bestScore = score;
+		}
+	}
+	return best;
+}

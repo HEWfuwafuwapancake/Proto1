@@ -19,6 +19,20 @@
 bool AreaCalcInSector(const VEC3& origin, const VEC3& forward, float minRadius, float radius,
 	float halfAngle, float halfHeight, const CAPSULE& body);
 
+/// @brief 上下にも傾けた扇の中に体が入っているかを調べる（ロックオン中に高いところ・低いところの相手を狙う攻撃）
+/// @details 扇を forward の上下の傾きの分だけ横の軸まわりに回したものとして調べる（体を逆に回して AreaCalcInSector で調べる）。
+///          forward が水平なら AreaCalcInSector と同じ
+/// @param origin 扇の中心
+/// @param forward 扇の正面（上下を含む。長さは問わない）
+/// @param minRadius 内側の半径（これより近い相手は入らない）
+/// @param radius 外側の半径
+/// @param halfAngle 扇の半分の角度（ラジアン）
+/// @param halfHeight 扇の面から上下それぞれの幅
+/// @param body 体のカプセル
+/// @return 入っていれば true
+bool AreaCalcInAimedSector(const VEC3& origin, const VEC3& forward, float minRadius, float radius,
+	float halfAngle, float halfHeight, const CAPSULE& body);
+
 /// @brief 向きを水平にして上を足し、長さ 1 にする（吹っ飛ばす向き）
 /// @param direction 元の向き（上下は使わない）
 /// @param up 水平の単位方向に足す上向きの量

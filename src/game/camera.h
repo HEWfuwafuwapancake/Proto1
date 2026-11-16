@@ -10,8 +10,9 @@ class ArmManager;
 class Match;
 
 /// @file camera.h
-/// @brief TPS カメラ（敵へのロックオンと、保持中・敵がいないときの自由カメラ）
+/// @brief TPS カメラ（ハードロック・ソフトロック・フリーの3つ。F / R3 で順に切り替える）
 /// @details
+///   - ハードロック：カメラが相手を向き続ける。ソフトロック：カメラは自由に回せ、画面に見えている相手を狙う。フリー：狙わない
 ///   - 開幕は正面の敵。左右の弾き入力で次の敵へ切り替え、角度・注視点をバネで追う
 ///   - ロックオン中は上下だけ手動で回せる。保持中・敵がいないときは左右も自由に回せる
 ///   - 自由カメラでは試合中の横移動について回り、自分で回したあとは少し止める
@@ -40,11 +41,19 @@ public:
 	/// @brief 状態を最初に戻す（参照はそのまま）
 	void Reset(void);
 
-	/// @brief ロックオンのカメラに戻す（オンラインを始めるとき。相手とカメラの状態をそろえる）
-	void ResetFreeLook(void) { m_FreeLook = false; }
+	/// @brief ハードロックのカメラに戻す（オンラインを始めるとき。相手とカメラの状態をそろえる）
+	void ResetFreeLook(void) { m_Mode = CAMERA_MODE_HARD; m_ModeSeconds = MODE_SHOW_NEVER; }
 
-	/// @brief フリーカメラか取得する（true：フリーカメラ、false：ロックオン）
-	bool IsFreeLook(void) const { return m_FreeLook; }
+	/// @brief カメラを自由に回せる状態か取得する（true：ソフトロック・フリー、false：ハードロック）
+	bool IsFreeLook(void) const { return m_Mode != CAMERA_MODE_HARD; }
+
+	/// @brief 今のカメラの状態（ハードロック・ソフトロック・フリー）を取得する
+	/// @return カメラの状態
+	CAMERA_MODE GetMode(void) const { return m_Mode; }
+
+	/// @brief 状態を切り替えてからの秒数を取得する（切り替えた直後に状態の名前を大きく出すのに使う）
+	/// @return 秒数（試合の始めなど、まだ切り替えていなければ大きな値）
+	float GetModeSeconds(void) const { return m_ModeSeconds; }
 
 	/// @brief カメラの終了処理（今は何もしない）
 	void Finalize(void);
@@ -75,8 +84,8 @@ public:
 	/// @return 上下の向き（ラジアン。プラスで上を見る）
 	float GetPitch(void) const { return m_Pitch; }
 
-	/// @brief 現在ロックオンしている相手のスロット番号を取得する
-	/// @return スロット番号（0〜3。自分を除く）。ターゲットなし・敵をつかんでいる間は-1
+	/// @brief 現在狙っている相手（ハードロック・ソフトロック）のスロット番号を取得する
+	/// @return スロット番号（0〜3。自分を除く）。ターゲットなし・フリー・敵をつかんでいる間は-1
 	int GetTarget(void) const;
 
 private:
@@ -86,6 +95,7 @@ private:
 	int PickFrontTarget(const CAMERA_FOCUS_TARGET* targets) const;
 	VEC3 LockFocusPoint(const VEC3& player, const CAMERA_FOCUS_TARGET* targets) const;
 	void UpdateLockTarget(const CAMERA_FOCUS_TARGET* targets);
+	int PickSoftTarget(const CAMERA_FOCUS_TARGET* targets) const; // ソフトロック：画面に見えている相手を選ぶ
 	void PlaceCamera(float dt);
 	void UpdateWaiting(float dt); // 復活待ちの間、浮島の高さへ戻して場外にした相手を映す
 	void SnapToPlayer(void);
@@ -106,7 +116,9 @@ private:
 	float m_SideOffset = {};		// 肩越しにカメラを右へずらしている量（マイナスで左）
 	float m_SideVelocity = {};		// 横へのずれのバネの速度
 	VEC3 m_PlayerGoal = {};			// 自由カメラ用の遊び・最後に立っていた高さ（敵の注視点と分ける）
-	bool m_FreeLook = false;	// true：フリーカメラ（ロックオンしない）、false：ロックオン
+	static constexpr float MODE_SHOW_NEVER = 1000.0f;	// まだ切り替えていないときの m_ModeSeconds
+	CAMERA_MODE m_Mode = CAMERA_MODE_HARD;	// カメラの状態（ハードロック・ソフトロック・フリー）
+	float m_ModeSeconds = MODE_SHOW_NEVER;	// 状態を切り替えてからの秒数
 	int m_LockTarget = -1;		// 現在ロックオンしている相手のスロット番号
 	int m_SavedTarget = -1;	// つかむ前のターゲット番号
 	bool m_WasHolding = false;	// 1つ前のフレームで敵をつかんでいたか

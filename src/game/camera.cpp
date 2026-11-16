@@ -41,6 +41,9 @@ static constexpr float TARGET_FALL_MARGIN = 0.1f;					// 敵の足元が浮島�
 static constexpr float SHOULDER_OFFSET = 0.9f;						// ロックオン中にカメラを右へ寄せる量（キャラは画面の左へ寄る。AC6 風の肩越し）
 static constexpr float STRAFE_DRIFT = 1.2f;							// 左右へいっぱいに動いたとき、キャラを動く向きへ画面の端へ流す量
 static constexpr float SIDE_SMOOTH_TIME = 0.35f;						// 横へのずれが目標へ追いつくまでのおよその秒数
+static constexpr float SOFT_SCREEN_MARGIN = 0.05f;					// ソフトロック：画面の端からこの割合の内側に見えている相手だけを狙う
+static constexpr float SOFT_MAX_DISTANCE = 40.0f;					// ソフトロック：これより遠い相手は狙わない
+static constexpr float SOFT_KEEP_BONUS = 0.25f;						// ソフトロック：今狙っている相手を優先する量（画面の半分の幅を1とした距離。ちらつき防止）
 
 static constexpr float FOV = XMConvertToRadians(60.0f);				// 視野角（縦）
 static constexpr float NEAR_Z = 0.1f;								// これより近いものは描かない
@@ -87,20 +90,36 @@ VEC3 Camera::LockFocusPoint(const VEC3& player, const CAMERA_FOCUS_TARGET* targe
 		TARGET_SCREEN_MARGIN, m_Player->GetHeight(), TARGET_POINT_RATE);
 }
 
+// 画面に映っていて、浮島・高台にさえぎられていない相手のうち、画面の真ん中にいちばん近い相手。
+int Camera::PickSoftTarget(const CAMERA_FOCUS_TARGET* targets) const
+{
+	CAMERA_FOCUS_TARGET visible[FIGHTER_COUNT];
+	const VEC3 eye{ m_Position.x, m_Position.y, m_Position.z };
+	for (int i = 0; i < FIGHTER_COUNT; ++i) {
+		visible[i] = targets[i];
+		if (visible[i].Available && StageCalcIsBlocked(m_Stage->GetStage(), eye, targets[i].Position)) visible[i].Available = false;
+	}
+	return CameraCalcPickVisible(eye, m_Yaw, m_Pitch, FOV, m_ViewWidth / m_ViewHeight, SOFT_SCREEN_MARGIN,
+		SOFT_MAX_DISTANCE, visible, FIGHTER_COUNT, m_LockTarget, SOFT_KEEP_BONUS);
+}
+
 void Camera::UpdateLockTarget(const CAMERA_FOCUS_TARGET* targets)
 {
 	const bool holding = m_Arms->IsHolding();
 	if (m_Player->IsTrigger(ACTION_CAMERA_TOGGLE)) {
-		m_FreeLook = !m_FreeLook;
+		m_Mode = CameraCalcNextMode(m_Mode);
+		m_ModeSeconds = 0.0f;
 		m_SavedTarget = -1;
-	}
-	// フリーカメラの間はロックオンせず、戻すときは下の処理が正面の相手を選び直す。
-	if (m_FreeLook) {
-		if (m_LockTarget >= 0) {
+		// ハードロックをやめるときは、今の角度から自由に回せるようにする。戻すときは下の処理が正面の相手を選び直す。
+		if (m_Mode != CAMERA_MODE_HARD) {
 			m_LockTarget = -1;
 			m_YawGoal = m_Yaw;
 			m_SwitchRemaining = 0.0f;
 		}
+	}
+	// ソフトロックは毎フレーム、画面に見えている相手を選び直す（カメラは動かさない）。フリーは狙わない。
+	if (m_Mode != CAMERA_MODE_HARD) {
+		m_LockTarget = (m_Mode == CAMERA_MODE_SOFT && !holding) ? PickSoftTarget(targets) : -1;
 		m_WasHolding = holding;
 		return;
 	}
@@ -185,7 +204,8 @@ void Camera::SnapToPlayer(void)
 	m_Pitch = m_PitchGoal;
 	CAMERA_FOCUS_TARGET targets[FIGHTER_COUNT];
 	CollectTargets(targets);
-	m_LockTarget = m_FreeLook ? -1 : PickFrontTarget(targets);
+	// ソフトロックの相手は次の Update で画面から選ぶ。
+	m_LockTarget = m_Mode != CAMERA_MODE_HARD ? -1 : PickFrontTarget(targets);
 	m_SavedTarget = -1;
 	m_WasHolding = false;
 	m_SwitchRemaining = 0.0f;
@@ -230,10 +250,13 @@ void Camera::Update(void)
 	const float dt = GameTimeGetDeltaTime();
 	CAMERA_FOCUS_TARGET targets[FIGHTER_COUNT];
 	CollectTargets(targets);
+	m_ModeSeconds = fminf(MODE_SHOW_NEVER, m_ModeSeconds + dt);
 	UpdateLockTarget(targets);
+	// カメラが相手を向き続けるのはハードロックだけ（ソフトロックは狙うだけで、カメラは自由に回せる）。
+	const bool hardLock = m_Mode == CAMERA_MODE_HARD && m_LockTarget >= 0;
 	// 手動入力も横移動の sway も、現在角ではなく目標角へ足す。
 	const ACTION_AXIS look = m_Player->GetLookInput();
-	if (m_LockTarget >= 0) {
+	if (hardLock) {
 		m_YawGoal = CameraCalcYawTo(PlayerHead(), targets[m_LockTarget].Position, m_YawGoal);
 	}
 	else {
@@ -248,7 +271,7 @@ void Camera::Update(void)
 	else if (m_ManualPause > 0.0f) {
 		m_ManualPause = fmaxf(0.0f, m_ManualPause - dt);
 	}
-	else if (m_LockTarget < 0 && !m_FreeLook && m_Match->IsPlaying()) {
+	else if (m_LockTarget < 0 && m_Mode == CAMERA_MODE_HARD && m_Match->IsPlaying()) {
 		// 腕で体が動けない間（ガンランスで突き刺している間など）は、移動の入力で視界を回さない。
 		m_YawGoal += m_Player->GetMoveInput().X * m_Arms->GetMoveScale() * FOLLOW_TURN_SPEED * dt;
 	}
@@ -280,13 +303,13 @@ void Camera::Update(void)
 		m_PlayerGoal.Y = head.Y + LOOK_HEIGHT_DEADZONE_DOWN;
 	}
 	const VEC3 lockHead{ head.X, m_PlayerGoal.Y, head.Z };
-	m_TargetGoal = m_LockTarget >= 0 ? LockFocusPoint(lockHead, targets) : m_PlayerGoal;
+	m_TargetGoal = hardLock ? LockFocusPoint(lockHead, targets) : m_PlayerGoal;
 	m_Target.X = CameraCalcSmoothDamp(m_Target.X, m_TargetGoal.X, m_TargetVelocity.X, LOOK_SMOOTH_TIME, dt);
 	m_Target.Z = CameraCalcSmoothDamp(m_Target.Z, m_TargetGoal.Z, m_TargetVelocity.Z, LOOK_SMOOTH_TIME, dt);
 	m_Target.Y = CameraCalcSmoothDamp(m_Target.Y, m_TargetGoal.Y, m_TargetVelocity.Y, LOOK_HEIGHT_SMOOTH_TIME, dt);
-	// ロックオン中は肩越しに横へ寄せ、フリーカメラ・相手がいないときは真ん中。左右へ動く間はキャラを画面の端へ流す。
+	// ハードロック中は肩越しに横へ寄せ、ソフトロック・フリー・相手がいないときは真ん中。左右へ動く間はキャラを画面の端へ流す。
 	const float moveX = m_Match->IsPlaying() ? m_Player->GetMoveInput().X * m_Arms->GetMoveScale() : 0.0f;
-	const float sideGoal = CameraCalcSideOffsetGoal(GetTarget() >= 0, moveX, SHOULDER_OFFSET, STRAFE_DRIFT);
+	const float sideGoal = CameraCalcSideOffsetGoal(m_Mode == CAMERA_MODE_HARD && GetTarget() >= 0, moveX, SHOULDER_OFFSET, STRAFE_DRIFT);
 	m_SideOffset = CameraCalcSmoothDamp(m_SideOffset, sideGoal, m_SideVelocity, SIDE_SMOOTH_TIME, dt);
 	PlaceCamera(dt);
 }

@@ -96,7 +96,7 @@ void HammerArm::Impact()
 	const XMFLOAT3 feet = GetPlayer().GetPosition();
 	m_RangeRadius = m_Wave ? WAVE_RADIUS : IMPACT_RADIUS;
 	m_RangeCenter = m_Wave ? VEC3{ feet.x, feet.y + WAVE_HEIGHT, feet.z }
-		: Vec3Add({ feet.x, feet.y + IMPACT_HEIGHT, feet.z }, Vec3Scale(m_Direction, IMPACT_FORWARD));
+		: Vec3Add({ feet.x, feet.y + IMPACT_HEIGHT, feet.z }, Vec3Scale(GetStrikeDirection(m_Direction), IMPACT_FORWARD));
 	m_RangeSeconds = RANGE_SHOW_SECONDS;
 	bool hit = false;
 	bool affected = false;

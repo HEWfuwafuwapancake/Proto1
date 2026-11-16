@@ -22,6 +22,26 @@ bool AreaCalcInSector(const VEC3& origin, const VEC3& forward, float minRadius, 
 	return angle <= halfAngle + extra;
 }
 
+bool AreaCalcInAimedSector(const VEC3& origin, const VEC3& forward, float minRadius, float radius,
+	float halfAngle, float halfHeight, const CAPSULE& body)
+{
+	const VEC3 flat = TentacleCalcAim({}, {}, false, forward);
+	const float length = Vec3Length(forward);
+	const float sine = length < MIN_LENGTH ? 0.0f : forward.Y / length;
+	const float cosine = sqrtf(fmaxf(0.0f, 1.0f - sine * sine));
+	// 正面へ進む量と高さを、上下の傾きの逆に回して水平の扇に直す（横の量は変えない）。
+	auto level = [&](const VEC3& point) {
+		const VEC3 offset = Vec3Sub(point, origin);
+		const float along = Vec3Dot(offset, flat);
+		const VEC3 side = Vec3Sub(offset, Vec3Add(Vec3Scale(flat, along), { 0.0f, offset.Y, 0.0f }));
+		const float newAlong = along * cosine + offset.Y * sine;
+		const float newUp = -along * sine + offset.Y * cosine;
+		return Vec3Add(origin, Vec3Add(Vec3Add(Vec3Scale(flat, newAlong), side), { 0.0f, newUp, 0.0f }));
+	};
+	const CAPSULE leveled{ level(body.Start), level(body.End), body.Radius };
+	return AreaCalcInSector(origin, flat, minRadius, radius, halfAngle, halfHeight, leveled);
+}
+
 VEC3 AreaCalcLaunchDirection(const VEC3& direction, float up)
 {
 	VEC3 flat{ direction.X, 0.0f, direction.Z };

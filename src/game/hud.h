@@ -53,7 +53,8 @@ private:
 	void DrawFighterPercent(int index) const;
 	void DrawArmName(int hand) const;
 	void DrawGuardFeedback(int slot) const;
-	void DrawReticle(void) const; // ロックオン中は相手を囲むかぎ括弧と距離、フリーカメラでは画面の真ん中の十字
+	void DrawReticle(void) const; // ハード・ソフトロックで狙う相手を囲むかぎ括弧と距離、フリーでは画面の真ん中の十字
+	void DrawCameraMode(void) const; // カメラの状態（ハードロック・ソフトロック・フリー）の名前
 	void DrawMenuItem(const char* text, float y, bool selected) const;
 	void DrawMenuHelp(float selectY, float decideY) const;
 	const Camera* m_Camera = nullptr;
