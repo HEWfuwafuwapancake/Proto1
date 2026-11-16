@@ -60,14 +60,31 @@ SCENE_EVENT SceneCalc::Step(const SCENE_INPUT& input, bool matchFinished)
 		return SCENE_EVENT_NONE;
 	}
 	if (m_Scene == SCENE_OPTIONS) {
-		MoveCursor(input.MoveY, TUNING_ITEM_COUNT + 2);
-		if (input.Back || (input.Decide && m_Cursor == TUNING_ITEM_COUNT + 1)) {
+		MoveCursor(input.MoveY, OPTION_ITEM_COUNT);
+		if (input.Back || (input.Decide && m_Cursor == OPTION_ITEM_BACK)) {
 			m_Scene = m_OptionsReturn;
 			m_Cursor = m_Scene == SCENE_GAME_START ? 1 : MODE_ITEM_OPTIONS;
 			m_MenuReady = false;
 		}
-		else if (input.Decide && m_Cursor == TUNING_ITEM_COUNT) return SCENE_EVENT_TUNING_RESET;
+		else if (input.Decide && m_Cursor == OPTION_ITEM_ARM_COSTS) {
+			m_Scene = SCENE_ARM_COSTS;
+			m_Cursor = 0;
+			m_MenuReady = false;
+		}
+		else if (input.Decide && m_Cursor == OPTION_ITEM_RESET) return SCENE_EVENT_TUNING_RESET;
 		else if (m_Cursor < TUNING_ITEM_COUNT && input.CharacterDirection != 0) return SCENE_EVENT_TUNING_CHANGE;
+		return SCENE_EVENT_NONE;
+	}
+	if (m_Scene == SCENE_ARM_COSTS) {
+		// 使う欄を上から順に並べ、最後が「戻る」。
+		const int back = ArmCostCalcUsedCount();
+		MoveCursor(input.MoveY, back + 1);
+		if (input.Back || (input.Decide && m_Cursor == back)) {
+			m_Scene = SCENE_OPTIONS;
+			m_Cursor = OPTION_ITEM_ARM_COSTS;
+			m_MenuReady = false;
+		}
+		else if (m_Cursor < back && input.CharacterDirection != 0) return SCENE_EVENT_ARM_COST_CHANGE;
 		return SCENE_EVENT_NONE;
 	}
 	if (m_Scene == SCENE_CHARACTER_SELECT) {

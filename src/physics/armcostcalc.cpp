@@ -36,3 +36,23 @@ void ArmCostCalcSet(ARM_COST_TABLE& table, int row, int item, int value)
 	if (!ArmCostCalcIsUsed(row, item)) return;
 	table.Values[row][item] = value < 0 ? 0 : (value > ARM_COST_MAX ? ARM_COST_MAX : value);
 }
+
+int ArmCostCalcUsedCount()
+{
+	int count = 0;
+	for (int row = 0; row < ARM_COST_ROW_COUNT; ++row) {
+		for (int item = 0; item < ARM_COST_ITEM_COUNT; ++item) if (ArmCostCalcIsUsed(row, item)) ++count;
+	}
+	return count;
+}
+
+bool ArmCostCalcUsedCell(int index, int& row, int& item)
+{
+	for (int r = 0; r < ARM_COST_ROW_COUNT; ++r) {
+		for (int i = 0; i < ARM_COST_ITEM_COUNT; ++i) {
+			if (!ArmCostCalcIsUsed(r, i)) continue;
+			if (index-- == 0) { row = r; item = i; return true; }
+		}
+	}
+	return false;
+}

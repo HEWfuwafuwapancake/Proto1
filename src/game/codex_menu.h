@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "core/dx11.h"
+#include "physics/armcostcalc.h"
 #include "physics/scenecalc.h"
 #include "physics/versuscalc.h"
 #include <array>
@@ -21,9 +22,10 @@ public:
 	/// @param address 参加先の編集中のアドレス
 	/// @param characters 各参加者のキャラクター
 	/// @param tuning 次の試合へ適用する設定
+	/// @param costs オフラインで使う腕の耐久の減る量の表
 	void Draw(const SceneCalc& scene, const VersusCalc& participants, const NetSession& net,
 		const SessionAddressCalc& address, const std::array<CHARACTER_TYPE, FIGHTER_COUNT>& characters,
-		const MATCH_TUNING& tuning) const;
+		const MATCH_TUNING& tuning, const ARM_COST_TABLE& costs) const;
 
 private:
 	void Text(const char* text, float x, float y, float height, const XMFLOAT4& color) const;
@@ -34,6 +36,7 @@ private:
 	void Detail(const char* tag, const char* title, const char* line1, const char* line2, const char* line3) const;
 	void Footer(const char* help) const;
 	void DrawOptions(const SceneCalc& scene, const MATCH_TUNING& tuning) const;
+	void DrawArmCosts(const SceneCalc& scene, const ARM_COST_TABLE& costs) const;
 	void DrawLobby(const VersusCalc& participants, const NetSession& net,
 		const std::array<CHARACTER_TYPE, FIGHTER_COUNT>& characters) const;
 	void DrawResult(const SceneCalc& scene, const VersusCalc& participants) const;

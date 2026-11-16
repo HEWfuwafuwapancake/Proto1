@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 /// @file armcostcalc.h
-/// @brief 腕の耐久が攻撃ごとに減る量の表（DirectX・Windows なし。デバッグ用ウィンドウで書き換える）
+/// @brief 腕の耐久が攻撃ごとに減る量の表（DirectX・Windows なし。オプションの画面で書き換える）
 
 /// @brief 表の行（腕の並びは ARM_TYPE の触手〜モーニングスターと同じ。最後はガード）
 enum ARM_COST_ROW
@@ -47,3 +47,11 @@ bool ArmCostCalcIsUsed(int row, int item);
 /// @param item 列（ARM_COST_ITEM）
 /// @param value 新しい減る量
 void ArmCostCalcSet(ARM_COST_TABLE& table, int row, int item, int value);
+/// @brief 使う欄の数を取得する（オプションの画面で並べる数）
+int ArmCostCalcUsedCount();
+/// @brief 使う欄を行・列の順に数えた index 番目の行と列を取得する
+/// @param index 0 から ArmCostCalcUsedCount() − 1 までの番号
+/// @param row 行（ARM_COST_ROW）を書く先
+/// @param item 列（ARM_COST_ITEM）を書く先
+/// @return 範囲内なら true（範囲外は false で row・item は変えない）
+bool ArmCostCalcUsedCell(int index, int& row, int& item);
