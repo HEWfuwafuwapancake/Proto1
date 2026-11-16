@@ -95,3 +95,20 @@ int CameraCalcNextTarget(const VEC3& player, const CAMERA_FOCUS_TARGET* targets,
 /// @return プレイヤー全身が画面に収まる範囲で敵へずらした注視点
 VEC3 CameraCalcFocusPoint(const VEC3& player, const VEC3& enemy, float yaw, float pitch,
 	float distance, float fov, float aspect, float margin, float radius, float rate);
+
+/// @brief 肩越しにカメラを横へずらす量の目標を出す
+/// @details ロックオン中は shoulder だけ右へ寄せ（キャラは画面の左へ寄る）、フリーカメラ・相手がいないときは真ん中に戻す。
+///          左右へ動いている間は、動く向きと反対へカメラを残し、キャラだけ画面の端へ流す
+/// @param lockOn 相手にロックオンしているか（true：横へ寄せる、false：真ん中に戻す）
+/// @param moveX 左右の移動入力（-1〜1。プラスで右。範囲の外は-1〜1に収める）
+/// @param shoulder ロックオン中にカメラを右へ寄せる量（ワールドの長さ）
+/// @param drift 左右へいっぱいに動いたとき、キャラを動く向きへ流す量（ワールドの長さ）
+/// @return カメラを右へずらす量（マイナスで左）
+float CameraCalcSideOffsetGoal(bool lockOn, float moveX, float shoulder, float drift);
+
+/// @brief 点をカメラの右の向き（水平）へずらす
+/// @param point ずらす前の点
+/// @param yaw カメラの左右の向き（ラジアン。0 で +Z 方向を見る、プラスで右回り）
+/// @param offset ずらす量（プラスで右、マイナスで左）
+/// @return ずらしたあとの点（高さは変えない）
+VEC3 CameraCalcSideShift(const VEC3& point, float yaw, float offset);

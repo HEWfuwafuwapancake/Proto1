@@ -154,3 +154,16 @@ VEC3 CameraCalcFocusPoint(const VEC3& player, const VEC3& enemy, float yaw, floa
 	}
 	return Vec3Add(player, Vec3Scale(delta, shift));
 }
+
+float CameraCalcSideOffsetGoal(bool lockOn, float moveX, float shoulder, float drift)
+{
+	const float move = moveX > 1.0f ? 1.0f : (moveX < -1.0f ? -1.0f : moveX);
+	// 右へ動くとカメラを左へ残すので、キャラは画面の右へ流れる。
+	return (lockOn ? shoulder : 0.0f) - move * drift;
+}
+
+VEC3 CameraCalcSideShift(const VEC3& point, float yaw, float offset)
+{
+	// 正面 (sin yaw, 0, cos yaw) に対する右は (cos yaw, 0, -sin yaw)（左手系）。
+	return { point.X + cosf(yaw) * offset, point.Y, point.Z - sinf(yaw) * offset };
+}
