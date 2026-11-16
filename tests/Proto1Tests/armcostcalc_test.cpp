@@ -8,20 +8,16 @@ TEST(ArmCostCalcTest, DefaultMatchesPlan)
 	EXPECT_EQ(50, table.Values[ARM_COST_ROW_HAMMER][ARM_COST_TAP_HIT]);
 	EXPECT_EQ(30, table.Values[ARM_COST_ROW_HAMMER][ARM_COST_HOLD_MISS]);
 	EXPECT_EQ(40, table.Values[ARM_COST_ROW_KATANA][ARM_COST_HOLD_MISS]);
-	EXPECT_EQ(5, table.Values[ARM_COST_ROW_GUNLANCE][ARM_COST_EXTRA]);
+	EXPECT_EQ(10, table.Values[ARM_COST_ROW_LASER][ARM_COST_TAP_HIT]);
 	EXPECT_EQ(50, table.Values[ARM_COST_ROW_GUARD][ARM_COST_EXTRA]);
 	EXPECT_FALSE(ArmCostCalcIsUsed(ARM_COST_ROW_TENTACLE, ARM_COST_EXTRA));
 	EXPECT_EQ(0, table.Values[ARM_COST_ROW_TENTACLE][ARM_COST_EXTRA]);
 }
 
-// トゲの茨は置いた瞬間に強外れの欄だけで減らし、ナックルの空中の突進は地上と同じ欄を使う（そのほかの欄はない）。
-TEST(ArmCostCalcTest, SpikeFieldUsesPlaceCostAndKnuckleHasNoAirCost)
+// ナックルの空中の突進は地上と同じ欄を使い、レーザーもそのほかの欄はない。
+TEST(ArmCostCalcTest, KnuckleAndLaserHaveNoExtraCost)
 {
-	const ARM_COST_TABLE table = ArmCostCalcDefault();
-	EXPECT_EQ(34, table.Values[ARM_COST_ROW_SPIKE][ARM_COST_TAP_HIT]);
-	EXPECT_EQ(40, table.Values[ARM_COST_ROW_SPIKE][ARM_COST_HOLD_MISS]);
-	EXPECT_FALSE(ArmCostCalcIsUsed(ARM_COST_ROW_SPIKE, ARM_COST_HOLD_HIT));
-	EXPECT_FALSE(ArmCostCalcIsUsed(ARM_COST_ROW_SPIKE, ARM_COST_EXTRA));
+	EXPECT_FALSE(ArmCostCalcIsUsed(ARM_COST_ROW_LASER, ARM_COST_EXTRA));
 	EXPECT_FALSE(ArmCostCalcIsUsed(ARM_COST_ROW_KNUCKLE, ARM_COST_EXTRA));
 }
 
@@ -33,11 +29,11 @@ TEST(ArmCostCalcTest, SetClampsAndSkipsUnusedCells)
 	EXPECT_EQ(20, table.Values[ARM_COST_ROW_KNUCKLE][ARM_COST_TAP_MISS]);
 	ArmCostCalcSet(table, ARM_COST_ROW_KNUCKLE, ARM_COST_TAP_MISS, 250);
 	EXPECT_EQ(100, table.Values[ARM_COST_ROW_KNUCKLE][ARM_COST_TAP_MISS]);
-	ArmCostCalcSet(table, ARM_COST_ROW_GUNLANCE, ARM_COST_TAP_HIT, 30);
-	EXPECT_EQ(0, table.Values[ARM_COST_ROW_GUNLANCE][ARM_COST_TAP_HIT]);
+	ArmCostCalcSet(table, ARM_COST_ROW_TENTACLE, ARM_COST_EXTRA, 30);
+	EXPECT_EQ(0, table.Values[ARM_COST_ROW_TENTACLE][ARM_COST_EXTRA]);
 }
 
-// オプションの画面で並べる欄は、使う欄だけを行・列の順に数える（ガンランスの最初はそのほかの前の強・当たり）。
+// オプションの画面で並べる欄は、使う欄だけを行・列の順に数える（触手のそのほかは飛ばす）。
 TEST(ArmCostCalcTest, UsedCellsSkipUnusedInRowOrder)
 {
 	int row = -1, item = -1;

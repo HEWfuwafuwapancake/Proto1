@@ -273,6 +273,11 @@ void Fighter::UpdateFacing(const Camera& camera, const ArmManager& arms, const F
 	// ソフトロックで画面に見えている相手がいれば、使い始めた瞬間にその相手の方へ向く。
 	const int target = camera.GetTarget();
 	if (camera.IsFreeLook()) {
+		// レーザーで狙っている間（溜め・撃った直後）、狙う相手がいなければ画面の真ん中のレティクル（カメラの向き）へ向く。
+		if (arms.IsAiming() && target < 0) {
+			m_Yaw = camera.GetYaw();
+			return;
+		}
 		float aimYaw = GetFreeAimYaw(camera.GetYaw());
 		if (target >= 0) {
 			const CAPSULE body = fighters.GetTarget(target, slot).Body;

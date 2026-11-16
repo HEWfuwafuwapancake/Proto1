@@ -18,16 +18,15 @@ class ArmManager;
 class Camera;
 class Stage;
 
-/// @brief 腕の種類（1段目の数字キー 1〜7 の順）
+/// @brief 腕の種類（1段目の数字キー 1〜6 の順）
 enum ARM_TYPE
 {
 	ARM_TYPE_TENTACLE, ///< 触手（1段目 1）
 	ARM_TYPE_HAMMER, ///< ハンマー（1段目 2）
 	ARM_TYPE_KNUCKLE, ///< ナックル（1段目 3）
-	ARM_TYPE_SPIKE, ///< トゲ（1段目 4）
-	ARM_TYPE_GUNLANCE, ///< ガンランス（1段目 5）
-	ARM_TYPE_KATANA, ///< 刀（1段目 6）
-	ARM_TYPE_FLAIL, ///< モーニングスター（1段目 7）
+	ARM_TYPE_LASER, ///< レーザー（1段目 4）
+	ARM_TYPE_KATANA, ///< 刀（1段目 5）
+	ARM_TYPE_FLAIL, ///< モーニングスター（1段目 6）
 	ARM_TYPE_NONE, ///< 素手（装備なし）
 	ARM_TYPE_COUNT ///< 腕の種類の数（装備ではない）
 };
@@ -79,7 +78,7 @@ public:
 	virtual void Interrupt() { Reset(); }
 	/// @brief 装備を外すときに呼ぶ（基本は待機に戻す。地面に残る攻撃は残して、外したあとも UpdateLeftover で進める）
 	virtual void Unequip() { Reset(); }
-	/// @brief 装備していない間も、地面に残る攻撃（トゲの茨など）を進める（試合中だけ。基本は何もしない）
+	/// @brief 装備していない間も、地面に残る攻撃を進める（試合中だけ。基本は何もしない）
 	virtual void UpdateLeftover() {}
 	/// @brief 地面に残る攻撃を描画する（装備しているかに関係なく毎回呼ぶ。基本は何もしない）
 	virtual void DrawLeftover() {}
@@ -107,6 +106,10 @@ public:
 	virtual GUARD GetGuard() const { return {}; }
 	/// @brief 今の動作で体に見せる攻撃クリップを取得する（基本は使わない）
 	virtual ARM_BODY_CLIP GetBodyClip() const { return {}; }
+	/// @brief 狙って撃つ腕が、狙う向きへ体を向けている間なら true を返す（レーザーの溜めと撃った直後。基本は false）
+	virtual bool IsAiming() const { return false; }
+	/// @brief 溜めの割合を取得する（0：溜め始め、1：溜めきった。溜めていなければ -1。基本は -1）
+	virtual float GetAimCharge() const { return -1.0f; }
 	/// @brief 受け持つ手（左 0・右 1）を取得する
 	int GetHand() const { return m_Hand; }
 
@@ -254,6 +257,10 @@ public:
 	ARM_BODY_CLIP GetBodyClip(int hand) const;
 	/// @brief どちらかの腕が敵をつかんでいるか（保持中なら true）
 	bool IsHolding(void) const;
+	/// @brief どちらかの腕が狙って撃つ向きへ体を向けているか（レーザーの溜めと撃った直後なら true）
+	bool IsAiming(void) const;
+	/// @brief 左右の溜めの割合の大きいほうを取得する（0〜1。どちらも溜めていなければ -1。カメラを肩越しに寄せ、レティクルのゲージに使う）
+	float GetAimCharge(void) const;
 	/// @brief 左右の装備している腕のガードの強いほうを取得する
 	GUARD GetGuard() const;
 	/// @brief 左右の装備している腕の、歩く速さの倍率の小さいほうを取得する

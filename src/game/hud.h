@@ -54,6 +54,7 @@ private:
 	void DrawArmName(int hand) const;
 	void DrawGuardFeedback(int slot) const;
 	void DrawReticle(void) const; // ハード・ソフトロックで狙う相手を囲むかぎ括弧と距離、フリーでは画面の真ん中の十字
+	void DrawChargeGauge(float centerX, float centerY) const; // レーザーを溜めている間、レティクルの周りに溜めの輪を出す
 	void DrawCameraMode(void) const; // カメラの状態（ハードロック・ソフトロック・フリー）の名前
 	void DrawMenuItem(const char* text, float y, bool selected) const;
 	void DrawMenuHelp(float selectY, float decideY) const;
