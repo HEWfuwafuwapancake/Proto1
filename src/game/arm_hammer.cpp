@@ -123,15 +123,20 @@ void HammerArm::Update(const ARM_INPUT& input)
 {
 	const float dt = fmaxf(0.0f, GameTimeGetDeltaTime());
 	if (GetPlayer().DidRespawn()) Reset();
-	// 長押しは離したときに出す。
-	if (m_Phase.IsIdle() && (input.Tap || input.HoldReleased)) {
-		m_Wave = input.HoldReleased;
+	// 長押しは押している間ためた姿勢で待ち、離した瞬間に叩く。
+	if (m_Phase.IsIdle() && (input.Tap || input.HoldStarted || input.HoldReleased)) {
+		m_Wave = !input.Tap;
 		// 空中の単押しは、ためを短くして、振った瞬間に上へ跳ねる。
 		m_AirTap = !m_Wave && !GetPlayer().IsOnGround();
 		m_UseConsumed = false;
 		m_Direction = GetAim(false);
 		m_Phase.Start(HAMMER_CHARGE);
+		m_Phase.SetHeld(m_Wave);
+		if (input.HoldReleased) m_Phase.Release();
 	}
+	else if (input.HoldReleased && m_Wave) m_Phase.Release();
+	// ためている間にボタンを受け付けなくなった（ガードなど）ときは、出さずにやめる。
+	else if (!input.Pressed && m_Phase.IsHeld()) m_Phase.Reset();
 	// ためている間は狙いを追い続け、叩く瞬間の向き（ロックオン中は相手の方）に叩く。
 	if (m_Phase.GetPhase() == HAMMER_CHARGE) m_Direction = GetAim(false);
 	const ARM_PHASE_STEP step = m_Phase.Step(dt, GetSeconds(), HAMMER_PHASE_COUNT);

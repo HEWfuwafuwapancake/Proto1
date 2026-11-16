@@ -230,18 +230,26 @@ void SpikeArm::Update(const ARM_INPUT& input)
 {
 	const float dt = fmaxf(0.0f, GameTimeGetDeltaTime());
 	if (GetPlayer().DidRespawn()) StopAction();
-	// 長押しは離したときに出す。
-	if (m_Phase.IsIdle() && (input.Tap || input.HoldReleased)) {
-		m_Hold = input.HoldReleased;
+	// 地上の長押しは押している間ためた姿勢で待ち、離した瞬間に殴る。空中の長押しは離したときに急降下する。
+	const bool onGround = GetPlayer().IsOnGround();
+	if (m_Phase.IsIdle() && (input.Tap || input.HoldReleased || (input.HoldStarted && onGround))) {
+		m_Hold = !input.Tap;
 		m_Direction = GetAim(false);
 		// 空中では真下へ急降下し、足場に着いた瞬間に殴る。
-		if (GetPlayer().IsOnGround()) m_Phase.Start(SPIKE_WINDUP);
+		if (onGround) {
+			m_Phase.Start(SPIKE_WINDUP);
+			m_Phase.SetHeld(m_Hold);
+			if (input.HoldReleased) m_Phase.Release();
+		}
 		else if (!GetPlayer().IsPulled()) {
 			m_Phase.Start(SPIKE_DIVE);
 			m_Diving = true;
 			GetPlayer().SetPulled(true);
 		}
 	}
+	else if (input.HoldReleased && m_Hold) m_Phase.Release();
+	// ためている間にボタンを受け付けなくなった（ガードなど）ときは、出さずにやめる。
+	else if (!input.Pressed && m_Phase.IsHeld()) m_Phase.Reset();
 	if (m_Phase.GetPhase() == SPIKE_DIVE && m_Diving) StepDive(dt);
 	// ためている間は狙いを追い続ける（ロックオン中は相手の方へ）。
 	if (m_Phase.GetPhase() == SPIKE_WINDUP) m_Direction = GetAim(false);

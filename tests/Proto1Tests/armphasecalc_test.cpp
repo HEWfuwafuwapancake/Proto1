@@ -39,4 +39,24 @@ namespace Proto1Tests
 		phase.Start(0);
 		EXPECT_EQ(ARM_PHASE_MAX_TICKS, phase.Step(1.0f, longPhase, 1, 0.1f).Ticks);
 	}
+
+	// 止めた段階は秒数を過ぎても進まず、離すと次の Step で（ためが残っていても）すぐ次の段階へ進む。
+	TEST(ArmPhaseCalcTest, Held_WaitsUntilRelease)
+	{
+		const float seconds[2] = { 0.5f, 0.2f };
+		ArmPhaseCalc phase;
+		phase.Start(0);
+		phase.SetHeld(true);
+		for (int i = 0; i < 120; ++i) EXPECT_EQ(-1, phase.Step(1.0f / 60.0f, seconds, 2).Entered);
+		EXPECT_EQ(0, phase.GetPhase());
+		EXPECT_NEAR(0.5f, phase.GetTime(), 0.0001f);
+		phase.Release();
+		EXPECT_EQ(1, phase.Step(1.0f / 60.0f, seconds, 2).Entered);
+
+		phase.Start(0);
+		phase.SetHeld(true);
+		phase.Step(0.1f, seconds, 2);
+		phase.Release();
+		EXPECT_EQ(1, phase.Step(1.0f / 60.0f, seconds, 2).Entered);
+	}
 }

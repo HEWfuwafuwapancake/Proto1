@@ -216,15 +216,22 @@ VEC3 TentacleArm::GetSpinTip() const
 
 void TentacleArm::StepSpin(const ARM_INPUT& input, float dt)
 {
-	// 長押しは離したときに出す。
-	if (m_Spin.IsIdle() && input.HoldReleased && m_Arm.GetState() == TENTACLE_IDLE) {
+	// 長押しは押している間ためた姿勢で待ち、離した瞬間に回す。
+	if (m_Spin.IsIdle() && (input.HoldStarted || input.HoldReleased) && m_Arm.GetState() == TENTACLE_IDLE) {
 		m_SpinForward = GetAim(false);
 		m_SpinAngle = 0.0f;
 		m_SpinHits.Clear();
 		m_SpinConsumed = false;
 		m_Spin.Start(SPIN_CHARGE);
+		m_Spin.SetHeld(true);
+		if (input.HoldReleased) m_Spin.Release();
 		m_ThrowClipElapsed = -1.0f;
 	}
+	else if (input.HoldReleased) m_Spin.Release();
+	// ためている間にボタンを受け付けなくなった（ガードなど）ときは、出さずにやめる。
+	else if (!input.Pressed && m_Spin.IsHeld()) m_Spin.Reset();
+	// ためている間は狙いを追い、離した瞬間の向きから回す。
+	if (m_Spin.GetPhase() == SPIN_CHARGE) m_SpinForward = GetAim(false);
 	const ARM_PHASE_STEP step = m_Spin.Step(dt, SPIN_PHASE_SECONDS, SPIN_PHASE_COUNT);
 	if (step.Finished && !m_SpinConsumed) {
 		ConsumeDurability(GetCost(COST_ROW, ARM_COST_HOLD_MISS));
