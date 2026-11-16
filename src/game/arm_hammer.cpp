@@ -40,9 +40,9 @@ static constexpr float MODEL_SCALE = 0.08f * Arm::MODEL_SIZE;
 static constexpr float ARM_LENGTH = 19.250364f; // arm_shield_base の長さ（cm）。
 static constexpr float HEAD_LENGTH = 32.5f; // arm_hammer_head の長さ（cm）。
 static constexpr XMFLOAT4 RANGE_COLOR{ 1.0f, 0.9f, 0.3f, 1.0f };
-static constexpr float HIT_RUMBLE_SMALL = 0.8f;
+static constexpr float HIT_RUMBLE_SMALL = 1.0f;
 static constexpr float HIT_RUMBLE_LARGE = 1.0f;
-static constexpr float HIT_RUMBLE_SECONDS = 0.2f;
+static constexpr float HIT_RUMBLE_SECONDS = 0.35f;
 
 enum HAMMER_PHASE { HAMMER_CHARGE, HAMMER_SLAM, HAMMER_RECOVER, HAMMER_PHASE_COUNT };
 

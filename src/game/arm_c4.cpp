@@ -40,9 +40,9 @@ static constexpr float LAMP_RADIUS = 0.05f;
 static constexpr float LAMP_BLINKS = 3.0f;
 static constexpr XMFLOAT4 LAMP_COLOR{ 1.0f, 0.15f, 0.1f, 1.0f };
 static constexpr XMFLOAT4 RANGE_COLOR{ 1.0f, 0.6f, 0.2f, 1.0f };
-static constexpr float BLAST_RUMBLE_SMALL = 0.8f;
+static constexpr float BLAST_RUMBLE_SMALL = 1.0f;
 static constexpr float BLAST_RUMBLE_LARGE = 1.0f;
-static constexpr float BLAST_RUMBLE_SECONDS = 0.25f;
+static constexpr float BLAST_RUMBLE_SECONDS = 0.4f;
 
 enum C4_PHASE { C4_CHARGE, C4_THROW, C4_PHASE_COUNT };
 

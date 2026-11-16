@@ -36,8 +36,8 @@ static constexpr char TITLE[] = "Proto1";        // タイトルバーのテキ�
 static constexpr DWORD WINDOW_STYLE = WS_OVERLAPPEDWINDOW;
 
 // 振動をオンにしたときに知らせる短い振動（強さ 0〜1・秒）
-static constexpr float RUMBLE_ON_NOTICE_STRENGTH = 0.5f;
-static constexpr float RUMBLE_ON_NOTICE_SECONDS = 0.2f;
+static constexpr float RUMBLE_ON_NOTICE_STRENGTH = 1.0f;
+static constexpr float RUMBLE_ON_NOTICE_SECONDS = 0.3f;
 
 
 /*------------------------------------------------------------------------------

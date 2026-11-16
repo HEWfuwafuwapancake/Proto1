@@ -48,9 +48,9 @@ static constexpr float ARM_ROLL = XMConvertToRadians(180.0f); // 腕のモデル
 static constexpr float BARREL_UP = 0.14f; // 砲身を槍より上へずらす距離。
 static constexpr float SHOT_RADIUS = 0.15f;
 static constexpr XMFLOAT4 SHOT_COLOR{ 1.0f, 0.5f, 0.1f, 1.0f };
-static constexpr float HIT_RUMBLE_SMALL = 0.6f;
-static constexpr float HIT_RUMBLE_LARGE = 0.8f;
-static constexpr float HIT_RUMBLE_SECONDS = 0.15f;
+static constexpr float HIT_RUMBLE_SMALL = 1.0f;
+static constexpr float HIT_RUMBLE_LARGE = 1.0f;
+static constexpr float HIT_RUMBLE_SECONDS = 0.2f;
 
 GunlanceArm::GunlanceArm(int hand, const ARM_LINKS& links) : Arm(hand, links)
 {
