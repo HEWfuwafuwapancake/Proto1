@@ -79,6 +79,13 @@ static constexpr XMFLOAT4 FREE_RETICLE_DOT_COLOR{ 1.0f, 1.0f, 1.0f, 1.0f };	// �
 static constexpr float FREE_RETICLE_LENGTH = 14.0f;		// 十字の線1本の長さ
 static constexpr float FREE_RETICLE_GAP = 6.0f;			// 真ん中から線までのすき間
 static constexpr float FREE_RETICLE_THICKNESS = 2.0f;	// 十字の線の太さ
+static constexpr float CHARGE_GAUGE_RADIUS = 30.0f;		// レーザーの溜めの輪の半径（レティクルの中心から）
+static constexpr int CHARGE_GAUGE_SEGMENTS = 48;		// 溜めの輪に並べる四角の数
+static constexpr float CHARGE_GAUGE_SIZE = 4.0f;		// 溜めの輪の四角1つの大きさ
+static constexpr XMFLOAT4 CHARGE_GAUGE_EMPTY_COLOR{ 1.0f, 1.0f, 1.0f, 0.25f };	// まだ溜まっていない所の色
+static constexpr XMFLOAT4 CHARGE_GAUGE_COLOR{ 0.4f, 0.9f, 1.0f, 1.0f };		// 溜まった所の色（水色）
+static constexpr XMFLOAT4 CHARGE_GAUGE_FULL_COLOR{ 1.0f, 0.95f, 0.4f, 1.0f };	// 溜めきったときの色（黄色。離すと砲を撃つ）
+static constexpr float CHARGE_TEXT_DOT = 2.5f;			// 溜めきったときの「READY」のドットの大きさ
 static constexpr float FREE_RETICLE_DOT = 4.0f;			// 真ん中の点の大きさ
 
 static constexpr float PERCENT_DIGIT_WIDTH = 14.0f;	// 頭の上の % の桁の幅
@@ -349,6 +356,7 @@ void Hud::DrawReticle(void) const
 		char text[32];
 		snprintf(text, sizeof(text), "%s / %dM", soft ? "SOFT" : "LOCK", (int)(sqrtf(dx * dx + dy * dy + dz * dz) + 0.5f));
 		Number2DDrawText(text, left, lower + LOCK_TEXT_GAP, LOCK_TEXT_DOT, GLYPH_ALIGN_LEFT, lockColor);
+		DrawChargeGauge(centerX, centerY);
 		return;
 	}
 
@@ -360,6 +368,28 @@ void Hud::DrawReticle(void) const
 	};
 	Number2DDrawRects(cross, (int)(sizeof(cross) / sizeof(cross[0])), FREE_RETICLE_COLOR);
 	Number2DDrawBox({ cx - FREE_RETICLE_DOT * 0.5f, cy - FREE_RETICLE_DOT * 0.5f, FREE_RETICLE_DOT, FREE_RETICLE_DOT }, FREE_RETICLE_DOT_COLOR);
+	DrawChargeGauge(cx, cy);
+}
+
+// レーザーを溜めている間だけ、レティクルの周りに輪を出し、上から右回りに溜まった分を明るくする。溜めきったら黄色にして「READY」。
+void Hud::DrawChargeGauge(float centerX, float centerY) const
+{
+	const float charge = m_Arms->GetAimCharge();
+	if (charge < 0.0f) return;
+	const bool full = charge >= 1.0f;
+	const int filled = (int)(charge * CHARGE_GAUGE_SEGMENTS);
+	RECT2D lit[CHARGE_GAUGE_SEGMENTS], empty[CHARGE_GAUGE_SEGMENTS];
+	int litCount = 0, emptyCount = 0;
+	for (int i = 0; i < CHARGE_GAUGE_SEGMENTS; ++i) {
+		const float angle = XM_2PI * (i + 0.5f) / CHARGE_GAUGE_SEGMENTS;
+		const RECT2D box{ centerX + sinf(angle) * CHARGE_GAUGE_RADIUS - CHARGE_GAUGE_SIZE * 0.5f,
+			centerY - cosf(angle) * CHARGE_GAUGE_RADIUS - CHARGE_GAUGE_SIZE * 0.5f, CHARGE_GAUGE_SIZE, CHARGE_GAUGE_SIZE };
+		if (i < filled) lit[litCount++] = box;
+		else empty[emptyCount++] = box;
+	}
+	if (emptyCount > 0) Number2DDrawRects(empty, emptyCount, CHARGE_GAUGE_EMPTY_COLOR);
+	if (litCount > 0) Number2DDrawRects(lit, litCount, full ? CHARGE_GAUGE_FULL_COLOR : CHARGE_GAUGE_COLOR);
+	if (full) Number2DDrawText("READY", centerX, centerY + CHARGE_GAUGE_RADIUS + CHARGE_GAUGE_SIZE + LOCK_TEXT_GAP, CHARGE_TEXT_DOT, GLYPH_ALIGN_CENTER, CHARGE_GAUGE_FULL_COLOR);
 }
 
 void Hud::DrawMenuItem(const char* text, float y, bool selected) const

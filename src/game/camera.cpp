@@ -43,6 +43,9 @@ static constexpr float STRAFE_DRIFT = 1.2f;							// 左右へいっぱいに動
 static constexpr float SIDE_SMOOTH_TIME = 0.35f;						// 横へのずれが目標へ追いつくまでのおよその秒数
 static constexpr float SOFT_SCREEN_MARGIN = 0.05f;					// ソフトロック：画面の端からこの割合の内側に見えている相手だけを狙う
 static constexpr float SOFT_MAX_DISTANCE = 40.0f;					// ソフトロック：これより遠い相手は狙わない
+static constexpr float AIM_DISTANCE = 2.4f;							// レーザーを溜めている間、見ている点からカメラまでの距離（肩越しに寄せる）
+static constexpr float AIM_SHOULDER_OFFSET = 0.75f;					// レーザーを溜めている間、カメラを右へ寄せる量（キャラは画面の左へ寄る）
+static constexpr float AIM_ZOOM_SMOOTH_TIME = 0.12f;					// 溜め始め・やめたときに、寄せる・戻すまでのおよその秒数
 static constexpr float SOFT_KEEP_BONUS = 0.25f;						// ソフトロック：今狙っている相手を優先する量（画面の半分の幅を1とした距離。ちらつき防止）
 
 static constexpr float FOV = XMConvertToRadians(60.0f);				// 視野角（縦）
@@ -118,8 +121,10 @@ void Camera::UpdateLockTarget(const CAMERA_FOCUS_TARGET* targets)
 		}
 	}
 	// ソフトロックは毎フレーム、画面に見えている相手を選び直す（カメラは動かさない）。フリーは狙わない。
+	// レーザーを溜めている間は、溜め始めに狙っていた相手にレティクルを固定する。
 	if (m_Mode != CAMERA_MODE_HARD) {
-		m_LockTarget = (m_Mode == CAMERA_MODE_SOFT && !holding) ? PickSoftTarget(targets) : -1;
+		const bool keep = m_Mode == CAMERA_MODE_SOFT && m_Arms->GetAimCharge() >= 0.0f && IsTargetAvailable(m_LockTarget, targets);
+		if (!keep) m_LockTarget = (m_Mode == CAMERA_MODE_SOFT && !holding) ? PickSoftTarget(targets) : -1;
 		m_WasHolding = holding;
 		return;
 	}
@@ -182,7 +187,7 @@ void Camera::UpdateWaiting(float dt)
 void Camera::PlaceCamera(float dt)
 {
 	const VEC3 pivot = CameraCalcSideShift(m_Target, m_Yaw, m_SideOffset);
-	const VEC3 orbit = CameraCalcOrbitPosition(pivot, m_Yaw, m_Pitch, FOLLOW_DISTANCE);
+	const VEC3 orbit = CameraCalcOrbitPosition(pivot, m_Yaw, m_Pitch, FOLLOW_DISTANCE + (AIM_DISTANCE - FOLLOW_DISTANCE) * m_AimZoom);
 	const VEC3 clipped = CameraCalcClipToStage(pivot, orbit, m_Stage->GetStage(), STAGE_MARGIN);
 	const float distanceGoal = Vec3Length(Vec3Sub(clipped, pivot));
 	if (distanceGoal < m_Distance) {
@@ -222,6 +227,8 @@ void Camera::SnapToPlayer(void)
 	m_ManualPause = 0.0f;
 	m_SideOffset = CameraCalcSideOffsetGoal(m_LockTarget >= 0, 0.0f, SHOULDER_OFFSET, STRAFE_DRIFT);
 	m_SideVelocity = 0.0f;
+	m_AimZoom = 0.0f;
+	m_AimZoomVelocity = 0.0f;
 	PlaceCamera(0.0f);
 }
 
@@ -272,7 +279,7 @@ void Camera::Update(void)
 		m_ManualPause = fmaxf(0.0f, m_ManualPause - dt);
 	}
 	else if (m_LockTarget < 0 && m_Mode == CAMERA_MODE_HARD && m_Match->IsPlaying()) {
-		// 腕で体が動けない間（ガンランスで突き刺している間など）は、移動の入力で視界を回さない。
+		// 腕で体が動けない・遅い間は、移動の入力で視界を回さない。
 		m_YawGoal += m_Player->GetMoveInput().X * m_Arms->GetMoveScale() * FOLLOW_TURN_SPEED * dt;
 	}
 	// 長く回し続けても、角度が大きくなり続けないようにする。
@@ -309,7 +316,11 @@ void Camera::Update(void)
 	m_Target.Y = CameraCalcSmoothDamp(m_Target.Y, m_TargetGoal.Y, m_TargetVelocity.Y, LOOK_HEIGHT_SMOOTH_TIME, dt);
 	// ハードロック中は肩越しに横へ寄せ、ソフトロック・フリー・相手がいないときは真ん中。左右へ動く間はキャラを画面の端へ流す。
 	const float moveX = m_Match->IsPlaying() ? m_Player->GetMoveInput().X * m_Arms->GetMoveScale() : 0.0f;
-	const float sideGoal = CameraCalcSideOffsetGoal(m_Mode == CAMERA_MODE_HARD && GetTarget() >= 0, moveX, SHOULDER_OFFSET, STRAFE_DRIFT);
+	const bool aiming = m_Arms->GetAimCharge() >= 0.0f;
+	// レーザーを溜めている間は、どのカメラでも肩越しに右へ寄せて近づける（キャラは画面の左、レティクルは真ん中）。
+	m_AimZoom = CameraCalcSmoothDamp(m_AimZoom, aiming ? 1.0f : 0.0f, m_AimZoomVelocity, AIM_ZOOM_SMOOTH_TIME, dt);
+	const float sideGoal = aiming ? AIM_SHOULDER_OFFSET
+		: CameraCalcSideOffsetGoal(m_Mode == CAMERA_MODE_HARD && GetTarget() >= 0, moveX, SHOULDER_OFFSET, STRAFE_DRIFT);
 	m_SideOffset = CameraCalcSmoothDamp(m_SideOffset, sideGoal, m_SideVelocity, SIDE_SMOOTH_TIME, dt);
 	PlaceCamera(dt);
 }

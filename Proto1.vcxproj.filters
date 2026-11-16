@@ -344,28 +344,19 @@
     <ClCompile Include="src\game\arm_katana.cpp">
       <Filter>src\game</Filter>
     </ClCompile>
-    <ClCompile Include="src\game\arm_gunlance.cpp">
-      <Filter>src\game</Filter>
-    </ClCompile>
-    <ClCompile Include="src\game\arm_spike.cpp">
-      <Filter>src\game</Filter>
-    </ClCompile>
     <ClCompile Include="src\game\arm_flail.cpp">
       <Filter>src\game</Filter>
     </ClCompile>
     <ClCompile Include="src\game\arm_knuckle.cpp">
       <Filter>src\game</Filter>
+    <ClCompile Include="src\game\arm_laser.cpp">
+      <Filter>src\game</Filter>
+    </ClCompile>
     </ClCompile>
     <ClCompile Include="src\physics\areacalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
     <ClCompile Include="src\physics\armphasecalc.cpp">
-      <Filter>src\physics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\physics\gunlancecalc.cpp">
-      <Filter>src\physics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\physics\spikecalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
     <ClCompile Include="src\physics\flailcalc.cpp">
@@ -388,6 +379,9 @@
     </ClCompile>
     <ClCompile Include="src\physics\armcostcalc.cpp">
       <Filter>src\physics</Filter>
+    <ClCompile Include="src\physics\lasercalc.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
     </ClCompile>
     <ClCompile Include="src\physics\armusecalc.cpp">
       <Filter>src\physics</Filter>
@@ -452,28 +446,19 @@
     <ClInclude Include="src\game\arm_bare.h">
       <Filter>src\game</Filter>
     </ClInclude>
-    <ClInclude Include="src\game\arm_gunlance.h">
-      <Filter>src\game</Filter>
-    </ClInclude>
-    <ClInclude Include="src\game\arm_spike.h">
-      <Filter>src\game</Filter>
-    </ClInclude>
     <ClInclude Include="src\game\arm_flail.h">
       <Filter>src\game</Filter>
     </ClInclude>
     <ClInclude Include="src\game\arm_knuckle.h">
       <Filter>src\game</Filter>
+    <ClInclude Include="src\game\arm_laser.h">
+      <Filter>src\game</Filter>
+    </ClInclude>
     </ClInclude>
     <ClInclude Include="src\physics\areacalc.h">
       <Filter>src\physics</Filter>
     </ClInclude>
     <ClInclude Include="src\physics\armphasecalc.h">
-      <Filter>src\physics</Filter>
-    </ClInclude>
-    <ClInclude Include="src\physics\gunlancecalc.h">
-      <Filter>src\physics</Filter>
-    </ClInclude>
-    <ClInclude Include="src\physics\spikecalc.h">
       <Filter>src\physics</Filter>
     </ClInclude>
     <ClInclude Include="src\physics\flailcalc.h">
@@ -490,6 +475,9 @@
     </ClInclude>
     <ClInclude Include="src\physics\armcostcalc.h">
       <Filter>src\physics</Filter>
+    <ClInclude Include="src\physics\lasercalc.h">
+      <Filter>src\physics</Filter>
+    </ClInclude>
     </ClInclude>
     <ClInclude Include="src\physics\armusecalc.h">
       <Filter>src\physics</Filter>

@@ -9,8 +9,7 @@ enum ARM_COST_ROW
 	ARM_COST_ROW_TENTACLE, ///< 触手
 	ARM_COST_ROW_HAMMER, ///< ハンマー
 	ARM_COST_ROW_KNUCKLE, ///< ナックル
-	ARM_COST_ROW_SPIKE, ///< トゲ
-	ARM_COST_ROW_GUNLANCE, ///< ガンランス
+	ARM_COST_ROW_LASER, ///< レーザー
 	ARM_COST_ROW_KATANA, ///< 刀
 	ARM_COST_ROW_FLAIL, ///< モーニングスター
 	ARM_COST_ROW_GUARD, ///< ガード（パリィできずに防いだ）
@@ -24,7 +23,7 @@ enum ARM_COST_ITEM
 	ARM_COST_TAP_MISS, ///< 弱攻撃（単押し）が誰にも効かなかった
 	ARM_COST_HOLD_HIT, ///< 強攻撃（長押し）が1人でも効いた
 	ARM_COST_HOLD_MISS, ///< 強攻撃（長押し）が誰にも効かなかった
-	ARM_COST_EXTRA, ///< そのほか（空中の跳ね・弾1発・ガード）
+	ARM_COST_EXTRA, ///< そのほか（空中の跳ね・ガード）
 	ARM_COST_ITEM_COUNT ///< 列の数
 };
 
