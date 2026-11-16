@@ -42,6 +42,13 @@ VEC3 ArmCalcPitchDirection(const VEC3& forward, float pitch)
 	return { direction.X * c, sinf(pitch), direction.Z * c };
 }
 
+float ArmCalcAirRushPitch(bool offStage, bool freeLook, float cameraPitch, float offStagePitch)
+{
+	const float base = offStage ? offStagePitch : 0.0f;
+	// 下へは突進しない。カメラが場外の角度より上を向いていれば、そちらを使う。
+	return freeLook ? fmaxf(base, cameraPitch) : base;
+}
+
 float ArmCalcClipTime(int phase, float phaseTime, const float* phaseSeconds, const float* clipSeconds)
 {
 	float time = 0.0f;

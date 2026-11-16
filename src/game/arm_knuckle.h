@@ -36,11 +36,13 @@ public:
 private:
 	int FindTarget(float reach, float radius) const;
 	bool IsOffStage() const;
+	float GetAirRushPitch() const;
 	void Strike(int target, float up, float damage, float power);
 	void StopAirRush();
 	ArmPhaseCalc m_Phase;
 	RiseCalc m_Rise; // 空中の突進で体を動かす計算
 	bool m_AirRush = false; // true：空中の突進で体を自分で動かしている
+	float m_AirRushPitch = 0.0f; // 空中の突進で上へ傾けた角度（ラジアン）
 	bool m_AirRushClip = false; // 長押し開始時に決め、休みが終わるまで保つ空中クリップの指定（描画だけ）
 	bool m_UseConsumed = false; // 今の動作で耐久を消費したか
 	int m_ArmModel = -1;
