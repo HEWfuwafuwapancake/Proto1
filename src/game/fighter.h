@@ -152,6 +152,7 @@ private:
 	KNOCKBACK_PARAMS KnockbackParams() const;
 	XMFLOAT3 GetStunShake() const;
 	void DrawStunStars() const;
+	void CancelLaunchAnimation(); // 吹っ飛び中に自分で動いたので、やられのクリップ（のけぞり・吹っ飛び）をやめる（描画だけ）
 	void StartDashAnimation(bool onGround); // ダッシュのクリップを頭から見せる（描画だけ）
 	PlayerBodyCalc m_Body;
 	StatusCalc m_Status;
@@ -176,6 +177,8 @@ private:
 	int m_AttackHand = -1; // 最後に攻撃クリップを再生した手（左 0・右 1。描画だけ）
 	MotionCalc m_Motion; // 描画だけの脚の向き・ねじれ・傾き
 	float m_LaunchAnimElapsed = 0.0f; // 吹っ飛ばされてからの秒数（描画だけ。のけぞりが終わったら進めない）
+	bool m_LaunchAnimCancelled = false; // 吹っ飛び中に跳ぶ・ダッシュ・腕を使ったので、やられのクリップをやめたか（描画だけ）
+	int m_AnimArmHands = 0; // 前の描画で使っていた手（左 1・右 2 のビット。吹っ飛び中の腕の使い始めを見つける。描画だけ）
 	float m_DashAnimElapsed = -1.0f; // ダッシュを始めてからの秒数（描画だけ。負ならダッシュのクリップを使わない）
 	bool m_DashAnimAir = false; // 空中で始めたダッシュか（描画だけ）
 	float m_DashAnimYaw = 0.0f; // ダッシュの向き（描画だけ）

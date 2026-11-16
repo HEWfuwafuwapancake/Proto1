@@ -206,9 +206,13 @@ DUMMY_EVENT Fighter::Update(const Camera* camera, const ArmManager* arms)
 		if (m_Launched) {
 			// 吹っ飛び中もすぐ動ける。空中ジャンプとダッシュは吹っ飛びの速度を消さずに足す。
 			if (m_Status.IsActive(STATUS_STUN)) moveX = moveZ = 0.0f;
-			if (jump) m_Body.Jump(JUMP_SPEED, AIR_JUMPS);
+			if (jump) {
+				m_Body.Jump(JUMP_SPEED, AIR_JUMPS);
+				CancelLaunchAnimation();
+			}
 			if (dash && m_Dash.TryStart(dashDirection, onGround, dashParams, false)) {
 				StartDashAnimation(onGround);
+				CancelLaunchAnimation();
 				const VEC3 push = Vec3Scale(m_Dash.GetDirection(), DASH_SPEED);
 				m_Body.SetVelocity({ m_Body.GetVelocityX() + push.X, m_Body.GetVelocityY(), m_Body.GetVelocityZ() + push.Z });
 			}
@@ -300,8 +304,14 @@ void Fighter::UpdateAnimation(const ArmManager* arms, float dt)
 	input.VelocityZ = m_Body.GetVelocityZ();
 	input.OnGround = m_Body.GetOnGround();
 	input.AimYaw = m_Yaw;
-	// 吹っ飛び中・保持中・引っぱられ中は走らせない（脚は狙いの向き、空中なら落下）。
-	input.Locomotion = !m_Launched && !IsHeld() && !m_Pulled;
+	// 吹っ飛び中に腕を使い始めたら、やられのクリップをやめる（跳ぶ・ダッシュは Update でやめる）。
+	// 被弾の前から出していた腕は中断されるので、使い始めた手だけを見る。
+	const int armHands = IsHuman() && arms ? arms->GetActiveHands() : 0;
+	if (m_Launched && CanUseArms() && (armHands & ~m_AnimArmHands) != 0) CancelLaunchAnimation();
+	m_AnimArmHands = armHands;
+	const bool launchPose = m_Launched && !m_LaunchAnimCancelled;
+	// 吹っ飛び中（やられのクリップを出している間）・保持中・引っぱられ中は走らせない（脚は狙いの向き、空中なら落下）。
+	input.Locomotion = !launchPose && !IsHeld() && !m_Pulled;
 	input.DashElapsed = m_DashAnimElapsed;
 	input.DashAir = m_DashAnimAir;
 	input.DashYaw = m_DashAnimYaw;
@@ -314,7 +324,7 @@ void Fighter::UpdateAnimation(const ArmManager* arms, float dt)
 	request.Twist = m_Motion.GetTwist();
 	request.ClipTime = m_Motion.GetClipTime();
 	const MOTION_HIT_REACTION reaction = MotionCalcHitReaction(IsHeld(), m_Status.IsActive(STATUS_STUN),
-		m_Launched, m_LaunchAnimElapsed, FLINCH_ANIM_SECONDS);
+		launchPose, m_LaunchAnimElapsed, FLINCH_ANIM_SECONDS);
 	if (reaction.Active) {
 		request.Clip = reaction.Clip;
 		request.ClipTime = reaction.ClipTime;
@@ -349,6 +359,12 @@ void Fighter::UpdateAnimation(const ArmManager* arms, float dt)
 		m_DashAnimElapsed += dt;
 		if (m_DashAnimElapsed >= DASH_CLIP_SECONDS) m_DashAnimElapsed = -1.0f;
 	}
+}
+
+void Fighter::CancelLaunchAnimation()
+{
+	m_LaunchAnimCancelled = true;
+	m_LaunchAnimElapsed = (std::numeric_limits<float>::max)(); // のけぞりもやめる。
 }
 
 void Fighter::StartDashAnimation(bool onGround)
@@ -581,6 +597,7 @@ void Fighter::SetLaunchVelocity(const VEC3& velocity)
 	m_Pulled = false;
 	m_Launched = true;
 	m_LaunchAnimElapsed = 0.0f;
+	m_LaunchAnimCancelled = false;
 	m_FlinchFrames = FLINCH_FRAMES;
 	m_Dash.Cancel();
 }
