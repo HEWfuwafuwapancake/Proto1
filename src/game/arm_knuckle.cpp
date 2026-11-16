@@ -107,15 +107,20 @@ void KnuckleArm::Update(const ARM_INPUT& input)
 {
 	const float dt = fmaxf(0.0f, GameTimeGetDeltaTime());
 	if (GetPlayer().DidRespawn()) Reset();
-	// 長押しは離したときに出す。
-	if (m_Phase.IsIdle() && (input.Tap || input.HoldReleased)) {
-		m_Rush = input.HoldReleased;
+	// 長押しは押している間ためた姿勢で待ち、離した瞬間に突進する。
+	if (m_Phase.IsIdle() && (input.Tap || input.HoldStarted || input.HoldReleased)) {
+		m_Rush = !input.Tap;
 		// 判定で使う m_AirRush と分け、ため中に場外へ出入りしてもクリップは切り替えない。
 		m_AirRushClip = m_Rush && GetAirRushPitch() > 0.0f;
 		m_UseConsumed = false;
 		m_Direction = GetAim(false);
 		m_Phase.Start(KNUCKLE_CHARGE);
+		m_Phase.SetHeld(m_Rush);
+		if (input.HoldReleased) m_Phase.Release();
 	}
+	else if (input.HoldReleased && m_Rush) m_Phase.Release();
+	// ためている間にボタンを受け付けなくなった（ガードなど）ときは、出さずにやめる。
+	else if (!input.Pressed && m_Phase.IsHeld()) m_Phase.Reset();
 	const ARM_PHASE_STEP step = m_Phase.Step(dt, m_Rush ? RUSH_SECONDS : PUNCH_SECONDS, KNUCKLE_PHASE_COUNT);
 	if (step.Entered == KNUCKLE_STRIKE) {
 		m_Direction = GetAim(false);

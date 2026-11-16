@@ -40,9 +40,19 @@ public:
 	float GetTime() const { return m_Time; }
 	/// @brief 待機なら true を返す
 	bool IsIdle() const { return m_Phase < 0; }
+	/// @brief 今の段階を終わりで止めておくかを設定する（true：段階の秒数を過ぎても次へ進まず、終わりの時間で待つ、false：ふつうに進む）
+	/// @details 長押しのため（押している間はためた姿勢で待つ）に使う。次の段階へ進むと false に戻る
+	void SetHeld(bool held) { m_Held = held; }
+	/// @brief 今の段階を終わりで止めているか取得する（true：止めている、false：ふつうに進む）
+	bool IsHeld() const { return m_Held; }
+	/// @brief 止めておいた段階を、次の Step ですぐに終えて次の段階へ進める（止めていなければ何もしない）
+	/// @details 長押しを離した瞬間に、ためを飛ばして攻撃を出すのに使う
+	void Release();
 
 private:
 	int m_Phase = -1; ///< 今の段階（待機は -1）
 	float m_Time = 0.0f; ///< 今の段階になってからの秒数
 	int m_TickCount = 0; ///< 今の段階で数えた刻みの数
+	bool m_Held = false; ///< 今の段階を終わりで止めておくか
+	bool m_Skip = false; ///< 次の Step で今の段階をすぐに終えるか
 };
