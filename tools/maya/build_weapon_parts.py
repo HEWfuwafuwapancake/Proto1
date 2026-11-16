@@ -46,14 +46,6 @@ def build_fist():
     return parts
 
 
-def build_c4():
-    # 上の面が原点、-Y へ厚みがある平たい箱。上に起爆装置。
-    return [cube("c4_block", 12.0, 4.0, 8.0, (0, -2.0, 0)),
-            cube("c4_band_a", 12.4, 4.2, 1.0, (0, -2.0, 2.2)),
-            cube("c4_band_b", 12.4, 4.2, 1.0, (0, -2.0, -2.2)),
-            cube("c4_detonator", 4.0, 1.5, 3.0, (2.5, 0.75, 0))]
-
-
 def build_barrel():
     # 原点から -Y へ伸びる砲身。先と中ほどに太い輪。
     return [cylinder("barrel_tube", 2.0, 24.0, (0, -12.0, 0)),
@@ -92,7 +84,7 @@ def main():
         cmds.file(new=True, force=True)
         cmds.currentUnit(linear="cm")
         group = cmds.group(empty=True, name=ROOT, world=True)
-        for node in build_hammer() + build_fist() + build_c4() + build_barrel() + build_blade() + build_katana_fittings():
+        for node in build_hammer() + build_fist() + build_barrel() + build_blade() + build_katana_fittings():
             # 書き出しの原点は pivot なので、全部品の pivot をワールドの原点にそろえる。
             cmds.xform(node, worldSpace=True, pivots=(0, 0, 0))
             cmds.parent(node, group)

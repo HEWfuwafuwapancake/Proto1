@@ -10,6 +10,7 @@ void StatusCalc::Apply(STATUS_TYPE type, float seconds, float value, int attacke
 	if (type < 0 || type >= STATUS_COUNT || seconds <= 0.0f) return;
 	if (seconds > m_Time[type]) m_Time[type] = seconds;
 	if (type == STATUS_SLOW) m_SlowScale = value;
+	if (type == STATUS_THORN) m_ThornScale = value;
 	if (type == STATUS_BURN) {
 		m_BurnPerSecond = value;
 		m_BurnAttacker = attacker;
@@ -42,5 +43,5 @@ bool StatusCalc::IsActive(STATUS_TYPE type) const
 float StatusCalc::GetMoveScale() const
 {
 	if (IsActive(STATUS_STUN)) return 0.0f;
-	return IsActive(STATUS_SLOW) ? m_SlowScale : 1.0f;
+	return (IsActive(STATUS_SLOW) ? m_SlowScale : 1.0f) * (IsActive(STATUS_THORN) ? m_ThornScale : 1.0f);
 }

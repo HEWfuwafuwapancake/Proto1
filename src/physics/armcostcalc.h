@@ -9,7 +9,7 @@ enum ARM_COST_ROW
 	ARM_COST_ROW_TENTACLE, ///< 触手
 	ARM_COST_ROW_HAMMER, ///< ハンマー
 	ARM_COST_ROW_KNUCKLE, ///< ナックル
-	ARM_COST_ROW_C4, ///< C4
+	ARM_COST_ROW_SPIKE, ///< トゲ
 	ARM_COST_ROW_GUNLANCE, ///< ガンランス
 	ARM_COST_ROW_KATANA, ///< 刀
 	ARM_COST_ROW_GUARD, ///< ガード（パリィできずに防いだ）

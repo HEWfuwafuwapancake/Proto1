@@ -19,8 +19,6 @@ static constexpr CHARACTER_DATA CHARACTERS[CHARACTER_COUNT] = {
 		"assets/models/mekagirl_atk_knuckle_punch_l.fbx", "assets/models/mekagirl_atk_knuckle_punch_r.fbx",
 		"assets/models/mekagirl_atk_knuckle_rush_l.fbx", "assets/models/mekagirl_atk_knuckle_rush_r.fbx",
 		"assets/models/mekagirl_atk_gunlance_impale_l.fbx", "assets/models/mekagirl_atk_gunlance_impale_r.fbx",
-		"assets/models/mekagirl_atk_c4_throw_l.fbx", "assets/models/mekagirl_atk_c4_throw_r.fbx",
-		"assets/models/mekagirl_atk_c4_charge_l.fbx", "assets/models/mekagirl_atk_c4_charge_r.fbx",
 		"assets/models/mekagirl_atk_tentacle_reach_l.fbx", "assets/models/mekagirl_atk_tentacle_reach_r.fbx",
 		"assets/models/mekagirl_atk_tentacle_throw_l.fbx", "assets/models/mekagirl_atk_tentacle_throw_r.fbx",
 		"assets/models/mekagirl_atk_tentacle_spin_l.fbx", "assets/models/mekagirl_atk_tentacle_spin_r.fbx",

@@ -341,7 +341,7 @@
     <ClCompile Include="src\game\arm_gunlance.cpp">
       <Filter>src\game</Filter>
     </ClCompile>
-    <ClCompile Include="src\game\arm_c4.cpp">
+    <ClCompile Include="src\game\arm_spike.cpp">
       <Filter>src\game</Filter>
     </ClCompile>
     <ClCompile Include="src\game\arm_knuckle.cpp">
@@ -356,7 +356,7 @@
     <ClCompile Include="src\physics\gunlancecalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
-    <ClCompile Include="src\physics\c4calc.cpp">
+    <ClCompile Include="src\physics\spikecalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
     <ClCompile Include="src\physics\grapplecalc.cpp">
@@ -443,7 +443,7 @@
     <ClInclude Include="src\game\arm_gunlance.h">
       <Filter>src\game</Filter>
     </ClInclude>
-    <ClInclude Include="src\game\arm_c4.h">
+    <ClInclude Include="src\game\arm_spike.h">
       <Filter>src\game</Filter>
     </ClInclude>
     <ClInclude Include="src\game\arm_knuckle.h">
@@ -458,7 +458,7 @@
     <ClInclude Include="src\physics\gunlancecalc.h">
       <Filter>src\physics</Filter>
     </ClInclude>
-    <ClInclude Include="src\physics\c4calc.h">
+    <ClInclude Include="src\physics\spikecalc.h">
       <Filter>src\physics</Filter>
     </ClInclude>
     <ClInclude Include="src\physics\armcalc.h">

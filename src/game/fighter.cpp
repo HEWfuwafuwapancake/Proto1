@@ -19,6 +19,7 @@ static constexpr float AIR_CONTROL = 12.0f; // 吹っ飛び中に、移動の入
 static constexpr float DASH_SPEED = 24.0f; // ダッシュの速さ
 static constexpr float DASH_SECONDS = 0.2f; // ダッシュで進み続ける秒数（約 4.8 進む）
 static constexpr float DASH_COOLDOWN = 0.35f; // ダッシュが終わってから次を出せるまでの秒数
+static constexpr float THORN_DASH_SCALE = 0.5f; // 茨の中のダッシュで進み続ける秒数の倍率（距離が半分）
 static constexpr int FLINCH_FRAMES = 2; // 吹っ飛ばされた直後に腕を使えないフレーム数（出していた腕を中断させるため。次のフレームから動ける）
 static constexpr float BODY_RADIUS = 0.5f;
 static constexpr float BODY_HEIGHT = 1.8f;
@@ -55,8 +56,9 @@ static constexpr float STATUS_MARKER_RADIUS = 0.1f; // 頭の上の状態異常�
 static constexpr float STATUS_MARKER_HEIGHT = 0.5f;
 static constexpr float STATUS_MARKER_GAP = 0.22f;
 static constexpr XMFLOAT4 STATUS_COLORS[STATUS_COUNT] = {
-	{ 1.0f, 0.95f, 0.2f, 1.0f }, { 0.5f, 0.85f, 1.0f, 1.0f }, { 1.0f, 0.45f, 0.1f, 1.0f }, { 0.6f, 0.6f, 0.6f, 1.0f }
-}; // しびれ・遅い・燃える・隠れる（隠れるは描かない）
+	{ 1.0f, 0.95f, 0.2f, 1.0f }, { 0.5f, 0.85f, 1.0f, 1.0f }, { 1.0f, 0.45f, 0.1f, 1.0f }, { 0.35f, 0.75f, 0.25f, 1.0f },
+	{ 0.6f, 0.6f, 0.6f, 1.0f }
+}; // しびれ・遅い・燃える・茨・隠れる（隠れるは描かない）
 // しびれ中の見た目（描画だけ。当たり判定・攻撃の起点は動かさない）
 static constexpr float STUN_SHAKE_WIDTH = 0.08f; // 体が左右に震える幅
 static constexpr float STUN_SHAKE_SPEED = 70.0f; // 震える速さ（ラジアン／秒。約 11 回／秒）
@@ -171,7 +173,8 @@ DUMMY_EVENT Fighter::Update(const Camera* camera, const ArmManager* arms)
 	const float dt = GameTimeGetDeltaTime();
 	const STAGE& stage = m_Stage->GetStage();
 	if (m_FlinchFrames > 0) --m_FlinchFrames;
-	const DASH_PARAMS dashParams{ DASH_SPEED, DASH_SECONDS, DASH_COOLDOWN };
+	// 茨の中はダッシュの距離が短い。
+	const DASH_PARAMS dashParams{ DASH_SPEED, IsStatus(STATUS_THORN) ? DASH_SECONDS * THORN_DASH_SCALE : DASH_SECONDS, DASH_COOLDOWN };
 	if (IsActive() && !IsHeld() && !m_Pulled) {
 		PLAYER_PARAMS params{};
 		params.Gravity = GRAVITY;
@@ -189,7 +192,7 @@ DUMMY_EVENT Fighter::Update(const Camera* camera, const ArmManager* arms)
 			params.MoveSpeed = MOVE_SPEED * arms->GetMoveScale() * m_Status.GetMoveScale();
 			params.JumpSpeed = JUMP_SPEED;
 			if (!m_Status.IsActive(STATUS_STUN)) {
-				jump = IsTrigger(ACTION_JUMP);
+				jump = IsTrigger(ACTION_JUMP) && !m_Status.IsActive(STATUS_THORN); // 茨の中は跳べない
 				rushVelocity = arms->GetRushVelocity();
 				// 腕の突進中と、腕が足を止めている間（刀が空間を斬っている間など）はダッシュできない。
 				dash = IsTrigger(ACTION_DASH) && rushVelocity.X == 0.0f && rushVelocity.Z == 0.0f && arms->GetMoveScale() > 0.0f;

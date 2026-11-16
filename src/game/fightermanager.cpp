@@ -291,6 +291,18 @@ void FighterManager::Heal(int index, float amount)
 	if (IsActive(index)) m_Fighters[index].Heal(amount);
 }
 
+bool FighterManager::ApplyHazard(int index, int attacker, STATUS_TYPE type, float seconds, float value, float damage)
+{
+	// 置いた人が復活待ちでも、残っている茨は効く。
+	if (!m_Versus.IsOpponent(attacker, index) || !IsActive(index)) return false;
+	m_Fighters[index].ApplyStatus(type, seconds, value, attacker);
+	if (damage > 0.0f) {
+		m_Fighters[index].AddDamage(damage);
+		m_Versus.RecordAttack(attacker, index);
+	}
+	return true;
+}
+
 bool FighterManager::AddDamage(int index, int attacker, float damage)
 {
 	if (!CanAttack(index, attacker)) return false;

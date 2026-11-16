@@ -34,4 +34,18 @@ namespace Proto1Tests
 		EXPECT_EQ(3, attacker);
 		EXPECT_FALSE(status.IsActive(STATUS_BURN));
 	}
+
+	// 茨の中は遅さと掛け合わせて歩く速さが落ち、出て時間が過ぎると戻る。
+	TEST(StatusCalcTest, Thorn_MultipliesMoveScale)
+	{
+		StatusCalc status;
+		status.Apply(STATUS_THORN, 0.15f, 0.4f, 1);
+		EXPECT_TRUE(status.IsActive(STATUS_THORN));
+		EXPECT_NEAR(0.4f, status.GetMoveScale(), 0.0001f);
+		status.Apply(STATUS_SLOW, 1.0f, 0.5f, 1);
+		EXPECT_NEAR(0.2f, status.GetMoveScale(), 0.0001f);
+		status.Step(0.2f);
+		EXPECT_FALSE(status.IsActive(STATUS_THORN));
+		EXPECT_NEAR(0.5f, status.GetMoveScale(), 0.0001f);
+	}
 }
