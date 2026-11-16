@@ -44,7 +44,7 @@ static constexpr float SLASH_MARK_RADIUS = 0.012f;
 static constexpr XMFLOAT4 SLASH_COLOR{ 1.0f, 0.95f, 0.85f, 1.0f };
 static constexpr float SLASH_RUMBLE_SMALL = 1.0f;
 static constexpr float SLASH_RUMBLE_LARGE = 1.0f;
-static constexpr float SLASH_RUMBLE_SECONDS = 0.2f;
+static constexpr float SLASH_RUMBLE_SECONDS = 0.35f;
 // 長押し：構えて、離すと空間を斬って狙った場所へ一直線に飛ぶ（アサルト）
 static constexpr float BREACH_RANGE = 25.0f; // 狙える距離。
 static constexpr float DASH_HIT_RADIUS = 0.9f;
@@ -100,9 +100,9 @@ static constexpr float AIM_ARM_PITCH = XMConvertToRadians(-15.0f); // 狙って�
 static constexpr float AIM_SWORD_PITCH = XMConvertToRadians(30.0f); // 狙っている間の刀の上下の向き。
 static constexpr float DASH_ARM_PITCH = XMConvertToRadians(-50.0f); // 飛んでいる間の腕の上下の向き。
 static constexpr float DASH_SWORD_PITCH = XMConvertToRadians(-10.0f); // 飛んでいる間、後ろへ流す刀の上下の向き。
-static constexpr float HIT_RUMBLE_SMALL = 0.6f;
-static constexpr float HIT_RUMBLE_LARGE = 0.6f;
-static constexpr float HIT_RUMBLE_SECONDS = 0.12f;
+static constexpr float HIT_RUMBLE_SMALL = 1.0f;
+static constexpr float HIT_RUMBLE_LARGE = 1.0f;
+static constexpr float HIT_RUMBLE_SECONDS = 0.25f;
 
 enum IAI_PHASE { IAI_STANCE, IAI_DRAW, IAI_RECOVER, IAI_PHASE_COUNT };
 

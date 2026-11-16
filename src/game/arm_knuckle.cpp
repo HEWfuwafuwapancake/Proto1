@@ -35,9 +35,9 @@ static constexpr float MODEL_SCALE = 0.08f * Arm::MODEL_SIZE;
 static constexpr float ARM_LENGTH = 19.250364f; // arm_shield_base の長さ（cm）。
 static constexpr float FIST_LENGTH = 11.7f; // arm_knuckle_fist の長さ（cm）。
 static constexpr float FIST_SIZE = 1.5f; // 拳だけを大きく描く倍率。
-static constexpr float HIT_RUMBLE_SMALL = 0.7f;
-static constexpr float HIT_RUMBLE_LARGE = 0.7f;
-static constexpr float HIT_RUMBLE_SECONDS = 0.15f;
+static constexpr float HIT_RUMBLE_SMALL = 1.0f;
+static constexpr float HIT_RUMBLE_LARGE = 1.0f;
+static constexpr float HIT_RUMBLE_SECONDS = 0.25f;
 
 enum KNUCKLE_PHASE { KNUCKLE_CHARGE, KNUCKLE_STRIKE, KNUCKLE_RECOVER, KNUCKLE_PHASE_COUNT };
 
