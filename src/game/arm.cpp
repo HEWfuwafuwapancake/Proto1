@@ -6,6 +6,7 @@
 #include "game/arm_hammer.h"
 #include "game/arm_knuckle.h"
 #include "game/arm_spike.h"
+#include "game/arm_flail.h"
 #include "game/arm_gunlance.h"
 #include "game/arm_katana.h"
 #include "game/tentacle.h"
@@ -61,7 +62,7 @@ static constexpr XMFLOAT4 GUARD_FLASH_COLOR{ 0.6f, 0.6f, 0.6f, 1.0f };
 // 装備時の耐久は全腕共通。素手は0。
 static constexpr int ARM_MAX_DURABILITY = 100;
 // 攻撃・ガードで減る量は physics/armcostcalc の表（デバッグ用ウィンドウで変えられる）。
-static_assert(ARM_COST_ROW_TENTACLE == ARM_TYPE_TENTACLE && ARM_COST_ROW_KATANA == ARM_TYPE_KATANA, "減る量の表の行は ARM_TYPE と同じ順にする");
+static_assert(ARM_COST_ROW_TENTACLE == ARM_TYPE_TENTACLE && ARM_COST_ROW_FLAIL == ARM_TYPE_FLAIL, "減る量の表の行は ARM_TYPE と同じ順にする");
 
 static_assert(ARM_TYPE_COUNT <= ACTION_EQUIP_NUMBER_COUNT, "腕の番号は通信で送れる数までにする");
 
@@ -81,10 +82,11 @@ static const ArmFactory ARM_FACTORIES[ARM_TYPE_COUNT] = {
 	CreateArm<SpikeArm>, // トゲ
 	CreateArm<GunlanceArm>, // ガンランス
 	CreateArm<KatanaArm>, // 刀
+	CreateArm<FlailArm>, // モーニングスター
 	CreateArm<BareArm>, // 素手
 };
 static const char* const ARM_NAMES[ARM_TYPE_COUNT] = {
-	"触手", "ハンマー", "ナックル", "トゲ", "ガンランス", "刀", "素手"
+	"触手", "ハンマー", "ナックル", "トゲ", "ガンランス", "刀", "モーニングスター", "素手"
 };
 
 void ArmManager::ChangeType(int hand, int next, int direction)
@@ -427,6 +429,11 @@ float ArmManager::GetMoveScale() const
 {
 	const float scale = fminf(m_Arms[0][m_Types[0]]->GetMoveScale(), m_Arms[1][m_Types[1]]->GetMoveScale());
 	return m_GuardHand >= 0 ? fminf(scale, GUARD_MOVE_SCALE) : scale;
+}
+
+bool ArmManager::BlocksJumpAndDash() const
+{
+	return m_Arms[0][m_Types[0]]->BlocksJumpAndDash() || m_Arms[1][m_Types[1]]->BlocksJumpAndDash();
 }
 
 GUARD ArmManager::GetGuard() const
