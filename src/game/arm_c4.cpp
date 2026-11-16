@@ -9,7 +9,7 @@
 // 調整用の値
 // 耐久の減る量は physics/armcostcalc の表のC4の行（投げた瞬間に、弱外れ：通常の爆弾、強外れ：大きい爆弾。爆発では減らない）。
 static constexpr ARM_COST_ROW COST_ROW = ARM_COST_ROW_C4;
-static constexpr float C4_SECONDS[] = { 1.0f, 0.3f }; // 大型のため・投げたあとの構え（ハンマーの強攻撃より速く強くならないようにする）
+static constexpr float C4_SECONDS[] = { 0.75f, 0.22f }; // 大型のため・投げたあとの構え（ハンマーの強攻撃より速く強くならないようにする）
 static constexpr float THROW_CLIP_SECONDS[] = { 0.0f, 8.0f / 24.0f }; // 単押しの投げ
 static constexpr float CHARGE_CLIP_SECONDS[] = { 24.0f / 24.0f, 8.0f / 24.0f }; // 長押しのため・投げ
 static constexpr PROJECTILE_PARAMS BOMB_PARAMS{ 0.2f, 20.0f, 5.0f, 0.0f, false };

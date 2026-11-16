@@ -9,21 +9,22 @@
 #include <limits>
 
 // 調整用の値（従来のPlayer・DummyManagerと同じ）
-static constexpr float MOVE_SPEED = 6.0f;
+static constexpr float MOVE_SPEED = 8.5f; // 2026-11-16 スピード感のため 6.0 から上げた
 static constexpr float TURN_SPEED = XMConvertToRadians(720.0f);
-static constexpr float JUMP_SPEED = 9.0f;
-static constexpr float GRAVITY = 25.0f;
-static constexpr float MAX_FALL_SPEED = 12.0f; // 重力で落ちる速さの上限（ふつうのジャンプの着地は約 9 なので、ジャンプの感触は変わらない）
+static constexpr float JUMP_SPEED = 11.5f; // 重力と一緒に上げ、跳ぶ高さ（約1.65）は前と同じまま、短い時間で跳んで落ちる
+static constexpr float GRAVITY = 40.0f;
+static constexpr float MAX_FALL_SPEED = 12.0f; // 重力で落ちる速さの上限（ふつうのジャンプの着地は約 11.5 で、重力 40 では約 0.3 秒で上限に届く。場外からの復帰のため 12 のまま）
 static constexpr int AIR_JUMPS = 1; // 空中でジャンプできる回数（着地で戻る）
 static constexpr float AIR_CONTROL = 12.0f; // 吹っ飛び中に、移動の入力の向きへ1秒ごとに足せる横の速さ
-static constexpr float DASH_SPEED = 18.0f; // ダッシュの速さ
-static constexpr float DASH_SECONDS = 0.2f; // ダッシュで進み続ける秒数（約 3.6 進む）
-static constexpr float DASH_COOLDOWN = 0.6f; // ダッシュが終わってから次を出せるまでの秒数
+static constexpr float DASH_SPEED = 24.0f; // ダッシュの速さ
+static constexpr float DASH_SECONDS = 0.2f; // ダッシュで進み続ける秒数（約 4.8 進む）
+static constexpr float DASH_COOLDOWN = 0.35f; // ダッシュが終わってから次を出せるまでの秒数
 static constexpr int FLINCH_FRAMES = 2; // 吹っ飛ばされた直後に腕を使えないフレーム数（出していた腕を中断させるため。次のフレームから動ける）
 static constexpr float BODY_RADIUS = 0.5f;
 static constexpr float BODY_HEIGHT = 1.8f;
 static constexpr float RESPAWN_SECONDS = 2.0f;
 static constexpr float RUN_SPEED_THRESHOLD = 0.25f;
+static constexpr float RUN_CLIP_SPEED = 6.0f; // 走りのクリップが再生速度 1 で足をすべらせずに進む速さ（速く走ると、そのぶん速く再生する）
 static constexpr float ANIMATION_BLEND_SECONDS = 0.15f;
 static constexpr float FLINCH_ANIM_SECONDS = 0.33f; // 吹っ飛ばされた直後にのけぞりを見せる秒数（描画だけ）
 static constexpr float HIT_BLEND_SECONDS = 0.05f; // のけぞりへ切り替えるときにつなぐ秒数
@@ -71,12 +72,14 @@ static constexpr float KNOCKBACK_ANGLE = XMConvertToRadians(30.0f);
 static constexpr float KNOCKBACK_AIR_DRAG = 0.5f;
 static constexpr float KNOCKBACK_FRICTION = 20.0f;
 static constexpr float KNOCKBACK_STOP_SPEED = 0.5f;
+static constexpr float KNOCKBACK_GRAVITY = 25.0f; // 吹っ飛び中の重力（移動の重力を上げても、飛ぶ距離・KOのしやすさを変えない）
+static constexpr float KNOCKBACK_MOVE_SPEED = 6.0f; // 吹っ飛び中に動ける速さの上限（移動の速さを上げても、吹っ飛びへの逆らいやすさを変えない）
 
 KNOCKBACK_PARAMS Fighter::KnockbackParams() const
 {
 	return { KNOCKBACK_BASE_SPEED, KNOCKBACK_GROWTH, KNOCKBACK_ANGLE,
-		KNOCKBACK_AIR_DRAG, KNOCKBACK_FRICTION, KNOCKBACK_STOP_SPEED, GRAVITY,
-		MAX_FALL_SPEED, AIR_CONTROL, MOVE_SPEED };
+		KNOCKBACK_AIR_DRAG, KNOCKBACK_FRICTION, KNOCKBACK_STOP_SPEED, KNOCKBACK_GRAVITY,
+		MAX_FALL_SPEED, AIR_CONTROL, KNOCKBACK_MOVE_SPEED };
 }
 
 XMFLOAT4 Fighter::GetPlayerColor(int slot)
@@ -273,7 +276,7 @@ void Fighter::UpdateAnimation(const ArmManager* arms, float dt)
 	if (!IsActive() || !m_Models[m_Character].IsLoaded()) return;
 	if (m_Respawned) m_Motion.Reset(m_Yaw);
 	MOTION_PARAMS params;
-	params.FullSpeed = MOVE_SPEED;
+	params.FullSpeed = RUN_CLIP_SPEED;
 	params.RunThreshold = RUN_SPEED_THRESHOLD;
 	params.LegTurnSpeed = LEG_TURN_SPEED;
 	params.IdleTurnSpeed = LEG_IDLE_TURN_SPEED;

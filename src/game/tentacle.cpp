@@ -25,7 +25,7 @@ static constexpr float GRIP_HALF_ANGLE = XMConvertToRadians(40.0f); // 足場の
 static constexpr float LOOK_UP_SINE = 0.09f; // カメラの向きの Y がこれより大きいと「見上げている」（約 5°）
 static constexpr TENTACLE_PULL_PARAMS PULL_PARAMS{ 20.0f, 0.8f, 1.5f };
 static constexpr float LANDING_INSET = 0.8f; // 足場のふちから内側へ寄せて着地する距離
-static constexpr float SPIN_PHASE_SECONDS[] = { 0.25f, 0.4f, 0.2f }; // 溜め・回転・休み
+static constexpr float SPIN_PHASE_SECONDS[] = { 0.19f, 0.4f, 0.15f }; // 溜め・回転・休み
 static constexpr float SPIN_CLIP_SECONDS[] = { 6.0f / 24.0f, 10.0f / 24.0f, 5.0f / 24.0f };
 static constexpr float REACH_CLIP_SECONDS = 6.0f / 24.0f;
 static constexpr float THROW_CLIP_SECONDS[] = { 8.0f / 24.0f, 8.0f / 24.0f }; // 保持・投げ

@@ -10,11 +10,11 @@
 // 調整用の値
 // 耐久の減る量は physics/armcostcalc の表のハンマーの行（弱：単押し、強：衝撃波、そのほか：空中の跳ね）。
 static constexpr ARM_COST_ROW COST_ROW = ARM_COST_ROW_HAMMER;
-static constexpr float TAP_SECONDS[] = { 0.9f, 0.1f, 0.4f }; // 単押し：ため・叩き・休み
-static constexpr float WAVE_SECONDS[] = { 1.2f, 0.1f, 0.5f }; // 長押し：ため・叩き・休み
+static constexpr float TAP_SECONDS[] = { 0.7f, 0.1f, 0.3f }; // 単押し：ため・叩き・休み
+static constexpr float WAVE_SECONDS[] = { 0.9f, 0.1f, 0.4f }; // 長押し：ため・叩き・休み
 static constexpr float TAP_CLIP_SECONDS[] = { 16.0f / 24.0f, 4.0f / 24.0f, 10.0f / 24.0f }; // 単押しのクリップの区切り（hammer_tap）
 static constexpr float WAVE_CLIP_SECONDS[] = { 22.0f / 24.0f, 4.0f / 24.0f, 14.0f / 24.0f }; // 長押しのクリップの区切り（hammer_slam）
-static constexpr float AIR_TAP_SECONDS[] = { 0.3f, 0.1f, 0.4f }; // 空中の単押し：短いため・叩き・休み
+static constexpr float AIR_TAP_SECONDS[] = { 0.25f, 0.1f, 0.3f }; // 空中の単押し：短いため・叩き・休み
 static constexpr float AIR_TAP_CLIP_SECONDS[] = { 7.0f / 24.0f, 3.0f / 24.0f, 10.0f / 24.0f }; // 空中の跳ね
 static constexpr float HOP_HEIGHT = 6.0f; // 空中の単押しで上へ跳ねる高さ（場外から戻る）。
 static constexpr float HOP_SIDE = 3.5f; // 跳ねる間に、移動の入力の向きへ進む距離。
