@@ -112,3 +112,35 @@ float CameraCalcSideOffsetGoal(bool lockOn, float moveX, float shoulder, float d
 /// @param offset ずらす量（プラスで右、マイナスで左）
 /// @return ずらしたあとの点（高さは変えない）
 VEC3 CameraCalcSideShift(const VEC3& point, float yaw, float offset);
+
+/// @brief カメラの状態（右スティック押し込み・F で順に切り替える）
+enum CAMERA_MODE
+{
+	CAMERA_MODE_HARD,	///< ハードロック：カメラが相手を向き続ける（左右の弾きで相手を切り替える）
+	CAMERA_MODE_SOFT,	///< ソフトロック：カメラは自由に回せ、画面に見えている相手を狙う
+	CAMERA_MODE_FREE,	///< フリー：カメラは自由に回せ、相手を狙わない
+	CAMERA_MODE_COUNT,	///< 状態の数
+};
+
+/// @brief 次のカメラの状態を返す（ハード → ソフト → フリー → ハードの順）
+/// @param mode 今の状態
+/// @return 次の状態
+CAMERA_MODE CameraCalcNextMode(CAMERA_MODE mode);
+
+/// @brief 画面に映っている相手のうち、画面の真ん中にいちばん近い相手を選ぶ（ソフトロック）
+/// @details 画面の端から margin の割合の内側に中心が入り、eye から maxDistance 以内の相手だけを選ぶ。
+///          current がまだ映っていれば bonus（画面の半分の幅を1とした距離）だけ優先し、狙いがちらつかないようにする
+/// @param eye カメラの位置
+/// @param yaw カメラの左右の向き（ラジアン。0 で +Z 方向を見る、プラスで右回り）
+/// @param pitch カメラの上下の向き（ラジアン。プラスで上を見る）
+/// @param fov 縦の視野角（ラジアン）
+/// @param aspect 画面の横幅 ÷ 高さ
+/// @param margin 画面の端に残す割合（0〜1、各半画面に対する割合）
+/// @param maxDistance 選ぶ相手までのいちばん遠い距離
+/// @param targets 候補の配列（Available が false の相手は選ばない）
+/// @param count 候補の数
+/// @param current 今狙っている相手の添字（なしは -1）
+/// @param bonus 今狙っている相手を優先する量（画面の半分の幅を1とした距離）
+/// @return 選んだ候補の添字（映っている相手がいなければ -1）
+int CameraCalcPickVisible(const VEC3& eye, float yaw, float pitch, float fov, float aspect, float margin,
+	float maxDistance, const CAMERA_FOCUS_TARGET* targets, int count, int current, float bonus);

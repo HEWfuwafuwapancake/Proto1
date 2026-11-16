@@ -112,10 +112,12 @@ void FlailArm::StrikeFan()
 {
 	m_Direction = GetAim(false);
 	bool hit = false;
+	// ロックオン中は、高台の上・下の相手へも扇を傾けて振る。
+	const VEC3 strike = GetStrikeDirection(m_Direction);
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		const TENTACLE_TARGET target = GetFighters().GetTarget(i, GetSlot());
 		if (!target.Available
-			|| !AreaCalcInSector(GetShoulder(), m_Direction, 0.0f, FAN_RADIUS, FAN_HALF_ANGLE, FAN_HALF_HEIGHT, target.Body)) continue;
+			|| !AreaCalcInAimedSector(GetShoulder(), strike, 0.0f, FAN_RADIUS, FAN_HALF_ANGLE, FAN_HALF_HEIGHT, target.Body)) continue;
 		if (GetFighters().Launch(i, GetSlot(), AreaCalcLaunchDirection(m_Direction, FAN_UP), FAN_DAMAGE, FAN_POWER)) hit = true;
 	}
 	if (hit) {

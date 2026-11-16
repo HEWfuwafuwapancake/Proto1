@@ -61,4 +61,16 @@ namespace Proto1Tests
 		EXPECT_EQ(7, near);
 		EXPECT_TRUE(far >= 1 && far < near);
 	}
+
+	// 高台の上の相手は水平の扇には入らないが、相手へ上に傾けた扇には入る。水平に向ければ今までの扇と同じ。
+	TEST(AreaCalcTest, InAimedSector_ReachesHighTarget)
+	{
+		const VEC3 origin{ 0.0f, 1.2f, 0.0f };
+		const float half = 3.14159265f / 3.0f;
+		const CAPSULE high{ { 0.0f, 2.8f, 1.5f }, { 0.0f, 3.6f, 1.5f }, 0.5f };
+		EXPECT_FALSE(AreaCalcInSector(origin, { 0.0f, 0.0f, 1.0f }, 0.0f, 3.0f, half, 1.0f, high));
+		EXPECT_TRUE(AreaCalcInAimedSector(origin, { 0.0f, 2.0f, 1.5f }, 0.0f, 3.0f, half, 1.0f, high));
+		EXPECT_TRUE(AreaCalcInAimedSector(origin, { 0.0f, 0.0f, 1.0f }, 0.0f, 2.0f, half, 1.0f, AreaBody(0.0f, 1.5f)));
+		EXPECT_FALSE(AreaCalcInAimedSector(origin, { 0.0f, 0.0f, 1.0f }, 0.0f, 2.0f, half, 1.0f, AreaBody(0.0f, -1.5f)));
+	}
 }

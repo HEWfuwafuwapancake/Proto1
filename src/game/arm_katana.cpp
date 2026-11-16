@@ -164,10 +164,12 @@ void KatanaArm::BeginDraw()
 void KatanaArm::SlashTargets()
 {
 	bool hit = false;
+	// ロックオン中は、高台の上・下の相手へも扇を傾けて斬る。
+	const VEC3 strike = GetStrikeDirection(m_Direction);
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		const TENTACLE_TARGET target = GetFighters().GetTarget(i, GetSlot());
 		if (!target.Available || m_Hits.Contains(i)
-			|| !AreaCalcInSector(GetShoulder(), m_Direction, 0.0f, TAP_RADIUS, TAP_HALF_ANGLE, IAI_HALF_HEIGHT, target.Body)) continue;
+			|| !AreaCalcInAimedSector(GetShoulder(), strike, 0.0f, TAP_RADIUS, TAP_HALF_ANGLE, IAI_HALF_HEIGHT, target.Body)) continue;
 		m_Hits.TryAdd(i);
 		const bool applied = GetFighters().Launch(i, GetSlot(), AreaCalcLaunchDirection(m_Direction, IAI_UP), TAP_DAMAGE, TAP_POWER);
 		if (applied && !m_IaiConsumed) {

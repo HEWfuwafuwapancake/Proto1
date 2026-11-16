@@ -35,6 +35,7 @@ static constexpr XMFLOAT4 LEFT_COLOR{ 0.8f, 0.3f, 0.65f, 1.0f };
 static constexpr XMFLOAT4 RIGHT_COLOR{ 0.35f, 0.8f, 0.6f, 1.0f };
 static constexpr XMFLOAT4 HOLD_COLOR{ 1.0f, 0.7f, 0.2f, 1.0f };
 static constexpr float STUB_RADIUS = 0.06f; // モデルのない腕の円柱の半径。
+static constexpr float STRIKE_PITCH_MAX = XMConvertToRadians(70.0f); // 狙う相手へ攻撃の当たりを上下に傾ける最大の角度。
 static constexpr int RANGE_RING_POINTS = 32; // 当たる範囲の円に並べる球の数。
 static constexpr float RANGE_RING_RADIUS = 0.08f; // 当たる範囲の円に並べる球の半径。
 static constexpr ACTION ARM_ACTIONS[] = { ACTION_ARM_LEFT, ACTION_ARM_RIGHT };
@@ -578,6 +579,12 @@ VEC3 Arm::GetAim(bool keepHeight) const
 	// TentacleCalcAim は高さを捨てて水平にし、GrappleCalcAim は上下も含める。
 	return keepHeight ? GrappleCalcAim(GetShoulder(), center, target >= 0, fallback)
 		: TentacleCalcAim(GetShoulder(), center, target >= 0, fallback);
+}
+
+VEC3 Arm::GetStrikeDirection(const VEC3& flat) const
+{
+	const float pitch = GetAimTarget() >= 0 ? asinf(fmaxf(-1.0f, fminf(1.0f, GetAim(true).Y))) : 0.0f;
+	return ArmCalcPitchDirection(flat, fmaxf(-STRIKE_PITCH_MAX, fminf(STRIKE_PITCH_MAX, pitch)));
 }
 
 VEC3 Arm::DrawStubArm(const VEC3& direction, float length, const XMFLOAT4& color) const

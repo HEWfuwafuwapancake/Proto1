@@ -65,7 +65,16 @@ static constexpr float LOCK_RETICLE_CORNER = 0.35f;		// 角の線の長さ（幅
 static constexpr float LOCK_RETICLE_THICKNESS = 3.0f;	// 角の線の太さ
 static constexpr float LOCK_TEXT_DOT = 2.5f;			// 「LOCK / 11M」のドットの大きさ
 static constexpr float LOCK_TEXT_GAP = 6.0f;			// かぎ括弧の下端から文字までのすき間
+static constexpr XMFLOAT4 SOFT_RETICLE_COLOR{ 0.35f, 1.0f, 0.45f, 1.0f };	// ソフトロックのかぎ括弧・文字の色（緑）
 static constexpr XMFLOAT4 FREE_RETICLE_COLOR{ 0.2f, 0.9f, 1.0f, 1.0f };	// フリーカメラの十字の色（水色）
+static constexpr XMFLOAT4 CAMERA_MODE_COLORS[CAMERA_MODE_COUNT] = {	// カメラの状態の名前の色（ハード・ソフト・フリー。レティクルと同じ色）
+	{ 1.0f, 0.78f, 0.2f, 1.0f }, { 0.35f, 1.0f, 0.45f, 1.0f }, { 0.2f, 0.9f, 1.0f, 1.0f },
+};
+static constexpr float CAMERA_MODE_DOT = 2.5f;				// 画面の下にいつも出すカメラの状態の名前のドットの大きさ
+static constexpr float CAMERA_MODE_BOTTOM = 40.0f;			// 画面の下端から、その名前の上端までの高さ
+static constexpr float CAMERA_MODE_POPUP_DOT = 6.0f;		// 切り替えた直後に大きく出す名前のドットの大きさ
+static constexpr float CAMERA_MODE_POPUP_OFFSET = 90.0f;	// 画面の真ん中から、大きく出す名前の上端までの下への距離
+static constexpr float CAMERA_MODE_POPUP_SECONDS = 1.0f;	// 大きく出す名前が消えるまでの秒数
 static constexpr XMFLOAT4 FREE_RETICLE_DOT_COLOR{ 1.0f, 1.0f, 1.0f, 1.0f };	// 十字の真ん中の点の色（白）
 static constexpr float FREE_RETICLE_LENGTH = 14.0f;		// 十字の線1本の長さ
 static constexpr float FREE_RETICLE_GAP = 6.0f;			// 真ん中から線までのすき間
@@ -285,11 +294,32 @@ void Hud::DrawGuardFeedback(int slot) const
 		screen.y / m_Scale - GUARD_TEXT_DOT * 7.0f, GUARD_TEXT_DOT, GLYPH_ALIGN_CENTER, color);
 }
 
-// ロックオン中は相手の体をかぎ括弧で囲み、下に距離を出す。フリーカメラ（と狙う相手がいないとき）は画面の真ん中に十字を出す。
+// カメラの状態の名前を、画面の下の真ん中にいつも出す。切り替えた直後は画面の真ん中の下にも大きく出して消していく。
+void Hud::DrawCameraMode(void) const
+{
+	const CAMERA_MODE mode = m_Camera->GetMode();
+	static const char* const NAMES[CAMERA_MODE_COUNT] = { "HARD LOCK", "SOFT LOCK", "FREE CAM" };
+	const XMFLOAT4 color = CAMERA_MODE_COLORS[mode];
+	char text[32];
+	snprintf(text, sizeof(text), "R3  %s", NAMES[mode]);
+	Number2DDrawText(text, m_Width * 0.5f, m_Height - CAMERA_MODE_BOTTOM, CAMERA_MODE_DOT, GLYPH_ALIGN_CENTER, color);
+	const float seconds = m_Camera->GetModeSeconds();
+	if (seconds < CAMERA_MODE_POPUP_SECONDS) {
+		XMFLOAT4 popup = color;
+		popup.w *= 1.0f - seconds / CAMERA_MODE_POPUP_SECONDS;
+		Number2DDrawText(NAMES[mode], m_Width * 0.5f, m_Height * 0.5f + CAMERA_MODE_POPUP_OFFSET, CAMERA_MODE_POPUP_DOT,
+			GLYPH_ALIGN_CENTER, popup);
+	}
+}
+
+// ハードロック・ソフトロックで狙っている相手の体をかぎ括弧で囲み、下に距離を出す（ハードは黄色、ソフトは緑）。
+// フリー（と狙う相手がいないとき）は画面の真ん中に十字を出す。
 void Hud::DrawReticle(void) const
 {
 	const int target = m_Camera->GetTarget();
-	if (!m_Camera->IsFreeLook() && target >= 0 && m_Fighters->IsActive(target) && !m_Fighters->IsHidden(target)) {
+	const bool soft = m_Camera->GetMode() == CAMERA_MODE_SOFT;
+	const XMFLOAT4 lockColor = soft ? SOFT_RETICLE_COLOR : LOCK_RETICLE_COLOR;
+	if (m_Camera->GetMode() != CAMERA_MODE_FREE && target >= 0 && m_Fighters->IsActive(target) && !m_Fighters->IsHidden(target)) {
 		const CAPSULE body = m_Fighters->GetTarget(target, m_Slot).Body;
 		const float top = (body.Start.Y > body.End.Y ? body.Start.Y : body.End.Y) + body.Radius;
 		const float bottom = (body.Start.Y < body.End.Y ? body.Start.Y : body.End.Y) - body.Radius;
@@ -311,14 +341,14 @@ void Hud::DrawReticle(void) const
 			{ left, lower - t, corner, t }, { left, lower - corner, t, corner },		// 左下
 			{ right - corner, lower - t, corner, t }, { right - t, lower - corner, t, corner },	// 右下
 		};
-		Number2DDrawRects(corners, (int)(sizeof(corners) / sizeof(corners[0])), LOCK_RETICLE_COLOR);
+		Number2DDrawRects(corners, (int)(sizeof(corners) / sizeof(corners[0])), lockColor);
 
 		// 自分の足元から相手の足元までの距離（メートル）
 		const XMFLOAT3 self = m_Fighters->GetFighter(m_Slot).GetPosition();
 		const float dx = body.Start.X - self.x, dy = bottom - self.y, dz = body.Start.Z - self.z;
 		char text[32];
-		snprintf(text, sizeof(text), "LOCK / %dM", (int)(sqrtf(dx * dx + dy * dy + dz * dz) + 0.5f));
-		Number2DDrawText(text, left, lower + LOCK_TEXT_GAP, LOCK_TEXT_DOT, GLYPH_ALIGN_LEFT, LOCK_RETICLE_COLOR);
+		snprintf(text, sizeof(text), "%s / %dM", soft ? "SOFT" : "LOCK", (int)(sqrtf(dx * dx + dy * dy + dz * dz) + 0.5f));
+		Number2DDrawText(text, left, lower + LOCK_TEXT_GAP, LOCK_TEXT_DOT, GLYPH_ALIGN_LEFT, lockColor);
 		return;
 	}
 
@@ -507,7 +537,10 @@ void Hud::Draw(void) const
 		DrawGuardFeedback(i);
 	}
 
-	if (m_Match->GetState() != MATCH_STATE_FINISHED) DrawReticle();
+	if (m_Match->GetState() != MATCH_STATE_FINISHED) {
+		DrawReticle();
+		DrawCameraMode();
+	}
 
 	if (m_Match->GetState() == MATCH_STATE_FINISHED) {
 		// 時間切れ：おおいの上に TIME UP・自分の KO 数・結果への案内（左上の KO 数は出さない）

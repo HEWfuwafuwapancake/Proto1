@@ -44,10 +44,10 @@ VEC3 ArmCalcRestDirection(float yaw, int hand, float pitch, float spread);
 /// @return 傾けた長さ 1 の方向
 VEC3 ArmCalcPitchDirection(const VEC3& forward, float pitch);
 
-/// @brief 空中の突進で上へ傾ける角度を求める（場外ならいつも offStagePitch 以上、フリーカメラならカメラが上を向いた分だけ上へ）
+/// @brief 空中の突進で上へ傾ける角度を求める（場外ならいつも offStagePitch 以上、狙いの角度を使うならその分だけ上へ）
 /// @param offStage 場外にいるかを設定する（true：場外、false：浮島の上）
-/// @param freeLook フリーカメラかを設定する（true：フリーカメラ、false：ロックオン）
-/// @param cameraPitch カメラの上下の角度（ラジアン。プラスで上を見る）
+/// @param freeLook 狙いの角度を使うかを設定する（true：使う（狙う相手への角度・フリーカメラのカメラの角度）、false：使わない）
+/// @param cameraPitch 狙いの上下の角度（ラジアン。プラスで上）
 /// @param offStagePitch 場外の突進で傾ける角度（ラジアン）
 /// @return 傾ける角度（ラジアン。0 以上。0 なら水平の突進）
 float ArmCalcAirRushPitch(bool offStage, bool freeLook, float cameraPitch, float offStagePitch);

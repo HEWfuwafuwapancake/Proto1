@@ -155,6 +155,11 @@ protected:
 	VEC3 GetAim(bool keepHeight) const;
 	/// @brief ロックオン中の相手のスロット番号を取得する（なし・つかめない相手は -1）
 	int GetAimTarget() const;
+	/// @brief 攻撃の当たりを探す向きを取得する（狙う相手がいれば、左右は flat のまま相手への上下の傾きを足す）
+	/// @details 高台の上・下にいる相手をロックオンして攻撃したとき、相手の高さではなく足元の平面へ攻撃しないようにする
+	/// @param flat 攻撃の左右の向き（上下は使わない）
+	/// @return 長さ1の向き（狙う相手がいなければ flat を水平にしたもの）
+	VEC3 GetStrikeDirection(const VEC3& flat) const;
 	/// @brief 攻撃クリップを再生している間、腕と武器の向きをアニメの骨の向きへ寄せる（描画だけ）
 	/// @param arm 腕の単位方向（コードで決めた向きを渡し、結果を受け取る）
 	/// @param weapon 武器の単位方向（コードで決めた向きを渡し、結果を受け取る）

@@ -74,7 +74,8 @@ int KnuckleArm::FindTarget(float reach, float radius) const
 	TENTACLE_TARGET targets[FIGHTER_COUNT];
 	for (int i = 0; i < FIGHTER_COUNT; ++i) targets[i] = GetFighters().GetTarget(i, GetSlot());
 	// 斜め上への空中の突進は、進む向きの先で当たりを探す（上にいる相手にも当たる）。
-	const VEC3 direction = m_AirRush ? ArmCalcPitchDirection(m_Direction, m_AirRushPitch) : m_Direction;
+	// それ以外は、ロックオン中の相手の高さへ向けて探す（高台の上の相手にも当たる）。
+	const VEC3 direction = m_AirRush ? ArmCalcPitchDirection(m_Direction, m_AirRushPitch) : GetStrikeDirection(m_Direction);
 	return AreaCalcFirstOnRay(GetShoulder(), direction, reach, radius, targets, FIGHTER_COUNT, nullptr);
 }
 
@@ -86,11 +87,14 @@ bool KnuckleArm::IsOffStage() const
 	return feet.y < stage.TopY || !StageCalcIsOnPlatform(stage, feet.x, feet.z);
 }
 
-// 空中の突進で上へ傾ける角度。0 なら地上と同じ水平の突進。場外は40°、フリーカメラはカメラが上を向いた分だけ上へ。
+// 空中の突進で上へ傾ける角度。0 なら地上と同じ水平の突進。場外は40°。
+// 狙う相手がいれば相手が上にいる分だけ、フリーカメラ（狙う相手なし）はカメラが上を向いた分だけ上へ。
 float KnuckleArm::GetAirRushPitch() const
 {
 	if (GetPlayer().IsOnGround() || GetPlayer().IsPulled()) return 0.0f;
-	return ArmCalcAirRushPitch(IsOffStage(), GetCamera().IsFreeLook(), GetCamera().GetPitch(), AIR_RUSH_PITCH);
+	const bool aimed = GetAimTarget() >= 0;
+	const float aimPitch = aimed ? asinf(GetStrikeDirection(m_Direction).Y) : GetCamera().GetPitch();
+	return ArmCalcAirRushPitch(IsOffStage(), aimed || GetCamera().IsFreeLook(), aimPitch, AIR_RUSH_PITCH);
 }
 
 void KnuckleArm::Strike(int target, float up, float damage, float power)

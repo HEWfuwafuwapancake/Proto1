@@ -270,12 +270,18 @@ void Fighter::UpdateFacing(const Camera& camera, const ArmManager& arms, const F
 	// 単押しは離したときに始まるので、押した瞬間では向きを変えない。
 	const bool armActive = activeHands != 0;
 	// フリーカメラでは、攻撃は画面の正面ではなく体の向き（使い始めた瞬間のスティックの向き）へ出す。
+	// ソフトロックで画面に見えている相手がいれば、使い始めた瞬間にその相手の方へ向く。
+	const int target = camera.GetTarget();
 	if (camera.IsFreeLook()) {
+		float aimYaw = GetFreeAimYaw(camera.GetYaw());
+		if (target >= 0) {
+			const CAPSULE body = fighters.GetTarget(target, slot).Body;
+			aimYaw = CameraCalcYawTo({ m_Body.GetX(), m_Body.GetY(), m_Body.GetZ() }, Vec3Scale(Vec3Add(body.Start, body.End), 0.5f), m_Yaw);
+		}
 		m_Yaw = PlayerCalcFreeLookFacing(m_Yaw, m_Body.GetVelocityX(), m_Body.GetVelocityZ(),
-			GetFreeAimYaw(camera.GetYaw()), armActive, armStarted, TURN_SPEED, GameTimeGetDeltaTime());
+			aimYaw, armActive, armStarted, TURN_SPEED, GameTimeGetDeltaTime());
 		return;
 	}
-	const int target = camera.GetTarget();
 	float targetYaw = m_Yaw;
 	if (target >= 0) {
 		const CAPSULE body = fighters.GetTarget(target, slot).Body;

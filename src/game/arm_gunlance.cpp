@@ -115,7 +115,8 @@ void GunlanceArm::StepRush()
 {
 	m_Direction = GetAim(false);
 	const VEC3 shoulder = GetShoulder();
-	const CAPSULE reach{ shoulder, Vec3Add(shoulder, Vec3Scale(m_Direction, RUSH_REACH)), RUSH_RADIUS };
+	// 体は水平に進むが、当たりはロックオン中の相手の高さへ向けて探す。
+	const CAPSULE reach{ shoulder, Vec3Add(shoulder, Vec3Scale(GetStrikeDirection(m_Direction), RUSH_REACH)), RUSH_RADIUS };
 	FighterManager& fighters = GetFighters();
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		const TENTACLE_TARGET target = fighters.GetTarget(i, GetSlot());
