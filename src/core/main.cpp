@@ -109,7 +109,7 @@ static void UpdateDurabilityMeters()
 
 // 耐久の減る量の表（行は ARM_COST_ROW、列は ARM_COST_ITEM の順）。
 static constexpr const char* COST_COLUMN_LABELS[ARM_COST_ITEM_COUNT] = { "弱・当たり", "弱・外れ", "強・当たり", "強・外れ", "そのほか" };
-static constexpr const char* COST_ROW_LABELS[ARM_COST_ROW_COUNT] = { "触手", "ハンマー", "ナックル", "C4", "ガンランス", "刀", "ガード" };
+static constexpr const char* COST_ROW_LABELS[ARM_COST_ROW_COUNT] = { "触手", "ハンマー", "ナックル", "トゲ", "ガンランス", "刀", "ガード" };
 static constexpr const char* COST_ROW_NOTES[ARM_COST_ROW_COUNT] = {
 	"弱：つかむ・足場　強：回転", "強：衝撃波　そのほか：空中の跳ね", "強：突進（空中も同じ）",
 	"投げた瞬間に外れの欄（強：大きい爆弾）", "強：突き刺し・突進　そのほか：弾1発",

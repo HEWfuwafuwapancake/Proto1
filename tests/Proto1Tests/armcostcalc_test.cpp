@@ -14,15 +14,14 @@ TEST(ArmCostCalcTest, DefaultMatchesPlan)
 	EXPECT_EQ(0, table.Values[ARM_COST_ROW_TENTACLE][ARM_COST_EXTRA]);
 }
 
-// C4 は投げた瞬間に外れの欄だけで減らし、ナックルの空中の突進は地上と同じ欄を使う（そのほかの欄はない）。
-TEST(ArmCostCalcTest, C4UsesThrowCostAndKnuckleHasNoAirCost)
+// トゲの茨は置いた瞬間に強外れの欄だけで減らし、ナックルの空中の突進は地上と同じ欄を使う（そのほかの欄はない）。
+TEST(ArmCostCalcTest, SpikeFieldUsesPlaceCostAndKnuckleHasNoAirCost)
 {
 	const ARM_COST_TABLE table = ArmCostCalcDefault();
-	EXPECT_EQ(15, table.Values[ARM_COST_ROW_C4][ARM_COST_TAP_MISS]);
-	EXPECT_EQ(25, table.Values[ARM_COST_ROW_C4][ARM_COST_HOLD_MISS]);
-	EXPECT_FALSE(ArmCostCalcIsUsed(ARM_COST_ROW_C4, ARM_COST_TAP_HIT));
-	EXPECT_FALSE(ArmCostCalcIsUsed(ARM_COST_ROW_C4, ARM_COST_HOLD_HIT));
-	EXPECT_FALSE(ArmCostCalcIsUsed(ARM_COST_ROW_C4, ARM_COST_EXTRA));
+	EXPECT_EQ(34, table.Values[ARM_COST_ROW_SPIKE][ARM_COST_TAP_HIT]);
+	EXPECT_EQ(40, table.Values[ARM_COST_ROW_SPIKE][ARM_COST_HOLD_MISS]);
+	EXPECT_FALSE(ArmCostCalcIsUsed(ARM_COST_ROW_SPIKE, ARM_COST_HOLD_HIT));
+	EXPECT_FALSE(ArmCostCalcIsUsed(ARM_COST_ROW_SPIKE, ARM_COST_EXTRA));
 	EXPECT_FALSE(ArmCostCalcIsUsed(ARM_COST_ROW_KNUCKLE, ARM_COST_EXTRA));
 }
 

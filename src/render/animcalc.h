@@ -31,10 +31,6 @@ enum class SKINNED_CLIP
 	KnuckleRushRight, ///< ナックルの爆速突進（右手）
 	GunlanceImpaleLeft, ///< ガンランスの突き上げと撃ち込み（左手）
 	GunlanceImpaleRight, ///< ガンランスの突き上げと撃ち込み（右手）
-	C4ThrowLeft, ///< C4 の投げ（左手）
-	C4ThrowRight, ///< C4 の投げ（右手）
-	C4ChargeLeft, ///< C4 のため投げ（左手）
-	C4ChargeRight, ///< C4 のため投げ（右手）
 	TentacleReachLeft, ///< 触手の伸長（左手）
 	TentacleReachRight, ///< 触手の伸長（右手）
 	TentacleThrowLeft, ///< 触手の投げ（左手）
@@ -74,8 +70,6 @@ enum class ATTACK_CLIP
 	KnucklePunch, ///< ナックルの殴り
 	KnuckleRush, ///< ナックルの爆速突進
 	GunlanceImpale, ///< ガンランスの突き上げと撃ち込み
-	C4Throw, ///< C4 の投げ
-	C4Charge, ///< C4 のため投げ
 	TentacleReach, ///< 触手の伸長
 	TentacleThrow, ///< 触手の投げ
 	TentacleSpin, ///< 触手の回転

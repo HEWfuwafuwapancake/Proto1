@@ -5,7 +5,7 @@
 #include "game/arm_bare.h"
 #include "game/arm_hammer.h"
 #include "game/arm_knuckle.h"
-#include "game/arm_c4.h"
+#include "game/arm_spike.h"
 #include "game/arm_gunlance.h"
 #include "game/arm_katana.h"
 #include "game/tentacle.h"
@@ -78,19 +78,19 @@ static const ArmFactory ARM_FACTORIES[ARM_TYPE_COUNT] = {
 	CreateArm<TentacleArm>, // 触手
 	CreateArm<HammerArm>, // ハンマー
 	CreateArm<KnuckleArm>, // ナックル
-	CreateArm<C4Arm>, // C4
+	CreateArm<SpikeArm>, // トゲ
 	CreateArm<GunlanceArm>, // ガンランス
 	CreateArm<KatanaArm>, // 刀
 	CreateArm<BareArm>, // 素手
 };
 static const char* const ARM_NAMES[ARM_TYPE_COUNT] = {
-	"触手", "ハンマー", "ナックル", "C4", "ガンランス", "刀", "素手"
+	"触手", "ハンマー", "ナックル", "トゲ", "ガンランス", "刀", "素手"
 };
 
 void ArmManager::ChangeType(int hand, int next, int direction)
 {
 	if (next < 0 || next >= ARM_TYPE_COUNT || ARM_FACTORIES[next] == nullptr || next == m_Types[hand]) return;
-	m_Arms[hand][m_Types[hand]]->Reset();
+	m_Arms[hand][m_Types[hand]]->Unequip();
 	m_Guards[hand].Step(false, 0.0f);
 	const Fighter& player = m_Links.Fighters->GetFighter(m_Links.Slot);
 	const ACTION action = ARM_ACTIONS[hand];
@@ -134,6 +134,9 @@ void ArmManager::Reset(void)
 	const Fighter& player = m_Links.Fighters->GetFighter(m_Links.Slot);
 	for (int hand = 0; hand < 2; ++hand) {
 		m_Arms[hand][m_Types[hand]]->Reset();
+		for (int type = 0; type < ARM_TYPE_COUNT; ++type) {
+			if (type != m_Types[hand]) m_Arms[hand][type]->ClearLeftover();
+		}
 		BreakExhaustedArm(hand);
 		m_Presses[hand].Reset(player.IsPress(ARM_ACTIONS[hand]));
 		m_Guards[hand].Reset();
@@ -298,10 +301,20 @@ void ArmManager::Update(bool playing)
 		arm.m_Used = 0;
 		BreakExhaustedArm(hand);
 	}
+	// 外した腕の、地面に残る攻撃（トゲの茨など）も進める。
+	for (int hand = 0; hand < 2; ++hand) {
+		for (int type = 0; type < ARM_TYPE_COUNT; ++type) {
+			if (type != m_Types[hand]) m_Arms[hand][type]->UpdateLeftover();
+		}
+	}
 }
 
 void ArmManager::Draw(void) const
 {
+	// 地面に残る攻撃は、外した腕の分も、持ち主が復活待ちでも描く。
+	for (int hand = 0; hand < 2; ++hand) {
+		for (int type = 0; type < ARM_TYPE_COUNT; ++type) m_Arms[hand][type]->DrawLeftover();
+	}
 	if (!m_Links.Fighters->IsActive(m_Links.Slot)) return;
 	for (int hand = 0; hand < 2; ++hand) m_Arms[hand][m_Types[hand]]->Draw();
 	const Fighter& player = m_Links.Fighters->GetFighter(m_Links.Slot);

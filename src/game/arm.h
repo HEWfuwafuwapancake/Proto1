@@ -24,7 +24,7 @@ enum ARM_TYPE
 	ARM_TYPE_TENTACLE, ///< 触手（1段目 1）
 	ARM_TYPE_HAMMER, ///< ハンマー（1段目 2）
 	ARM_TYPE_KNUCKLE, ///< ナックル（1段目 3）
-	ARM_TYPE_C4, ///< C4（1段目 4）
+	ARM_TYPE_SPIKE, ///< トゲ（1段目 4）
 	ARM_TYPE_GUNLANCE, ///< ガンランス（1段目 5）
 	ARM_TYPE_KATANA, ///< 刀（1段目 6）
 	ARM_TYPE_NONE, ///< 素手（装備なし）
@@ -76,6 +76,14 @@ public:
 	virtual void Reset() = 0;
 	/// @brief 吹っ飛びやしびれで動作を中断する（基本は待機に戻す）
 	virtual void Interrupt() { Reset(); }
+	/// @brief 装備を外すときに呼ぶ（基本は待機に戻す。地面に残る攻撃は残して、外したあとも UpdateLeftover で進める）
+	virtual void Unequip() { Reset(); }
+	/// @brief 装備していない間も、地面に残る攻撃（トゲの茨など）を進める（試合中だけ。基本は何もしない）
+	virtual void UpdateLeftover() {}
+	/// @brief 地面に残る攻撃を描画する（装備しているかに関係なく毎回呼ぶ。基本は何もしない）
+	virtual void DrawLeftover() {}
+	/// @brief 地面に残る攻撃を全部消す（試合の始めとやり直し。基本は何もしない）
+	virtual void ClearLeftover() {}
 	/// @brief 待機以外なら true を返す
 	virtual bool IsActive() const = 0;
 	/// @brief 動作後も弾や遅れて効く攻撃が残っていれば true を返す（基本は false）

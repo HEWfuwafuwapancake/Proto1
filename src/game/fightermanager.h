@@ -68,6 +68,15 @@ public:
 	/// @brief 状態異常をかけて攻撃者を記録する（隠れるだけは自分にもかけられ、攻撃者を記録しない）
 	/// @return かけられたら true
 	bool ApplyStatus(int index, int attacker, STATUS_TYPE type, float seconds, float value);
+	/// @brief 地面に残る攻撃（トゲの茨）の効き目を、ガードを通さずにかける（毎フレーム呼ぶのでガードの耐久は減らさない）
+	/// @param index 相手のスロット番号
+	/// @param attacker 置いた人のスロット番号
+	/// @param type かける状態異常
+	/// @param seconds 状態異常の続く秒数
+	/// @param value 状態異常の値（茨なら歩く速さの倍率）
+	/// @param damage 足すダメージ%（0 以下なら足さない）
+	/// @return かけられたら true（相手でない・復活待ちなら false）
+	bool ApplyHazard(int index, int attacker, STATUS_TYPE type, float seconds, float value, float damage);
 	/// @brief 相手が攻撃した人の側をガードしているか取得する（攻撃が来た位置は攻撃した人の体の中心とみなす）
 	bool IsGuarded(int index, int attacker) const;
 	/// @brief 前に読んでからガードで攻撃を防いだかを取得し、記録を消す（刀の居合の返し）
