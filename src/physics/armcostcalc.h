@@ -23,7 +23,7 @@ enum ARM_COST_ITEM
 	ARM_COST_TAP_MISS, ///< 弱攻撃（単押し）が誰にも効かなかった
 	ARM_COST_HOLD_HIT, ///< 強攻撃（長押し）が1人でも効いた
 	ARM_COST_HOLD_MISS, ///< 強攻撃（長押し）が誰にも効かなかった
-	ARM_COST_EXTRA, ///< そのほか（空中の跳ね・空中の突進・場外で消えた爆弾・弾1発・ガード）
+	ARM_COST_EXTRA, ///< そのほか（空中の跳ね・弾1発・ガード）
 	ARM_COST_ITEM_COUNT ///< 列の数
 };
 

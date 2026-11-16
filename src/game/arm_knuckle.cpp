@@ -8,7 +8,7 @@
 #include "physics/armcalc.h"
 
 // 調整用の値
-// 耐久の減る量は physics/armcostcalc の表のナックルの行（弱：単押し、強：地上の突進、そのほか：空中の突進）。
+// 耐久の減る量は physics/armcostcalc の表のナックルの行（弱：単押し、強：突進。空中の突進も地上と同じく、当たりか外れで1回だけ減らす）。
 static constexpr ARM_COST_ROW COST_ROW = ARM_COST_ROW_KNUCKLE;
 static constexpr float PUNCH_SECONDS[] = { 0.15f, 0.1f, 0.2f }; // 単押し：ため・殴り・休み
 static constexpr float RUSH_SECONDS[] = { 0.4f, 0.35f, 0.3f }; // 長押し：ため・突進・休み
@@ -85,7 +85,7 @@ bool KnuckleArm::IsOffStage() const
 
 void KnuckleArm::Strike(int target, float up, float damage, float power)
 {
-	// 空中の突進で使用回数を減らしていたら、当たっても重ねて減らさない。
+	// 1動作で1回だけ減らす（同じ動作でもう減らしていたら重ねない）。
 	if (GetFighters().Launch(target, GetSlot(), AreaCalcLaunchDirection(m_Direction, up), damage, power) && !m_UseConsumed) {
 		ConsumeDurability(GetCost(COST_ROW, m_Rush ? ARM_COST_HOLD_HIT : ARM_COST_TAP_HIT));
 		m_UseConsumed = true;
@@ -108,10 +108,6 @@ void KnuckleArm::Update(const ARM_INPUT& input)
 	const ARM_PHASE_STEP step = m_Phase.Step(dt, m_Rush ? RUSH_SECONDS : PUNCH_SECONDS, KNUCKLE_PHASE_COUNT);
 	if (step.Entered == KNUCKLE_STRIKE) {
 		m_Direction = GetAim(false);
-		if (m_Rush && !GetPlayer().IsOnGround()) {
-			ConsumeDurability(GetCost(COST_ROW, ARM_COST_EXTRA));
-			m_UseConsumed = true;
-		}
 		if (!m_Rush) {
 			const int target = FindTarget(PUNCH_REACH, PUNCH_RADIUS);
 			if (target >= 0) Strike(target, PUNCH_UP, PUNCH_DAMAGE, PUNCH_POWER);
