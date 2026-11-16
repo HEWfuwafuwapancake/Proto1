@@ -96,6 +96,17 @@ namespace Proto1Tests
 		EXPECT_NEAR(sqrtf(0.5f), actual.Z, 0.0001f);
 	}
 
+	// 空中の突進：フリーカメラはカメラが上を向いた分だけ上へ（下は向かない）、場外は少なくとも決まった角度、ロックオンはカメラを見ない。
+	TEST(ArmCalcTest, AirRushPitch_FreeLookFollowsCameraUpward)
+	{
+		EXPECT_NEAR(0.5f, ArmCalcAirRushPitch(false, true, 0.5f, 0.7f), 0.0001f);
+		EXPECT_NEAR(0.0f, ArmCalcAirRushPitch(false, true, -0.2f, 0.7f), 0.0001f);
+		EXPECT_NEAR(0.7f, ArmCalcAirRushPitch(true, true, 0.3f, 0.7f), 0.0001f);
+		EXPECT_NEAR(0.8f, ArmCalcAirRushPitch(true, true, 0.8f, 0.7f), 0.0001f);
+		EXPECT_NEAR(0.0f, ArmCalcAirRushPitch(false, false, 0.5f, 0.7f), 0.0001f);
+		EXPECT_NEAR(0.7f, ArmCalcAirRushPitch(true, false, 0.9f, 0.7f), 0.0001f);
+	}
+
 	TEST(ArmCalcTest, Blend_EndsKeepDirections)
 	{
 		const VEC3 a{ 0, -0.6f, 0.8f }, b{ 1, 0, 0 };

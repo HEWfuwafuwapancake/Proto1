@@ -2,6 +2,7 @@
 #include "game/fightermanager.h"
 #include "game/fighter.h"
 #include "game/stage.h"
+#include "game/camera.h"
 #include "core/gametime.h"
 #include "core/mathutil.h"
 #include "physics/areacalc.h"
@@ -72,7 +73,9 @@ int KnuckleArm::FindTarget(float reach, float radius) const
 {
 	TENTACLE_TARGET targets[FIGHTER_COUNT];
 	for (int i = 0; i < FIGHTER_COUNT; ++i) targets[i] = GetFighters().GetTarget(i, GetSlot());
-	return AreaCalcFirstOnRay(GetShoulder(), m_Direction, reach, radius, targets, FIGHTER_COUNT, nullptr);
+	// 斜め上への空中の突進は、進む向きの先で当たりを探す（上にいる相手にも当たる）。
+	const VEC3 direction = m_AirRush ? ArmCalcPitchDirection(m_Direction, m_AirRushPitch) : m_Direction;
+	return AreaCalcFirstOnRay(GetShoulder(), direction, reach, radius, targets, FIGHTER_COUNT, nullptr);
 }
 
 // 浮島の外にいるか、浮島の上面より下にいるなら場外とみなす。
@@ -81,6 +84,13 @@ bool KnuckleArm::IsOffStage() const
 	const XMFLOAT3 feet = GetPlayer().GetPosition();
 	const STAGE& stage = GetStage().GetStage();
 	return feet.y < stage.TopY || !StageCalcIsOnPlatform(stage, feet.x, feet.z);
+}
+
+// 空中の突進で上へ傾ける角度。0 なら地上と同じ水平の突進。場外は40°、フリーカメラはカメラが上を向いた分だけ上へ。
+float KnuckleArm::GetAirRushPitch() const
+{
+	if (GetPlayer().IsOnGround() || GetPlayer().IsPulled()) return 0.0f;
+	return ArmCalcAirRushPitch(IsOffStage(), GetCamera().IsFreeLook(), GetCamera().GetPitch(), AIR_RUSH_PITCH);
 }
 
 void KnuckleArm::Strike(int target, float up, float damage, float power)
@@ -100,7 +110,7 @@ void KnuckleArm::Update(const ARM_INPUT& input)
 	if (m_Phase.IsIdle() && (input.Tap || input.HoldStarted)) {
 		m_Rush = input.HoldStarted;
 		// 判定で使う m_AirRush と分け、ため中に場外へ出入りしてもクリップは切り替えない。
-		m_AirRushClip = m_Rush && !GetPlayer().IsOnGround() && !GetPlayer().IsPulled() && IsOffStage();
+		m_AirRushClip = m_Rush && GetAirRushPitch() > 0.0f;
 		m_UseConsumed = false;
 		m_Direction = GetAim(false);
 		m_Phase.Start(KNUCKLE_CHARGE);
@@ -112,13 +122,15 @@ void KnuckleArm::Update(const ARM_INPUT& input)
 			const int target = FindTarget(PUNCH_REACH, PUNCH_RADIUS);
 			if (target >= 0) Strike(target, PUNCH_UP, PUNCH_DAMAGE, PUNCH_POWER);
 		}
-		else if (!GetPlayer().IsOnGround() && !GetPlayer().IsPulled() && IsOffStage()) {
-			// 場外の空中の突進は前斜め上へ進む（場外から戻れる）。水平の速度しか体に伝わらないので、自分で体を動かす。
-			// 浮島の上でジャンプしているだけのときは、地上と同じく水平に突進する。
+		else if (GetAirRushPitch() > 0.0f) {
+			const float pitch = GetAirRushPitch();
+			// 場外の空中の突進は前斜め上へ進む（場外から戻れる）。フリーカメラではカメラを上へ向けた分だけ上へ進む。
+			// 水平の速度しか体に伝わらないので、自分で体を動かす。角度が 0 なら、地上と同じく水平に突進する。
 			const XMFLOAT3 feet = GetPlayer().GetPosition();
 			const float distance = RUSH_SPEED * RUSH_SECONDS[KNUCKLE_STRIKE] * TuningCalcValue(GetTuning(), TUNING_RUSH_DISTANCE);
-			m_Rise.Start({ feet.x, feet.y, feet.z }, RiseCalcSlopeOffset(m_Direction, AIR_RUSH_PITCH, distance), RUSH_SECONDS[KNUCKLE_STRIKE], false);
+			m_Rise.Start({ feet.x, feet.y, feet.z }, RiseCalcSlopeOffset(m_Direction, pitch, distance), RUSH_SECONDS[KNUCKLE_STRIKE], false);
 			m_AirRush = true;
+			m_AirRushPitch = pitch;
 			GetPlayer().SetPulled(true);
 		}
 	}

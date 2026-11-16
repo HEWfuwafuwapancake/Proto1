@@ -70,6 +70,10 @@ public:
 	/// @return 左右の向き（ラジアン。0 で +Z 方向、プラスで右回り）
 	float GetYaw(void) const;
 
+	/// @brief カメラの上下の向きを取得する（ナックルの空中の突進の角度に使う）
+	/// @return 上下の向き（ラジアン。プラスで上を見る）
+	float GetPitch(void) const { return m_Pitch; }
+
 	/// @brief 現在ロックオンしている相手のスロット番号を取得する
 	/// @return スロット番号（0〜3。自分を除く）。ターゲットなし・敵をつかんでいる間は-1
 	int GetTarget(void) const;
