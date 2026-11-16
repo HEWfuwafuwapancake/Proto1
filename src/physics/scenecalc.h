@@ -4,6 +4,7 @@
 /// @brief 起動・ルールとモードの選択・IP 入力・ロビー・試合・結果の流れ（DirectX・Windows 不使用）
 
 #include <cstdint>
+#include "physics/armcostcalc.h"
 #include "physics/tuningcalc.h"
 
 /// @brief キャラ選択・ロビーで使うキャラ番号
@@ -37,6 +38,7 @@ enum SCENE
 	SCENE_MODE_SELECT, ///< 対戦方法の選択
 	SCENE_JOIN_ADDRESS, ///< 参加先の IPv4 入力
 	SCENE_OPTIONS, ///< 次の試合の設定
+	SCENE_ARM_COSTS, ///< オプションの中の、腕の耐久の減る量の表
 };
 
 /// @brief シーンの更新後にゲーム側で行う処理
@@ -50,7 +52,8 @@ enum SCENE_EVENT
 	SCENE_EVENT_HOST, ///< ホストを開く（成功したら OpenLobby を呼ぶ）
 	SCENE_EVENT_JOIN, ///< 入力したアドレスへ接続する（成功したら OpenLobby を呼ぶ）
 	SCENE_EVENT_TUNING_CHANGE, ///< 選択した設定を左右の入力方向へ変更する
-	SCENE_EVENT_TUNING_RESET, ///< 全設定をふつうの段へ戻す
+	SCENE_EVENT_TUNING_RESET, ///< 全設定と耐久の減る量の表をはじめの値へ戻す
+	SCENE_EVENT_ARM_COST_CHANGE, ///< 選択した耐久の減る量を左右の入力方向へ変更する
 };
 
 /// @brief モード選択の項目
@@ -63,6 +66,15 @@ enum MODE_ITEM
 	MODE_ITEM_OPTIONS, ///< 次の試合の設定を開く
 	MODE_ITEM_BACK, ///< GAME START へ戻る
 	MODE_ITEM_COUNT, ///< 項目数
+};
+
+/// @brief オプションの画面で、試合の設定（0〜TUNING_ITEM_COUNT − 1）の後ろに並ぶ項目
+enum OPTION_ITEM
+{
+	OPTION_ITEM_ARM_COSTS = TUNING_ITEM_COUNT, ///< 耐久の減る量の表を開く
+	OPTION_ITEM_RESET, ///< 全設定と表をはじめの値へ戻す
+	OPTION_ITEM_BACK, ///< 元のメニューへ戻る
+	OPTION_ITEM_COUNT, ///< 項目数
 };
 
 /// @brief 結果画面のメニュー項目
@@ -101,7 +113,8 @@ public:
 	SCENE_EVENT Step(const SCENE_INPUT& input, bool matchFinished);
 	/// @brief 今のシーンを取得する
 	SCENE GetScene() const { return m_Scene; }
-	/// @brief ルール選択・モード選択・結果画面で選んでいる項目の番号を取得する
+	/// @brief ルール選択・モード選択・オプション・結果画面で選んでいる項目の番号を取得する
+	/// （耐久の減る量の表では ArmCostCalcUsedCell の番号。最後の ArmCostCalcUsedCount() は「戻る」）
 	int GetCursor() const { return m_Cursor; }
 	/// @brief GAME START のあとに選んだキャラを取得する
 	CHARACTER_TYPE GetCharacter() const { return m_Character; }

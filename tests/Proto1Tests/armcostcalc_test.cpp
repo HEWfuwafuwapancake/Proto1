@@ -36,3 +36,19 @@ TEST(ArmCostCalcTest, SetClampsAndSkipsUnusedCells)
 	ArmCostCalcSet(table, ARM_COST_ROW_GUNLANCE, ARM_COST_TAP_HIT, 30);
 	EXPECT_EQ(0, table.Values[ARM_COST_ROW_GUNLANCE][ARM_COST_TAP_HIT]);
 }
+
+// オプションの画面で並べる欄は、使う欄だけを行・列の順に数える（ガンランスの最初はそのほかの前の強・当たり）。
+TEST(ArmCostCalcTest, UsedCellsSkipUnusedInRowOrder)
+{
+	int row = -1, item = -1;
+	ASSERT_TRUE(ArmCostCalcUsedCell(0, row, item));
+	EXPECT_EQ(ARM_COST_ROW_TENTACLE, row);
+	EXPECT_EQ(ARM_COST_TAP_HIT, item);
+	ASSERT_TRUE(ArmCostCalcUsedCell(4, row, item));
+	EXPECT_EQ(ARM_COST_ROW_HAMMER, row);
+	EXPECT_EQ(ARM_COST_TAP_HIT, item);
+	ASSERT_TRUE(ArmCostCalcUsedCell(ArmCostCalcUsedCount() - 1, row, item));
+	EXPECT_EQ(ARM_COST_ROW_GUARD, row);
+	EXPECT_EQ(ARM_COST_EXTRA, item);
+	EXPECT_FALSE(ArmCostCalcUsedCell(ArmCostCalcUsedCount(), row, item));
+}

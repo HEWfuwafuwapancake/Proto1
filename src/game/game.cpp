@@ -17,6 +17,7 @@ static constexpr XMFLOAT4 EMPTY_VIEW_COLOR = { 0.0f, 0.0f, 0.0f, 1.0f };	// 3人
 static constexpr uint32_t MATCH_SEED_STEP = 0x9e3779b9u;	// やり直すたびに試合の種へ足す値
 static constexpr uint32_t MATCH_ROUND_STEP = 0xc2b2ae35u;	// メニューやロビーから始め直すたびに種へ足す値
 static constexpr uint32_t CAPSULE_SEED_MASK = 0x85ebca6bu;	// 復活先とは別の乱数列にする
+static constexpr int ARM_COST_STEP = 5;	// オプションで耐久の減る量を左右1回で変える量
 
 VERSUS_VIEWPORT Game::GetViewport(int index) const
 {
@@ -56,37 +57,6 @@ bool Game::Initialize(const NET_OPTIONS& options)
 	hal::dout << "シーン：タイトル（人 " << m_HumanCount << " 人）" << std::endl;
 #endif
 	return connected;
-}
-
-bool Game::CanEditDurability(ARM_TYPE type) const
-{
-	return !m_Net.IsOnline() && type < ARM_TYPE_NONE && (m_Arms[0].GetType(0) == type || m_Arms[0].GetType(1) == type);
-}
-
-int Game::GetDurability(ARM_TYPE type) const
-{
-	for (int hand = 0; hand < 2; ++hand) {
-		if (m_Arms[0].GetType(hand) == type) return m_Arms[0].GetDurability(hand);
-	}
-	return -2;
-}
-
-void Game::SetDurability(ARM_TYPE type, int value)
-{
-	if (!CanEditDurability(type)) return;
-	for (int hand = 0; hand < 2; ++hand) {
-		if (m_Arms[0].GetType(hand) == type) m_Arms[0].SetDurability(hand, value);
-	}
-}
-
-bool Game::CanEditArmCosts() const
-{
-	return !m_Net.IsOnline();
-}
-
-void Game::SetArmCosts(const ARM_COST_TABLE& costs)
-{
-	if (CanEditArmCosts()) m_ArmCosts = costs;
 }
 
 void Game::Finalize()
@@ -239,7 +209,17 @@ void Game::UpdateMenu()
 	}
 	input.AddressValid = m_JoinAddress.IsValid();
 	const SCENE_EVENT event = m_Scene.Step(input, false);
-	if (event == SCENE_EVENT_TUNING_RESET) SetTuning(TuningCalcDefault());
+	if (event == SCENE_EVENT_TUNING_RESET) {
+		SetTuning(TuningCalcDefault());
+		m_ArmCosts = ArmCostCalcDefault();
+	}
+	else if (event == SCENE_EVENT_ARM_COST_CHANGE) {
+		// オプションはオフラインのメニューからしか開かないので、表はいつでも書き換えてよい。
+		int row = 0, item = 0;
+		if (ArmCostCalcUsedCell(m_Scene.GetCursor(), row, item)) {
+			ArmCostCalcSet(m_ArmCosts, row, item, m_ArmCosts.Values[row][item] + input.CharacterDirection * ARM_COST_STEP);
+		}
+	}
 	else if (event == SCENE_EVENT_TUNING_CHANGE) {
 		MATCH_TUNING tuning = GetTuning();
 		const auto item = static_cast<TUNING_ITEM>(m_Scene.GetCursor());
@@ -294,7 +274,7 @@ void Game::Update()
 	for (auto& arms : m_Arms) arms.SetCosts(costs);
 	const SCENE oldScene = m_Scene.GetScene();
 	if (oldScene == SCENE_GAME_START || oldScene == SCENE_CHARACTER_SELECT
-		|| oldScene == SCENE_RULE_SELECT || oldScene == SCENE_MODE_SELECT || oldScene == SCENE_JOIN_ADDRESS || oldScene == SCENE_OPTIONS) {
+		|| oldScene == SCENE_RULE_SELECT || oldScene == SCENE_MODE_SELECT || oldScene == SCENE_JOIN_ADDRESS || oldScene == SCENE_OPTIONS || oldScene == SCENE_ARM_COSTS) {
 		UpdateMenu();
 		return;
 	}
@@ -441,7 +421,7 @@ void Game::Draw() const
 		light.Enable = FALSE;
 		Shader_SetLight(light);
 		m_CodexMenu.Draw(m_Scene, scene == SCENE_RESULT ? m_Fighters.GetVersus() : m_Participants,
-			m_Net, m_JoinAddress, m_LobbyCharacters, GetTuning());
+			m_Net, m_JoinAddress, m_LobbyCharacters, GetTuning(), m_ArmCosts);
 		// 接続の問題はウィンドウ表示中にも読めるよう、メニューの上へ出す。
 		m_Huds[0].DrawCornerWarning(m_Net);
 		return;

@@ -31,7 +31,7 @@
 	ウィンドウ情報
 ------------------------------------------------------------------------------*/
 static constexpr char WINDOW_CLASS[] = "Proto1"; // メインウィンドウクラス名
-static constexpr char TITLE[] = "Proto1";        // タイトルバーのテキスト
+static constexpr char TITLE[] = "ブラキオンファイト"; // タイトルバーのテキスト（ゲームの名前）
 // 最大化できる枠ありのウィンドウ（No.83。描くのは 1280×720 のまま、Present がウィンドウいっぱいに引き伸ばす）。
 static constexpr DWORD WINDOW_STYLE = WS_OVERLAPPEDWINDOW;
 
@@ -46,95 +46,6 @@ static constexpr float RUMBLE_ON_NOTICE_SECONDS = 0.3f;
 LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 static Game g_Game;
-
-// 調整用の表示名（値と段の数は tuningcalc を使う）。
-static constexpr const char* TUNING_LABELS[] = {
-	"長押しの移動距離", "吹っ飛び力", "ハンマーのしびれ", "ダメージ", "マップの広さ", "カプセルの出現量", "腕の耐久の持ち"
-};
-static constexpr const char* CAPSULE_LABELS[] = { "少ない", "ふつう", "多い", "とても多い" };
-static constexpr int TUNING_MAX_LEVELS = 7;
-
-static void InitializeTuningChoices()
-{
-	for (int row = 0; row < TUNING_ITEM_COUNT; ++row) {
-		const auto item = static_cast<TUNING_ITEM>(row);
-		const int count = TuningCalcLevelCount(item);
-		std::string labels[TUNING_MAX_LEVELS];
-		const char* options[TUNING_MAX_LEVELS]{};
-		for (int level = 0; level < count; ++level) {
-			MATCH_TUNING tuning = TuningCalcDefault();
-			tuning.Levels[row] = static_cast<uint8_t>(level);
-			std::ostringstream label;
-			if (item == TUNING_CAPSULES) label << CAPSULE_LABELS[level];
-			else if (item == TUNING_ARM_USES && TuningCalcIsUnlimitedUses(tuning)) label << "無制限";
-			else if (item == TUNING_HAMMER_STUN) label << TuningCalcValue(tuning, item) << "秒";
-			else label << static_cast<int>(lroundf(TuningCalcValue(tuning, item) * 100.0f)) << "%";
-			labels[level] = label.str();
-			options[level] = labels[level].c_str();
-		}
-		DebugWindowSetChoices(row, TUNING_LABELS[row], options, count);
-		DebugWindowSetSelection(row, g_Game.GetTuning().Levels[row]);
-	}
-}
-
-static void UpdateTuningChoices()
-{
-	const bool enabled = g_Game.CanEditTuning();
-	DebugWindowSetChoicesEnabled(enabled);
-	MATCH_TUNING tuning = g_Game.GetTuning();
-	const bool reset = DebugWindowTakeReset();
-	if (enabled && reset) tuning = TuningCalcDefault();
-	// 「ふつうに戻す」は耐久の減る量の表も最初の値に戻す（オフラインだけ）。
-	if (reset) g_Game.SetArmCosts(ArmCostCalcDefault());
-	for (int row = 0; row < TUNING_ITEM_COUNT; ++row) {
-		int level = 0;
-		// 編集できない間の古い通知も読み捨て、あとから適用しない。
-		if (DebugWindowTakeSelection(row, level) && enabled && !reset) tuning.Levels[row] = static_cast<uint8_t>(level);
-	}
-	if (enabled) g_Game.SetTuning(tuning);
-	for (int row = 0; row < TUNING_ITEM_COUNT; ++row) DebugWindowSetSelection(row, g_Game.GetTuning().Levels[row]);
-}
-
-static void UpdateDurabilityMeters()
-{
-	// 腕の種類ごとに1行。1Pが装備している腕だけ動かせる（両手なら両方の手が変わる）。
-	for (int type = 0; type < ARM_TYPE_NONE; ++type) {
-		const auto arm = static_cast<ARM_TYPE>(type);
-		int value = 0;
-		// オンラインや装備していない間の古い変更通知も読み捨てる。
-		if (DebugWindowTakeMeter(type, value)) g_Game.SetDurability(arm, value);
-		DebugWindowSetMeter(type, ArmGetName(arm), g_Game.GetDurability(arm), g_Game.CanEditDurability(arm));
-	}
-}
-
-// 耐久の減る量の表（行は ARM_COST_ROW、列は ARM_COST_ITEM の順）。
-static constexpr const char* COST_COLUMN_LABELS[ARM_COST_ITEM_COUNT] = { "弱・当たり", "弱・外れ", "強・当たり", "強・外れ", "そのほか" };
-static constexpr const char* COST_ROW_LABELS[ARM_COST_ROW_COUNT] = { "触手", "ハンマー", "ナックル", "トゲ", "ガンランス", "刀", "モーニングスター", "ガード" };
-static constexpr const char* COST_ROW_NOTES[ARM_COST_ROW_COUNT] = {
-	"弱：つかむ・足場　強：回転", "強：衝撃波　そのほか：空中の跳ね", "強：突進（空中も同じ）",
-	"弱：前へ生えるトゲ　強外れ：茨を置いた瞬間", "強：突き刺し・突進　そのほか：弾1発",
-	"強：飛んだ時に外れ、当たれば差を足す", "弱：扇　強：投げ（回す間は減らない）", "そのほか：パリィできずに防いだ"
-};
-
-static void UpdateCostTable()
-{
-	const bool enabled = g_Game.CanEditArmCosts();
-	ARM_COST_TABLE costs = g_Game.GetArmCosts();
-	// 「ふつうに戻す」は試合の設定と一緒に読むので、ここでは表の書き換えだけを読む。
-	for (int row = 0; row < ARM_COST_ROW_COUNT; ++row) {
-		for (int item = 0; item < ARM_COST_ITEM_COUNT; ++item) {
-			int value = 0;
-			if (DebugWindowTakeTableValue(row, item, value) && enabled) ArmCostCalcSet(costs, row, item, value);
-		}
-	}
-	g_Game.SetArmCosts(costs);
-	for (int row = 0; row < ARM_COST_ROW_COUNT; ++row) {
-		for (int item = 0; item < ARM_COST_ITEM_COUNT; ++item) {
-			const int value = ArmCostCalcIsUsed(row, item) ? g_Game.GetArmCosts().Values[row][item] : -1;
-			DebugWindowSetTableValue(row, item, value, enabled);
-		}
-	}
-}
 
 static DWORD g_Fps = 0;	// 直近1秒の FPS
 static FRAME_STATS_RESULT g_FrameStats{}; // 直近1秒の最大間隔・平均処理時間・カクつき
@@ -193,7 +104,26 @@ static void RefreshTitle(HWND hWnd)
 		modeText,
 		PadIsRumbleEnabled() ? "オン" : "オフ", net.GetStatusText().c_str());
 	SetWindowText(hWnd, title);
-	DebugWindowSetText(title);
+
+	// デバッグ用ウィンドウには、通信の状態を中心に情報だけを行に分けて出す（数値の変更はオプションの画面）。
+	std::ostringstream info;
+	const std::string status = net.GetStatusText();
+	const std::string desync = net.GetDesyncText();
+	info << "【通信】\r\n";
+	info << "状態：" << (net.IsOnline() ? (net.IsRunning() ? "オンライン（対戦中）" : "オンライン（待機中）") : "オフライン") << "\r\n";
+	if (!status.empty()) info << "詳細：" << status << "\r\n";
+	if (net.IsOnline()) {
+		info << "進行：" << g_Progress << " フレーム/秒（60 に近いほど通信が追いついている）\r\n";
+		info << "ずれ：" << (desync.empty() ? "なし" : desync) << "\r\n";
+	}
+	if (net.IsHost()) info << "ホストの IP：" << net.GetAddresses() << "\r\n";
+	char frame[160];
+	sprintf_s(frame, "FPS：%lu（最大 %.0fms・処理 %.1fms・カクつき %d）", g_Fps, g_FrameStats.MaxIntervalMs, g_FrameStats.AverageWorkMs, g_FrameStats.HitchCount);
+	info << "\r\n【動作】\r\n" << frame << "\r\n";
+	info << "\r\n【操作】\r\n" << equipPlayer + 1 << "P" << (net.IsOnline() ? "" : "（F1-F4）")
+		<< "　左：" << ArmGetName(arms.GetType(0)) << "　右：" << ArmGetName(arms.GetType(1)) << modeText << "\r\n";
+	info << "振動：" << (PadIsRumbleEnabled() ? "オン" : "オフ") << "（SHARE / V）\r\n";
+	DebugWindowSetText(info.str().c_str());
 }
 
 bool Initialize(HWND hWnd, const NET_OPTIONS& options);
@@ -289,8 +219,6 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
 		DestroyWindow(hWnd);
 		return -1;
 	}
-	InitializeTuningChoices();
-	DebugWindowSetTable(COST_COLUMN_LABELS, ARM_COST_ITEM_COUNT, COST_ROW_LABELS, COST_ROW_NOTES, ARM_COST_ROW_COUNT);
 	RefreshTitle(hWnd);
 	ShowWindow(hWnd, fullscreen || windowed ? nCmdShow : SW_SHOWMAXIMIZED);
 	UpdateWindow(hWnd);
@@ -585,10 +513,7 @@ void Update(void)
 		}
 	}
 
-	UpdateTuningChoices();
-	UpdateCostTable();
 	g_Game.Update();
-	UpdateDurabilityMeters();
 }
 
 void Draw(void)

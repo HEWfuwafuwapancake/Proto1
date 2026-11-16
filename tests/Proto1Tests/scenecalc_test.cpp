@@ -167,7 +167,7 @@ namespace Proto1Tests
 		scene.Step({ true, false, 0 }, false);
 		ASSERT_EQ(SCENE_OPTIONS, scene.GetScene());
 		EXPECT_EQ(SCENE_EVENT_TUNING_CHANGE, scene.Step({ false, false, 0, false, false, 1 }, false));
-		for (int i = 0; i < TUNING_ITEM_COUNT; ++i) {
+		for (int i = 0; i < OPTION_ITEM_RESET; ++i) {
 			scene.Step({ false, false, 0 }, false);
 			scene.Step({ false, false, -1 }, false);
 		}
@@ -176,6 +176,25 @@ namespace Proto1Tests
 		EXPECT_EQ(SCENE_EVENT_NONE, scene.Step({ true, false, 0 }, false));
 		EXPECT_EQ(SCENE_GAME_START, scene.GetScene());
 		EXPECT_EQ(1, scene.GetCursor());
+	}
+
+	// オプションから耐久の減る量の表を開き、値の変更を伝えて、戻るとオプションの同じ行へ戻る。
+	TEST(SceneCalcTest, Options_ArmCostsChangeAndReturnToOptions)
+	{
+		SceneCalc scene;
+		scene.Start();
+		scene.Step({ false, false, -1 }, false);
+		scene.Step({ true, false, 0 }, false);
+		for (int i = 0; i < OPTION_ITEM_ARM_COSTS; ++i) {
+			scene.Step({ false, false, 0 }, false);
+			scene.Step({ false, false, -1 }, false);
+		}
+		scene.Step({ true, false, 0 }, false);
+		ASSERT_EQ(SCENE_ARM_COSTS, scene.GetScene());
+		EXPECT_EQ(SCENE_EVENT_ARM_COST_CHANGE, scene.Step({ false, false, 0, false, false, -1 }, false));
+		EXPECT_EQ(SCENE_EVENT_NONE, scene.Step({ false, false, 0, true }, false));
+		EXPECT_EQ(SCENE_OPTIONS, scene.GetScene());
+		EXPECT_EQ(OPTION_ITEM_ARM_COSTS, scene.GetCursor());
 	}
 
 	// モード選択からの設定変更でも、キャラとルールと戻り先のカーソルを保つ。

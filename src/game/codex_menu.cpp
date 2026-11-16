@@ -21,6 +21,10 @@ static constexpr float OPTION_TOP = 156.0f;
 static constexpr float OPTION_GAP = 46.0f;
 static constexpr float TEXT_SCALE = 1.35f; // 文字画像の上下の余白を見込み、メニューの文字を大きくする。
 static constexpr float PI = 3.14159265f;
+static constexpr float COST_TOP = 178.0f; // 耐久の減る量の表の1行目
+static constexpr float COST_GAP = 49.0f; // 表の行の間隔
+static constexpr float COST_LABEL_WIDTH = 150.0f; // 表の腕の名前の列の幅
+static constexpr float COST_CELL_WIDTH = 86.0f; // 表の数字の欄の幅
 static constexpr const char* OPTION_NAMES[] = {
 	"突進・移動技の距離", "吹っ飛びの強さ", "ハンマーのしびれ時間", "ダメージの倍率",
 	"マップの広さ", "カプセルの出現量", "腕の耐久の持ち"
@@ -33,6 +37,14 @@ static constexpr const char* OPTION_HELP[][3] = {
 	{ "ステージ全体の広さを変えます。", "広いと移動に余裕が生まれます。", "狭いと相手と出会いやすくなります。" },
 	{ "最初の個数と、追加される間隔です。", "多くすると、腕を拾いやすくなります。", "GAME ルールで使う設定です。" },
 	{ "腕が壊れるまでの持ちを変えます。", "倍率が大きいほど、長く使えます。", "無制限なら、耐久が減りません。" }
+};
+static constexpr const char* COST_COLUMNS[ARM_COST_ITEM_COUNT] = { "弱・当たり", "弱・外れ", "強・当たり", "強・外れ", "そのほか" };
+static constexpr const char* COST_ROWS[ARM_COST_ROW_COUNT] = { "触手", "ハンマー", "ナックル", "トゲ", "ガンランス", "刀", "モーニングスター", "ガード" };
+static constexpr const char* COST_NOTES[ARM_COST_ROW_COUNT][2] = {
+	{ "弱：つかんだ・足場に付いた", "強：回転" }, { "強：衝撃波", "そのほか：空中の跳ね" }, { "強：突進（空中も同じ）", "" },
+	{ "弱：前へ生えるトゲ", "強・外れ：茨を置いた瞬間" }, { "強：突き刺し・突進", "そのほか：弾1発" },
+	{ "強・外れ：飛んだ瞬間に減る", "当たれば強・当たりとの差を足す" }, { "弱：扇　強：投げた鉄球", "回している間は減らない" },
+	{ "パリィできずに防いだとき", "" }
 };
 static constexpr const char* MODE_NAMES[] = {
 	"ひとりで遊ぶ", "この PC で対戦", "オンラインを開催", "オンラインに参加", "オプション", "タイトルへ戻る"
@@ -54,6 +66,8 @@ void CodexMenu::Initialize()
 	// くり返し表示する説明は、最初に画像へ変えておく。Text2D が画像の寿命を管理する。
 	for (const auto* name : OPTION_NAMES) Text2DCreate(name);
 	for (const auto& lines : OPTION_HELP) for (const auto* text : lines) Text2DCreate(text);
+	for (const auto* name : COST_COLUMNS) Text2DCreate(name);
+	for (const auto* name : COST_ROWS) Text2DCreate(name);
 	for (const auto* name : MODE_NAMES) Text2DCreate(name);
 	for (const auto* text : MODE_SUBTITLES) Text2DCreate(text);
 	for (const auto& lines : MODE_HELP) for (const auto* text : lines) Text2DCreate(text);
@@ -76,11 +90,11 @@ void CodexMenu::Background() const
 	Number2DDrawRects(grid, count, { 0.10f, 0.25f, 0.34f, 0.16f });
 	Number2DDrawBox({ LEFT, 30, 32, 4 }, CYAN);
 	Number2DDrawBox({ 102, 30, 10, 4 }, GOLD);
-	Text("WONDERFUL ARMS", 124, 20, 19, WHITE);
+	Text("BRACHION FIGHT", 124, 20, 19, WHITE);
 	Text("BATTLE SYSTEM / 01", 1005, 22, 16, MUTED);
 	Number2DDrawBox({ LEFT, 58, 1152, 1 }, LINE);
 	Number2DDrawBox({ LEFT, 641, 1152, 1 }, LINE);
-	Text("PROTO1  /  腕ダフルアームズ", LEFT, 693, 13, MUTED);
+	Text("PROTO1  /  ブラキオンファイト", LEFT, 693, 13, MUTED);
 	Text("READY TO CONNECT", 1052, 693, 13, CYAN);
 }
 
@@ -146,9 +160,10 @@ void CodexMenu::Detail(const char* tag, const char* title, const char* line1, co
 	Number2DDrawBox({ RIGHT, 204, 40, 3 }, CYAN);
 	Text(tag, RIGHT + 28, 234, 15, CYAN);
 	Text(title, RIGHT + 28, 274, 28, WHITE);
-	Text(line1, RIGHT + 28, 342, 20, WHITE);
-	Text(line2, RIGHT + 28, 381, 20, MUTED);
-	Text(line3, RIGHT + 28, 420, 20, MUTED);
+	// 空の行は描かない（耐久の表の説明は1行だけの腕がある）。
+	if (line1[0]) Text(line1, RIGHT + 28, 342, 20, WHITE);
+	if (line2[0]) Text(line2, RIGHT + 28, 381, 20, MUTED);
+	if (line3[0]) Text(line3, RIGHT + 28, 420, 20, MUTED);
 }
 
 void CodexMenu::Footer(const char* help) const
@@ -160,10 +175,11 @@ void CodexMenu::Footer(const char* help) const
 void CodexMenu::DrawOptions(const SceneCalc& scene, const MATCH_TUNING& tuning) const
 {
 	Header("オプション", "OPTIONS / MATCH SETTINGS", 0);
-	for (int i = 0; i < TUNING_ITEM_COUNT + 2; ++i) {
+	for (int i = 0; i < OPTION_ITEM_COUNT; ++i) {
 		const float y = OPTION_TOP + i * OPTION_GAP;
-		Row(i < TUNING_ITEM_COUNT ? OPTION_NAMES[i] : i == TUNING_ITEM_COUNT ? "標準に戻す" : "戻る",
-			"", i, scene.GetCursor() == i, y, 41);
+		Row(i < TUNING_ITEM_COUNT ? OPTION_NAMES[i] : i == OPTION_ITEM_ARM_COSTS ? "腕の耐久の減る量"
+			: i == OPTION_ITEM_RESET ? "標準に戻す" : "戻る", "", i, scene.GetCursor() == i, y, 41);
+		if (i == OPTION_ITEM_ARM_COSTS) Text("表を開く >", 458, y + 9, 20, scene.GetCursor() == i ? CYAN : WHITE);
 		if (i >= TUNING_ITEM_COUNT) continue;
 		const auto item = static_cast<TUNING_ITEM>(i);
 		char value[80];
@@ -182,12 +198,53 @@ void CodexMenu::DrawOptions(const SceneCalc& scene, const MATCH_TUNING& tuning) 
 			Number2DDrawBox({ RIGHT + 28 + level * 60.0f, 481, 48, 5 }, level <= tuning.Levels[selected] ? CYAN : LINE);
 		}
 	}
-	else Detail("SETTINGS", selected == TUNING_ITEM_COUNT ? "標準設定に戻す" : "設定を閉じる",
-		selected == TUNING_ITEM_COUNT ? "すべての項目を標準の値へ戻します。" : "変更した値は、そのまま保持されます。",
+	else if (selected == OPTION_ITEM_ARM_COSTS) Detail("ARM DURABILITY", "腕の耐久の減る量",
+		"攻撃ごとに耐久が減る量の表です。", "Enter / ○ で表を開きます。", "オンラインははじめの値を使います。");
+	else Detail("SETTINGS", selected == OPTION_ITEM_RESET ? "標準設定に戻す" : "設定を閉じる",
+		selected == OPTION_ITEM_RESET ? "すべての項目と表を標準へ戻します。" : "変更した値は、そのまま保持されます。",
 		"Enter / ○ で決定します。", "ファイルへの保存は行いません。");
 	Text("変更は次の試合から適用", RIGHT, 560, 23, GOLD);
 	Text("オンラインはホストの設定を全員に適用します。", RIGHT, 598, 17, MUTED);
 	Footer("↑↓ / W S  選択    ←→ / A D  変更    Enter / ○  決定    Backspace / ×  戻る");
+}
+
+void CodexMenu::DrawArmCosts(const SceneCalc& scene, const ARM_COST_TABLE& costs) const
+{
+	Header("腕の耐久の減る量", "OPTIONS / ARM DURABILITY", 0);
+	int selectedRow = -1, selectedItem = -1;
+	ArmCostCalcUsedCell(scene.GetCursor(), selectedRow, selectedItem);
+	const float cellLeft = LEFT + COST_LABEL_WIDTH;
+	for (int item = 0; item < ARM_COST_ITEM_COUNT; ++item) {
+		Text(COST_COLUMNS[item], cellLeft + item * COST_CELL_WIDTH + 4, 150, 13, item == selectedItem ? CYAN : MUTED);
+	}
+	for (int row = 0; row < ARM_COST_ROW_COUNT; ++row) {
+		const float y = COST_TOP + row * COST_GAP;
+		const bool rowSelected = row == selectedRow;
+		Number2DDrawBox({ LEFT, y, ROW_WIDTH, COST_GAP - 6 }, rowSelected ? XMFLOAT4{ 0.055f, 0.20f, 0.25f, 1 } : PANEL);
+		Number2DDrawBox({ LEFT, y, rowSelected ? 4.0f : 1.0f, COST_GAP - 6 }, rowSelected ? CYAN : LINE);
+		Text(COST_ROWS[row], LEFT + 16, y + 9, 17, rowSelected ? WHITE : MUTED);
+		for (int item = 0; item < ARM_COST_ITEM_COUNT; ++item) {
+			const float x = cellLeft + item * COST_CELL_WIDTH;
+			const bool selected = rowSelected && item == selectedItem;
+			if (selected) Number2DDrawBox({ x, y + 4, COST_CELL_WIDTH - 8, COST_GAP - 14 }, { 0.10f, 0.36f, 0.42f, 1 });
+			char value[16];
+			if (ArmCostCalcIsUsed(row, item)) sprintf_s(value, "%d", costs.Values[row][item]);
+			else sprintf_s(value, "-"); // 使わない欄（文字画像に「―」がないので半角）
+			Text(value, x + 22, y + 8, 18, selected ? CYAN : ArmCostCalcIsUsed(row, item) ? WHITE : LINE);
+		}
+	}
+	const int back = ArmCostCalcUsedCount();
+	Row("戻る", "", ARM_COST_ROW_COUNT, scene.GetCursor() == back, COST_TOP + ARM_COST_ROW_COUNT * COST_GAP + 4, 41);
+	if (selectedRow >= 0) {
+		char line1[64];
+		sprintf_s(line1, "%s：%d（はじめは %d）", COST_COLUMNS[selectedItem], costs.Values[selectedRow][selectedItem],
+			ArmCostCalcDefault().Values[selectedRow][selectedItem]);
+		Detail("ARM DURABILITY", COST_ROWS[selectedRow], line1, COST_NOTES[selectedRow][0], COST_NOTES[selectedRow][1]);
+	}
+	else Detail("SETTINGS", "表を閉じる", "変更した値は、そのまま保持されます。", "Enter / ○ でオプションへ戻ります。", "");
+	Text("当たり：1人でも効いた　外れ：誰にも効かなかった", RIGHT, 560, 17, MUTED);
+	Text("耐久は 100。オンラインははじめの値を使います。", RIGHT, 590, 17, MUTED);
+	Footer("↑↓ / W S  選択    ←→ / A D  5 ずつ変更    Backspace / ×  戻る");
 }
 
 void CodexMenu::DrawLobby(const VersusCalc& participants, const NetSession& net,
@@ -250,16 +307,17 @@ void CodexMenu::DrawResult(const SceneCalc& scene, const VersusCalc& participant
 
 void CodexMenu::Draw(const SceneCalc& scene, const VersusCalc& participants, const NetSession& net,
 	const SessionAddressCalc& address, const std::array<CHARACTER_TYPE, FIGHTER_COUNT>& characters,
-	const MATCH_TUNING& tuning) const
+	const MATCH_TUNING& tuning, const ARM_COST_TABLE& costs) const
 {
 	Background();
 	const SCENE current = scene.GetScene();
 	if (current == SCENE_OPTIONS) { DrawOptions(scene, tuning); return; }
+	if (current == SCENE_ARM_COSTS) { DrawArmCosts(scene, costs); return; }
 	if (current == SCENE_TITLE) { DrawLobby(participants, net, characters); return; }
 	if (current == SCENE_RESULT) { DrawResult(scene, participants); return; }
 	if (current == SCENE_GAME_START) {
 		Text("PICK UP. POWER UP. KNOCK OUT.", LEFT, 139, 18, CYAN);
-		Text("腕ダフルアームズ", LEFT - 3, 178, 59, WHITE);
+		Text("ブラキオンファイト", LEFT - 3, 181, 54, WHITE);
 		Text("変な腕で、ぶっ飛ばせ。", LEFT, 257, 31, WHITE);
 		Text("腕を拾って装着。相手を場外へ飛ばす、3 分間の乱闘。", LEFT, 318, 19, MUTED);
 		Row("ゲームを始める", "PLAY / キャラクター → ルール → 対戦方法", 0, scene.GetCursor() == 0, 398, 76);
