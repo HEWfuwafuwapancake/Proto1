@@ -285,6 +285,8 @@ namespace Proto1Tests
 		EXPECT_EQ(1, CameraCalcPickVisible({ 0, 0, 0 }, 0.0f, 0.0f, fov, aspect, 0.05f, 40.0f, targets, 4, -1, 0.0f));
 		// 上を向けば、高いところの相手が画面に入って選ばれる。
 		EXPECT_EQ(3, CameraCalcPickVisible({ 0, 0, 0 }, 0.0f, CAMERA_PI / 4.0f, fov, aspect, 0.05f, 40.0f, targets, 4, -1, 0.0f));
+		// 上の画面の外の相手しかいなければ選ばない。
+		EXPECT_EQ(-1, CameraCalcPickVisible({ 0, 0, 0 }, 0.0f, 0.0f, fov, aspect, 0.05f, 40.0f, &targets[3], 1, -1, 0.0f));
 		// 遠すぎれば選ばない。
 		EXPECT_EQ(-1, CameraCalcPickVisible({ 0, 0, 0 }, 0.0f, 0.0f, fov, aspect, 0.05f, 5.0f, targets, 4, -1, 0.0f));
 
