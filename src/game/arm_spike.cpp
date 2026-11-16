@@ -230,8 +230,9 @@ void SpikeArm::Update(const ARM_INPUT& input)
 {
 	const float dt = fmaxf(0.0f, GameTimeGetDeltaTime());
 	if (GetPlayer().DidRespawn()) StopAction();
-	if (m_Phase.IsIdle() && (input.Tap || input.HoldStarted)) {
-		m_Hold = input.HoldStarted;
+	// 長押しは離したときに出す。
+	if (m_Phase.IsIdle() && (input.Tap || input.HoldReleased)) {
+		m_Hold = input.HoldReleased;
 		m_Direction = GetAim(false);
 		// 空中では真下へ急降下し、足場に着いた瞬間に殴る。
 		if (GetPlayer().IsOnGround()) m_Phase.Start(SPIKE_WINDUP);

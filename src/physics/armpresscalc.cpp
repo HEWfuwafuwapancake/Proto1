@@ -10,6 +10,7 @@ void ArmPressCalc::Reset(bool pressed)
 	m_State = pressed ? State::WaitForRelease : State::Idle;
 	m_Seconds = 0.0;
 	m_TapBuffer = 0.0;
+	m_HoldGiven = false;
 }
 
 ARM_INPUT ArmPressCalc::Step(bool pressed, float dt, bool canTap, bool canHold)
@@ -19,6 +20,8 @@ ARM_INPUT ArmPressCalc::Step(bool pressed, float dt, bool canTap, bool canHold)
 	m_TapBuffer = m_TapBuffer > dt ? m_TapBuffer - dt : 0.0;
 	if (!pressed) {
 		if (m_State == State::Timing) m_TapBuffer = TAP_BUFFER_SECONDS;
+		input.HoldReleased = m_HoldGiven;
+		m_HoldGiven = false;
 		m_State = State::Idle;
 		m_Seconds = 0.0;
 	}
@@ -29,6 +32,7 @@ ARM_INPUT ArmPressCalc::Step(bool pressed, float dt, bool canTap, bool canHold)
 	}
 	if (m_State == State::HoldWaiting && canHold) {
 		input.HoldStarted = true;
+		m_HoldGiven = true;
 		m_State = State::WaitForRelease;
 		m_TapBuffer = 0.0;
 	}

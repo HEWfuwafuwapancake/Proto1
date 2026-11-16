@@ -37,6 +37,26 @@ TEST(ArmPressCalcTest, StartsHoldOnceAtThreshold)
 	EXPECT_FALSE(press.Step(false, ARM_PRESS_DT).Tap);
 }
 
+// 長押しを渡したあとに離すと、そのフレームだけ長押しの離しになる（単押しにはならない）。
+TEST(ArmPressCalcTest, ReportsHoldReleaseOnce)
+{
+	ArmPressCalc press;
+	for (int frame = 0; frame < 20; ++frame) EXPECT_FALSE(press.Step(true, ARM_PRESS_DT).HoldReleased);
+	const ARM_INPUT release = press.Step(false, ARM_PRESS_DT);
+	EXPECT_TRUE(release.HoldReleased);
+	EXPECT_FALSE(release.Tap);
+	EXPECT_FALSE(press.Step(false, ARM_PRESS_DT).HoldReleased);
+}
+
+// 長押しの途中で中断（Reset）したら、離しても長押しの離しにならない。
+TEST(ArmPressCalcTest, CancelledHoldDoesNotRelease)
+{
+	ArmPressCalc press;
+	for (int frame = 0; frame < 20; ++frame) press.Step(true, ARM_PRESS_DT);
+	press.Reset(true);
+	EXPECT_FALSE(press.Step(false, ARM_PRESS_DT).HoldReleased);
+}
+
 // 中断前に押した入力は離して捨て、押し直すと再び単押しになる。
 TEST(ArmPressCalcTest, CancelledPressMustBeReleasedBeforeRearming)
 {
