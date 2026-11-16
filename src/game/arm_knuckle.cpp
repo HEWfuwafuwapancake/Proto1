@@ -107,8 +107,9 @@ void KnuckleArm::Update(const ARM_INPUT& input)
 {
 	const float dt = fmaxf(0.0f, GameTimeGetDeltaTime());
 	if (GetPlayer().DidRespawn()) Reset();
-	if (m_Phase.IsIdle() && (input.Tap || input.HoldStarted)) {
-		m_Rush = input.HoldStarted;
+	// 長押しは離したときに出す。
+	if (m_Phase.IsIdle() && (input.Tap || input.HoldReleased)) {
+		m_Rush = input.HoldReleased;
 		// 判定で使う m_AirRush と分け、ため中に場外へ出入りしてもクリップは切り替えない。
 		m_AirRushClip = m_Rush && GetAirRushPitch() > 0.0f;
 		m_UseConsumed = false;

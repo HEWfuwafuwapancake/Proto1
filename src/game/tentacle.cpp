@@ -216,7 +216,8 @@ VEC3 TentacleArm::GetSpinTip() const
 
 void TentacleArm::StepSpin(const ARM_INPUT& input, float dt)
 {
-	if (m_Spin.IsIdle() && input.HoldStarted && m_Arm.GetState() == TENTACLE_IDLE) {
+	// 長押しは離したときに出す。
+	if (m_Spin.IsIdle() && input.HoldReleased && m_Arm.GetState() == TENTACLE_IDLE) {
 		m_SpinForward = GetAim(false);
 		m_SpinAngle = 0.0f;
 		m_SpinHits.Clear();
