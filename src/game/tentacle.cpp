@@ -21,6 +21,7 @@ static constexpr float GRAB_DAMAGE = 4.0f; // つかんだときに足す %
 static constexpr float THROW_DAMAGE = 4.0f;
 static constexpr float THROW_POWER = 1.5f;
 // 単押しは3段：1段目でつかみ、2段目で足元へたたきつけ、3段目で投げる（押さなければ少し待って投げる）。
+static constexpr float COMBO_COOLDOWN = 0.5f; // 投げてから、この腕で攻撃できない秒数。
 static constexpr float GRAB_WINDOW = 1.2f; // つかんでから2段目の単押しを待つ秒数（過ぎたら投げる）。
 static constexpr float SLAM_LIFT_SECONDS = 0.1f; // たたきつける前に持ち上げる秒数。
 static constexpr float SLAM_IMPACT_SECONDS = 0.2f; // 2段目を始めてから地面に当たる秒数。
@@ -160,6 +161,7 @@ void TentacleArm::Reset()
 	m_GrabStep = 0;
 	m_SwingFinish = false;
 	m_ComboTime = 0.0f;
+	m_Cooldown.Reset();
 	m_Spin.Reset();
 	StopPulling();
 }
@@ -349,6 +351,7 @@ void TentacleArm::Update(const ARM_INPUT& input)
 	STAGE_GRIP grip{};
 	bool hasGrip = false;
 	const float dt = GameTimeGetDeltaTime();
+	m_Cooldown.Step(dt);
 	// 回転の間は単押しで伸ばさない。
 	bool trigger = input.Tap && m_Spin.IsIdle();
 	// つかんでいる間は段階攻撃：2段目の単押しでたたきつけ、3段目の単押しで投げる。押さなければ待ってから投げる。
@@ -422,6 +425,8 @@ void TentacleArm::Update(const ARM_INPUT& input)
 		GetFighters().Release(event.Released, GetSlot(), event.Throw, throwForward,
 			m_SwingFinish ? FINISH_THROW_DAMAGE : THROW_DAMAGE, m_SwingFinish ? FINISH_THROW_POWER : THROW_POWER);
 		if (event.Throw) Rumble(THROW_RUMBLE_SMALL, THROW_RUMBLE_LARGE, THROW_RUMBLE_SECONDS);
+		// 投げたら（段階攻撃の終わり）、しばらくこの腕で攻撃できない（続けてつかみ続けられないように）。
+		if (event.Throw) m_Cooldown.StartCooldown(COMBO_COOLDOWN);
 	}
 	// 判定の状態は変えず、描画用の経過秒だけを数える。投げたフレームは後半の先頭を見せる。
 	const float clipDt = fmaxf(0.0f, dt);
@@ -639,12 +644,14 @@ bool TentacleArm::CanTakeTap() const
 {
 	// たたきつけの動きの間の単押しは覚えておき、終わってから投げる。
 	if ((m_GrabStep == 2 && m_ComboTime < SLAM_SECONDS) || m_GrabStep == 3) return false;
+	// 投げたあとの攻撃できない間は、新しく伸ばさない（足場に付いて引っぱっている間の取りやめは受け付ける）。
+	if (m_Cooldown.IsCoolingDown() && m_Arm.GetState() == TENTACLE_IDLE) return false;
 	return m_Spin.IsIdle() && m_Arm.GetState() != TENTACLE_RETURNING;
 }
 
 bool TentacleArm::CanTakeHold() const
 {
-	return m_Spin.IsIdle() && m_Arm.GetState() == TENTACLE_IDLE;
+	return m_Spin.IsIdle() && m_Arm.GetState() == TENTACLE_IDLE && !m_Cooldown.IsCoolingDown();
 }
 
 ARM_BODY_CLIP TentacleArm::GetBodyClip() const

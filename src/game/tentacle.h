@@ -2,6 +2,7 @@
 
 #include "game/arm.h"
 #include "physics/armphasecalc.h"
+#include "physics/combocalc.h"
 #include "physics/tentaclecalc.h"
 #include "physics/tentacleropecalc.h"
 
@@ -68,6 +69,7 @@ private:
 	float m_ThrowClipElapsed = -1.0f; // 投げてからの秒（負なら投げの描画なし）
 	int m_GrabStep = 0; // 単押しの段階攻撃の段（0：つかんでいない、1：つかんだ、2：たたきつけた、3：投げるために振り回している）
 	bool m_SwingFinish = false; // 今の振り回しが、たたきつけたあとの投げか
+	ComboCalc m_Cooldown; // 投げたあとの、この腕で攻撃できない時間
 	float m_ComboTime = 0.0f; // 今の段になってからの秒
 	bool m_SlamHit = false; // 2段目で地面に当てたか
 	int m_BaseModel = -1;
