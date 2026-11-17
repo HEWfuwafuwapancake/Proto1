@@ -6,7 +6,7 @@
 #include "physics/tentacleropecalc.h"
 
 /// @file tentacle.h
-/// @brief 触手（単押しで敵をつかんで投げる・足場へ飛ぶ。長押しで周囲を1回転）
+/// @brief 触手（単押しの3段で敵をつかむ → たたきつける → 投げる・足場へ飛ぶ。長押しで周囲を1回転）
 
 /// @brief 片手の触手の状態・モデルと、命中・保持・投げ・足場への引っぱり・回転・描画を管理する
 class TentacleArm : public Arm
@@ -32,7 +32,7 @@ public:
 	bool IsActive() const override;
 	/// @brief 保持中なら true を返す
 	bool IsHolding() const override;
-	/// @brief 腕を戻している間と回転中を除いて単押しを受け付ける（つかんでいる間は投げ、引っぱり中は取りやめになる）
+	/// @brief 腕を戻している間・回転中・たたきつけの動きの間を除いて単押しを受け付ける（つかんでいる間は次の段、引っぱり中は取りやめになる）
 	bool CanTakeTap() const override;
 	/// @brief 腕が待機で回転もしていないなら true を返す
 	bool CanTakeHold() const override;
@@ -45,6 +45,7 @@ protected:
 
 private:
 	VEC3 HoldPosition(float side, float forward, float height) const;
+	VEC3 GetComboHoldPosition(const VEC3& hold, const VEC3& origin, int target) const;
 	void StepRope(const VEC3& origin, float idleLength, float modelScale);
 	bool CanAnchor() const;
 	void StartReach(const TENTACLE_TARGET* targets, const VEC3& origin, const VEC3& cameraForward, VEC3& aim, STAGE_GRIP& grip, bool& hasGrip) const;
@@ -64,6 +65,9 @@ private:
 	TENTACLE_STATE m_ClipState = TENTACLE_IDLE; // 描画用の経過秒を数える状態
 	float m_StateClipElapsed = 0.0f; // 今の状態になってからの秒（描画だけ）
 	float m_ThrowClipElapsed = -1.0f; // 投げてからの秒（負なら投げの描画なし）
+	int m_GrabStep = 0; // 単押しの段階攻撃の段（0：つかんでいない、1：つかんだ、2：たたきつけた）
+	float m_ComboTime = 0.0f; // 今の段になってからの秒
+	bool m_SlamHit = false; // 2段目で地面に当てたか
 	int m_BaseModel = -1;
 	int m_SegmentModel = -1;
 	int m_TipModel = -1;

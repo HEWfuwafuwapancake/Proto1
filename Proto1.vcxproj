@@ -182,6 +182,7 @@
     <ClCompile Include="src\game\arm_spear.cpp" />
     <ClCompile Include="src\physics\areacalc.cpp" />
     <ClCompile Include="src\physics\armphasecalc.cpp" />
+    <ClCompile Include="src\physics\combocalc.cpp" />
     <ClCompile Include="src\physics\flailcalc.cpp" />
     <ClCompile Include="src\physics\grapplecalc.cpp" />
     <ClCompile Include="src\physics\armcalc.cpp" />
@@ -265,6 +266,7 @@
     <ClInclude Include="src\game\arm_spear.h" />
     <ClInclude Include="src\physics\areacalc.h" />
     <ClInclude Include="src\physics\armphasecalc.h" />
+    <ClInclude Include="src\physics\combocalc.h" />
     <ClInclude Include="src\physics\flailcalc.h" />
     <ClInclude Include="src\physics\grapplecalc.h" />
     <ClInclude Include="src\physics\armcalc.h" />

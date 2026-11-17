@@ -2,12 +2,13 @@
 
 #include "game/arm.h"
 #include "physics/armphasecalc.h"
+#include "physics/combocalc.h"
 #include "physics/risecalc.h"
 
 /// @file arm_knuckle.h
 /// @brief 片手のナックルの入力・殴り・突進と描画
 
-/// @brief 単押しで短くためて殴り、長押しでためて前へ突進する腕（空中の突進は前斜め上へ進み、場外から戻れる）
+/// @brief 単押しで3段の殴り（2回殴って、3段目のアッパーで斜め上へ飛ばす）、長押しでためて前へ突進する腕（空中の突進は前斜め上へ進み、場外から戻れる）
 class KnuckleArm : public Arm
 {
 public:
@@ -26,8 +27,10 @@ public:
 	bool IsActive() const override;
 	/// @brief 敵をつかまないので、常に false を返す
 	bool IsHolding() const override;
-	/// @brief 単押しは上半身、長押しは全身の攻撃クリップを取得する
+	/// @brief 単押しの1・2段目は上半身、アッパーと長押しは全身の攻撃クリップを取得する
 	ARM_BODY_CLIP GetBodyClip() const override;
+	/// @brief 待機中と、段階攻撃の次の段を受け付けている休みの間は true を返す
+	bool CanTakeTap() const override;
 	/// @brief 突進のためと休みの間だけ歩く速さを下げる
 	float GetMoveScale() const override;
 	/// @brief 地上の突進の間のワールド速度を取得する（空中の突進は自分で体を動かすのでゼロ）
@@ -35,6 +38,7 @@ public:
 
 private:
 	int FindTarget(float reach, float radius) const;
+	const float* GetSeconds() const;
 	bool IsOffStage() const;
 	float GetAirRushPitch() const;
 	void Strike(int target, float up, float damage, float power);
@@ -48,6 +52,8 @@ private:
 	int m_ArmModel = -1;
 	int m_FistModel = -1;
 	bool m_Rush = false; // true：長押しの突進、false：単押しの殴り
+	ComboCalc m_Combo; // 単押しの段階攻撃の段と受付
+	int m_TapStep = 0; // 今の単押しの段（0：1段目、1：2段目、2：アッパー）
 	VEC3 m_Direction = { 0.0f, 0.0f, 1.0f }; // 攻撃の水平の向き。
 	float m_Straighten = 0.0f; // 描画だけのまっすぐ度（0：待機、1：攻撃の向き）。
 	float m_Extend = 0.0f; // 描画だけの腕の伸び（0：元の長さ、1：殴りの届く長さ）。

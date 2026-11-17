@@ -47,6 +47,20 @@ enum class SKINNED_CLIP
 	HammerHopRight, ///< ハンマーの空中の跳ね（右手）
 	KnuckleAirRushLeft, ///< ナックルの空中突進（左手）
 	KnuckleAirRushRight, ///< ナックルの空中突進（右手）
+	KnuckleHookLeft, ///< ナックルの2段目の殴り（左手）
+	KnuckleHookRight, ///< ナックルの2段目の殴り（右手）
+	KnuckleUpperLeft, ///< ナックルの3段目のアッパー（左手）
+	KnuckleUpperRight, ///< ナックルの3段目のアッパー（右手）
+	KatanaReturnLeft, ///< 刀の2段目の斬り返し（左手）
+	KatanaReturnRight, ///< 刀の2段目の斬り返し（右手）
+	KatanaPierceLeft, ///< 刀の3段目の通り抜け斬り（左手）
+	KatanaPierceRight, ///< 刀の3段目の通り抜け斬り（右手）
+	HammerSwingALeft, ///< ハンマーの単押しの1段目（腕の側の斜め上から。左手）
+	HammerSwingARight, ///< ハンマーの単押しの1段目（腕の側の斜め上から。右手）
+	HammerSwingBLeft, ///< ハンマーの単押しの2段目（反対の斜め上から。左手）
+	HammerSwingBRight, ///< ハンマーの単押しの2段目（反対の斜め上から。右手）
+	TentacleSlamLeft, ///< 触手の2段目のたたきつけ（左手）
+	TentacleSlamRight, ///< 触手の2段目のたたきつけ（右手）
 	HitFlinch, ///< 吹っ飛ばされた直後ののけぞり
 	HitLaunched, ///< 吹っ飛び中
 	HitStun, ///< しびれ中
@@ -78,6 +92,13 @@ enum class ATTACK_CLIP
 	Parry, ///< パリィのはじき
 	HammerHop, ///< ハンマーの空中の跳ね
 	KnuckleAirRush, ///< ナックルの空中突進
+	KnuckleHook, ///< ナックルの2段目の殴り
+	KnuckleUpper, ///< ナックルの3段目のアッパー
+	KatanaReturn, ///< 刀の2段目の斬り返し
+	KatanaPierce, ///< 刀の3段目の通り抜け斬り
+	HammerSwingA, ///< ハンマーの単押しの1段目（腕の側の斜め上から）
+	HammerSwingB, ///< ハンマーの単押しの2段目（反対の斜め上から）
+	TentacleSlam, ///< 触手の2段目のたたきつけ
 };
 
 /// @brief 攻撃の種類と手から、再生するクリップを求める
@@ -94,7 +115,7 @@ inline SKINNED_CLIP AnimCalcAttackClip(ATTACK_CLIP kind, int hand)
 /// @return 攻撃クリップなら true
 inline bool AnimCalcIsAttackClip(SKINNED_CLIP clip)
 {
-	return clip >= SKINNED_CLIP::KatanaIaiLeft && clip <= SKINNED_CLIP::KnuckleAirRushRight;
+	return clip >= SKINNED_CLIP::KatanaIaiLeft && clip <= SKINNED_CLIP::TentacleSlamRight;
 }
 
 /// @brief アニメで使う3成分

@@ -10,9 +10,16 @@
 // 調整用の値
 // 耐久の減る量は physics/armcostcalc の表のハンマーの行（弱：単押し、強：衝撃波、そのほか：空中の跳ね）。
 static constexpr ARM_COST_ROW COST_ROW = ARM_COST_ROW_HAMMER;
-static constexpr float TAP_SECONDS[] = { 0.7f, 0.1f, 0.3f }; // 単押し：ため・叩き・休み
+// 地上の単押しは2段をくり返す：1段目は腕の側の斜め上から、2段目は反対の斜め上から叩く。
+static constexpr int COMBO_STEPS = 2;
+static constexpr float COMBO_WINDOW = 0.35f; // 休みが終わってから、次の段の単押しを受け付ける秒数（休みの間も受け付ける）。
+static constexpr float TAP_SECONDS[] = { 0.3f, 0.1f, 0.25f }; // 地上の単押し：振りかぶり・叩き・休み（2段とも同じ）
 static constexpr float WAVE_SECONDS[] = { 0.9f, 0.1f, 0.4f }; // 長押し：ため・叩き・休み
-static constexpr float TAP_CLIP_SECONDS[] = { 16.0f / 24.0f, 4.0f / 24.0f, 10.0f / 24.0f }; // 単押しのクリップの区切り（hammer_tap）
+static constexpr float TAP_CLIP_SECONDS[] = { 8.0f / 24.0f, 3.0f / 24.0f, 7.0f / 24.0f }; // 単押しのクリップの区切り（hammer_swing_a・hammer_swing_b）
+static constexpr float SWING_YAW = XMConvertToRadians(30.0f); // 斜めに振る、正面からの左右の角度（振り始めは反対へ、叩くのはこちらへ）。
+static constexpr float TAP_DAMAGE = 9.0f;
+static constexpr float TAP_POWER = 1.7f;
+static constexpr float TAP_UP = 0.8f; // 叩いた相手を、振り抜く斜めの向きへ飛ばすときに足す上向きの量。
 static constexpr float WAVE_CLIP_SECONDS[] = { 22.0f / 24.0f, 4.0f / 24.0f, 14.0f / 24.0f }; // 長押しのクリップの区切り（hammer_slam）
 static constexpr float AIR_TAP_SECONDS[] = { 0.25f, 0.1f, 0.3f }; // 空中の単押し：短いため・叩き・休み
 static constexpr float AIR_TAP_CLIP_SECONDS[] = { 7.0f / 24.0f, 3.0f / 24.0f, 10.0f / 24.0f }; // 空中の跳ね
@@ -88,6 +95,8 @@ void HammerArm::Reset()
 	m_UseConsumed = true;
 	StopHop();
 	m_Phase.Reset();
+	m_Combo.Reset();
+	m_TapStep = 0;
 	m_Straighten = 0.0f;
 	m_RangeSeconds = 0.0f;
 }
@@ -109,11 +118,12 @@ void HammerArm::Impact()
 			? AreaCalcInSector(m_RangeCenter, m_Direction, 0.0f, m_RangeRadius, XM_PI, WAVE_HALF_HEIGHT, target.Body)
 			: CollisionSphereCapsule({ m_RangeCenter, m_RangeRadius }, target.Body).Hit;
 		if (!inside) continue;
-		// 衝撃波はまわりへ押し出し、単押しは叩いた相手を叩いた向きへ飛ばす。
+		// 衝撃波はまわりへ押し出し、空中の単押しは叩いた向きへ、地上の単押しは振り抜く斜めの向きへ飛ばす。
 		const VEC3 launch = m_Wave ? AreaCalcRadialDirection(m_RangeCenter, target.Body, WAVE_UP, m_Direction)
-			: AreaCalcLaunchDirection(m_Direction, IMPACT_UP);
-		if (GetFighters().Launch(i, GetSlot(), launch,
-			m_Wave ? WAVE_DAMAGE : IMPACT_DAMAGE, m_Wave ? WAVE_POWER : IMPACT_POWER)) affected = true;
+			: (m_AirTap ? AreaCalcLaunchDirection(m_Direction, IMPACT_UP) : AreaCalcLaunchDirection(AreaCalcRotateYaw(m_Direction, GetSwingYaw(true)), TAP_UP));
+		const float damage = m_Wave ? WAVE_DAMAGE : (m_AirTap ? IMPACT_DAMAGE : TAP_DAMAGE);
+		const float power = m_Wave ? WAVE_POWER : (m_AirTap ? IMPACT_POWER : TAP_POWER);
+		if (GetFighters().Launch(i, GetSlot(), launch, damage, power)) affected = true;
 		const float stunSeconds = TuningCalcValue(GetTuning(), TUNING_HAMMER_STUN);
 		if (m_Wave && stunSeconds > 0.0f && GetFighters().ApplyStatus(i, GetSlot(), STATUS_STUN, stunSeconds, 0.0f)) affected = true;
 		hit = true;
@@ -129,11 +139,23 @@ void HammerArm::Update(const ARM_INPUT& input)
 {
 	const float dt = fmaxf(0.0f, GameTimeGetDeltaTime());
 	if (GetPlayer().DidRespawn()) Reset();
+	m_Combo.Step(dt);
+	// 地上の単押しの休みの間に単押しされたら、休みを切り上げて次の段を出す。
+	if (input.Tap && CanTakeTap() && m_Phase.GetPhase() == HAMMER_RECOVER) {
+		if (!m_UseConsumed) ConsumeDurability(GetCost(COST_ROW, ARM_COST_TAP_MISS));
+		m_Phase.Reset();
+	}
 	// 長押しは押している間ためた姿勢で待ち、離した瞬間に叩く。
 	if (m_Phase.IsIdle() && (input.Tap || input.HoldStarted || input.HoldReleased)) {
 		m_Wave = !input.Tap;
 		// 空中の単押しは、ためを短くして、振った瞬間に上へ跳ねる。
 		m_AirTap = !m_Wave && !GetPlayer().IsOnGround();
+		// 地上の単押しは受付の間なら次の段（2段をくり返す）。空中の単押しと長押しは段を切る。
+		if (m_Wave || m_AirTap) {
+			m_Combo.Reset();
+			m_TapStep = 0;
+		}
+		else m_TapStep = m_Combo.Start(COMBO_STEPS);
 		m_UseConsumed = false;
 		m_Direction = GetAim(false);
 		m_Phase.Start(HAMMER_CHARGE);
@@ -146,6 +168,7 @@ void HammerArm::Update(const ARM_INPUT& input)
 	// ためている間は狙いを追い続け、叩く瞬間の向き（ロックオン中は相手の方）に叩く。
 	if (m_Phase.GetPhase() == HAMMER_CHARGE) m_Direction = GetAim(false);
 	const ARM_PHASE_STEP step = m_Phase.Step(dt, GetSeconds(), HAMMER_PHASE_COUNT);
+	if (step.Entered == HAMMER_RECOVER && !m_Wave && !m_AirTap) m_Combo.Open(TAP_SECONDS[HAMMER_RECOVER] + COMBO_WINDOW);
 	if (step.Entered == HAMMER_SLAM) {
 		m_Direction = GetAim(false);
 		if (m_AirTap) {
@@ -173,8 +196,11 @@ void HammerArm::Update(const ARM_INPUT& input)
 
 void HammerArm::Draw()
 {
-	const float pitch = m_Phase.GetPhase() == HAMMER_CHARGE ? RAISE_PITCH : SLAM_PITCH;
-	const VEC3 aim = ArmCalcPitchDirection(m_Direction, pitch);
+	const bool charging = m_Phase.GetPhase() == HAMMER_CHARGE;
+	const float pitch = charging ? RAISE_PITCH : SLAM_PITCH;
+	// 地上の単押しは、斜め上から振りかぶって反対の斜め下へ叩く。
+	const VEC3 swing = (m_Wave || m_AirTap) ? m_Direction : AreaCalcRotateYaw(m_Direction, GetSwingYaw(!charging));
+	const VEC3 aim = ArmCalcPitchDirection(swing, pitch);
 	VEC3 armDirection = ArmCalcBlendDirection(GetRestDirection(), aim, m_Straighten);
 	VEC3 headDirection = ArmCalcBlendDirection(ArmCalcPitchDirection(GetForward(), CARRY_PITCH), aim, m_Straighten);
 	BlendClipPose(armDirection, headDirection);
@@ -195,11 +221,26 @@ ARM_BODY_CLIP HammerArm::GetBodyClip() const
 	ARM_BODY_CLIP clip;
 	if (m_Phase.IsIdle()) return clip;
 	clip.Active = true;
-	clip.Kind = m_Wave ? ATTACK_CLIP::HammerSlam : (m_AirTap ? ATTACK_CLIP::HammerHop : ATTACK_CLIP::HammerTap);
+	clip.Kind = m_Wave ? ATTACK_CLIP::HammerSlam
+		: (m_AirTap ? ATTACK_CLIP::HammerHop : (m_TapStep == 0 ? ATTACK_CLIP::HammerSwingA : ATTACK_CLIP::HammerSwingB));
 	clip.FullBody = m_Wave || m_AirTap;
 	clip.Time = ArmCalcClipTime(m_Phase.GetPhase(), m_Phase.GetTime(), GetSeconds(),
 		m_Wave ? WAVE_CLIP_SECONDS : (m_AirTap ? AIR_TAP_CLIP_SECONDS : TAP_CLIP_SECONDS));
 	return clip;
+}
+
+bool HammerArm::CanTakeTap() const
+{
+	return m_Phase.IsIdle() || (!m_Wave && !m_AirTap && m_Phase.GetPhase() == HAMMER_RECOVER && m_Combo.IsOpen());
+}
+
+// 地上の単押しの、正面からの左右の角度（end：true なら叩く側、false なら振りかぶる側）。
+// 1段目は腕の側の上から反対へ、2段目は反対の上から腕の側へ振る。左右の向きは AreaCalcRotateYaw と同じ（プラスで右）。
+float HammerArm::GetSwingYaw(bool end) const
+{
+	const float handSide = GetHand() == 0 ? -1.0f : 1.0f;
+	const float start = m_TapStep == 0 ? handSide : -handSide;
+	return (end ? -start : start) * SWING_YAW;
 }
 
 bool HammerArm::IsHolding() const
