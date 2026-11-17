@@ -2,12 +2,13 @@
 
 #include "game/arm.h"
 #include "physics/armphasecalc.h"
+#include "physics/combocalc.h"
 #include "physics/risecalc.h"
 
 /// @file arm_hammer.h
 /// @brief 片手のハンマーの入力・叩きつけ・衝撃波と描画
 
-/// @brief 単押しで前を強く叩き、長押しで長くためて衝撃波としびれを出す腕（空中の単押しは短いためで振り、上へ跳ねて場外から戻れる）
+/// @brief 地上の単押しで左右の斜め上から交互に叩き（2段をくり返す）、長押しで長くためて衝撃波としびれを出す腕（空中の単押しは短いためで振り、上へ跳ねて場外から戻れる）
 class HammerArm : public Arm
 {
 public:
@@ -28,11 +29,14 @@ public:
 	bool IsHolding() const override;
 	/// @brief 地上の単押しは上半身、空中の単押しと長押しは全身の攻撃クリップを取得する
 	ARM_BODY_CLIP GetBodyClip() const override;
+	/// @brief 待機中と、地上の単押しの次の段を受け付けている休みの間は true を返す
+	bool CanTakeTap() const override;
 	/// @brief ため・叩き・休みの間だけ歩く速さを下げる
 	float GetMoveScale() const override;
 
 private:
 	void Impact();
+	float GetSwingYaw(bool end) const;
 	const float* GetSeconds() const;
 	void StartHop();
 	void StopHop();
@@ -44,6 +48,8 @@ private:
 	int m_ArmModel = -1;
 	int m_HeadModel = -1;
 	bool m_Wave = false; // true：長押しの衝撃波、false：単押しの強打
+	ComboCalc m_Combo; // 地上の単押しの段と受付
+	int m_TapStep = 0; // 今の地上の単押しの段（0：腕の側の斜め上から、1：反対の斜め上から）
 	VEC3 m_Direction = { 0.0f, 0.0f, 1.0f }; // 叩く水平の向き。
 	float m_Straighten = 0.0f; // 描画だけのまっすぐ度（0：待機、1：叩く向き）。
 	float m_RangeSeconds = 0.0f; // 当たる範囲を見せる残りの秒数。

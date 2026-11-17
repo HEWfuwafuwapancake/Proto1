@@ -3,13 +3,14 @@
 #include "game/arm.h"
 #include "physics/armphasecalc.h"
 #include "physics/collision.h"
+#include "physics/combocalc.h"
 #include "physics/delayedhitcalc.h"
 #include "physics/versuscalc.h"
 
 /// @file arm_katana.h
 /// @brief 片手の刀の入力・斬撃・狙った場所へのアサルトと描画
 
-/// @brief 単押しですぐ斬り、長押しで構えて離すと空間を斬って一直線に飛び、着いた瞬間に居合の一閃（ダメージは少しあとから入る）を出す腕
+/// @brief 単押しで3段の斬撃（2回斬りつけ、3段目は相手を通り抜けて少しあとから斬撃が入る）、長押しで構えて離すと空間を斬って一直線に飛び、着いた瞬間に居合の一閃（ダメージは少しあとから入る）を出す腕
 class KatanaArm : public Arm
 {
 public:
@@ -30,7 +31,7 @@ public:
 	bool IsActive() const override;
 	/// @brief 遅れて効く斬撃や、その表示が残っていれば true を返す
 	bool IsBusy() const override;
-	/// @brief 待機中に単押しを受け付ける（GAME では前の居合が効くまで待つ）
+	/// @brief 待機中と、段階攻撃の次の段を受け付けている休みの間に単押しを受け付ける（GAME では前の居合が効くまで待つ）
 	bool CanTakeTap() const override;
 	/// @brief 単押しと同じ条件で長押しを受け付ける
 	bool CanTakeHold() const override { return CanTakeTap(); }
@@ -52,6 +53,9 @@ private:
 	void SlashTargets();
 	void IaiTargets();
 	void DashTargets(const VEC3& from, const VEC3& to);
+	void StartPierce();
+	void PierceTargets(const VEC3& from, const VEC3& to);
+	void StepPierce();
 	void StepIai(float dt);
 	void StepBreach(const ARM_INPUT& input, float dt);
 	void StepDelayedHits(float dt);
@@ -63,7 +67,11 @@ private:
 	void DrawRift(const VEC3& feet) const;
 	void DrawCutRift() const;
 	void DrawSlashes() const;
-	ArmPhaseCalc m_Phase; // 単押しの斬撃の、振りかぶり → 斬る → 休み
+	ArmPhaseCalc m_Phase; // 単押しの斬撃の、振りかぶり → 斬る（3段目は通り抜ける） → 休み
+	ComboCalc m_Combo; // 単押しの段階攻撃の段と受付
+	int m_TapStep = 0; // 今の単押しの段（0：斬撃、1：斬り返し、2：通り抜け）
+	VEC3 m_PierceStart = {}; // 3段目の通り抜けを始めた足元。
+	VEC3 m_PierceEnd = {}; // 3段目の通り抜けで着く足元。
 	HitRecord m_Hits; // 1回の斬撃・一閃で当たった相手
 	DelayedHitCalc m_Delayed; // 着いたときの一閃で当てて、あとから効かせる斬撃
 	bool m_DashHitConsumed = false; // 飛行と着地を通して追加の耐久10を減らしたか

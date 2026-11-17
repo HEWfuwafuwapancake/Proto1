@@ -8,6 +8,7 @@
 #include "physics/areacalc.h"
 #include "physics/armcalc.h"
 #include "physics/breachcalc.h"
+#include "physics/combocalc.h"
 #include "physics/grapplecalc.h"
 #include "physics/risecalc.h"
 #include "render/shape.h"
@@ -16,14 +17,30 @@
 // 調整用の値
 // 耐久の減る量は physics/armcostcalc の表の刀の行（弱：居合、強：飛んだ瞬間に「強・外れ」、当たったら差の分を足す）。
 static constexpr ARM_COST_ROW COST_ROW = ARM_COST_ROW_KATANA;
-// 単押し：ただの斬撃（押したらすぐ振る。当たった瞬間にダメージ）
-static constexpr float IAI_SECONDS[] = { 0.1f, 0.1f, 0.19f }; // 振りかぶり・斬る・休み
-static constexpr float IAI_CLIP_SECONDS[] = { 8.0f / 24.0f, 6.0f / 24.0f, 12.0f / 24.0f }; // クリップの区切り（katana_iai の抜いて斬る動きを使う）
+// 単押しは3段：1段目の斬撃・2段目の斬り返し（当たった瞬間にダメージ。相手を近くに残す）、
+// 3段目は相手を通り抜けて、少しあとから斬撃のダメージが入る。
+static constexpr int COMBO_STEPS = 3;
+static constexpr int PIERCE_STEP = 2; // 通り抜ける段。
+static constexpr float COMBO_WINDOW = 0.35f; // 休みが終わってから、次の段の単押しを受け付ける秒数（休みの間も受け付ける）。
+static constexpr float IAI_SECONDS[COMBO_STEPS][3] = { // 段ごと：振りかぶり・斬る（3段目は通り抜ける）・休み
+	{ 0.1f, 0.1f, 0.19f }, { 0.08f, 0.1f, 0.19f }, { 0.14f, 0.12f, 0.35f } };
+static constexpr float IAI_CLIP_SECONDS[COMBO_STEPS][3] = { // 段ごとのクリップの区切り（katana_iai・katana_return・katana_pierce）
+	{ 8.0f / 24.0f, 6.0f / 24.0f, 12.0f / 24.0f }, { 4.0f / 24.0f, 5.0f / 24.0f, 9.0f / 24.0f }, { 6.0f / 24.0f, 4.0f / 24.0f, 12.0f / 24.0f } };
+static constexpr ATTACK_CLIP IAI_CLIPS[COMBO_STEPS] = { ATTACK_CLIP::KatanaIai, ATTACK_CLIP::KatanaReturn, ATTACK_CLIP::KatanaPierce };
 static constexpr float TAP_MOVE_SCALE = 0.6f; // 斬撃の間の歩く速さの倍率。
 static constexpr float TAP_RADIUS = 2.2f;
 static constexpr float TAP_HALF_ANGLE = XMConvertToRadians(60.0f);
-static constexpr float TAP_DAMAGE = 8.0f;
-static constexpr float TAP_POWER = 1.6f;
+static constexpr float TAP_DAMAGE = 6.0f; // 1段目・2段目の斬撃。
+static constexpr float TAP_POWER = 0.7f;
+static constexpr float TAP_UP = 0.2f;
+static constexpr float PIERCE_DISTANCE = 4.0f; // 狙う相手がいないときに通り抜ける距離。
+static constexpr float PIERCE_PAST = 1.5f; // 狙う相手がいるとき、相手の向こうへ抜ける距離。
+static constexpr float PIERCE_MAX = 6.0f; // 通り抜ける距離の上限。
+static constexpr float PIERCE_HIT_RADIUS = 0.9f;
+static constexpr float PIERCE_DAMAGE = 11.0f;
+static constexpr float PIERCE_POWER = 2.5f;
+static constexpr float PIERCE_UP = 0.6f;
+static constexpr float PIERCE_DELAY_SECONDS = 0.25f; // 通り抜けてから斬撃のダメージが入るまでの秒数。
 // 長押しで飛んで着いた瞬間の、居合の一閃（少しあとからダメージが入る）
 static constexpr float IAI_ARRIVE_SECONDS = 0.12f; // 着いてから一閃の当たりを調べる秒数。
 static constexpr float IAI_RADIUS = 3.0f;
@@ -122,6 +139,8 @@ void KatanaArm::CancelMotion()
 	m_IaiConsumed = true;
 	ReleasePull();
 	m_Phase.Reset();
+	m_Combo.Reset();
+	m_TapStep = 0;
 	m_Breach = BREACH_NONE;
 	m_HasLanding = false;
 	m_Straighten = 0.0f;
@@ -149,6 +168,7 @@ void KatanaArm::SetBreach(BREACH_STATE state)
 
 void KatanaArm::StartIai()
 {
+	m_TapStep = m_Combo.Start(COMBO_STEPS);
 	m_IaiConsumed = false;
 	m_Direction = GetAim(false);
 	m_Phase.Start(IAI_STANCE);
@@ -171,7 +191,7 @@ void KatanaArm::SlashTargets()
 		if (!target.Available || m_Hits.Contains(i)
 			|| !AreaCalcInAimedSector(GetShoulder(), strike, 0.0f, TAP_RADIUS, TAP_HALF_ANGLE, IAI_HALF_HEIGHT, target.Body)) continue;
 		m_Hits.TryAdd(i);
-		const bool applied = GetFighters().Launch(i, GetSlot(), AreaCalcLaunchDirection(m_Direction, IAI_UP), TAP_DAMAGE, TAP_POWER);
+		const bool applied = GetFighters().Launch(i, GetSlot(), AreaCalcLaunchDirection(m_Direction, TAP_UP), TAP_DAMAGE, TAP_POWER);
 		if (applied && !m_IaiConsumed) {
 			ConsumeDurability(GetCost(COST_ROW, ARM_COST_TAP_HIT));
 			m_IaiConsumed = true;
@@ -243,12 +263,80 @@ void KatanaArm::StepDelayedHits(float dt)
 	for (float& seconds : m_SlashSeconds) seconds = fmaxf(0.0f, seconds - dt);
 }
 
+// 3段目を始める：狙う相手の向こうまで（いなければ決まった距離だけ）、浮島から落ちないところへ通り抜ける。
+void KatanaArm::StartPierce()
+{
+	const XMFLOAT3 p = GetPlayer().GetPosition();
+	m_PierceStart = { p.x, p.y, p.z };
+	float distance = PIERCE_DISTANCE;
+	const int target = GetAimTarget();
+	if (target >= 0) {
+		const CAPSULE body = GetFighters().GetTarget(target, GetSlot()).Body;
+		const VEC3 center = Vec3Scale(Vec3Add(body.Start, body.End), 0.5f);
+		const VEC3 flat{ center.X - p.x, 0.0f, center.Z - p.z };
+		distance = fminf(PIERCE_MAX, fmaxf(PIERCE_DISTANCE, Vec3Length(flat) + PIERCE_PAST));
+	}
+	// もう一方の手や触手が体を動かしている間は、その場で斬る。
+	if (GetPlayer().IsPulled() && !m_OwnPull) distance = 0.0f;
+	m_PierceEnd = ComboCalcPierceEnd(GetStage().GetStage(), m_PierceStart, m_Direction, distance, RETURN_INSET);
+	GetPlayer().SetPulled(true);
+	m_OwnPull = true;
+}
+
+// 3段目の通り抜け：通った線の上の相手を覚え、少しあとから斬撃としてダメージを入れる。
+void KatanaArm::PierceTargets(const VEC3& from, const VEC3& to)
+{
+	const VEC3 height{ 0.0f, GetPlayer().GetHeight() * 0.5f, 0.0f };
+	const CAPSULE path{ Vec3Add(from, height), Vec3Add(to, height), PIERCE_HIT_RADIUS };
+	const VEC3 flat = ArmCalcPitchDirection(m_Direction, 0.0f);
+	bool hit = false;
+	for (int i = 0; i < FIGHTER_COUNT; ++i) {
+		const TENTACLE_TARGET target = GetFighters().GetTarget(i, GetSlot());
+		if (!target.Available || !CollisionCapsuleCapsule(path, target.Body).Hit || !m_Hits.TryAdd(i)) continue;
+		DELAYED_HIT slash;
+		slash.Target = i;
+		slash.Direction = AreaCalcLaunchDirection(flat, PIERCE_UP);
+		slash.Damage = PIERCE_DAMAGE;
+		slash.Power = PIERCE_POWER;
+		slash.Seconds = PIERCE_DELAY_SECONDS;
+		m_Delayed.Add(slash);
+		if (!m_IaiConsumed) {
+			ConsumeDurability(GetCost(COST_ROW, ARM_COST_TAP_HIT));
+			m_IaiConsumed = true;
+		}
+		m_SlashDirections[i] = flat;
+		hit = true;
+	}
+	if (hit) Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
+}
+
+void KatanaArm::StepPierce()
+{
+	// 休みに入ったフレームは、着く位置まで進める。
+	const float t = m_Phase.GetPhase() == IAI_DRAW ? fminf(1.0f, m_Phase.GetTime() / IAI_SECONDS[PIERCE_STEP][IAI_DRAW]) : 1.0f;
+	const XMFLOAT3 p = GetPlayer().GetPosition();
+	const VEC3 next = Vec3Add(m_PierceStart, Vec3Scale(Vec3Sub(m_PierceEnd, m_PierceStart), t));
+	GetPlayer().SetPosition({ next.X, next.Y, next.Z });
+	PierceTargets({ p.x, p.y, p.z }, next);
+}
+
 void KatanaArm::StepIai(float dt)
 {
+	m_Combo.Step(dt);
 	if (m_Phase.IsIdle()) return;
-	const ARM_PHASE_STEP step = m_Phase.Step(dt, IAI_SECONDS, IAI_PHASE_COUNT);
-	if (step.Entered == IAI_DRAW) BeginDraw();
-	if (m_Phase.GetPhase() == IAI_DRAW) SlashTargets();
+	const ARM_PHASE_STEP step = m_Phase.Step(dt, IAI_SECONDS[m_TapStep], IAI_PHASE_COUNT);
+	if (step.Entered == IAI_DRAW) {
+		BeginDraw();
+		if (m_TapStep == PIERCE_STEP) StartPierce();
+	}
+	if (m_TapStep == PIERCE_STEP) {
+		// 通り抜け終わる（休みに入る）フレームは、最後まで進めてから体の計算を戻す。
+		if (m_Phase.GetPhase() == IAI_DRAW || step.Entered == IAI_RECOVER) StepPierce();
+		if (m_Phase.GetPhase() != IAI_DRAW) ReleasePull();
+	}
+	else if (m_Phase.GetPhase() == IAI_DRAW) SlashTargets();
+	// 最後の段でなければ、休みに入ったときに次の段の受付を開く。
+	if (step.Entered == IAI_RECOVER && m_TapStep < COMBO_STEPS - 1) m_Combo.Open(IAI_SECONDS[m_TapStep][IAI_RECOVER] + COMBO_WINDOW);
 	if (step.Finished && !m_IaiConsumed) {
 		ConsumeDurability(GetCost(COST_ROW, ARM_COST_TAP_MISS));
 		m_IaiConsumed = true;
@@ -358,6 +446,12 @@ void KatanaArm::Update(const ARM_INPUT& input)
 {
 	const float dt = fmaxf(0.0f, GameTimeGetDeltaTime());
 	if (GetPlayer().DidRespawn()) Reset();
+	// 段階攻撃の休みの間に単押しされたら、休みを切り上げて次の段を出す。
+	if (input.Tap && m_Breach == BREACH_NONE && m_Phase.GetPhase() == IAI_RECOVER && m_Combo.IsOpen()) {
+		if (!m_IaiConsumed) ConsumeDurability(GetCost(COST_ROW, ARM_COST_TAP_MISS));
+		m_IaiConsumed = true;
+		m_Phase.Reset();
+	}
 	if (!IsActive()) {
 		if (input.Tap) StartIai();
 		else if (input.HoldStarted) SetBreach(BREACH_AIM);
@@ -385,14 +479,20 @@ void KatanaArm::GetPose(VEC3& arm, VEC3& sword, bool& sheathed) const
 		sword = ArmCalcPitchDirection(Vec3Scale(GetForward(), -1.0f), SHEATH_PITCH);
 		sheathed = true;
 	}
+	else if (m_TapStep == PIERCE_STEP && phase == IAI_DRAW) {
+		// 通り抜ける間は、腕を前へ下げて刀を後ろへ流す。
+		arm = ArmCalcPitchDirection(m_Direction, DASH_ARM_PITCH);
+		sword = ArmCalcPitchDirection(Vec3Scale(m_Direction, -1.0f), DASH_SWORD_PITCH);
+	}
 	else if (phase == IAI_DRAW || phase == IAI_RECOVER) {
-		// 反対の腰から手の側へ、一気に振り抜く（残心は振り抜いた形のまま）。
-		const float t = phase == IAI_DRAW ? fminf(1.0f, m_Phase.GetTime() / IAI_SECONDS[IAI_DRAW]) : 1.0f;
-		const float angle = Lerp(-side * SWING_START, side * SWING_END, t);
+		// 1段目は反対の腰から手の側へ、2段目は手の側から反対へ一気に振り抜く（残心は振り抜いた形のまま）。
+		// 3段目は通り抜けたあと、手の側へ振り抜いた形で残心をとる。
+		const float t = phase == IAI_DRAW ? fminf(1.0f, m_Phase.GetTime() / IAI_SECONDS[m_TapStep][IAI_DRAW]) : 1.0f;
+		const float angle = m_TapStep == 1 ? Lerp(side * SWING_END, -side * SWING_START, t) : Lerp(-side * SWING_START, side * SWING_END, t);
 		sword = AreaCalcRotateYaw(m_Direction, angle);
 		arm = ArmCalcPitchDirection(AreaCalcRotateYaw(m_Direction, angle * ARM_SWING_RATE), SLASH_ARM_PITCH);
 		// 残心の終わりは納刀に入るので鞘を見せる。
-		sheathed = phase == IAI_RECOVER && m_Phase.GetTime() >= IAI_SECONDS[IAI_RECOVER] * IAI_SHEATH_RATE;
+		sheathed = phase == IAI_RECOVER && m_Phase.GetTime() >= IAI_SECONDS[m_TapStep][IAI_RECOVER] * IAI_SHEATH_RATE;
 	}
 	else if (m_Breach == BREACH_AIM || m_Breach == BREACH_CUT) {
 		arm = ArmCalcPitchDirection(GetForward(), AIM_ARM_PITCH);
@@ -512,6 +612,8 @@ bool KatanaArm::IsBusy() const
 
 bool KatanaArm::CanTakeTap() const
 {
+	// 段階攻撃の次の段は、休みの間も受け付ける。
+	if (m_Breach == BREACH_NONE && m_Phase.GetPhase() == IAI_RECOVER && m_Combo.IsOpen()) return true;
 	return !IsActive() && (GetDurability() < 0 || m_Delayed.GetCount() == 0);
 }
 
@@ -539,9 +641,9 @@ ARM_BODY_CLIP KatanaArm::GetBodyClip() const
 	ARM_BODY_CLIP clip;
 	if (!m_Phase.IsIdle()) {
 		clip.Active = true;
-		clip.Kind = ATTACK_CLIP::KatanaIai;
+		clip.Kind = IAI_CLIPS[m_TapStep];
 		clip.FullBody = true;
-		clip.Time = ArmCalcClipTime(m_Phase.GetPhase(), m_Phase.GetTime(), IAI_SECONDS, IAI_CLIP_SECONDS);
+		clip.Time = ArmCalcClipTime(m_Phase.GetPhase(), m_Phase.GetTime(), IAI_SECONDS[m_TapStep], IAI_CLIP_SECONDS[m_TapStep]);
 		return clip;
 	}
 	if (m_Breach == BREACH_NONE) return clip;
