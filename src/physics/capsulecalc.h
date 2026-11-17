@@ -20,7 +20,7 @@ public:
 	/// @brief 同時に置けるカプセルの最大数
 	static constexpr int CAPACITY = 16;
 	/// @brief 袋に入れる腕の種類の数
-	static constexpr int TYPE_COUNT = 6;
+	static constexpr int TYPE_COUNT = 7;
 	/// @brief 最初の個数と出現間隔を設定する（個数は0〜最大数、秒数は正の値。配置は次のStartで戻す）
 	void SetAmount(int initialCount, double spawnSeconds);
 
