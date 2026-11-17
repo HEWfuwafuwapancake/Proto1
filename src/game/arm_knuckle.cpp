@@ -13,6 +13,7 @@
 static constexpr ARM_COST_ROW COST_ROW = ARM_COST_ROW_KNUCKLE;
 // 単押しは3段：1段目・2段目は軽く殴って相手を近くに残し、3段目のアッパーで斜め上へ大きく飛ばす。
 static constexpr int COMBO_STEPS = 3;
+static constexpr float COMBO_COOLDOWN = 0.5f; // 最後の段を出し終えてから、この腕で攻撃できない秒数。
 static constexpr float COMBO_WINDOW = 0.35f; // 休みが終わってから、次の段の単押しを受け付ける秒数（休みの間も受け付ける）。
 static constexpr float PUNCH_SECONDS[COMBO_STEPS][3] = { // 単押しの段ごと：ため・殴り・休み
 	{ 0.12f, 0.1f, 0.15f }, { 0.08f, 0.1f, 0.15f }, { 0.14f, 0.12f, 0.3f } };
@@ -180,6 +181,8 @@ void KnuckleArm::Update(const ARM_INPUT& input)
 			StopAirRush();
 		}
 	}
+	// アッパーを出し終えたら、しばらくこの腕で攻撃できない。
+	if (step.Finished && !m_Rush && m_TapStep == COMBO_STEPS - 1) m_Combo.StartCooldown(COMBO_COOLDOWN);
 	if (step.Finished && !m_UseConsumed) {
 		ConsumeDurability(GetCost(COST_ROW, m_Rush ? ARM_COST_HOLD_MISS : ARM_COST_TAP_MISS));
 		m_UseConsumed = true;
@@ -232,6 +235,7 @@ const float* KnuckleArm::GetSeconds() const
 
 bool KnuckleArm::CanTakeTap() const
 {
+	if (m_Combo.IsCoolingDown()) return false;
 	return m_Phase.IsIdle() || (!m_Rush && m_Phase.GetPhase() == KNUCKLE_RECOVER && m_Combo.IsOpen());
 }
 
@@ -243,6 +247,11 @@ bool KnuckleArm::IsHolding() const
 float KnuckleArm::GetMoveScale() const
 {
 	return m_Rush && !m_Phase.IsIdle() ? CHARGE_MOVE_SCALE : 1.0f;
+}
+
+bool KnuckleArm::CanTakeHold() const
+{
+	return !m_Combo.IsCoolingDown() && Arm::CanTakeHold();
 }
 
 VEC3 KnuckleArm::GetRushVelocity() const

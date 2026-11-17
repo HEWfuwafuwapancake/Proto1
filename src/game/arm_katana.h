@@ -31,7 +31,7 @@ public:
 	bool IsActive() const override;
 	/// @brief 遅れて効く斬撃や、その表示が残っていれば true を返す
 	bool IsBusy() const override;
-	/// @brief 待機中と、段階攻撃の次の段を受け付けている休みの間に単押しを受け付ける（GAME では前の居合が効くまで待つ）
+	/// @brief 待機中と、段階攻撃の次の段を受け付けている休みの間に単押しを受け付ける（GAME では前の居合が効くまで待つ。3段目のあとの攻撃できない間は受け付けない）
 	bool CanTakeTap() const override;
 	/// @brief 単押しと同じ条件で長押しを受け付ける
 	bool CanTakeHold() const override { return CanTakeTap(); }

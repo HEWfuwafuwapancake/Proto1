@@ -8,7 +8,8 @@
 
 /// @brief 単押しの段階攻撃で、今の段と次の段へつなげられる残りの時間を管理する
 /// @details 段を出し終わる少し前（休みに入ったとき）に Open で受付を開き、受付の間に単押しすると次の段へ進む。
-///          受付が閉じたあとの単押しは1段目からやり直す。最後の段のあとは1段目に戻る（ループする腕も同じ式）
+///          受付が閉じたあとの単押しは1段目からやり直す。最後の段のあとは1段目に戻る（ループする腕も同じ式）。
+///          最後の段を出し終えたら StartCooldown で、その腕の攻撃をしばらく止める
 class ComboCalc
 {
 public:
@@ -21,17 +22,23 @@ public:
 	/// @brief 次の段への受付を開く
 	/// @param seconds 受付を開いておく秒数（0 以下なら開かない＝次は1段目）
 	void Open(float seconds);
-	/// @brief 受付の残りの時間を進める（閉じたら段を持たない状態に戻す）
+	/// @brief 最後の段のあとの、攻撃できない時間を始める（段と受付は消す）
+	/// @param seconds 攻撃できない秒数（0 以下なら止めない）
+	void StartCooldown(float seconds);
+	/// @brief 受付と攻撃できない時間の残りを進める（受付が閉じたら段を持たない状態に戻す）
 	/// @param dt 進める秒数（0 以下なら何もしない）
 	void Step(float dt);
 	/// @brief 今の段を取得する（段を持たないときは -1）
 	int GetStep() const { return m_Step; }
 	/// @brief 次の段への受付が開いているか取得する（true：開いている、false：閉じている）
 	bool IsOpen() const { return m_Window > 0.0f; }
+	/// @brief 最後の段のあとで攻撃できない間か取得する（true：攻撃できない、false：攻撃できる）
+	bool IsCoolingDown() const { return m_Cooldown > 0.0f; }
 
 private:
 	int m_Step = -1; ///< 今の段（段を持たないときは -1）
 	float m_Window = 0.0f; ///< 次の段への受付の残りの秒数
+	float m_Cooldown = 0.0f; ///< 攻撃できない残りの秒数
 };
 
 /// @brief 刀の3段目で、相手を通り抜けて着く位置を求める

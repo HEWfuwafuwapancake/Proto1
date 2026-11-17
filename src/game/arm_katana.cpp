@@ -21,6 +21,7 @@ static constexpr ARM_COST_ROW COST_ROW = ARM_COST_ROW_KATANA;
 // 3段目は相手を通り抜けて、少しあとから斬撃のダメージが入る。
 static constexpr int COMBO_STEPS = 3;
 static constexpr int PIERCE_STEP = 2; // 通り抜ける段。
+static constexpr float COMBO_COOLDOWN = 0.5f; // 最後の段を出し終えてから、この腕で攻撃できない秒数。
 static constexpr float COMBO_WINDOW = 0.35f; // 休みが終わってから、次の段の単押しを受け付ける秒数（休みの間も受け付ける）。
 static constexpr float IAI_SECONDS[COMBO_STEPS][3] = { // 段ごと：振りかぶり・斬る（3段目は通り抜ける）・休み
 	{ 0.1f, 0.1f, 0.19f }, { 0.08f, 0.1f, 0.19f }, { 0.14f, 0.12f, 0.35f } };
@@ -337,6 +338,8 @@ void KatanaArm::StepIai(float dt)
 	else if (m_Phase.GetPhase() == IAI_DRAW) SlashTargets();
 	// 最後の段でなければ、休みに入ったときに次の段の受付を開く。
 	if (step.Entered == IAI_RECOVER && m_TapStep < COMBO_STEPS - 1) m_Combo.Open(IAI_SECONDS[m_TapStep][IAI_RECOVER] + COMBO_WINDOW);
+	// 3段目を出し終えたら、しばらくこの腕で攻撃できない。
+	if (step.Finished && m_TapStep == COMBO_STEPS - 1) m_Combo.StartCooldown(COMBO_COOLDOWN);
 	if (step.Finished && !m_IaiConsumed) {
 		ConsumeDurability(GetCost(COST_ROW, ARM_COST_TAP_MISS));
 		m_IaiConsumed = true;
@@ -613,6 +616,7 @@ bool KatanaArm::IsBusy() const
 bool KatanaArm::CanTakeTap() const
 {
 	// 段階攻撃の次の段は、休みの間も受け付ける。
+	if (m_Combo.IsCoolingDown()) return false;
 	if (m_Breach == BREACH_NONE && m_Phase.GetPhase() == IAI_RECOVER && m_Combo.IsOpen()) return true;
 	return !IsActive() && (GetDurability() < 0 || m_Delayed.GetCount() == 0);
 }

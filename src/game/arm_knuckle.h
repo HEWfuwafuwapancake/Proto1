@@ -29,8 +29,10 @@ public:
 	bool IsHolding() const override;
 	/// @brief 単押しの1・2段目は上半身、アッパーと長押しは全身の攻撃クリップを取得する
 	ARM_BODY_CLIP GetBodyClip() const override;
-	/// @brief 待機中と、段階攻撃の次の段を受け付けている休みの間は true を返す
+	/// @brief 待機中と、段階攻撃の次の段を受け付けている休みの間は true を返す（アッパーのあとの攻撃できない間は false）
 	bool CanTakeTap() const override;
+	/// @brief 待機中は true を返す（アッパーのあとの攻撃できない間は false）
+	bool CanTakeHold() const override;
 	/// @brief 突進のためと休みの間だけ歩く速さを下げる
 	float GetMoveScale() const override;
 	/// @brief 地上の突進の間のワールド速度を取得する（空中の突進は自分で体を動かすのでゼロ）

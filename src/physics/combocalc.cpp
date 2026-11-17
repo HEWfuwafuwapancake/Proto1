@@ -22,9 +22,18 @@ void ComboCalc::Open(float seconds)
 	m_Window = seconds > 0.0f ? seconds : 0.0f;
 }
 
+void ComboCalc::StartCooldown(float seconds)
+{
+	m_Step = -1;
+	m_Window = 0.0f;
+	m_Cooldown = seconds > 0.0f ? seconds : 0.0f;
+}
+
 void ComboCalc::Step(float dt)
 {
-	if (dt <= 0.0f || m_Window <= 0.0f) return;
+	if (dt <= 0.0f) return;
+	m_Cooldown = fmaxf(0.0f, m_Cooldown - dt);
+	if (m_Window <= 0.0f) return;
 	m_Window -= dt;
 	if (m_Window <= 0.0f) {
 		m_Window = 0.0f;

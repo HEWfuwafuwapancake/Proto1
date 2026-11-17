@@ -47,6 +47,20 @@ namespace Proto1Tests
 		EXPECT_EQ(0, steps[4]);
 	}
 
+	// 最後の段のあとは決めた秒数だけ攻撃できず、過ぎたら1段目から出せる。
+	TEST(ComboCalcTest, StartCooldown_BlocksUntilTimePasses)
+	{
+		ComboCalc combo;
+		combo.Start(3);
+		combo.StartCooldown(0.5f);
+		EXPECT_TRUE(combo.IsCoolingDown());
+		combo.Step(0.4f);
+		EXPECT_TRUE(combo.IsCoolingDown());
+		combo.Step(0.15f);
+		EXPECT_FALSE(combo.IsCoolingDown());
+		EXPECT_EQ(0, combo.Start(3));
+	}
+
 	static STAGE MakeStage(void)
 	{
 		STAGE stage{};
