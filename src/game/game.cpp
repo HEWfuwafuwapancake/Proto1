@@ -61,6 +61,7 @@ bool Game::Initialize(const NET_OPTIONS& options)
 
 void Game::Finalize()
 {
+	m_CodexMenu.Finalize();
 	m_Net.Finalize();
 	Text2DFinalize();
 	m_Match.Finalize();

@@ -1,5 +1,7 @@
 ﻿#include "game/codex_menu.h"
 #include "game/netsession.h"
+#include "game/character.h"
+#include "core/shader.h"
 #include "input/action.h"
 #include "render/number2d.h"
 #include "render/text2d.h"
@@ -21,6 +23,14 @@ static constexpr float OPTION_TOP = 156.0f;
 static constexpr float OPTION_GAP = 46.0f;
 static constexpr float TEXT_SCALE = 1.35f; // 文字画像の上下の余白を見込み、メニューの文字を大きくする。
 static constexpr float PI = 3.14159265f;
+static constexpr float PREVIEW_TURN_SECONDS = 12.0f; // 全身を見せる1回転の秒数
+static constexpr float PREVIEW_BODY_HEIGHT = 2.0f; // キャラ共通の表示上の高さ
+static constexpr float PREVIEW_TOP = 244.0f;
+static constexpr float PREVIEW_WIDTH = 248.0f;
+static constexpr float PREVIEW_HEIGHT = 284.0f;
+static constexpr float PREVIEW_VIEW_HEIGHT = 2.8f; // 上下と回転中の張り出しの余白を含む
+static constexpr float CHARACTER_CARD_TOP = 180.0f;
+static constexpr float CHARACTER_CARD_HEIGHT = 400.0f;
 static constexpr float COST_TOP = 178.0f; // 耐久の減る量の表の1行目
 static constexpr float COST_GAP = 49.0f; // 表の行の間隔
 static constexpr float COST_LABEL_WIDTH = 150.0f; // 表の腕の名前の列の幅
@@ -64,6 +74,15 @@ static constexpr const char* MODE_HELP[][3] = {
 
 void CodexMenu::Initialize()
 {
+	Finalize();
+	for (int i = 0; i < CHARACTER_COUNT; ++i) {
+		const auto& character = CHARACTER_DATA::Get(static_cast<CHARACTER_TYPE>(i));
+		std::array<const char*, static_cast<size_t>(SKINNED_CLIP::Count)> paths{};
+		// Load が必須とする待機・走り・左右腕だけ。攻撃の任意クリップは読まない。
+		for (size_t clip = 0; clip < 4; ++clip) paths[clip] = character.Paths[clip];
+		if (m_PreviewModels[i].Load(paths, character.Bones)) m_PreviewModels[i].Reset(m_PreviewPoses[i]);
+	}
+	m_PreviewStart = std::chrono::steady_clock::now();
 	// くり返し表示する説明は、最初に画像へ変えておく。Text2D が画像の寿命を管理する。
 	for (const auto* name : OPTION_NAMES) Text2DCreate(name);
 	for (const auto& lines : OPTION_HELP) for (const auto* text : lines) Text2DCreate(text);
@@ -72,6 +91,47 @@ void CodexMenu::Initialize()
 	for (const auto* name : MODE_NAMES) Text2DCreate(name);
 	for (const auto* text : MODE_SUBTITLES) Text2DCreate(text);
 	for (const auto& lines : MODE_HELP) for (const auto* text : lines) Text2DCreate(text);
+}
+
+void CodexMenu::Finalize()
+{
+	for (auto& model : m_PreviewModels) model.Finalize();
+	for (auto& pose : m_PreviewPoses) pose = {};
+}
+
+void CodexMenu::DrawCharacterPreview(CHARACTER_TYPE character, float x, float yaw) const
+{
+	const auto& model = m_PreviewModels[character];
+	if (!model.IsLoaded()) {
+		Text("モデルを読み込めません", x + 20, 365, 15, MUTED);
+		return;
+	}
+	const auto& data = CHARACTER_DATA::Get(character);
+	const float scale = PREVIEW_BODY_HEIGHT / data.ModelHeight;
+	const XMMATRIX world = XMMatrixScaling(scale, scale, scale)
+		* XMMatrixRotationY(data.ModelYaw + yaw)
+		* XMMatrixTranslation(0.0f, -data.ModelFootY * scale, 0.0f);
+	// カード同士は重ならず、フレーム先頭の Clear で深度も消されている。
+	SetViewport(x + 16.0f, PREVIEW_TOP, PREVIEW_WIDTH, PREVIEW_HEIGHT);
+	SetDepthEnable(true);
+	Shader_SetViewMatrix(XMMatrixLookAtLH(XMVectorSet(0.0f, 1.3f, 4.5f, 1.0f),
+		XMVectorSet(0.0f, 1.0f, 0.0f, 1.0f), XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f)));
+	Shader_SetProjectionMatrix(XMMatrixOrthographicLH(
+		PREVIEW_VIEW_HEIGHT * PREVIEW_WIDTH / PREVIEW_HEIGHT, PREVIEW_VIEW_HEIGHT, 0.1f, 20.0f));
+	LIGHT light{};
+	light.Enable = TRUE;
+	light.Direction = { 0.5f, -1.0f, -0.8f, 0.0f };
+	light.Diffuse = { 0.8f, 0.85f, 0.9f, 1.0f };
+	light.Ambient = { 0.4f, 0.4f, 0.45f, 1.0f };
+	Shader_SetLight(light);
+	model.Draw(m_PreviewPoses[character], world, WHITE);
+	// 後続のカード・文字・通信警告を、通常の2D描画へ戻す。
+	SetViewport(0.0f, 0.0f, static_cast<float>(SCREEN_WIDTH), static_cast<float>(SCREEN_HEIGHT));
+	SetDepthEnable(false);
+	light.Enable = FALSE;
+	Shader_SetLight(light);
+	Shader_Begin();
+	Shader_Set2DMatrix();
 }
 
 void CodexMenu::Text(const char* text, float x, float y, float height, const XMFLOAT4& color) const
@@ -330,18 +390,16 @@ void CodexMenu::Draw(const SceneCalc& scene, const VersusCalc& participants, con
 	}
 	if (current == SCENE_CHARACTER_SELECT) {
 		Header("キャラクターを選択", "CHARACTER SELECT", 1);
+		const double elapsed = std::chrono::duration<double>(std::chrono::steady_clock::now() - m_PreviewStart).count();
+		const float yaw = static_cast<float>(std::fmod(elapsed, PREVIEW_TURN_SECONDS)) * (2.0f * PI / PREVIEW_TURN_SECONDS);
 		for (int i = 0; i < CHARACTER_COUNT; ++i) {
 			const bool selected = scene.GetCharacter() == i;
 			const float x = LEFT + i * 300.0f;
-			Number2DDrawBox({ x, 222, 280, 288 }, selected ? XMFLOAT4{ 0.055f, 0.20f, 0.25f, 1 } : PANEL);
-			Number2DDrawBox({ x, 222, 280, 3 }, selected ? CYAN : LINE);
-			Text(i == CHARACTER_MEKA ? "01 / MEKA" : "02 / MEKAGIRL", x + 24, 251, 20, selected ? CYAN : MUTED);
-			// キャラクター選択の印。試合のモデルやアームを読み替えない。
-			Number2DDrawBox({ x + 112, 302, 56, 46 }, selected ? CYAN : LINE);
-			Number2DDrawBox({ x + 94, 359, 92, 62 }, selected ? CYAN : LINE);
-			Number2DDrawBox({ x + 94, 429, 36, 20 }, GOLD);
-			Number2DDrawBox({ x + 150, 429, 36, 20 }, GOLD);
-			Text(selected ? "SELECTED / 選択中" : "左右で切り替え", x + 24, 469, 17, selected ? WHITE : MUTED);
+			Number2DDrawBox({ x, CHARACTER_CARD_TOP, 280, CHARACTER_CARD_HEIGHT }, selected ? XMFLOAT4{ 0.055f, 0.20f, 0.25f, 1 } : PANEL);
+			Number2DDrawBox({ x, CHARACTER_CARD_TOP, 280, 3 }, selected ? CYAN : LINE);
+			DrawCharacterPreview(static_cast<CHARACTER_TYPE>(i), x, yaw);
+			Text(i == CHARACTER_MEKA ? "01 / MEKA" : "02 / MEKAGIRL", x + 24, 205, 20, selected ? CYAN : MUTED);
+			Text(selected ? "SELECTED / 選択中" : "左右で切り替え", x + 24, 545, 17, selected ? WHITE : MUTED);
 		}
 		Detail("YOUR FIGHTER", scene.GetCharacter() == CHARACTER_MEKA ? "MEKA" : "MEKAGIRL",
 			"左右キー / A D / 十字キーで切り替え。", "Enter / ○ で、このキャラに決定。", "次に試合のルールを選びます。");
