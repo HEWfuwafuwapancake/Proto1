@@ -138,7 +138,9 @@ void FighterManager::RespawnAtSafePoint(int slot)
 	VEC3 points[ISLAND_RESPAWN_COUNT + STAGE_PLATFORM_MAX];
 	int pointCount = 0;
 	for (const VEC3& offset : ISLAND_RESPAWN_OFFSETS) points[pointCount++] = Vec3Add(center, Vec3Scale(offset, m_MapScale));
-	for (int i = 0; i < stage.PlatformCount; ++i) {
+	// ダミー CPU は高台には出さず、低い浮島の上だけから選ぶ。
+	const int platformCount = m_Versus.IsHuman(slot) ? stage.PlatformCount : 0;
+	for (int i = 0; i < platformCount; ++i) {
 		const STAGE_PLATFORM& platform = stage.Platforms[i];
 		points[pointCount++] = { platform.CenterX, platform.TopY, platform.CenterZ };
 	}
