@@ -111,7 +111,7 @@ void HammerArm::Impact()
 	bool hit = false;
 	bool affected = false;
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
-		const TENTACLE_TARGET target = GetFighters().GetTarget(i, GetSlot());
+		const TENTACLE_TARGET target = GetFighters().GetMeleeTarget(i, GetSlot());
 		if (!target.Available) continue;
 		// 衝撃波は地面を這う薄い円柱にし、高台の上など縦に離れた相手には届かない。
 		const bool inside = m_Wave

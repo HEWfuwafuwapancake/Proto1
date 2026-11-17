@@ -115,7 +115,7 @@ void FlailArm::StrikeFan()
 	// ロックオン中は、高台の上・下の相手へも扇を傾けて振る。
 	const VEC3 strike = GetStrikeDirection(m_Direction);
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
-		const TENTACLE_TARGET target = GetFighters().GetTarget(i, GetSlot());
+		const TENTACLE_TARGET target = GetFighters().GetMeleeTarget(i, GetSlot());
 		if (!target.Available
 			|| !AreaCalcInAimedSector(GetShoulder(), strike, 0.0f, FAN_RADIUS, FAN_HALF_ANGLE, FAN_HALF_HEIGHT, target.Body)) continue;
 		if (GetFighters().Launch(i, GetSlot(), AreaCalcLaunchDirection(m_Direction, FAN_UP), FAN_DAMAGE, FAN_POWER)) hit = true;
@@ -139,7 +139,7 @@ void FlailArm::StepSpin(float dt)
 	bool hit = false;
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		m_SpinCooldowns[i] = fmaxf(0.0f, m_SpinCooldowns[i] - dt);
-		const TENTACLE_TARGET target = GetFighters().GetTarget(i, GetSlot());
+		const TENTACLE_TARGET target = GetFighters().GetMeleeTarget(i, GetSlot());
 		if (!target.Available || m_SpinCooldowns[i] > 0.0f || !CollisionCapsuleCapsule(sweep, target.Body).Hit) continue;
 		m_SpinCooldowns[i] = SPIN_HIT_COOLDOWN;
 		if (GetFighters().Launch(i, GetSlot(), AreaCalcRadialDirection(center, target.Body, SPIN_UP, GetForward()), SPIN_DAMAGE, SPIN_POWER)) {

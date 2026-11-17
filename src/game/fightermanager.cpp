@@ -211,6 +211,12 @@ TENTACLE_TARGET FighterManager::GetTarget(int index, int self) const
 	return { fighter.GetBody(), !fighter.IsHeld() };
 }
 
+TENTACLE_TARGET FighterManager::GetMeleeTarget(int index, int self) const
+{
+	if (!m_Versus.IsOpponent(self, index) || !IsActive(index)) return {};
+	return { m_Fighters[index].GetBody(), true };
+}
+
 bool FighterManager::CanAttack(int index, int attacker)
 {
 	if (!m_Versus.IsOpponent(attacker, index) || !IsActive(attacker) || !IsActive(index)) return false;
@@ -329,7 +335,9 @@ void FighterManager::Hit(int index, int attacker, const XMFLOAT3& direction, flo
 bool FighterManager::Launch(int index, int attacker, const VEC3& direction, float damage, float power)
 {
 	if (!CanAttack(index, attacker)) return false;
-	m_Fighters[index].Launch(direction, damage, power);
+	// つかまれている相手は飛ばさず、ダメージだけ足す（つかんでいる側が殴り続けて投げられる）。
+	if (m_Fighters[index].IsHeld()) m_Fighters[index].AddDamage(damage);
+	else m_Fighters[index].Launch(direction, damage, power);
 	m_Versus.RecordAttack(attacker, index);
 	return true;
 }

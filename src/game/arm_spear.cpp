@@ -87,7 +87,7 @@ void SpearArm::Consume(ARM_COST_ITEM item)
 void SpearArm::Thrust()
 {
 	TENTACLE_TARGET targets[FIGHTER_COUNT];
-	for (int i = 0; i < FIGHTER_COUNT; ++i) targets[i] = GetFighters().GetTarget(i, GetSlot());
+	for (int i = 0; i < FIGHTER_COUNT; ++i) targets[i] = GetFighters().GetMeleeTarget(i, GetSlot());
 	bool hits[FIGHTER_COUNT];
 	LaserCalcPierce(GetShoulder(), GetStrikeDirection(m_Direction), THRUST_REACH, THRUST_RADIUS, targets, FIGHTER_COUNT, hits);
 	bool hit = false;

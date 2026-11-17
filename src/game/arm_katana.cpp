@@ -188,7 +188,7 @@ void KatanaArm::SlashTargets()
 	// ロックオン中は、高台の上・下の相手へも扇を傾けて斬る。
 	const VEC3 strike = GetStrikeDirection(m_Direction);
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
-		const TENTACLE_TARGET target = GetFighters().GetTarget(i, GetSlot());
+		const TENTACLE_TARGET target = GetFighters().GetMeleeTarget(i, GetSlot());
 		if (!target.Available || m_Hits.Contains(i)
 			|| !AreaCalcInAimedSector(GetShoulder(), strike, 0.0f, TAP_RADIUS, TAP_HALF_ANGLE, IAI_HALF_HEIGHT, target.Body)) continue;
 		m_Hits.TryAdd(i);
@@ -209,7 +209,7 @@ void KatanaArm::IaiTargets()
 {
 	bool hit = false;
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
-		const TENTACLE_TARGET target = GetFighters().GetTarget(i, GetSlot());
+		const TENTACLE_TARGET target = GetFighters().GetMeleeTarget(i, GetSlot());
 		if (!target.Available || m_Hits.Contains(i)
 			|| !AreaCalcInSector(GetShoulder(), m_IaiDirection, 0.0f, IAI_RADIUS, IAI_HALF_ANGLE, IAI_HALF_HEIGHT, target.Body)) continue;
 		m_Hits.TryAdd(i);
@@ -238,7 +238,7 @@ void KatanaArm::DashTargets(const VEC3& from, const VEC3& to)
 	const VEC3 flat = ArmCalcPitchDirection(m_Direction, 0.0f);
 	bool hit = false;
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
-		const TENTACLE_TARGET target = GetFighters().GetTarget(i, GetSlot());
+		const TENTACLE_TARGET target = GetFighters().GetMeleeTarget(i, GetSlot());
 		if (!target.Available || !CollisionCapsuleCapsule(path, target.Body).Hit || !m_Hits.TryAdd(i)) continue;
 		if (GetFighters().Launch(i, GetSlot(), AreaCalcLaunchDirection(flat, DASH_UP), DASH_DAMAGE, DASH_POWER) && !m_DashHitConsumed) {
 			ConsumeDurability((std::max)(0, GetCost(COST_ROW, ARM_COST_HOLD_HIT) - GetCost(COST_ROW, ARM_COST_HOLD_MISS)));
@@ -256,7 +256,7 @@ void KatanaArm::StepDelayedHits(float dt)
 	DELAYED_HIT hits[DELAYED_HIT_MAX];
 	const int count = m_Delayed.Step(dt, hits, DELAYED_HIT_MAX);
 	for (int i = 0; i < count; ++i) {
-		if (!GetFighters().GetTarget(hits[i].Target, GetSlot()).Available) continue;
+		if (!GetFighters().GetMeleeTarget(hits[i].Target, GetSlot()).Available) continue;
 		GetFighters().Launch(hits[i].Target, GetSlot(), hits[i].Direction, hits[i].Damage, hits[i].Power);
 		m_SlashSeconds[hits[i].Target] = SLASH_SHOW_SECONDS;
 		Rumble(SLASH_RUMBLE_SMALL, SLASH_RUMBLE_LARGE, SLASH_RUMBLE_SECONDS);
@@ -292,7 +292,7 @@ void KatanaArm::PierceTargets(const VEC3& from, const VEC3& to)
 	const VEC3 flat = ArmCalcPitchDirection(m_Direction, 0.0f);
 	bool hit = false;
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
-		const TENTACLE_TARGET target = GetFighters().GetTarget(i, GetSlot());
+		const TENTACLE_TARGET target = GetFighters().GetMeleeTarget(i, GetSlot());
 		if (!target.Available || !CollisionCapsuleCapsule(path, target.Body).Hit || !m_Hits.TryAdd(i)) continue;
 		DELAYED_HIT slash;
 		slash.Target = i;
