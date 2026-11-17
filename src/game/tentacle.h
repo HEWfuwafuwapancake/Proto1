@@ -32,7 +32,7 @@ public:
 	bool IsActive() const override;
 	/// @brief 保持中なら true を返す
 	bool IsHolding() const override;
-	/// @brief 腕を戻している間・回転中・たたきつけの動きの間を除いて単押しを受け付ける（つかんでいる間は次の段、引っぱり中は取りやめになる）
+	/// @brief 腕を戻している間・回転中・たたきつけと振り回しの動きの間を除いて単押しを受け付ける（つかんでいる間は次の段、引っぱり中は取りやめになる）
 	bool CanTakeTap() const override;
 	/// @brief 腕が待機で回転もしていないなら true を返す
 	bool CanTakeHold() const override;
@@ -65,7 +65,8 @@ private:
 	TENTACLE_STATE m_ClipState = TENTACLE_IDLE; // 描画用の経過秒を数える状態
 	float m_StateClipElapsed = 0.0f; // 今の状態になってからの秒（描画だけ）
 	float m_ThrowClipElapsed = -1.0f; // 投げてからの秒（負なら投げの描画なし）
-	int m_GrabStep = 0; // 単押しの段階攻撃の段（0：つかんでいない、1：つかんだ、2：たたきつけた）
+	int m_GrabStep = 0; // 単押しの段階攻撃の段（0：つかんでいない、1：つかんだ、2：たたきつけた、3：投げるために振り回している）
+	bool m_SwingFinish = false; // 今の振り回しが、たたきつけたあとの投げか
 	float m_ComboTime = 0.0f; // 今の段になってからの秒
 	bool m_SlamHit = false; // 2段目で地面に当てたか
 	int m_BaseModel = -1;
