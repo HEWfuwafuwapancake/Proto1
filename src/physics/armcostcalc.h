@@ -12,6 +12,7 @@ enum ARM_COST_ROW
 	ARM_COST_ROW_LASER, ///< レーザー
 	ARM_COST_ROW_KATANA, ///< 刀
 	ARM_COST_ROW_FLAIL, ///< モーニングスター
+	ARM_COST_ROW_SPEAR, ///< 槍
 	ARM_COST_ROW_GUARD, ///< ガード（パリィできずに防いだ）
 	ARM_COST_ROW_COUNT ///< 行の数
 };

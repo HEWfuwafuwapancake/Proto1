@@ -179,6 +179,7 @@
     <ClCompile Include="src\game\arm_flail.cpp" />
     <ClCompile Include="src\game\arm_knuckle.cpp" />
     <ClCompile Include="src\game\arm_laser.cpp" />
+    <ClCompile Include="src\game\arm_spear.cpp" />
     <ClCompile Include="src\physics\areacalc.cpp" />
     <ClCompile Include="src\physics\armphasecalc.cpp" />
     <ClCompile Include="src\physics\flailcalc.cpp" />
@@ -188,6 +189,7 @@
     <ClCompile Include="src\physics\armpresscalc.cpp" />
     <ClCompile Include="src\physics\armcostcalc.cpp" />
     <ClCompile Include="src\physics\lasercalc.cpp" />
+    <ClCompile Include="src\physics\spearcalc.cpp" />
     <ClCompile Include="src\physics\armusecalc.cpp" />
     <ClCompile Include="src\physics\breachcalc.cpp" />
     <ClCompile Include="src\physics\tentaclecalc.cpp" />
@@ -260,6 +262,7 @@
     <ClInclude Include="src\game\arm_flail.h" />
     <ClInclude Include="src\game\arm_knuckle.h" />
     <ClInclude Include="src\game\arm_laser.h" />
+    <ClInclude Include="src\game\arm_spear.h" />
     <ClInclude Include="src\physics\areacalc.h" />
     <ClInclude Include="src\physics\armphasecalc.h" />
     <ClInclude Include="src\physics\flailcalc.h" />
@@ -269,6 +272,7 @@
     <ClInclude Include="src\physics\armpresscalc.h" />
     <ClInclude Include="src\physics\armcostcalc.h" />
     <ClInclude Include="src\physics\lasercalc.h" />
+    <ClInclude Include="src\physics\spearcalc.h" />
     <ClInclude Include="src\physics\armusecalc.h" />
     <ClInclude Include="src\physics\breachcalc.h" />
     <ClInclude Include="src\physics\tentaclecalc.h" />

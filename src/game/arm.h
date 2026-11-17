@@ -18,7 +18,7 @@ class ArmManager;
 class Camera;
 class Stage;
 
-/// @brief 腕の種類（1段目の数字キー 1〜6 の順）
+/// @brief 腕の種類（1段目の数字キー 1〜7 の順）
 enum ARM_TYPE
 {
 	ARM_TYPE_TENTACLE, ///< 触手（1段目 1）
@@ -27,6 +27,7 @@ enum ARM_TYPE
 	ARM_TYPE_LASER, ///< レーザー（1段目 4）
 	ARM_TYPE_KATANA, ///< 刀（1段目 5）
 	ARM_TYPE_FLAIL, ///< モーニングスター（1段目 6）
+	ARM_TYPE_SPEAR, ///< 槍（1段目 7）
 	ARM_TYPE_NONE, ///< 素手（装備なし）
 	ARM_TYPE_COUNT ///< 腕の種類の数（装備ではない）
 };
