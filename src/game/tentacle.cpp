@@ -26,11 +26,15 @@ static constexpr float SLAM_LIFT_SECONDS = 0.1f; // たたきつける前に持�
 static constexpr float SLAM_IMPACT_SECONDS = 0.2f; // 2段目を始めてから地面に当たる秒数。
 static constexpr float SLAM_SECONDS = 0.3f; // たたきつけの動きの秒数（この間の単押しは覚えておき、終わってから投げる）。
 static constexpr float SLAM_WINDOW = 1.0f; // たたきつけ終わってから3段目の単押しを待つ秒数（過ぎたら投げる）。
-// 投げは、腕の側の斜め後ろから前の斜め上へ弧を描いて振り回し、振り切ったところで離す。
-static constexpr float SWING_SECONDS = 0.22f; // 振り回す秒数。
-static constexpr float SWING_START_ANGLE = XMConvertToRadians(120.0f); // 振り始めの、正面から腕の側への角度。
-static constexpr float SWING_RADIUS = 1.4f; // 振り回す弧の、肩の真下からの半径。
-static constexpr float SWING_RISE = 0.9f; // 振り切るまでに肩の高さから上げる量。
+// 投げは、いったん腕の側の後ろへ大きく引いて勢いをつけ、加速しながら前の斜め上へ振り抜いたところで離す。
+static constexpr float WINDUP_SECONDS = 0.2f; // 後ろへ引く秒数。
+static constexpr float WINDUP_ANGLE = XMConvertToRadians(160.0f); // 引ききった所の、正面から腕の側への角度。
+static constexpr float WINDUP_DROP = 0.3f; // 引くときに肩の高さから下げる量。
+static constexpr float SWING_SECONDS = 0.2f; // 引ききってから振り抜くまでの秒数（だんだん速くなる）。
+static constexpr float SWING_END_ANGLE = XMConvertToRadians(-10.0f); // 振り抜いて離す所の角度（正面を少し越える）。
+static constexpr float SWING_RADIUS = 1.5f; // 振り回す弧の、体の中心からの半径。
+static constexpr float SWING_RISE = 1.0f; // 振り抜くまでに肩の高さから上げる量。
+static constexpr float SWING_TIP_SPEED = 80.0f; // 振り回す間に、つかんだ相手が持つ位置へ追いつく速さ（遅れて弧が小さくならないように）。
 static constexpr float THROW_UP = 1.2f; // 投げる向きの水平の単位方向に足す上向きの量（ナックルのアッパーのように斜め上へ）。
 static constexpr float SLAM_LIFT = 1.3f; // 持ち上げる、肩からの高さ。
 static constexpr float SLAM_FORWARD = 1.6f; // たたきつける所の、体からの前への距離。
@@ -51,8 +55,8 @@ static constexpr float SPIN_PHASE_SECONDS[] = { 0.19f, 0.4f, 0.15f }; // 溜め�
 static constexpr float SPIN_CLIP_SECONDS[] = { 6.0f / 24.0f, 10.0f / 24.0f, 5.0f / 24.0f };
 static constexpr float REACH_CLIP_SECONDS = 6.0f / 24.0f;
 static constexpr float THROW_CLIP_SECONDS[] = { 8.0f / 24.0f, 8.0f / 24.0f }; // 保持・投げ
-static constexpr float THROW_ANIM_SECONDS = 0.45f; // 振り回し始めてから投げ終わるまでの描画の長さ（振り回す間も含む）
-static constexpr float THROW_PHASE_SECONDS[] = { PARAMS.ThrowSeconds, THROW_ANIM_SECONDS };
+static constexpr float THROW_ANIM_SECONDS = 0.45f; // 振り抜き始めてから投げ終わるまでの描画の長さ（振り抜く間も含む）
+static constexpr float THROW_PHASE_SECONDS[] = { WINDUP_SECONDS, THROW_ANIM_SECONDS }; // 投げのクリップの、引く・振り抜く
 static constexpr float SPIN_RADIUS = 3.5f;
 static constexpr float SPIN_DAMAGE = 10.0f;
 static constexpr float SPIN_POWER = 2.0f;
@@ -110,6 +114,12 @@ static constexpr float WIGGLE_SPEED = 8.0f;
 static constexpr float WIGGLE_ARM_PHASE = 1.6f;
 static constexpr float WIGGLE_FULL_LENGTH = 3.0f;
 static constexpr float WIGGLE_HOLD_SCALE = 0.3f;
+// しなり（描画だけ）：触手を、先端の動きに遅れてついてくる弓なりの曲線で描く。
+static constexpr float BEND_LAG_SECONDS = 0.07f; // 先端の速さにこの秒数を掛けた分だけ、真ん中を動きと逆へ遅らせる。
+static constexpr float BEND_SAG = 0.12f; // 長さに対する、真ん中の下へのたるみの割合。
+static constexpr float BEND_OUTWARD = 0.1f; // 長さに対する、真ん中を腕の側へふくらませる割合。
+static constexpr float BEND_MAX = 0.45f; // 長さに対する、真ん中をずらせる最大の割合。
+static constexpr float BEND_RATE = 14.0f; // しなりが目標へ近づく速さ（1秒あたりの割合）。
 
 enum SPIN_PHASE { SPIN_CHARGE, SPIN_SWING, SPIN_RECOVER, SPIN_PHASE_COUNT };
 
@@ -159,11 +169,27 @@ VEC3 TentacleArm::GetComboHoldPosition(const VEC3& hold, const VEC3& origin, int
 {
 	const float side = GetHand() == 0 ? -1.0f : 1.0f;
 	if (m_GrabStep == 3) {
-		// 腕の側の斜め後ろから前へ、肩の高さから少しずつ上げながら弧を描く。
-		const float t = fminf(1.0f, m_ComboTime / SWING_SECONDS);
-		const VEC3 around = AreaCalcRotateYaw(GetForward(), side * SWING_START_ANGLE * (1.0f - t));
+		// 持っている所から腕の側の後ろへ下げながら引き、そこから加速して前の斜め上へ振り抜く。
+		const float holdAngle = atan2f(HOLD_OFFSET, HOLD_FORWARD);
+		const float holdRadius = sqrtf(HOLD_OFFSET * HOLD_OFFSET + HOLD_FORWARD * HOLD_FORWARD);
+		float angle, radius, height;
+		if (m_ComboTime < WINDUP_SECONDS) {
+			const float u = m_ComboTime / WINDUP_SECONDS;
+			const float e = u * u * (3.0f - 2.0f * u);
+			angle = Lerp(holdAngle, WINDUP_ANGLE, e);
+			radius = Lerp(holdRadius, SWING_RADIUS, e);
+			height = origin.Y - WINDUP_DROP * e;
+		}
+		else {
+			const float u = fminf(1.0f, (m_ComboTime - WINDUP_SECONDS) / SWING_SECONDS);
+			const float e = u * u;
+			angle = Lerp(WINDUP_ANGLE, SWING_END_ANGLE, e);
+			radius = SWING_RADIUS;
+			height = origin.Y - WINDUP_DROP + (WINDUP_DROP + SWING_RISE) * e;
+		}
+		const VEC3 around = AreaCalcRotateYaw(GetForward(), side * angle);
 		const XMFLOAT3 p = GetPlayer().GetPosition();
-		return { p.x + around.X * SWING_RADIUS, origin.Y + SWING_RISE * t, p.z + around.Z * SWING_RADIUS };
+		return { p.x + around.X * radius, height, p.z + around.Z * radius };
 	}
 	if (m_GrabStep != 2) return hold;
 	if (m_ComboTime < SLAM_LIFT_SECONDS) return HoldPosition(side * HOLD_OFFSET * 0.5f, HOLD_FORWARD * 0.5f, origin.Y + SLAM_LIFT);
@@ -330,7 +356,7 @@ void TentacleArm::Update(const ARM_INPUT& input)
 		m_ComboTime += fmaxf(0.0f, dt);
 		bool swing = false;
 		bool throwNow = false;
-		if (m_GrabStep == 3) throwNow = m_ComboTime >= SWING_SECONDS; // 振り切ったら離す。
+		if (m_GrabStep == 3) throwNow = m_ComboTime >= WINDUP_SECONDS + SWING_SECONDS; // 振り抜いたら離す。
 		else if (m_GrabStep == 1) {
 			if (trigger) {
 				m_GrabStep = 2;
@@ -352,8 +378,9 @@ void TentacleArm::Update(const ARM_INPUT& input)
 		if (swing) {
 			m_GrabStep = 3;
 			m_ComboTime = 0.0f;
-			m_ThrowClipElapsed = 0.0f;
 		}
+		// 離す瞬間は、体のクリップの振り抜きを途中から続ける。
+		if (throwNow) m_ThrowClipElapsed = m_ComboTime - WINDUP_SECONDS;
 		trigger = throwNow;
 	}
 	if (trigger && arm.GetState() == TENTACLE_IDLE) {
@@ -366,6 +393,7 @@ void TentacleArm::Update(const ARM_INPUT& input)
 	TENTACLE_PARAMS params = PARAMS;
 	params.ThrowSeconds = 0.0f;
 	params.HoldSeconds = SLAM_HOLD_SECONDS;
+	if (m_GrabStep == 3) params.ReturnSpeed = SWING_TIP_SPEED;
 	const VEC3 comboHold = arm.GetTarget() >= 0 ? GetComboHoldPosition(hold, origin, arm.GetTarget()) : hold;
 	const TENTACLE_EVENT event = arm.Step(origin, aim, comboHold, trigger, cancel,
 		dt, params, targets, FIGHTER_COUNT, GetStage().GetStage(), hasGrip ? &grip : nullptr, CanAnchor());
@@ -426,6 +454,30 @@ static VEC3 PieceDown(const VEC3& start, const VEC3& end, const VEC3& right)
 	const VEC3 dir = Vec3Scale(d, 1.0f / length);
 	const VEC3 down{ right.Y * dir.Z - right.Z * dir.Y, right.Z * dir.X - right.X * dir.Z, right.X * dir.Y - right.Y * dir.X };
 	return Vec3Length(down) < PIECE_DOWN_MIN ? VEC3{ 0.0f, -1.0f, 0.0f } : down;
+}
+
+// 触手の真ん中のずれ（しなり）を1フレームに1回だけ進めて返す。先端の動きと逆へ遅れ、少したるんで腕の側へふくらむ。
+VEC3 TentacleArm::StepBend(const VEC3& anchor, const VEC3& tip, const VEC3& right)
+{
+	const float now = GameTimeGetElapsed();
+	if (now == m_BendTime) return m_Bend;
+	const float dt = m_BendTime < 0.0f ? 0.0f : now - m_BendTime;
+	m_BendTime = now;
+	const VEC3 tipFromAnchor = Vec3Sub(tip, anchor);
+	const float length = Vec3Length(tipFromAnchor);
+	if (dt > 0.0f && m_HasBendTip) {
+		const VEC3 velocity = Vec3Scale(Vec3Sub(tipFromAnchor, m_BendTip), 1.0f / dt);
+		const float side = GetHand() == 0 ? -1.0f : 1.0f;
+		VEC3 target = Vec3Add(Vec3Scale(velocity, -BEND_LAG_SECONDS),
+			Vec3Add(VEC3{ 0.0f, -BEND_SAG * length, 0.0f }, Vec3Scale(right, side * BEND_OUTWARD * length)));
+		const float most = BEND_MAX * length;
+		const float size = Vec3Length(target);
+		if (size > most && size > MODEL_MIN_LENGTH) target = Vec3Scale(target, most / size);
+		m_Bend = Vec3Add(m_Bend, Vec3Scale(Vec3Sub(target, m_Bend), fminf(1.0f, BEND_RATE * dt)));
+	}
+	m_BendTip = tipFromAnchor;
+	m_HasBendTip = true;
+	return m_Bend;
 }
 
 void TentacleArm::StepRope(const VEC3& origin, float idleLength, float modelScale)
@@ -545,6 +597,7 @@ void TentacleArm::Draw()
 		const VEC3 chainDirection = chainLength < MODEL_MIN_LENGTH ? direction : Vec3Scale(chainDelta, 1.0f / chainLength);
 		const VEC3 drawTip = Vec3Add(anchor, Vec3Scale(chainDirection, fmaxf(chainLength, drawLength - baseLength)));
 		const float phase = GameTimeGetElapsed() * WIGGLE_SPEED + hand * WIGGLE_ARM_PHASE;
+		const VEC3 bend = idle ? VEC3{} : StepBend(anchor, drawTip, right);
 		// 待機中は揺らさない（揺れは鎖の物理に任せる）。伸ばしている間とつかんでいる間だけ揺らす。
 		const float amplitude = idle ? 0.0f
 			: WIGGLE_AMPLITUDE * fminf(1.0f, length / WIGGLE_FULL_LENGTH)
@@ -560,7 +613,10 @@ void TentacleArm::Draw()
 			const float s = last ? 1.0f : (distance - BASE_LENGTH) / (total - BASE_LENGTH);
 			VEC3 end = anchor;
 			if (!base) {
-				end = TentacleCalcWigglePoint(anchor, drawTip, s, phase, amplitude, WIGGLE_WAVES);
+				// 弓なりの曲線（2次ベジェ）に、まっすぐな線からの揺れの分を足す。
+				const VEC3 straight = Vec3Add(anchor, Vec3Scale(Vec3Sub(drawTip, anchor), s));
+				const VEC3 wiggle = Vec3Sub(TentacleCalcWigglePoint(anchor, drawTip, s, phase, amplitude, WIGGLE_WAVES), straight);
+				end = Vec3Add(Vec3Add(straight, Vec3Scale(bend, 4.0f * s * (1.0f - s))), wiggle);
 				if (hanging > 0.0f) {
 					// s は箱の下端からの割合なので、鎖の根元（肩）からの割合に直す。
 					const VEC3 hangPoint = m_Rope.GetPointAt((baseLength * 0.5f + s * (idleLength - baseLength)) / ropeTotal);
@@ -601,12 +657,18 @@ ARM_BODY_CLIP TentacleArm::GetBodyClip() const
 		return { true, ATTACK_CLIP::TentacleThrow,
 			ArmCalcClipTime(1, m_ThrowClipElapsed, THROW_PHASE_SECONDS, THROW_CLIP_SECONDS), false };
 	}
+	if (m_Arm.GetState() == TENTACLE_HOLDING && m_GrabStep == 3) {
+		// 後ろへ引く間はクリップの引き（0-8）、振り抜く間は振り抜き（8-16）。
+		const bool windup = m_ComboTime < WINDUP_SECONDS;
+		return { true, ATTACK_CLIP::TentacleThrow, ArmCalcClipTime(windup ? 0 : 1, windup ? m_ComboTime : m_ComboTime - WINDUP_SECONDS,
+			THROW_PHASE_SECONDS, THROW_CLIP_SECONDS), false };
+	}
 	if (m_Arm.GetState() == TENTACLE_HOLDING && m_GrabStep == 2) {
 		return { true, ATTACK_CLIP::TentacleSlam, fminf(m_ComboTime / SLAM_SECONDS, 1.0f) * SLAM_CLIP_SECONDS, false };
 	}
 	if (m_Arm.GetState() == TENTACLE_HOLDING) {
-		return { true, ATTACK_CLIP::TentacleThrow,
-			ArmCalcClipTime(0, m_StateClipElapsed, THROW_PHASE_SECONDS, THROW_CLIP_SECONDS), false };
+		// つかんでいる間は前へ差し出した形のまま（投げるときに後ろへ引く）。
+		return { true, ATTACK_CLIP::TentacleThrow, 0.0f, false };
 	}
 	if (m_Arm.GetState() == TENTACLE_EXTENDING || m_Arm.GetState() == TENTACLE_PULLING) {
 		return { true, ATTACK_CLIP::TentacleReach, fminf(m_StateClipElapsed, REACH_CLIP_SECONDS), false };

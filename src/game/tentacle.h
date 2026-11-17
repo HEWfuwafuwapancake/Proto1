@@ -47,6 +47,7 @@ private:
 	VEC3 HoldPosition(float side, float forward, float height) const;
 	VEC3 GetComboHoldPosition(const VEC3& hold, const VEC3& origin, int target) const;
 	void StepRope(const VEC3& origin, float idleLength, float modelScale);
+	VEC3 StepBend(const VEC3& anchor, const VEC3& tip, const VEC3& right);
 	bool CanAnchor() const;
 	void StartReach(const TENTACLE_TARGET* targets, const VEC3& origin, const VEC3& cameraForward, VEC3& aim, STAGE_GRIP& grip, bool& hasGrip) const;
 	void StopPulling();
@@ -74,5 +75,9 @@ private:
 	int m_TipModel = -1;
 	TentacleRopeCalc m_Rope; // 付け根からぶら下がる節の鎖の物理（描画だけ）
 	float m_RopeTime = -1.0f; // 鎖を最後に進めたゲームの経過秒（1フレームに1回だけ進める）
+	VEC3 m_Bend = {}; // 触手の真ん中のずれ（しなり。描画だけ）
+	VEC3 m_BendTip = {}; // 前のフレームの、箱の下端から見た先端（描画だけ）
+	bool m_HasBendTip = false; // m_BendTip を記録したか
+	float m_BendTime = -1.0f; // しなりを最後に進めたゲームの経過秒（1フレームに1回だけ進める）
 	float m_RopeScale = 0.0f; // 鎖を並べたときの大きさ（キャラが替わったら並べ直す）
 };
