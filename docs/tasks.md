@@ -211,7 +211,7 @@ No.114 を最初にマージする。No.115〜119 は触るファイルを分け
 
 | No | タスク | 前提 | 理由（1行） | 状態 |
 |---|---|---|---|---|
-| UI-Preview | キャラ選択に MEKA / MEKAGIRL の実モデルを並べて12秒に1周の回転表示（`game/codex_menu` だけ）。Debug / Release x64 警告0・両構成テスト通過。画面は未確認（実装 Codex、統合 Claude。PR_LINK）。 | 89・UI-Codex | 管理者の依頼（2026-11-17）。アーム作業と別の場所で進めた。 | ✅ |
+| UI-Preview | キャラ選択に MEKA / MEKAGIRL の実モデルを並べて12秒に1周の回転表示（`game/codex_menu` だけ）。Debug / Release x64 警告0・両構成テスト通過。画面は未確認（実装 Codex、統合 Claude。[PR #223](https://github.com/HEWfuwafuwapancake/Proto1/pull/223)）。 | 89・UI-Codex | 管理者の依頼（2026-11-17）。アーム作業と別の場所で進めた。 | ✅ |
 | UI-Codex | 近未来の専用背景・日本語メニュー（タイトル／キャラ／ルール／対戦方法／ロビー／IP／結果）と、次の試合の7項目のオプション。`game/codex_menu` に描画を分離。No.158 まで取り込み、Debug / Release x64 警告0・両構成377件通過。シーン遷移テスト2件追加。メニュー・試合開始・時間切れ・結果・設定の変更と標準への復帰を画面確認（実装 Codex。[PR #212](https://github.com/HEWfuwafuwapancake/Proto1/pull/212)）。 | — | 管理者の依頼（2026-11-16）。Claude の腕作業と分離して試作。 | ✅ |
 
 ### 優先度：低（外部ライブラリや大きな設計変更が要る、またはプロトの範囲外）
