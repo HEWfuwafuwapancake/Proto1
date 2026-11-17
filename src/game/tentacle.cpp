@@ -319,7 +319,7 @@ void TentacleArm::StepSpin(const ARM_INPUT& input, float dt)
 	const VEC3 center{ p.x, GetShoulder().Y, p.z };
 	bool hit = false;
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
-		const TENTACLE_TARGET target = GetFighters().GetTarget(i, GetSlot());
+		const TENTACLE_TARGET target = GetFighters().GetMeleeTarget(i, GetSlot());
 		if (!target.Available || m_SpinHits.Contains(i)
 			|| !AreaCalcInSector(center, middle, 0.0f, SPIN_RADIUS, halfAngle, SPIN_HALF_HEIGHT, target.Body)) continue;
 		m_SpinHits.TryAdd(i);

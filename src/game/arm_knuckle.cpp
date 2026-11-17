@@ -81,7 +81,7 @@ void KnuckleArm::Reset()
 int KnuckleArm::FindTarget(float reach, float radius) const
 {
 	TENTACLE_TARGET targets[FIGHTER_COUNT];
-	for (int i = 0; i < FIGHTER_COUNT; ++i) targets[i] = GetFighters().GetTarget(i, GetSlot());
+	for (int i = 0; i < FIGHTER_COUNT; ++i) targets[i] = GetFighters().GetMeleeTarget(i, GetSlot());
 	// 斜め上への空中の突進は、進む向きの先で当たりを探す（上にいる相手にも当たる）。
 	// それ以外は、ロックオン中の相手の高さへ向けて探す（高台の上の相手にも当たる）。
 	const VEC3 direction = m_AirRush ? ArmCalcPitchDirection(m_Direction, m_AirRushPitch) : GetStrikeDirection(m_Direction);

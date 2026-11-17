@@ -40,6 +40,10 @@ public:
 	/// @param index 相手のスロット番号（0〜3。全APIで同じ番号を使う）
 	/// @param self 候補を読む自分のスロット番号（0〜3）
 	TENTACLE_TARGET GetTarget(int index, int self) const;
+	/// @brief 近接攻撃で当てられる相手の体を取得する（つかまれている相手にも当たる。自分・無効・復活待ちは空の候補）
+	/// @param index 相手のスロット番号（0〜3）
+	/// @param self 候補を読む自分のスロット番号（0〜3）
+	TENTACLE_TARGET GetMeleeTarget(int index, int self) const;
 	/// @brief 体が生存しているか取得する（無効な番号はfalse）
 	bool IsActive(int index) const;
 	/// @brief ダメージ%を取得する（無効な番号は0）
@@ -62,7 +66,7 @@ public:
 	/// @brief 攻撃者を記録し、ダメージ%だけを足す（速度はそのまま）
 	/// @return 相手に効いたら true（ガードされた場合などは false）
 	bool AddDamage(int index, int attacker, float damage);
-	/// @brief 攻撃者を記録し、ダメージを足して指定した3D方向へ吹っ飛ばす
+	/// @brief 攻撃者を記録し、ダメージを足して指定した3D方向へ吹っ飛ばす（つかまれている相手はダメージだけ足し、つかまれたままにする）
 	/// @return 相手に効いたら true（ガードされた場合などは false）
 	bool Launch(int index, int attacker, const VEC3& direction, float damage, float power);
 	/// @brief 状態異常をかけて攻撃者を記録する（隠れるだけは自分にもかけられ、攻撃者を記録しない）
