@@ -11,15 +11,21 @@
 // 調整用の値
 // 耐久の減る量は physics/armcostcalc の表のナックルの行（弱：単押し、強：突進。空中の突進も地上と同じく、当たりか外れで1回だけ減らす）。
 static constexpr ARM_COST_ROW COST_ROW = ARM_COST_ROW_KNUCKLE;
-static constexpr float PUNCH_SECONDS[] = { 0.12f, 0.1f, 0.15f }; // 単押し：ため・殴り・休み
+// 単押しは3段：1段目・2段目は軽く殴って相手を近くに残し、3段目のアッパーで斜め上へ大きく飛ばす。
+static constexpr int COMBO_STEPS = 3;
+static constexpr float COMBO_WINDOW = 0.35f; // 休みが終わってから、次の段の単押しを受け付ける秒数（休みの間も受け付ける）。
+static constexpr float PUNCH_SECONDS[COMBO_STEPS][3] = { // 単押しの段ごと：ため・殴り・休み
+	{ 0.12f, 0.1f, 0.15f }, { 0.08f, 0.1f, 0.15f }, { 0.14f, 0.12f, 0.3f } };
+static constexpr float PUNCH_CLIP_SECONDS[COMBO_STEPS][3] = { // 段ごとのクリップの区切り（knuckle_punch・knuckle_hook・knuckle_upper）
+	{ 4.0f / 24.0f, 3.0f / 24.0f, 5.0f / 24.0f }, { 3.0f / 24.0f, 3.0f / 24.0f, 6.0f / 24.0f }, { 5.0f / 24.0f, 4.0f / 24.0f, 10.0f / 24.0f } };
+static constexpr ATTACK_CLIP PUNCH_CLIPS[COMBO_STEPS] = { ATTACK_CLIP::KnucklePunch, ATTACK_CLIP::KnuckleHook, ATTACK_CLIP::KnuckleUpper };
 static constexpr float RUSH_SECONDS[] = { 0.3f, 0.35f, 0.22f }; // 長押し：ため・突進・休み
-static constexpr float PUNCH_CLIP_SECONDS[] = { 4.0f / 24.0f, 3.0f / 24.0f, 5.0f / 24.0f }; // 単押しのクリップの区切り（knuckle_punch）
 static constexpr float RUSH_CLIP_SECONDS[] = { 10.0f / 24.0f, 8.0f / 24.0f, 8.0f / 24.0f }; // 長押しのクリップの区切り（knuckle_rush）
 static constexpr float PUNCH_REACH = 1.6f; // 肩から殴りの届く距離。
 static constexpr float PUNCH_RADIUS = 0.4f;
-static constexpr float PUNCH_DAMAGE = 10.0f;
-static constexpr float PUNCH_POWER = 2.0f;
-static constexpr float PUNCH_UP = 0.6f; // 水平の単位方向に足す上向きの量。
+static constexpr float PUNCH_DAMAGE[COMBO_STEPS] = { 5.0f, 5.0f, 10.0f };
+static constexpr float PUNCH_POWER[COMBO_STEPS] = { 0.6f, 0.6f, 2.6f };
+static constexpr float PUNCH_UP[COMBO_STEPS] = { 0.2f, 0.2f, 1.4f }; // 水平の単位方向に足す上向きの量（アッパーは斜め上へ）。
 static constexpr float RUSH_SPEED = 28.0f;
 static constexpr float RUSH_REACH = 1.2f; // 突進の当たりの、肩から前への距離。
 static constexpr float RUSH_RADIUS = 0.5f;
@@ -64,6 +70,8 @@ void KnuckleArm::Reset()
 	StopAirRush();
 	m_Phase.Reset();
 	m_Rush = false;
+	m_Combo.Reset();
+	m_TapStep = 0;
 	m_AirRushClip = false;
 	m_Straighten = 0.0f;
 	m_Extend = 0.0f;
@@ -111,9 +119,18 @@ void KnuckleArm::Update(const ARM_INPUT& input)
 {
 	const float dt = fmaxf(0.0f, GameTimeGetDeltaTime());
 	if (GetPlayer().DidRespawn()) Reset();
+	m_Combo.Step(dt);
+	// 段階攻撃の休みの間に単押しされたら、休みを切り上げて次の段を出す。
+	if (input.Tap && !m_Rush && m_Phase.GetPhase() == KNUCKLE_RECOVER && m_Combo.IsOpen()) {
+		if (!m_UseConsumed) ConsumeDurability(GetCost(COST_ROW, ARM_COST_TAP_MISS));
+		m_Phase.Reset();
+	}
 	// 長押しは押している間ためた姿勢で待ち、離した瞬間に突進する。
 	if (m_Phase.IsIdle() && (input.Tap || input.HoldStarted || input.HoldReleased)) {
 		m_Rush = !input.Tap;
+		// 単押しは受付の間なら次の段、そうでなければ1段目。長押しは段を切る。
+		if (m_Rush) m_Combo.Reset();
+		else m_TapStep = m_Combo.Start(COMBO_STEPS);
 		// 判定で使う m_AirRush と分け、ため中に場外へ出入りしてもクリップは切り替えない。
 		m_AirRushClip = m_Rush && GetAirRushPitch() > 0.0f;
 		m_UseConsumed = false;
@@ -125,12 +142,16 @@ void KnuckleArm::Update(const ARM_INPUT& input)
 	else if (input.HoldReleased && m_Rush) m_Phase.Release();
 	// ためている間にボタンを受け付けなくなった（ガードなど）ときは、出さずにやめる。
 	else if (!input.Pressed && m_Phase.IsHeld()) m_Phase.Reset();
-	const ARM_PHASE_STEP step = m_Phase.Step(dt, m_Rush ? RUSH_SECONDS : PUNCH_SECONDS, KNUCKLE_PHASE_COUNT);
+	const ARM_PHASE_STEP step = m_Phase.Step(dt, GetSeconds(), KNUCKLE_PHASE_COUNT);
+	// 最後の段でなければ、休みに入ったときに次の段の受付を開く。
+	if (step.Entered == KNUCKLE_RECOVER && !m_Rush && m_TapStep < COMBO_STEPS - 1) {
+		m_Combo.Open(PUNCH_SECONDS[m_TapStep][KNUCKLE_RECOVER] + COMBO_WINDOW);
+	}
 	if (step.Entered == KNUCKLE_STRIKE) {
 		m_Direction = GetAim(false);
 		if (!m_Rush) {
 			const int target = FindTarget(PUNCH_REACH, PUNCH_RADIUS);
-			if (target >= 0) Strike(target, PUNCH_UP, PUNCH_DAMAGE, PUNCH_POWER);
+			if (target >= 0) Strike(target, PUNCH_UP[m_TapStep], PUNCH_DAMAGE[m_TapStep], PUNCH_POWER[m_TapStep]);
 		}
 		else if (GetAirRushPitch() > 0.0f) {
 			const float pitch = GetAirRushPitch();
@@ -196,10 +217,22 @@ ARM_BODY_CLIP KnuckleArm::GetBodyClip() const
 	ARM_BODY_CLIP clip;
 	if (m_Phase.IsIdle()) return clip;
 	clip.Active = true;
-	clip.Kind = m_Rush ? (m_AirRushClip ? ATTACK_CLIP::KnuckleAirRush : ATTACK_CLIP::KnuckleRush) : ATTACK_CLIP::KnucklePunch;
-	clip.FullBody = m_Rush;
-	clip.Time = ArmCalcClipTime(m_Phase.GetPhase(), m_Phase.GetTime(), m_Rush ? RUSH_SECONDS : PUNCH_SECONDS, m_Rush ? RUSH_CLIP_SECONDS : PUNCH_CLIP_SECONDS);
+	clip.Kind = m_Rush ? (m_AirRushClip ? ATTACK_CLIP::KnuckleAirRush : ATTACK_CLIP::KnuckleRush) : PUNCH_CLIPS[m_TapStep];
+	// アッパーは膝から伸び上がるので全身で見せる。
+	clip.FullBody = m_Rush || m_TapStep == COMBO_STEPS - 1;
+	clip.Time = ArmCalcClipTime(m_Phase.GetPhase(), m_Phase.GetTime(), GetSeconds(), m_Rush ? RUSH_CLIP_SECONDS : PUNCH_CLIP_SECONDS[m_TapStep]);
 	return clip;
+}
+
+// 今の動作の、段階ごとの秒数の並びを返す。
+const float* KnuckleArm::GetSeconds() const
+{
+	return m_Rush ? RUSH_SECONDS : PUNCH_SECONDS[m_TapStep];
+}
+
+bool KnuckleArm::CanTakeTap() const
+{
+	return m_Phase.IsIdle() || (!m_Rush && m_Phase.GetPhase() == KNUCKLE_RECOVER && m_Combo.IsOpen());
 }
 
 bool KnuckleArm::IsHolding() const

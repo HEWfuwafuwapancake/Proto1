@@ -20,6 +20,22 @@ static constexpr TENTACLE_PARAMS PARAMS{ 8.0f, 24.0f, 30.0f, 3.0f, 0.18f, 0.35f 
 static constexpr float GRAB_DAMAGE = 4.0f; // つかんだときに足す %
 static constexpr float THROW_DAMAGE = 4.0f;
 static constexpr float THROW_POWER = 1.5f;
+// 単押しは3段：1段目でつかみ、2段目で足元へたたきつけ、3段目で投げる（押さなければ少し待って投げる）。
+static constexpr float GRAB_WINDOW = 0.45f; // つかんでから2段目の単押しを待つ秒数（過ぎたら投げる）。
+static constexpr float SLAM_LIFT_SECONDS = 0.1f; // たたきつける前に持ち上げる秒数。
+static constexpr float SLAM_IMPACT_SECONDS = 0.2f; // 2段目を始めてから地面に当たる秒数。
+static constexpr float SLAM_SECONDS = 0.3f; // たたきつけの動きの秒数（この間の単押しは覚えておき、終わってから投げる）。
+static constexpr float SLAM_WINDOW = 0.45f; // たたきつけ終わってから3段目の単押しを待つ秒数（過ぎたら投げる）。
+static constexpr float SLAM_LIFT = 1.3f; // 持ち上げる、肩からの高さ。
+static constexpr float SLAM_FORWARD = 1.6f; // たたきつける所の、体からの前への距離。
+static constexpr float SLAM_DAMAGE = 8.0f;
+static constexpr float SLAM_HOLD_SECONDS = 10.0f; // 段階攻撃の間は計算の自動の解放を使わない（この秒数は届かない長さ）。
+static constexpr float FINISH_THROW_DAMAGE = 6.0f; // たたきつけたあとの投げ。
+static constexpr float FINISH_THROW_POWER = 2.0f;
+static constexpr float SLAM_CLIP_SECONDS = 8.0f / 24.0f; // tentacle_slam の長さ（持ち上げ 0-3・たたきつけ 3-5・押さえる 5-8）
+static constexpr float SLAM_RUMBLE_SMALL = 1.0f;
+static constexpr float SLAM_RUMBLE_LARGE = 1.0f;
+static constexpr float SLAM_RUMBLE_SECONDS = 0.3f;
 static constexpr float GRIP_RANGE = 16.0f; // 足場のふちへ伸ばせる距離（上下も含む）
 static constexpr float GRIP_HALF_ANGLE = XMConvertToRadians(40.0f); // 足場のふちを探す画面の正面の開き（見上げているときは上下も含む）
 static constexpr float LOOK_UP_SINE = 0.09f; // カメラの向きの Y がこれより大きいと「見上げている」（約 5°）
@@ -125,8 +141,21 @@ void TentacleArm::Reset()
 	m_ClipState = TENTACLE_IDLE;
 	m_StateClipElapsed = 0.0f;
 	m_ThrowClipElapsed = -1.0f;
+	m_GrabStep = 0;
+	m_ComboTime = 0.0f;
 	m_Spin.Reset();
 	StopPulling();
+}
+
+// 段階攻撃でつかんでいる間に、敵を置く位置（2段目は持ち上げてから足元へたたきつける）。
+VEC3 TentacleArm::GetComboHoldPosition(const VEC3& hold, const VEC3& origin, int target) const
+{
+	if (m_GrabStep != 2) return hold;
+	const float side = GetHand() == 0 ? -1.0f : 1.0f;
+	if (m_ComboTime < SLAM_LIFT_SECONDS) return HoldPosition(side * HOLD_OFFSET * 0.5f, HOLD_FORWARD * 0.5f, origin.Y + SLAM_LIFT);
+	const CAPSULE body = GetFighters().GetTarget(target, GetSlot()).Body;
+	const float halfHeight = Vec3Length(Vec3Sub(body.End, body.Start)) * 0.5f + body.Radius;
+	return HoldPosition(side * HOLD_OFFSET * 0.5f, SLAM_FORWARD, GetPlayer().GetPosition().y + halfHeight);
 }
 
 TentacleArm::~TentacleArm()
@@ -279,19 +308,50 @@ void TentacleArm::Update(const ARM_INPUT& input)
 	VEC3 aim = cameraForward;
 	STAGE_GRIP grip{};
 	bool hasGrip = false;
+	const float dt = GameTimeGetDeltaTime();
 	// 回転の間は単押しで伸ばさない。
-	const bool trigger = input.Tap && m_Spin.IsIdle();
+	bool trigger = input.Tap && m_Spin.IsIdle();
+	// つかんでいる間は段階攻撃：2段目の単押しでたたきつけ、3段目の単押しで投げる。押さなければ待ってから投げる。
+	bool throwFinish = false;
+	if (arm.GetState() == TENTACLE_HOLDING && m_GrabStep > 0) {
+		m_ComboTime += fmaxf(0.0f, dt);
+		bool throwNow = false;
+		if (m_GrabStep == 1) {
+			if (trigger) {
+				m_GrabStep = 2;
+				m_ComboTime = 0.0f;
+				m_SlamHit = false;
+			}
+			else throwNow = m_ComboTime >= GRAB_WINDOW;
+		}
+		else {
+			if (!m_SlamHit && m_ComboTime >= SLAM_IMPACT_SECONDS) {
+				m_SlamHit = true;
+				GetFighters().AddDamage(arm.GetTarget(), GetSlot(), SLAM_DAMAGE);
+				Rumble(SLAM_RUMBLE_SMALL, SLAM_RUMBLE_LARGE, SLAM_RUMBLE_SECONDS);
+			}
+			throwNow = (trigger && m_ComboTime >= SLAM_SECONDS) || m_ComboTime >= SLAM_SECONDS + SLAM_WINDOW;
+			throwFinish = throwNow;
+		}
+		trigger = throwNow;
+	}
 	if (trigger && arm.GetState() == TENTACLE_IDLE) {
 		m_ReachPending = true;
 		m_ThrowClipElapsed = -1.0f;
 		StartReach(targets, origin, cameraForward, aim, grip, hasGrip);
 	}
-	const float dt = GameTimeGetDeltaTime();
 	const bool cancel = GetPlayer().DidRespawn() || (arm.GetTarget() >= 0 && !GetFighters().IsHeldBy(arm.GetTarget(), GetSlot()));
-	const TENTACLE_EVENT event = arm.Step(origin, aim, hold, trigger, cancel,
-		dt, PARAMS, targets, FIGHTER_COUNT, GetStage().GetStage(), hasGrip ? &grip : nullptr, CanAnchor());
+	// 段階攻撃は腕のほうで投げる時を決めるので、計算の自動の投げ・解放は使わない。
+	TENTACLE_PARAMS params = PARAMS;
+	params.ThrowSeconds = 0.0f;
+	params.HoldSeconds = SLAM_HOLD_SECONDS;
+	const VEC3 comboHold = arm.GetTarget() >= 0 ? GetComboHoldPosition(hold, origin, arm.GetTarget()) : hold;
+	const TENTACLE_EVENT event = arm.Step(origin, aim, comboHold, trigger, cancel,
+		dt, params, targets, FIGHTER_COUNT, GetStage().GetStage(), hasGrip ? &grip : nullptr, CanAnchor());
 	if (event.Grabbed >= 0) {
 		if (GetFighters().Grab(event.Grabbed, GetSlot())) {
+			m_GrabStep = 1;
+			m_ComboTime = 0.0f;
 			ConsumeDurability(GetCost(COST_ROW, ARM_COST_TAP_HIT));
 			m_ReachPending = false;
 			GetFighters().AddDamage(event.Grabbed, GetSlot(), GRAB_DAMAGE);
@@ -309,12 +369,14 @@ void TentacleArm::Update(const ARM_INPUT& input)
 		// フリーカメラでは、投げる瞬間のスティックの向き（なければ体の向き）へ投げる。
 		const float throwYaw = GetCamera().IsFreeLook() ? GetPlayer().GetFreeAimYaw(yaw) : yaw;
 		const VEC3 throwForward{ sinf(throwYaw), 0.0f, cosf(throwYaw) };
-		GetFighters().Release(event.Released, GetSlot(), event.Throw, throwForward, THROW_DAMAGE, THROW_POWER);
+		GetFighters().Release(event.Released, GetSlot(), event.Throw, throwForward,
+			throwFinish ? FINISH_THROW_DAMAGE : THROW_DAMAGE, throwFinish ? FINISH_THROW_POWER : THROW_POWER);
 		if (event.Throw) Rumble(THROW_RUMBLE_SMALL, THROW_RUMBLE_LARGE, THROW_RUMBLE_SECONDS);
 	}
 	// 判定の状態は変えず、描画用の経過秒だけを数える。投げたフレームは後半の先頭を見せる。
 	const float clipDt = fmaxf(0.0f, dt);
 	const TENTACLE_STATE state = arm.GetState();
+	if (state != TENTACLE_HOLDING) m_GrabStep = 0;
 	m_StateClipElapsed = state == m_ClipState ? m_StateClipElapsed + clipDt : 0.0f;
 	m_ClipState = state;
 	if (cancel) m_ThrowClipElapsed = -1.0f;
@@ -496,6 +558,8 @@ void TentacleArm::Draw()
 
 bool TentacleArm::CanTakeTap() const
 {
+	// たたきつけの動きの間の単押しは覚えておき、終わってから投げる。
+	if (m_GrabStep == 2 && m_ComboTime < SLAM_SECONDS) return false;
 	return m_Spin.IsIdle() && m_Arm.GetState() != TENTACLE_RETURNING;
 }
 
@@ -513,6 +577,9 @@ ARM_BODY_CLIP TentacleArm::GetBodyClip() const
 	if (m_ThrowClipElapsed >= 0.0f) {
 		return { true, ATTACK_CLIP::TentacleThrow,
 			ArmCalcClipTime(1, m_ThrowClipElapsed, THROW_PHASE_SECONDS, THROW_CLIP_SECONDS), false };
+	}
+	if (m_Arm.GetState() == TENTACLE_HOLDING && m_GrabStep == 2) {
+		return { true, ATTACK_CLIP::TentacleSlam, fminf(m_ComboTime / SLAM_SECONDS, 1.0f) * SLAM_CLIP_SECONDS, false };
 	}
 	if (m_Arm.GetState() == TENTACLE_HOLDING) {
 		return { true, ATTACK_CLIP::TentacleThrow,
