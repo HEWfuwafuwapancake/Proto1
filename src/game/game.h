@@ -11,6 +11,7 @@
 #include "physics/scenecalc.h"
 #include "input/action.h"
 #include "game/netsession.h"
+#include "game/cpu.h"
 
 /// @brief ゲームの部品を所有し、初期化・更新・描画・やり直しの順番をまとめる
 class Game
@@ -64,6 +65,9 @@ private:
 	Hud m_Huds[FIGHTER_COUNT];
 	int m_Humans[FIGHTER_COUNT] = {};	// 画面の順に並べた人のスロット番号
 	int m_HumanCount = 0;
+	int m_Fighting[FIGHTER_COUNT] = {};	// 腕とカメラを動かす体（人と CPU）のスロット番号
+	int m_FightingCount = 0;
+	Cpu m_Cpus[FIGHTER_COUNT]; // CPU の枠の入力を作る（使うのは CPU の枠だけ）
 	PLAYER_INPUT m_Inputs[FIGHTER_COUNT];
 	PLAYER_INPUT m_PreviousInputs[FIGHTER_COUNT];
 	PLAYER_INPUT m_DeviceInputs[ACTION_DEVICE_COUNT]; // 参加前の決定にも使う

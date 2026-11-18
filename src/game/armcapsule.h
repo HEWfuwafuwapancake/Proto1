@@ -20,6 +20,8 @@ public:
 	void Finalize();
 	/// @brief カプセルを出現させ、触れた人の空いている手に腕を装備する
 	void Update(const FighterManager& fighters, ArmManager* arms);
+	/// @brief 配置の一覧を取得する（Active の枠だけが拾える。CPU が拾いに行く先を探すのに使う）
+	const std::array<ARM_CAPSULE_ITEM, ArmCapsuleCalc::CAPACITY>& GetItems() const { return m_Calc.GetItems(); }
 	/// @brief 有効なカプセルを種類ごとの色で描く
 	void Draw() const;
 

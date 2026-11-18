@@ -9,7 +9,7 @@ static constexpr float MENU_STICK_DEADZONE = 0.3f; // 次の弾きの前に戻�
 
 void SceneCalc::Start(bool online)
 {
-	m_Character = CHARACTER_DEFAULT;
+	m_LobbyMode = MODE_ITEM_SOLO;
 	m_Rule = online ? GAME_RULE_DEBUG : GAME_RULE_GAME;
 	m_Scene = online ? SCENE_TITLE : SCENE_GAME_START;
 	m_Cursor = RESULT_ITEM_RETRY;
@@ -47,15 +47,23 @@ CHARACTER_TYPE SceneCalc::CycleCharacter(CHARACTER_TYPE character, int direction
 	return static_cast<CHARACTER_TYPE>((character + direction + CHARACTER_COUNT) % CHARACTER_COUNT);
 }
 
+void SceneCalc::CycleRule(int direction)
+{
+	m_Rule = static_cast<GAME_RULE>((m_Rule + direction + GAME_RULE_COUNT) % GAME_RULE_COUNT);
+}
+
 SCENE_EVENT SceneCalc::Step(const SCENE_INPUT& input, bool matchFinished)
 {
 	if (m_Scene == SCENE_GAME_START) {
 		MoveCursor(input.MoveY, 2);
 		if (input.Decide) {
 			m_OptionsReturn = SCENE_GAME_START;
-			m_Scene = m_Cursor == 0 ? SCENE_CHARACTER_SELECT : SCENE_OPTIONS;
-			m_Cursor = 0;
-			m_MenuReady = false;
+			if (m_Cursor == 0) ShowModes();
+			else {
+				m_Scene = SCENE_OPTIONS;
+				m_Cursor = 0;
+				m_MenuReady = false;
+			}
 		}
 		return SCENE_EVENT_NONE;
 	}
@@ -87,27 +95,6 @@ SCENE_EVENT SceneCalc::Step(const SCENE_INPUT& input, bool matchFinished)
 		else if (m_Cursor < back && input.CharacterDirection != 0) return SCENE_EVENT_ARM_COST_CHANGE;
 		return SCENE_EVENT_NONE;
 	}
-	if (m_Scene == SCENE_CHARACTER_SELECT) {
-		if (input.Back) { m_Scene = SCENE_GAME_START; m_Cursor = 0; m_MenuReady = false; }
-		else {
-			m_Character = CycleCharacter(m_Character, input.CharacterDirection);
-			if (input.Decide) {
-				m_Scene = SCENE_RULE_SELECT;
-				m_Cursor = m_Rule;
-				m_MenuReady = fabsf(input.MoveY) < MENU_STICK_DEADZONE;
-			}
-		}
-		return SCENE_EVENT_NONE;
-	}
-	if (m_Scene == SCENE_RULE_SELECT) {
-		MoveCursor(input.MoveY, GAME_RULE_COUNT);
-		if (input.Back) m_Scene = SCENE_CHARACTER_SELECT;
-		else if (input.Decide) {
-			m_Rule = static_cast<GAME_RULE>(m_Cursor);
-			ShowModes();
-		}
-		return SCENE_EVENT_NONE;
-	}
 	if (m_Scene == SCENE_MODE_SELECT) {
 		MoveCursor(input.MoveY, MODE_ITEM_COUNT);
 		if (input.Back || (input.Decide && m_Cursor == MODE_ITEM_BACK)) {
@@ -119,10 +106,14 @@ SCENE_EVENT SceneCalc::Step(const SCENE_INPUT& input, bool matchFinished)
 		if (!input.Decide) return SCENE_EVENT_NONE;
 		switch (m_Cursor) {
 		case MODE_ITEM_SOLO:
-			m_Scene = SCENE_MATCH;
-			return SCENE_EVENT_START_MATCH;
-		case MODE_ITEM_LOCAL: m_Scene = SCENE_TITLE; break;
-		case MODE_ITEM_HOST: return SCENE_EVENT_HOST;
+		case MODE_ITEM_LOCAL:
+			// ルールはキャラ選択の画面で選ぶ。
+			m_LobbyMode = m_Cursor;
+			m_Scene = SCENE_TITLE;
+			break;
+		case MODE_ITEM_HOST:
+			m_LobbyMode = m_Cursor;
+			return SCENE_EVENT_HOST;
 		case MODE_ITEM_JOIN: m_Scene = SCENE_JOIN_ADDRESS; break;
 		case MODE_ITEM_OPTIONS:
 			m_OptionsReturn = SCENE_MODE_SELECT;
@@ -139,7 +130,13 @@ SCENE_EVENT SceneCalc::Step(const SCENE_INPUT& input, bool matchFinished)
 		return input.Decide && input.AddressValid ? SCENE_EVENT_JOIN : SCENE_EVENT_NONE;
 	}
 	if (m_Scene == SCENE_TITLE) {
-		if (input.Back) { ShowModes(); return SCENE_EVENT_BACK_MENU; }
+		if (input.Back) {
+			// オンラインは接続を閉じる。どちらも選んでいた対戦方法の行へ戻る。
+			const int mode = m_LobbyMode;
+			ShowModes();
+			m_Cursor = mode;
+			return SCENE_EVENT_BACK_MENU;
+		}
 		if (!input.Decide) return SCENE_EVENT_NONE;
 		m_Scene = SCENE_MATCH;
 		return SCENE_EVENT_START_MATCH;
@@ -158,6 +155,10 @@ SCENE_EVENT SceneCalc::Step(const SCENE_INPUT& input, bool matchFinished)
 	if (input.Restart || (input.Decide && m_Cursor == RESULT_ITEM_RETRY)) {
 		m_Scene = SCENE_MATCH;
 		return SCENE_EVENT_START_MATCH;
+	}
+	if (input.Decide && m_Cursor == RESULT_ITEM_CHARACTER) {
+		m_Scene = SCENE_TITLE;
+		return SCENE_EVENT_BACK_LOBBY;
 	}
 	if (input.Decide) {
 		if (m_Online) m_Scene = SCENE_TITLE;

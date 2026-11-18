@@ -422,8 +422,7 @@ void Hud::DrawScene(const VersusCalc& participants, const NetSession& net, const
 {
 	const float centerX = (float)SCREEN_WIDTH * 0.5f;
 	const SCENE scene = m_Scene->GetScene();
-	if (scene == SCENE_GAME_START || scene == SCENE_CHARACTER_SELECT
-		|| scene == SCENE_RULE_SELECT || scene == SCENE_MODE_SELECT || scene == SCENE_JOIN_ADDRESS) {
+	if (scene == SCENE_GAME_START || scene == SCENE_MODE_SELECT || scene == SCENE_JOIN_ADDRESS) {
 		Number2DDrawBox({ 0.0f, 0.0f, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT }, COVER_COLOR);
 		if (scene == SCENE_GAME_START) {
 			Number2DDrawText("PROTO", centerX, TITLE_Y, TITLE_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
@@ -431,20 +430,7 @@ void Hud::DrawScene(const VersusCalc& participants, const NetSession& net, const
 			Number2DDrawText("O / ENTER", centerX, ADDRESS_HELP_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
 			return;
 		}
-		if (scene == SCENE_CHARACTER_SELECT) {
-			Number2DDrawText("CHARACTER SELECT", centerX, MODE_TITLE_Y, MENU_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
-			DrawMenuItem(CHARACTER_DATA::Get(m_Scene->GetCharacter()).Name, ADDRESS_Y, true);
-			Number2DDrawText("SELECT  LEFT RIGHT / A D / DPAD", centerX, TITLE_ARMS_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
-			Number2DDrawText("OK  O / ENTER", centerX, TITLE_JUMP_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
-		}
-		else if (scene == SCENE_RULE_SELECT) {
-			Number2DDrawText("RULE SELECT", centerX, MODE_TITLE_Y, MENU_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
-			DrawMenuItem("GAME", MODE_FIRST_Y, m_Scene->GetCursor() == GAME_RULE_GAME);
-			DrawMenuItem("DEBUG", MODE_FIRST_Y + MODE_LINE, m_Scene->GetCursor() == GAME_RULE_DEBUG);
-			Number2DDrawText("SELECT  UP DOWN / W S / DPAD", centerX, TITLE_ARMS_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
-			Number2DDrawText("OK  O / ENTER", centerX, TITLE_JUMP_Y, MENU_HELP_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
-		}
-		else if (scene == SCENE_MODE_SELECT) {
+		if (scene == SCENE_MODE_SELECT) {
 			Number2DDrawText("MODE SELECT", centerX, MODE_TITLE_Y, MENU_DOT, GLYPH_ALIGN_CENTER, TEXT_COLOR);
 			const char* items[MODE_ITEM_COUNT] = { "SOLO", "LOCAL VS", "ONLINE HOST", "ONLINE JOIN", "BACK" };
 			for (int item = 0; item < MODE_ITEM_COUNT; ++item) {

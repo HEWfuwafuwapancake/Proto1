@@ -39,10 +39,11 @@ private:
 	void Header(const char* title, const char* eyebrow, int step) const;
 	void Row(const char* title, const char* subtitle, int index, bool selected, float y, float height = 66.0f) const;
 	void Detail(const char* tag, const char* title, const char* line1, const char* line2, const char* line3) const;
+	void Frame(float x, float y, float width, float height) const; // 選んでいる場所を水色の枠で囲む
 	void Footer(const char* help) const;
 	void DrawOptions(const SceneCalc& scene, const MATCH_TUNING& tuning) const;
 	void DrawArmCosts(const SceneCalc& scene, const ARM_COST_TABLE& costs) const;
-	void DrawLobby(const VersusCalc& participants, const NetSession& net,
+	void DrawLobby(const SceneCalc& scene, const VersusCalc& participants, const NetSession& net,
 		const std::array<CHARACTER_TYPE, FIGHTER_COUNT>& characters) const;
 	void DrawResult(const SceneCalc& scene, const VersusCalc& participants) const;
 	std::array<SkinnedModel, CHARACTER_COUNT> m_PreviewModels;

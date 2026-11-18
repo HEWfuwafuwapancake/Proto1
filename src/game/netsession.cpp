@@ -114,6 +114,18 @@ void NetSession::ReceiveNow(bool relay)
 	}
 }
 
+void NetSession::CycleLocalCharacter(int direction)
+{
+	if (!IsOnline() || direction == 0) return;
+	m_Calc.SetLocalCharacter(SceneCalc::CycleCharacter(m_Calc.GetLocalCharacter(), direction));
+}
+
+void NetSession::CycleRule(int direction)
+{
+	if (!IsOnline() || direction == 0) return;
+	m_Calc.SetRule(static_cast<GAME_RULE>((m_Calc.GetRule() + direction + GAME_RULE_COUNT) % GAME_RULE_COUNT));
+}
+
 bool NetSession::TakeFrame(LOCKSTEP_FRAME& frame)
 {
 	if (!m_Calc.TakeFrame(frame)) return false;

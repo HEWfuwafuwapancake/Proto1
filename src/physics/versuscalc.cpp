@@ -1,6 +1,13 @@
 ﻿#include "physics/versuscalc.h"
 
 #include "physics/dummycalc.h"
+#include <math.h>
+
+//------------------------------------------------------------------------------
+// 調整用の値
+//------------------------------------------------------------------------------
+static constexpr float LOBBY_STICK_THRESHOLD = 0.6f; // キャラ選択の上下を弾きとして受け付ける大きさ
+static constexpr float LOBBY_STICK_DEADZONE = 0.3f; // 次の弾きの前に戻す範囲
 
 bool VersusCalcPushBodies(VEC3& first, VEC3& second, bool firstHuman, bool secondHuman, float radius, float height)
 {
@@ -25,7 +32,11 @@ void VersusCalc::Reset()
 {
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		m_Devices[i] = VERSUS_DEVICE_DUMMY;
+		m_Ready[i] = false;
+		m_CpuLevels[i] = VERSUS_CPU_NORMAL;
 	}
+	m_Focus = 0;
+	m_FocusReady = true;
 	ResetMatch();
 }
 
@@ -37,12 +48,91 @@ void VersusCalc::ResetMatch()
 	}
 }
 
-bool VersusCalc::JoinOrStart(int device)
+VERSUS_LOBBY_DECIDE VersusCalc::LobbyDecide(int device, bool canJoin)
 {
-	if (device < 0 || device > 4) return false;
-	if (m_Devices[0] == device) return true;
-	AssignDevice(device);
-	return false;
+	if (device < 0 || device > 4) return VERSUS_LOBBY_DECIDE_NONE;
+	const int slot = FindSlot(device);
+	if (slot < 0) {
+		if (!canJoin) return VERSUS_LOBBY_DECIDE_NONE;
+		return AssignDevice(device) >= 0 ? VERSUS_LOBBY_DECIDE_JOIN : VERSUS_LOBBY_DECIDE_NONE;
+	}
+	if (!m_Ready[slot]) {
+		m_Ready[slot] = true;
+		return VERSUS_LOBBY_DECIDE_READY;
+	}
+	// 始めるのは 1P だけ。ほかの人が準備OKのまま押しても何も起きない。
+	return slot == 0 && IsAllReady() ? VERSUS_LOBBY_DECIDE_START : VERSUS_LOBBY_DECIDE_NONE;
+}
+
+VERSUS_LOBBY_CANCEL VersusCalc::LobbyCancel(int device)
+{
+	const int slot = FindSlot(device);
+	if (slot < 0) return VERSUS_LOBBY_CANCEL_NONE;
+	if (m_Ready[slot]) {
+		m_Ready[slot] = false;
+		return VERSUS_LOBBY_CANCEL_UNREADY;
+	}
+	if (slot == 0) return VERSUS_LOBBY_CANCEL_BACK;
+	m_Devices[slot] = VERSUS_DEVICE_DUMMY;
+	return VERSUS_LOBBY_CANCEL_LEAVE;
+}
+
+void VersusCalc::ClearReady()
+{
+	for (bool& ready : m_Ready) ready = false;
+}
+
+bool VersusCalc::IsReady(int slot) const
+{
+	return IsHuman(slot) && m_Ready[slot];
+}
+
+bool VersusCalc::IsAllReady() const
+{
+	int humans = 0;
+	for (int i = 0; i < FIGHTER_COUNT; ++i) {
+		if (!IsHuman(i)) continue;
+		if (!m_Ready[i]) return false;
+		++humans;
+	}
+	return humans > 0;
+}
+
+void VersusCalc::MoveLobbyFocus(float moveY, bool editSlots)
+{
+	if (fabsf(moveY) < LOBBY_STICK_DEADZONE) m_FocusReady = true;
+	// 選んでいた枠に人が入ったら 1P のカードへ戻す。
+	if (m_Focus > 0 && (!editSlots || IsHuman(m_Focus))) m_Focus = 0;
+	if (!m_FocusReady || fabsf(moveY) <= LOBBY_STICK_THRESHOLD) return;
+	m_FocusReady = false;
+	// 上がルール、下へ 1P → 2P → … の順。人のいる枠は飛ばす。
+	const int step = moveY > 0.0f ? -1 : 1;
+	for (int next = m_Focus + step; next >= VERSUS_LOBBY_FOCUS_RULE && next < FIGHTER_COUNT; next += step) {
+		if (next <= 0 || (editSlots && !IsHuman(next))) {
+			m_Focus = next;
+			return;
+		}
+	}
+}
+
+void VersusCalc::CycleCpu(int slot)
+{
+	if (slot < 0 || slot >= FIGHTER_COUNT || IsHuman(slot)) return;
+	m_CpuLevels[slot] = (m_CpuLevels[slot] + 1) % VERSUS_CPU_LEVEL_COUNT;
+}
+
+int VersusCalc::GetCpuLevel(int slot) const
+{
+	return slot >= 0 && slot < FIGHTER_COUNT && !IsHuman(slot) ? m_CpuLevels[slot] : VERSUS_CPU_NONE;
+}
+
+int VersusCalc::FindSlot(int device) const
+{
+	if (device == VERSUS_DEVICE_DUMMY) return -1;
+	for (int i = 0; i < FIGHTER_COUNT; ++i) {
+		if (m_Devices[i] == device) return i;
+	}
+	return -1;
 }
 
 int VersusCalc::GetHumanCount() const
@@ -70,7 +160,7 @@ int VersusCalc::AssignDevice(int device)
 
 void VersusCalc::SetSlotDevice(int slot, int device)
 {
-	if (slot < 0 || slot >= FIGHTER_COUNT || device < VERSUS_DEVICE_REMOTE || device > 4) return;
+	if (slot < 0 || slot >= FIGHTER_COUNT || device < VERSUS_DEVICE_CPU || device > 4) return;
 	m_Devices[slot] = device;
 }
 

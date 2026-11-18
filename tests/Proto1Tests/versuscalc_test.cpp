@@ -9,32 +9,96 @@ namespace Proto1Tests
 	static constexpr float BODY_RADIUS = 0.5f;
 	static constexpr float BODY_HEIGHT = 1.8f;
 
-	// キーボードでも1人で参加して開始でき、空き3枠はダミーのまま。
-	TEST(VersusCalcTest, Entry_KeyboardJoinsThenStarts)
+	// キャラ選択：決定で参加 → 準備OK。全員が準備OKのときだけ 1P の決定で開始し、1P 以外の決定では始めない。
+	TEST(VersusCalcTest, Lobby_JoinReadyAndOnlyFirstPlayerStartsWhenAllReady)
 	{
 		VersusCalc versus;
 		versus.Reset();
-		EXPECT_FALSE(versus.JoinOrStart(4));
-		EXPECT_EQ(1, versus.GetHumanCount());
+		EXPECT_EQ(VERSUS_LOBBY_DECIDE_JOIN, versus.LobbyDecide(4, true));
+		EXPECT_EQ(VERSUS_LOBBY_DECIDE_JOIN, versus.LobbyDecide(2, true));
 		EXPECT_EQ(4, versus.GetDevice(0));
-		EXPECT_FALSE(versus.IsHuman(1));
-		EXPECT_TRUE(versus.JoinOrStart(4));
+		EXPECT_EQ(2, versus.GetDevice(1));
+		EXPECT_EQ(VERSUS_LOBBY_DECIDE_READY, versus.LobbyDecide(4, true));
+		EXPECT_FALSE(versus.IsAllReady());
+		EXPECT_EQ(VERSUS_LOBBY_DECIDE_NONE, versus.LobbyDecide(4, true)); // 2P がまだ
+		EXPECT_EQ(VERSUS_LOBBY_DECIDE_READY, versus.LobbyDecide(2, true));
+		EXPECT_TRUE(versus.IsAllReady());
+		EXPECT_EQ(VERSUS_LOBBY_DECIDE_NONE, versus.LobbyDecide(2, true));
+		EXPECT_EQ(VERSUS_LOBBY_DECIDE_START, versus.LobbyDecide(4, true));
 	}
 
-	// パッドとキーボードが押した順に参加し、1P以外の再入力では開始しない。
-	TEST(VersusCalcTest, Entry_OnlyFirstPlayerStarts)
+	// SOLO では、決定した機器のほかは参加できない。
+	TEST(VersusCalcTest, Lobby_SoloRejectsOtherDevices)
 	{
 		VersusCalc versus;
 		versus.Reset();
-		const int devices[FIGHTER_COUNT] = { 2, 4, 0, 1 };
-		for (int i = 0; i < FIGHTER_COUNT; ++i) {
-			EXPECT_FALSE(versus.JoinOrStart(devices[i]));
-			EXPECT_EQ(devices[i], versus.GetDevice(i));
-		}
-		EXPECT_FALSE(versus.JoinOrStart(4));
-		EXPECT_FALSE(versus.JoinOrStart(3)); // 5台目は満員
-		EXPECT_EQ(4, versus.GetHumanCount());
-		EXPECT_TRUE(versus.JoinOrStart(2));
+		versus.AssignDevice(0);
+		EXPECT_EQ(VERSUS_LOBBY_DECIDE_NONE, versus.LobbyDecide(4, false));
+		EXPECT_EQ(1, versus.GetHumanCount());
+		EXPECT_EQ(VERSUS_LOBBY_DECIDE_READY, versus.LobbyDecide(0, false));
+		EXPECT_EQ(VERSUS_LOBBY_DECIDE_START, versus.LobbyDecide(0, false));
+	}
+
+	// 戻る：準備OKの取り消し → 2P〜4P は参加をやめる。準備OKでない 1P は前の画面へ戻る。
+	TEST(VersusCalcTest, Lobby_CancelUnreadiesLeavesAndFirstPlayerGoesBack)
+	{
+		VersusCalc versus;
+		versus.Reset();
+		versus.LobbyDecide(4, true);
+		versus.LobbyDecide(1, true);
+		versus.LobbyDecide(1, true);
+		EXPECT_TRUE(versus.IsReady(1));
+		EXPECT_EQ(VERSUS_LOBBY_CANCEL_UNREADY, versus.LobbyCancel(1));
+		EXPECT_FALSE(versus.IsReady(1));
+		EXPECT_EQ(VERSUS_LOBBY_CANCEL_LEAVE, versus.LobbyCancel(1));
+		EXPECT_FALSE(versus.IsHuman(1));
+		EXPECT_EQ(VERSUS_LOBBY_CANCEL_NONE, versus.LobbyCancel(1));
+		EXPECT_EQ(VERSUS_LOBBY_CANCEL_BACK, versus.LobbyCancel(4));
+		EXPECT_TRUE(versus.IsHuman(0));
+	}
+
+	// 試合のあとにキャラ選択へ戻ると、参加者はそのままで準備OKだけ消える。
+	TEST(VersusCalcTest, Lobby_ClearReadyKeepsParticipants)
+	{
+		VersusCalc versus;
+		versus.Reset();
+		versus.LobbyDecide(3, true);
+		versus.LobbyDecide(3, true);
+		versus.ClearReady();
+		EXPECT_EQ(3, versus.GetDevice(0));
+		EXPECT_FALSE(versus.IsReady(0));
+		EXPECT_FALSE(versus.IsAllReady());
+	}
+
+	// 1P の選択位置は上下の弾きで ルール → 1P → 人のいない枠 と動き、人のいる枠は飛ばす。人のいない枠はダミーと CPU の強さを切り替えられる。
+	TEST(VersusCalcTest, Lobby_FocusSkipsHumansAndTogglesCpu)
+	{
+		VersusCalc versus;
+		versus.Reset();
+		versus.AssignDevice(4);
+		versus.AssignDevice(0);
+		EXPECT_EQ(0, versus.GetLobbyFocus());
+		versus.MoveLobbyFocus(1.0f, true);
+		EXPECT_EQ(VERSUS_LOBBY_FOCUS_RULE, versus.GetLobbyFocus());
+		versus.MoveLobbyFocus(-1.0f, true); // 戻さずに倒しても動かない
+		EXPECT_EQ(VERSUS_LOBBY_FOCUS_RULE, versus.GetLobbyFocus());
+		versus.MoveLobbyFocus(0.0f, true);
+		versus.MoveLobbyFocus(-1.0f, true);
+		versus.MoveLobbyFocus(0.0f, true);
+		versus.MoveLobbyFocus(-1.0f, true);
+		EXPECT_EQ(2, versus.GetLobbyFocus()); // 2P は人なので飛ばす
+		EXPECT_EQ(VERSUS_CPU_NORMAL, versus.GetCpuLevel(2)); // はじめは CPU ふつう
+		versus.CycleCpu(2);
+		EXPECT_EQ(VERSUS_CPU_HARD, versus.GetCpuLevel(2));
+		versus.CycleCpu(2);
+		EXPECT_FALSE(versus.IsCpu(2)); // つよいの次はダミー
+		versus.CycleCpu(1);
+		EXPECT_EQ(VERSUS_CPU_NONE, versus.GetCpuLevel(1)); // 人のいる枠は変えない
+		versus.CycleCpu(2);
+		versus.AssignDevice(2); // 選んでいた枠に人が入ると 1P のカードへ戻る
+		versus.MoveLobbyFocus(0.0f, true);
+		EXPECT_EQ(0, versus.GetLobbyFocus());
+		EXPECT_FALSE(versus.IsCpu(2));
 	}
 
 	// RETRYでは機器の割り当てを保ってKOと攻撃記録を消し、TITLEでは参加を消す。
@@ -42,8 +106,8 @@ namespace Proto1Tests
 	{
 		VersusCalc versus;
 		versus.Reset();
-		versus.JoinOrStart(3);
-		versus.JoinOrStart(4);
+		versus.AssignDevice(3);
+		versus.AssignDevice(4);
 		versus.RecordAttack(1, 2);
 		versus.RecordOut(2);
 		versus.RecordAttack(0, 1);
@@ -57,7 +121,7 @@ namespace Proto1Tests
 		EXPECT_EQ(0, versus.GetScore(0));
 		versus.Reset();
 		EXPECT_EQ(0, versus.GetHumanCount());
-		EXPECT_FALSE(versus.JoinOrStart(0));
+		EXPECT_EQ(0, versus.AssignDevice(0));
 		EXPECT_EQ(0, versus.GetDevice(0));
 	}
 
@@ -66,9 +130,9 @@ namespace Proto1Tests
 	{
 		VersusCalc versus;
 		versus.Reset();
-		versus.JoinOrStart(0);
-		versus.JoinOrStart(1);
-		versus.JoinOrStart(4);
+		versus.AssignDevice(0);
+		versus.AssignDevice(1);
+		versus.AssignDevice(4);
 		for (int attacker = 1; attacker <= 2; ++attacker) {
 			for (int ko = 0; ko < 2; ++ko) {
 				versus.RecordAttack(attacker, 3);

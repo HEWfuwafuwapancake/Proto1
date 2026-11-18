@@ -189,6 +189,9 @@
     <ClCompile Include="versuscalc_test.cpp" />
     <ClCompile Include="..\..\src\physics\versuscalc.cpp" />
     <ClInclude Include="..\..\src\physics\versuscalc.h" />
+    <ClCompile Include="cpucalc_test.cpp" />
+    <ClCompile Include="..\..\src\physics\cpucalc.cpp" />
+    <ClInclude Include="..\..\src\physics\cpucalc.h" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\render\cubeflipcalc.h" />
