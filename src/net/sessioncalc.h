@@ -190,6 +190,8 @@ public:
 	uint8_t GetReadyMask() const { return m_Ready; }
 	/// @brief ロビーで自分のキャラを変える（試合中は無視。毎回送り直す接続のメッセージで相手に届く）
 	void SetLocalCharacter(CHARACTER_TYPE character);
+	/// @brief ホストがロビーで試合のルールを変える（参加側・試合中は無視）
+	void SetRule(GAME_RULE rule);
 	/// @brief 自分が選んでいるキャラを取得する（ホストから返ってくる前の、手元の選択）
 	CHARACTER_TYPE GetLocalCharacter() const { return m_LocalCharacter; }
 	/// @brief ロビーで共有したキャラをスロット番号で取得する（0〜3）

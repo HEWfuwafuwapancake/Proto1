@@ -94,8 +94,8 @@ namespace Proto1Tests
 		EXPECT_EQ((int)RESULT_ITEM_RETRY, scene.GetCursor());
 	}
 
-	// GAME START → 対戦方法（SOLO）→ ルール → キャラ選択 → 試合。結果からタイトルへ戻ると GAME START。
-	TEST(SceneCalcTest, GameStart_ModeThenRuleThenCharacterSelectAndResultReturnsToGameStart)
+	// GAME START → 対戦方法（SOLO）→ キャラ選択 → 試合。結果からタイトルへ戻ると GAME START。
+	TEST(SceneCalcTest, GameStart_ModeThenCharacterSelectAndResultReturnsToGameStart)
 	{
 		SceneCalc scene;
 		scene.Start();
@@ -103,9 +103,6 @@ namespace Proto1Tests
 		scene.Step({ true, false, 0 }, false);
 		EXPECT_EQ(SCENE_MODE_SELECT, scene.GetScene());
 		scene.Step({ true, false, 0 }, false);
-		EXPECT_EQ(SCENE_RULE_SELECT, scene.GetScene());
-		scene.Step({ true, false, 0 }, false);
-		EXPECT_EQ(GAME_RULE_GAME, scene.GetRule());
 		EXPECT_EQ(SCENE_TITLE, scene.GetScene());
 		EXPECT_TRUE(scene.IsSolo());
 		EXPECT_EQ(SCENE_EVENT_START_MATCH, scene.Step({ true, false, 0 }, false));
@@ -118,23 +115,15 @@ namespace Proto1Tests
 		EXPECT_EQ(SCENE_GAME_START, scene.GetScene());
 	}
 
-	// 倒しっぱなしでは選択を動かさず、戻ると対戦方法を表示する。決定したルールは RETRY でも使う。
-	TEST(SceneCalcTest, RuleSelect_WaitsForNeutralGoesBackAndKeepsChoiceOnRetry)
+	// キャラ選択で切り替えたルールを、試合と RETRY で使う。
+	TEST(SceneCalcTest, Rule_CycledInCharacterSelectIsKeptOnRetry)
 	{
 		SceneCalc scene;
 		scene.ShowModes();
-		scene.Step({ true, false, -1 }, false);
-		ASSERT_EQ(SCENE_RULE_SELECT, scene.GetScene());
-		scene.Step({ false, false, -1 }, false);
-		EXPECT_EQ(GAME_RULE_GAME, scene.GetCursor());
-		scene.Step({ false, false, 0, true }, false);
-		ASSERT_EQ(SCENE_MODE_SELECT, scene.GetScene());
-		EXPECT_EQ(MODE_ITEM_SOLO, scene.GetCursor());
 		scene.Step({ true, false, 0 }, false);
-		scene.Step({ false, false, -1 }, false);
-		EXPECT_EQ(GAME_RULE_DEBUG, scene.GetCursor());
-		scene.Step({ true, false, -1 }, false);
 		ASSERT_EQ(SCENE_TITLE, scene.GetScene());
+		EXPECT_EQ(GAME_RULE_GAME, scene.GetRule());
+		scene.CycleRule(1);
 		EXPECT_EQ(GAME_RULE_DEBUG, scene.GetRule());
 		ASSERT_EQ(SCENE_EVENT_START_MATCH, scene.Step({ true, false, 0 }, false));
 		ASSERT_EQ(SCENE_EVENT_SHOW_RESULT, scene.Step({ true, false, 0 }, true));
@@ -142,23 +131,19 @@ namespace Proto1Tests
 		EXPECT_EQ(GAME_RULE_DEBUG, scene.GetRule());
 	}
 
-	// LOCAL VS はルールのあとキャラ選択へ。キャラ選択から戻るとルール、さらに戻ると対戦方法と GAME START。
-	TEST(SceneCalcTest, Modes_LocalLobbyBackToRuleThenModesAndGameStart)
+	// LOCAL VS はすぐキャラ選択へ。キャラ選択から戻ると対戦方法の同じ行、さらに戻ると GAME START。
+	TEST(SceneCalcTest, Modes_LocalLobbyBackToModesAndGameStart)
 	{
 		SceneCalc scene;
 		scene.ShowModes();
 		SelectMode(scene, MODE_ITEM_LOCAL);
 		scene.Step({ true, false, 0 }, false);
-		scene.Step({ true, false, 0 }, false);
 		EXPECT_EQ((int)SCENE_TITLE, (int)scene.GetScene());
 		EXPECT_FALSE(scene.IsSolo());
 		EXPECT_EQ((int)SCENE_EVENT_BACK_MENU, (int)scene.Step({ false, false, 0, true }, false));
-		EXPECT_EQ((int)SCENE_RULE_SELECT, (int)scene.GetScene());
-		scene.Step({ false, false, 0, true }, false);
 		EXPECT_EQ((int)SCENE_MODE_SELECT, (int)scene.GetScene());
 		EXPECT_EQ(MODE_ITEM_LOCAL, scene.GetCursor());
-		SelectMode(scene, static_cast<MODE_ITEM>(MODE_ITEM_BACK - MODE_ITEM_LOCAL));
-		scene.Step({ true, false, 0 }, false);
+		scene.Step({ false, false, 0, true }, false);
 		EXPECT_EQ((int)SCENE_GAME_START, (int)scene.GetScene());
 	}
 
@@ -208,10 +193,8 @@ namespace Proto1Tests
 		scene.Start();
 		scene.Step({ true, false, 0 }, false);
 		scene.Step({ true, false, 0 }, false);
-		scene.Step({ false, false, -1 }, false);
-		scene.Step({ true, false, 0 }, false);
+		scene.CycleRule(1);
 		ASSERT_EQ(GAME_RULE_DEBUG, scene.GetRule());
-		scene.Step({ false, false, 0, true }, false);
 		scene.Step({ false, false, 0, true }, false);
 		ASSERT_EQ(SCENE_MODE_SELECT, scene.GetScene());
 		SelectMode(scene, MODE_ITEM_OPTIONS);
@@ -228,13 +211,11 @@ namespace Proto1Tests
 		SceneCalc scene;
 		scene.ShowModes();
 		SelectMode(scene, MODE_ITEM_HOST);
-		scene.Step({ true, false, 0 }, false);
-		EXPECT_EQ((int)SCENE_RULE_SELECT, (int)scene.GetScene());
 		EXPECT_EQ((int)SCENE_EVENT_HOST, (int)scene.Step({ true, false, 0 }, false));
 		scene.OpenLobby();
 		EXPECT_EQ((int)SCENE_TITLE, (int)scene.GetScene());
 		scene.Step({ false, false, 0, true }, false);
-		SelectMode(scene, MODE_ITEM_JOIN);
+		SelectMode(scene, static_cast<MODE_ITEM>(MODE_ITEM_JOIN - MODE_ITEM_HOST));
 		scene.Step({ true, false, 0 }, false);
 		EXPECT_EQ((int)SCENE_JOIN_ADDRESS, (int)scene.GetScene());
 		EXPECT_EQ((int)SCENE_EVENT_NONE, (int)scene.Step({ true, false, 0, false, false }, false));

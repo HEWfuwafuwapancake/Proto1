@@ -50,6 +50,9 @@ enum VERSUS_LOBBY_CANCEL
 	VERSUS_LOBBY_CANCEL_BACK, ///< 準備OKでない 1P が押したので、前の画面へ戻る
 };
 
+/// @brief キャラ選択で 1P がルールの行を選んでいるときの、選択位置の値（0〜3 はそのスロットのカード）
+static constexpr int VERSUS_LOBBY_FOCUS_RULE = -1;
+
 /// @brief スロットへの機器の割り当てと、最後の攻撃者・KO得点を計算する（DirectXなし）
 class VersusCalc
 {
@@ -73,6 +76,16 @@ public:
 	bool IsAllReady() const;
 	/// @brief 機器が入っているスロットを取得する（入っていなければ -1）
 	int FindSlot(int device) const;
+	/// @brief 1P の上下の弾きで、キャラ選択の選択位置を ルール → 1P → 人のいない枠 の順に動かす（両端で止まる）
+	/// @param moveY 上下の入力（上がプラス。弾いて一度戻すたびに1つ動く）
+	/// @param editSlots 人のいない枠を選べるかを設定する（true：選べる、false：ルールと 1P だけ。オンライン）
+	void MoveLobbyFocus(float moveY, bool editSlots);
+	/// @brief 1P の選択位置を取得する（VERSUS_LOBBY_FOCUS_RULE、または 0〜3 のスロット）
+	int GetLobbyFocus() const { return m_Focus; }
+	/// @brief 人のいない枠の相手を、ダミーと CPU で切り替える（人のいる枠・範囲外は無視）
+	void ToggleCpu(int slot);
+	/// @brief 人のいない枠の相手が CPU か取得する（true：CPU、false：ダミー）
+	bool IsCpu(int slot) const;
 	/// @brief 参加している人の数を取得する
 	int GetHumanCount() const;
 	/// @brief 機器を空いている先頭のスロットに割り当てる（同じ機器は既存スロット、満員・無効な機器は-1）
@@ -103,6 +116,9 @@ public:
 private:
 	int m_Devices[FIGHTER_COUNT] = { -1, -1, -1, -1 };
 	bool m_Ready[FIGHTER_COUNT] = {}; // キャラ選択の画面で準備OKにしたか
+	bool m_Cpu[FIGHTER_COUNT] = {}; // 人のいない枠の相手を CPU にしたか（false はダミー）
+	int m_Focus = 0; // 1P の選択位置（VERSUS_LOBBY_FOCUS_RULE か 0〜3）
+	bool m_FocusReady = true; // 上下を一度戻したか（倒しっぱなしで動き続けない）
 	int m_LastAttackers[FIGHTER_COUNT] = { -1, -1, -1, -1 };
 	int m_Scores[FIGHTER_COUNT] = {};
 };

@@ -70,6 +70,34 @@ namespace Proto1Tests
 		EXPECT_FALSE(versus.IsAllReady());
 	}
 
+	// 1P の選択位置は上下の弾きで ルール → 1P → 人のいない枠 と動き、人のいる枠は飛ばす。人のいない枠はダミーと CPU を切り替えられる。
+	TEST(VersusCalcTest, Lobby_FocusSkipsHumansAndTogglesCpu)
+	{
+		VersusCalc versus;
+		versus.Reset();
+		versus.AssignDevice(4);
+		versus.AssignDevice(0);
+		EXPECT_EQ(0, versus.GetLobbyFocus());
+		versus.MoveLobbyFocus(1.0f, true);
+		EXPECT_EQ(VERSUS_LOBBY_FOCUS_RULE, versus.GetLobbyFocus());
+		versus.MoveLobbyFocus(-1.0f, true); // 戻さずに倒しても動かない
+		EXPECT_EQ(VERSUS_LOBBY_FOCUS_RULE, versus.GetLobbyFocus());
+		versus.MoveLobbyFocus(0.0f, true);
+		versus.MoveLobbyFocus(-1.0f, true);
+		versus.MoveLobbyFocus(0.0f, true);
+		versus.MoveLobbyFocus(-1.0f, true);
+		EXPECT_EQ(2, versus.GetLobbyFocus()); // 2P は人なので飛ばす
+		EXPECT_FALSE(versus.IsCpu(2));
+		versus.ToggleCpu(2);
+		EXPECT_TRUE(versus.IsCpu(2));
+		versus.ToggleCpu(1);
+		EXPECT_FALSE(versus.IsCpu(1));
+		versus.AssignDevice(2); // 選んでいた枠に人が入ると 1P のカードへ戻る
+		versus.MoveLobbyFocus(0.0f, true);
+		EXPECT_EQ(0, versus.GetLobbyFocus());
+		EXPECT_FALSE(versus.IsCpu(2));
+	}
+
 	// RETRYでは機器の割り当てを保ってKOと攻撃記録を消し、TITLEでは参加を消す。
 	TEST(VersusCalcTest, Retry_KeepsParticipantsTitleClearsThem)
 	{

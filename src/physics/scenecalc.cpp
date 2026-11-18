@@ -47,6 +47,11 @@ CHARACTER_TYPE SceneCalc::CycleCharacter(CHARACTER_TYPE character, int direction
 	return static_cast<CHARACTER_TYPE>((character + direction + CHARACTER_COUNT) % CHARACTER_COUNT);
 }
 
+void SceneCalc::CycleRule(int direction)
+{
+	m_Rule = static_cast<GAME_RULE>((m_Rule + direction + GAME_RULE_COUNT) % GAME_RULE_COUNT);
+}
+
 SCENE_EVENT SceneCalc::Step(const SCENE_INPUT& input, bool matchFinished)
 {
 	if (m_Scene == SCENE_GAME_START) {
@@ -90,21 +95,6 @@ SCENE_EVENT SceneCalc::Step(const SCENE_INPUT& input, bool matchFinished)
 		else if (m_Cursor < back && input.CharacterDirection != 0) return SCENE_EVENT_ARM_COST_CHANGE;
 		return SCENE_EVENT_NONE;
 	}
-	if (m_Scene == SCENE_RULE_SELECT) {
-		MoveCursor(input.MoveY, GAME_RULE_COUNT);
-		if (input.Back) {
-			m_Scene = SCENE_MODE_SELECT;
-			m_Cursor = m_LobbyMode;
-			m_MenuReady = false;
-		}
-		else if (input.Decide) {
-			m_Rule = static_cast<GAME_RULE>(m_Cursor);
-			// ホストは接続を開いてからロビー（キャラ選択）へ入る。SOLO・LOCAL VS はすぐキャラ選択へ。
-			if (m_LobbyMode == MODE_ITEM_HOST) return SCENE_EVENT_HOST;
-			m_Scene = SCENE_TITLE;
-		}
-		return SCENE_EVENT_NONE;
-	}
 	if (m_Scene == SCENE_MODE_SELECT) {
 		MoveCursor(input.MoveY, MODE_ITEM_COUNT);
 		if (input.Back || (input.Decide && m_Cursor == MODE_ITEM_BACK)) {
@@ -117,13 +107,13 @@ SCENE_EVENT SceneCalc::Step(const SCENE_INPUT& input, bool matchFinished)
 		switch (m_Cursor) {
 		case MODE_ITEM_SOLO:
 		case MODE_ITEM_LOCAL:
+			// ルールはキャラ選択の画面で選ぶ。
+			m_LobbyMode = m_Cursor;
+			m_Scene = SCENE_TITLE;
+			break;
 		case MODE_ITEM_HOST:
 			m_LobbyMode = m_Cursor;
-			m_Scene = SCENE_RULE_SELECT;
-			m_Cursor = m_Rule;
-			// 入る前から倒している入力では選択を動かさず、一度戻すのを待つ。
-			m_MenuReady = fabsf(input.MoveY) < MENU_STICK_DEADZONE;
-			break;
+			return SCENE_EVENT_HOST;
 		case MODE_ITEM_JOIN: m_Scene = SCENE_JOIN_ADDRESS; break;
 		case MODE_ITEM_OPTIONS:
 			m_OptionsReturn = SCENE_MODE_SELECT;
@@ -141,13 +131,10 @@ SCENE_EVENT SceneCalc::Step(const SCENE_INPUT& input, bool matchFinished)
 	}
 	if (m_Scene == SCENE_TITLE) {
 		if (input.Back) {
-			// オフラインはルールを選び直せるようにし、オンラインは接続を閉じて対戦方法へ戻る。
-			if (m_Online) ShowModes();
-			else {
-				m_Scene = SCENE_RULE_SELECT;
-				m_Cursor = m_Rule;
-				m_MenuReady = false;
-			}
+			// オンラインは接続を閉じる。どちらも選んでいた対戦方法の行へ戻る。
+			const int mode = m_LobbyMode;
+			ShowModes();
+			m_Cursor = mode;
 			return SCENE_EVENT_BACK_MENU;
 		}
 		if (!input.Decide) return SCENE_EVENT_NONE;

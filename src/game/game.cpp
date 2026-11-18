@@ -82,7 +82,7 @@ void Game::ConfigurePlayers()
 	m_HumanCount = 0;
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		Fighter& fighter = m_Fighters.GetFighter(i);
-		fighter.SetCharacter(fighter.IsHuman() ? m_LobbyCharacters[i] : CHARACTER_DEFAULT);
+		fighter.SetCharacter(m_LobbyCharacters[i]); // ダミー・CPU もキャラ選択で選んだキャラで描く
 		fighter.SetInput(m_Inputs[i], m_PreviousInputs[i]);
 		if (fighter.IsHuman()) m_Humans[m_HumanCount++] = i;
 	}
@@ -253,8 +253,8 @@ void Game::UpdateMenu()
 		}
 		ResetParticipants();
 	}
-	else if (oldScene == SCENE_RULE_SELECT && m_Scene.GetScene() == SCENE_TITLE) {
-		// ルールを決めた機器を 1P にしてキャラ選択へ入る（準備OKはまだ）。
+	else if (oldScene == SCENE_MODE_SELECT && m_Scene.GetScene() == SCENE_TITLE) {
+		// 対戦方法を決めた機器を 1P にしてキャラ選択へ入る（準備OKはまだ）。
 		m_Participants.Reset();
 		m_LobbyCharacters.fill(CHARACTER_DEFAULT);
 		m_Participants.AssignDevice(m_MenuDevice);
@@ -268,7 +268,7 @@ void Game::Update()
 	const ARM_COST_TABLE costs = m_Net.IsOnline() ? ArmCostCalcDefault() : m_ArmCosts;
 	for (auto& arms : m_Arms) arms.SetCosts(costs);
 	const SCENE oldScene = m_Scene.GetScene();
-	if (oldScene == SCENE_GAME_START || oldScene == SCENE_RULE_SELECT || oldScene == SCENE_MODE_SELECT || oldScene == SCENE_JOIN_ADDRESS || oldScene == SCENE_OPTIONS || oldScene == SCENE_ARM_COSTS) {
+	if (oldScene == SCENE_GAME_START || oldScene == SCENE_MODE_SELECT || oldScene == SCENE_JOIN_ADDRESS || oldScene == SCENE_OPTIONS || oldScene == SCENE_ARM_COSTS) {
 		UpdateMenu();
 		return;
 	}
@@ -302,12 +302,17 @@ void Game::Update()
 			}
 		}
 		if (oldScene == SCENE_TITLE) {
-			// 機器を選ぶ前はどの機器でも、選んだあとはその機器の左右で自分のキャラを変える。
+			// 機器を選ぶ前は入力のあった機器、選んだあとはその機器で操作する。
+			ACTION_MENU_INPUT menu{};
 			for (int device = 0; device < ACTION_DEVICE_COUNT; ++device) {
 				if (m_Net.GetLocalDevice() >= 0 && m_Net.GetLocalDevice() != device) continue;
-				const int direction = ActionGetMenuInput(device).CharacterDirection;
-				if (direction != 0) { m_Net.CycleLocalCharacter(direction); break; }
+				const ACTION_MENU_INPUT candidate = ActionGetMenuInput(device);
+				if (candidate.MoveY != 0.0f || candidate.CharacterDirection != 0) { menu = candidate; break; }
 			}
+			// ホストは上下でルールの行と自分のカードを行き来し、ルールの行では左右でルールを変える。
+			if (m_Net.IsHost()) m_Participants.MoveLobbyFocus(menu.MoveY, false);
+			if (m_Net.IsHost() && m_Participants.GetLobbyFocus() == VERSUS_LOBBY_FOCUS_RULE) m_Net.CycleRule(menu.CharacterDirection);
+			else m_Net.CycleLocalCharacter(menu.CharacterDirection);
 		}
 		UpdatePadLights();
 		LOCKSTEP_FRAME frame;
@@ -325,16 +330,34 @@ void Game::Update()
 	}
 	else {
 		// キャラ選択：決定で参加 → 準備OK → 全員が準備OKなら 1P で開始。戻るで準備OKの取り消し → 参加をやめる。
+		// 1P は上下でルールの行・自分のカード・人のいない枠を選び、ルール・ダミーや CPU のキャラも変える。
 		// 同一フレームの参加は機器番号順。
 		bool back = false;
 		for (int device = 0; device < ACTION_DEVICE_COUNT; ++device) {
 			const PLAYER_INPUT current = ActionGetPlayerInput(device);
 			if (oldScene == SCENE_TITLE) {
-				if (ActionCalcPlayerTrigger(current, m_DeviceInputs[device], ACTION_DECIDE)) {
+				const ACTION_MENU_INPUT menu = ActionGetMenuInput(device);
+				const bool decide = ActionCalcPlayerTrigger(current, m_DeviceInputs[device], ACTION_DECIDE);
+				const int slot = m_Participants.FindSlot(device);
+				int focus = slot; // 1P 以外は自分のカードだけを操作する
+				if (slot == 0) {
+					m_Participants.MoveLobbyFocus(menu.MoveY, true);
+					focus = m_Participants.GetLobbyFocus();
+				}
+				if (focus == VERSUS_LOBBY_FOCUS_RULE) m_Scene.CycleRule(menu.CharacterDirection);
+				else if (focus > 0 && focus != slot) {
+					// 1P が人のいない枠を選んでいる：左右でキャラ、決定でダミーと CPU を切り替える。
+					m_LobbyCharacters[focus] = SceneCalc::CycleCharacter(m_LobbyCharacters[focus], menu.CharacterDirection);
+					if (decide) m_Participants.ToggleCpu(focus);
+				}
+				else if (slot >= 0 && !m_Participants.IsReady(slot)) {
+					// 準備OKにした人は、取り消すまでキャラを変えない。
+					m_LobbyCharacters[slot] = SceneCalc::CycleCharacter(m_LobbyCharacters[slot], menu.CharacterDirection);
+				}
+				if (decide && (focus == slot || slot < 0)) {
 					if (m_Participants.LobbyDecide(device, !m_Scene.IsSolo()) == VERSUS_LOBBY_DECIDE_START) start = true;
 				}
-				else if (ActionGetMenuInput(device).Back
-					&& m_Participants.LobbyCancel(device) == VERSUS_LOBBY_CANCEL_BACK) back = true;
+				else if (!decide && menu.Back && m_Participants.LobbyCancel(device) == VERSUS_LOBBY_CANCEL_BACK) back = true;
 			}
 			m_DeviceInputs[device] = current;
 		}
@@ -346,10 +369,6 @@ void Game::Update()
 		for (int slot = 0; slot < FIGHTER_COUNT; ++slot) {
 			m_PreviousInputs[slot] = m_Inputs[slot];
 			const int device = m_Participants.GetDevice(slot);
-			// 準備OKにした人は、取り消すまでキャラを変えない。
-			if (oldScene == SCENE_TITLE && m_Participants.IsHuman(slot) && !m_Participants.IsReady(slot)) {
-				m_LobbyCharacters[slot] = SceneCalc::CycleCharacter(m_LobbyCharacters[slot], ActionGetMenuInput(device).CharacterDirection);
-			}
 			m_Inputs[slot] = device >= 0 && device < ACTION_DEVICE_COUNT ? m_DeviceInputs[device] : ActionGetPlayerInput(device);
 			// F1〜F4は機器ではなく人のスロットを選ぶ。パッドの人にも従来どおり配る。
 			m_Inputs[slot].Equip = m_Participants.IsHuman(slot) ? ActionGetEquipKey(slot) : ACTION_EQUIP_KEY{ -1, -1 };

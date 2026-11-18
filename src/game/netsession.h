@@ -44,6 +44,9 @@ public:
 	/// @brief ロビーで自分のキャラを左右へ切り替える（試合中は無視）
 	/// @param direction 切り替える向き（左 -1、右 +1、なし 0）
 	void CycleLocalCharacter(int direction);
+	/// @brief ホストがロビーで試合のルールを切り替える（参加側・試合中は無視。毎回送り直す状態通知で参加側へ届く）
+	/// @param direction 切り替える向き（左 -1、右 +1、なし 0）
+	void CycleRule(int direction);
 	/// @brief ロビーで共有したキャラを取得する（スロットは 0〜3）
 	CHARACTER_TYPE GetCharacter(int slot) const { return m_Calc.GetCharacter(slot); }
 	/// @brief ホストが選んだ試合のルールを取得する

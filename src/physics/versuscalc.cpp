@@ -1,6 +1,13 @@
 ﻿#include "physics/versuscalc.h"
 
 #include "physics/dummycalc.h"
+#include <math.h>
+
+//------------------------------------------------------------------------------
+// 調整用の値
+//------------------------------------------------------------------------------
+static constexpr float LOBBY_STICK_THRESHOLD = 0.6f; // キャラ選択の上下を弾きとして受け付ける大きさ
+static constexpr float LOBBY_STICK_DEADZONE = 0.3f; // 次の弾きの前に戻す範囲
 
 bool VersusCalcPushBodies(VEC3& first, VEC3& second, bool firstHuman, bool secondHuman, float radius, float height)
 {
@@ -26,7 +33,10 @@ void VersusCalc::Reset()
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		m_Devices[i] = VERSUS_DEVICE_DUMMY;
 		m_Ready[i] = false;
+		m_Cpu[i] = false;
 	}
+	m_Focus = 0;
+	m_FocusReady = true;
 	ResetMatch();
 }
 
@@ -86,6 +96,34 @@ bool VersusCalc::IsAllReady() const
 		++humans;
 	}
 	return humans > 0;
+}
+
+void VersusCalc::MoveLobbyFocus(float moveY, bool editSlots)
+{
+	if (fabsf(moveY) < LOBBY_STICK_DEADZONE) m_FocusReady = true;
+	// 選んでいた枠に人が入ったら 1P のカードへ戻す。
+	if (m_Focus > 0 && (!editSlots || IsHuman(m_Focus))) m_Focus = 0;
+	if (!m_FocusReady || fabsf(moveY) <= LOBBY_STICK_THRESHOLD) return;
+	m_FocusReady = false;
+	// 上がルール、下へ 1P → 2P → … の順。人のいる枠は飛ばす。
+	const int step = moveY > 0.0f ? -1 : 1;
+	for (int next = m_Focus + step; next >= VERSUS_LOBBY_FOCUS_RULE && next < FIGHTER_COUNT; next += step) {
+		if (next <= 0 || (editSlots && !IsHuman(next))) {
+			m_Focus = next;
+			return;
+		}
+	}
+}
+
+void VersusCalc::ToggleCpu(int slot)
+{
+	if (slot < 0 || slot >= FIGHTER_COUNT || IsHuman(slot)) return;
+	m_Cpu[slot] = !m_Cpu[slot];
+}
+
+bool VersusCalc::IsCpu(int slot) const
+{
+	return slot >= 0 && slot < FIGHTER_COUNT && !IsHuman(slot) && m_Cpu[slot];
 }
 
 int VersusCalc::FindSlot(int device) const

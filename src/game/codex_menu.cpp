@@ -30,13 +30,15 @@ static constexpr float PREVIEW_TOP = 244.0f;
 static constexpr float PREVIEW_WIDTH = 248.0f;
 static constexpr float PREVIEW_HEIGHT = 284.0f;
 static constexpr float PREVIEW_VIEW_HEIGHT = 2.8f; // 上下と回転中の張り出しの余白を含む
-static constexpr float LOBBY_CARD_TOP = 160.0f; // キャラ選択の 1P〜4P のカード
+static constexpr float LOBBY_CARD_TOP = 180.0f; // キャラ選択の 1P〜4P のカード
 static constexpr float LOBBY_CARD_WIDTH = 270.0f;
-static constexpr float LOBBY_CARD_HEIGHT = 420.0f;
+static constexpr float LOBBY_CARD_HEIGHT = 400.0f;
+static constexpr float LOBBY_RULE_Y = 138.0f; // キャラ選択のルールの行（見出しの右下）
+static constexpr float LOBBY_RULE_WIDTH = 508.0f;
+static constexpr float LOBBY_RULE_HEIGHT = 34.0f;
 static constexpr float LOBBY_CARD_GAP = 24.0f; // 4枚で LEFT から 1152 の幅に収める
 static constexpr float LOBBY_STATUS_Y = 540.0f; // カードの下の「準備OK」などの行
 static constexpr float LOBBY_BANNER_Y = 590.0f; // 「READY TO FIGHT」の帯
-static constexpr float LOBBY_IP_Y = 138.0f; // ホストの IP（見出しの右下）
 static constexpr float RESULT_ROW_TOP = 440.0f; // 結果の画面のメニューの1行目
 static constexpr float RESULT_ROW_GAP = 64.0f;
 static constexpr float RESULT_ROW_HEIGHT = 58.0f;
@@ -78,7 +80,7 @@ static constexpr const char* MODE_HELP[][3] = {
 	{ "この PC をホストにして待機します。", "表示された IP を相手に伝えます。", "離れた相手とは Tailscale で接続。" },
 	{ "ホストの IPv4 アドレスを入力します。", "接続後はロビーで参加を待ちます。", "ホストと同じ版のゲームを使います。" },
 	{ "試合の遊び心地を調整できます。", "変更は次の試合から適用されます。", "オンラインはホストの設定を使用。" },
-	{ "キャラとルールは選び直せます。", "オプションは起動中そのまま保持。", "終了は Esc キーから行えます。" }
+	{ "対戦方法は選び直せます。", "オプションは起動中そのまま保持。", "終了は Esc キーから行えます。" }
 };
 
 void CodexMenu::Initialize()
@@ -202,8 +204,8 @@ void CodexMenu::Header(const char* title, const char* eyebrow, int step) const
 	Text(eyebrow, LEFT, 79, 15, CYAN);
 	Text(title, LEFT, 101, 34, WHITE);
 	if (step > 0) {
-		const char* names[] = { "01  対戦方法", "02  ルール", "03  キャラクター" };
-		for (int i = 0; i < 3; ++i) {
+		const char* names[] = { "01  対戦方法", "02  キャラクター" };
+		for (int i = 0; i < 2; ++i) {
 			const float x = RIGHT + i * 172.0f;
 			Number2DDrawBox({ x, 100, 154, 3 }, i + 1 == step ? CYAN : LINE);
 			Text(names[i], x, 112, 16, i + 1 == step ? WHITE : MUTED);
@@ -234,6 +236,14 @@ void CodexMenu::Detail(const char* tag, const char* title, const char* line1, co
 	if (line1[0]) Text(line1, RIGHT + 28, 342, 20, WHITE);
 	if (line2[0]) Text(line2, RIGHT + 28, 381, 20, MUTED);
 	if (line3[0]) Text(line3, RIGHT + 28, 420, 20, MUTED);
+}
+
+void CodexMenu::Frame(float x, float y, float width, float height) const
+{
+	Number2DDrawBox({ x, y, width, 3 }, CYAN);
+	Number2DDrawBox({ x, y + height - 3, width, 3 }, CYAN);
+	Number2DDrawBox({ x, y, 3, height }, CYAN);
+	Number2DDrawBox({ x + width - 3, y, 3, height }, CYAN);
 }
 
 void CodexMenu::Footer(const char* help) const
@@ -321,12 +331,16 @@ void CodexMenu::DrawLobby(const SceneCalc& scene, const VersusCalc& participants
 	const std::array<CHARACTER_TYPE, FIGHTER_COUNT>& characters) const
 {
 	const bool online = net.IsOnline();
-	Header("キャラクターを選択", online ? "CHARACTER SELECT / ONLINE LOBBY" : "CHARACTER SELECT", 3);
-	if (net.IsHost()) {
-		// 相手に伝えるアドレスは、カードの上の1行に収める。
-		const std::string ip = "HOST IP  " + net.GetAddresses();
-		Text(ip.c_str(), RIGHT, LOBBY_IP_Y, 14, CYAN);
-	}
+	Header("キャラクターを選択", online ? "CHARACTER SELECT / ONLINE LOBBY" : "CHARACTER SELECT", 2);
+	// 1P（オンラインはホスト）だけが、上下でルールの行・自分のカード・人のいない枠を選ぶ。
+	const bool owner = !online || net.IsHost();
+	const int focus = owner ? participants.GetLobbyFocus() : -2;
+	const GAME_RULE rule = online ? net.GetRule() : scene.GetRule();
+	const bool ruleFocused = focus == VERSUS_LOBBY_FOCUS_RULE;
+	Number2DDrawBox({ RIGHT, LOBBY_RULE_Y, LOBBY_RULE_WIDTH, LOBBY_RULE_HEIGHT }, ruleFocused ? XMFLOAT4{ 0.055f, 0.20f, 0.25f, 1 } : PANEL);
+	if (ruleFocused) Frame(RIGHT, LOBBY_RULE_Y, LOBBY_RULE_WIDTH, LOBBY_RULE_HEIGHT);
+	Text(rule == GAME_RULE_GAME ? "ルール   <  通常の対戦（GAME）  >" : "ルール   <  腕を自由に試す（DEBUG）  >",
+		RIGHT + 14, LOBBY_RULE_Y + 5, 17, ruleFocused ? WHITE : GOLD);
 	const double elapsed = std::chrono::duration<double>(std::chrono::steady_clock::now() - m_PreviewStart).count();
 	const float yaw = static_cast<float>(std::fmod(elapsed, PREVIEW_TURN_SECONDS)) * (2.0f * PI / PREVIEW_TURN_SECONDS);
 	int joinedCount = 0;
@@ -348,9 +362,19 @@ void CodexMenu::DrawLobby(const SceneCalc& scene, const VersusCalc& participants
 		const char* deviceName = !joined ? "" : online ? (slot == net.GetLocalSlot() ? "ONLINE / あなた" : "ONLINE")
 			: device == ACTION_DEVICE_KEYBOARD ? "KEYBOARD" : "CONTROLLER";
 		Text(deviceName, x + 70, LOBBY_CARD_TOP + 24, 14, MUTED);
+		if (focus == slot) Frame(x, LOBBY_CARD_TOP, LOBBY_CARD_WIDTH, LOBBY_CARD_HEIGHT);
 		if (!joined) {
-			Text("ダミー", x + 18, LOBBY_CARD_TOP + 60, 22, MUTED);
-			if (!online && !scene.IsSolo()) Text("Enter / ○ で参加", x + 18, LOBBY_STATUS_Y, 16, WHITE);
+			// オンラインの空き枠はダミーだけ（キャラは選べない）。オフラインは 1P がダミーと CPU・キャラを選ぶ。
+			const bool cpu = !online && participants.IsCpu(slot);
+			Text(cpu ? "CPU" : "ダミー", x + 70, LOBBY_CARD_TOP + 24, 14, cpu ? GOLD : MUTED);
+			if (online) {
+				Text("ダミー", x + 18, LOBBY_CARD_TOP + 60, 22, MUTED);
+				continue;
+			}
+			Text(CHARACTER_DATA::Get(characters[slot]).Name, x + 18, LOBBY_CARD_TOP + 60, 22, MUTED);
+			DrawCharacterPreview(characters[slot], x, yaw);
+			if (focus == slot) Text("←→ キャラ   ○ ダミー / CPU", x + 18, LOBBY_STATUS_Y, 16, CYAN);
+			else if (!scene.IsSolo()) Text("Enter / ○ で参加", x + 18, LOBBY_STATUS_Y, 16, WHITE);
 			continue;
 		}
 		Text(CHARACTER_DATA::Get(characters[slot]).Name, x + 18, LOBBY_CARD_TOP + 60, 22, WHITE);
@@ -371,11 +395,14 @@ void CodexMenu::DrawLobby(const SceneCalc& scene, const VersusCalc& participants
 	else {
 		Text(online ? "全員が ○ で準備OKになると、ホストが始められます。" : "参加した全員が準備OKになると、1P が始められます。",
 			LEFT, LOBBY_BANNER_Y + 10, 17, MUTED);
-		const GAME_RULE rule = online ? net.GetRule() : scene.GetRule();
-		Text(rule == GAME_RULE_GAME ? "RULE / 通常の対戦" : "RULE / 腕を自由に試す", 1010, LOBBY_BANNER_Y + 10, 17, GOLD);
+		if (net.IsHost()) {
+			// 相手に伝えるアドレスは、帯の右に1行で出す。
+			const std::string ip = "HOST IP  " + net.GetAddresses();
+			Text(ip.c_str(), RIGHT + 60, LOBBY_BANNER_Y + 12, 14, CYAN);
+		}
 	}
-	Footer(online ? "←→  キャラ    Enter / ○  準備OK・ホストが開始    ×  対戦方法へ戻る"
-		: "←→  キャラ    Enter / ○  参加・準備OK・1P が開始    Backspace / ×  取り消し・戻る");
+	Footer(online ? "↑↓  ルール（ホスト）   ←→  キャラ・ルール   Enter / ○  準備OK・ホストが開始   ×  戻る"
+		: "↑↓  選ぶ（1P）   ←→  キャラ・ルール   Enter / ○  参加・準備OK・開始   Backspace / ×  取り消し・戻る");
 }
 
 void CodexMenu::DrawResult(const SceneCalc& scene, const VersusCalc& participants) const
@@ -420,30 +447,19 @@ void CodexMenu::Draw(const SceneCalc& scene, const VersusCalc& participants, con
 		Text("ブラキオンファイト", LEFT - 3, 181, 54, WHITE);
 		Text("変な腕で、ぶっ飛ばせ。", LEFT, 257, 31, WHITE);
 		Text("腕を拾って装着。相手を場外へ飛ばす、3 分間の乱闘。", LEFT, 318, 19, MUTED);
-		Row("ゲームを始める", "PLAY / 対戦方法 → ルール → キャラクター", 0, scene.GetCursor() == 0, 398, 76);
+		Row("ゲームを始める", "PLAY / 対戦方法 → キャラクター・ルール", 0, scene.GetCursor() == 0, 398, 76);
 		Row("オプション", "OPTIONS / 次の試合の遊び心地を調整", 1, scene.GetCursor() == 1, 488, 76);
 		Text("MOVE  WASD    JUMP  Space    ARMS  左右クリック / L1 R1", LEFT, 597, 16, MUTED);
 		Reactor(962, 342, 179);
 		Footer("↑↓ / W S / 左スティック  選択    Enter / ○  決定");
 		return;
 	}
-	if (current == SCENE_RULE_SELECT) {
-		Header("遊び方を選択", "RULE SELECT", 2);
-		Row("通常の対戦", "GAME / 腕を拾って戦う・耐久あり", 0, scene.GetCursor() == GAME_RULE_GAME, 236, 87);
-		Row("腕を自由に試す", "DEBUG / 装備を切り替えて練習", 1, scene.GetCursor() == GAME_RULE_DEBUG, 340, 87);
-		const bool normal = scene.GetCursor() == GAME_RULE_GAME;
-		Detail(normal ? "GAME" : "DEBUG", normal ? "腕を拾って、ぶっ飛ばす" : "お気に入りの腕を探そう",
-			normal ? "素手でスタート。カプセルで腕を装着。" : "好きな腕を自由に切り替えられます。",
-			normal ? "耐久がなくなったら、新しい腕を探そう。" : "数字キー / 十字キーで装備を変更。",
-			normal ? "3 分間で、いちばん多く KO を取ろう。" : "耐久が 0 になっても腕を使えます。");
-		Footer("↑↓ / W S / 左スティック  選択    Enter / ○  決定    Backspace / ×  戻る");
-	}
-	else if (current == SCENE_MODE_SELECT) {
+	if (current == SCENE_MODE_SELECT) {
 		Header("対戦方法を選択", "MODE SELECT", 1);
 		for (int i = 0; i < MODE_ITEM_COUNT; ++i) Row(MODE_NAMES[i], MODE_SUBTITLES[i], i, scene.GetCursor() == i, 168 + i * 75.0f);
 		const int cursor = scene.GetCursor();
 		Detail("HOW TO PLAY", MODE_NAMES[cursor], MODE_HELP[cursor][0], MODE_HELP[cursor][1], MODE_HELP[cursor][2]);
-		Text("次にルールを選び、キャラ選択へ進みます。", RIGHT, 557, 18, GOLD);
+		Text("次はキャラ選択。ルールもそこで選びます。", RIGHT, 557, 18, GOLD);
 		Text("設定を変えるには「オプション」へ。", RIGHT, 592, 18, MUTED);
 		Footer("↑↓ / W S / 左スティック  選択    Enter / ○  決定    Backspace / ×  戻る");
 	}

@@ -159,6 +159,11 @@ void SessionCalc::SetLocalCharacter(CHARACTER_TYPE character)
 	if (m_Host) m_Characters[0] = static_cast<uint8_t>(character);
 }
 
+void SessionCalc::SetRule(GAME_RULE rule)
+{
+	if (m_Host && !m_Running && rule < GAME_RULE_COUNT) m_Rule = rule;
+}
+
 void SessionCalc::SetTuning(const MATCH_TUNING& tuning)
 {
 	if (m_Host && !m_Running && TuningCalcIsValid(tuning)) m_Tuning = tuning;
