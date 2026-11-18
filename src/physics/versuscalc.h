@@ -32,17 +32,47 @@ struct VERSUS_VIEWPORT
 /// @param index 画面の順の番号（0〜humanCount-1。3人のときの空きは index 3 で取れる）
 VERSUS_VIEWPORT VersusCalcViewport(int humanCount, int index, float screenWidth, float screenHeight);
 
+/// @brief キャラ選択の画面で決定を押した結果
+enum VERSUS_LOBBY_DECIDE
+{
+	VERSUS_LOBBY_DECIDE_NONE, ///< 何も起きない（満員・無効な機器・1P 以外が全員の準備OKのあとに押した）
+	VERSUS_LOBBY_DECIDE_JOIN, ///< 空いている枠に参加した
+	VERSUS_LOBBY_DECIDE_READY, ///< 準備OKにした
+	VERSUS_LOBBY_DECIDE_START, ///< 全員が準備OKで、1P が押したので試合を始める
+};
+
+/// @brief キャラ選択の画面で戻るを押した結果
+enum VERSUS_LOBBY_CANCEL
+{
+	VERSUS_LOBBY_CANCEL_NONE, ///< 何も起きない（参加していない機器）
+	VERSUS_LOBBY_CANCEL_UNREADY, ///< 準備OKを取り消した
+	VERSUS_LOBBY_CANCEL_LEAVE, ///< 参加をやめた（2P〜4P だけ）
+	VERSUS_LOBBY_CANCEL_BACK, ///< 準備OKでない 1P が押したので、前の画面へ戻る
+};
+
 /// @brief スロットへの機器の割り当てと、最後の攻撃者・KO得点を計算する（DirectXなし）
 class VersusCalc
 {
 public:
-	/// @brief 全スロットをダミーにし、攻撃者と得点を消す
+	/// @brief 全スロットをダミーにし、準備OK・攻撃者・得点を消す
 	void Reset();
 	/// @brief 参加者を保ったまま攻撃記録とKO数を消す（RETRY用）
 	void ResetMatch();
-	/// @brief タイトルの決定入力で参加する。参加済みの1Pの再入力だけtrueを返して開始する
+	/// @brief キャラ選択の画面で決定を押す（参加 → 準備OK → 全員が準備OKなら 1P で開始）
 	/// @param device 決定を押した機器（パッド0〜3、キーボード4）
-	bool JoinOrStart(int device);
+	/// @param canJoin 参加していない機器の参加を設定する（true：空いている枠に入れる、false：入れない。SOLO）
+	VERSUS_LOBBY_DECIDE LobbyDecide(int device, bool canJoin);
+	/// @brief キャラ選択の画面で戻るを押す（準備OKの取り消し → 参加をやめる。1P は前の画面へ戻る）
+	/// @param device 戻るを押した機器（パッド0〜3、キーボード4）
+	VERSUS_LOBBY_CANCEL LobbyCancel(int device);
+	/// @brief 全員の準備OKを消す（試合のあとにキャラ選択へ戻るとき）
+	void ClearReady();
+	/// @brief スロットの人が準備OKか取得する（ダミー・範囲外は false）
+	bool IsReady(int slot) const;
+	/// @brief 人が1人以上いて、全員が準備OKか取得する
+	bool IsAllReady() const;
+	/// @brief 機器が入っているスロットを取得する（入っていなければ -1）
+	int FindSlot(int device) const;
 	/// @brief 参加している人の数を取得する
 	int GetHumanCount() const;
 	/// @brief 機器を空いている先頭のスロットに割り当てる（同じ機器は既存スロット、満員・無効な機器は-1）
@@ -72,6 +102,7 @@ public:
 
 private:
 	int m_Devices[FIGHTER_COUNT] = { -1, -1, -1, -1 };
+	bool m_Ready[FIGHTER_COUNT] = {}; // キャラ選択の画面で準備OKにしたか
 	int m_LastAttackers[FIGHTER_COUNT] = { -1, -1, -1, -1 };
 	int m_Scores[FIGHTER_COUNT] = {};
 };

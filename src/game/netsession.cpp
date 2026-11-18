@@ -114,6 +114,12 @@ void NetSession::ReceiveNow(bool relay)
 	}
 }
 
+void NetSession::CycleLocalCharacter(int direction)
+{
+	if (!IsOnline() || direction == 0) return;
+	m_Calc.SetLocalCharacter(SceneCalc::CycleCharacter(m_Calc.GetLocalCharacter(), direction));
+}
+
 bool NetSession::TakeFrame(LOCKSTEP_FRAME& frame)
 {
 	if (!m_Calc.TakeFrame(frame)) return false;

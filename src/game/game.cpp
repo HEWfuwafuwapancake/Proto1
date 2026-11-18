@@ -167,7 +167,6 @@ void Game::ResetParticipants()
 {
 	m_Participants.Reset();
 	m_LobbyCharacters.fill(CHARACTER_DEFAULT);
-	m_LobbyCharacters[0] = m_Scene.GetCharacter();
 	for (auto& value : m_Inputs) value = {};
 	for (auto& value : m_PreviousInputs) value = {};
 	for (int device = 0; device < ACTION_DEVICE_COUNT; ++device) m_DeviceInputs[device] = ActionGetPlayerInput(device);
@@ -234,19 +233,13 @@ void Game::UpdateMenu()
 		const std::string addresses = NetSocket::GetLocalAddresses();
 		m_JoinAddress.Initialize(addresses.substr(0, addresses.find(" / ")));
 	}
-	if (event == SCENE_EVENT_START_MATCH) {
-		m_Participants.Reset();
-		m_Participants.AssignDevice(m_MenuDevice);
-		m_LobbyCharacters[0] = m_Scene.GetCharacter();
-		ConfigurePlayers();
-		Restart(false);
-	}
-	else if (event == SCENE_EVENT_HOST || event == SCENE_EVENT_JOIN) {
+	if (event == SCENE_EVENT_HOST || event == SCENE_EVENT_JOIN) {
 		NET_OPTIONS options;
 		options.Mode = event == SCENE_EVENT_HOST ? NET_MODE_HOST : NET_MODE_JOIN;
 		options.Host = m_JoinAddress.GetText();
 		options.Delay = LOCKSTEP_AUTO_DELAY;
-		if (m_Net.Initialize(options, m_Scene.GetCharacter(), m_Scene.GetRule())) {
+		// キャラはロビー（キャラ選択）で選ぶので、はじめのキャラで接続する。
+		if (m_Net.Initialize(options, CHARACTER_DEFAULT, m_Scene.GetRule())) {
 			if (m_Net.IsHost()) m_Net.SetTuning(m_Tuning);
 			m_Scene.OpenLobby();
 		}
@@ -260,10 +253,11 @@ void Game::UpdateMenu()
 		}
 		ResetParticipants();
 	}
-	else if (oldScene == SCENE_MODE_SELECT && m_Scene.GetScene() == SCENE_TITLE) {
-		// モードを決めた機器に、メニューで選んだキャラと 1P を割り当てる。
+	else if (oldScene == SCENE_RULE_SELECT && m_Scene.GetScene() == SCENE_TITLE) {
+		// ルールを決めた機器を 1P にしてキャラ選択へ入る（準備OKはまだ）。
+		m_Participants.Reset();
+		m_LobbyCharacters.fill(CHARACTER_DEFAULT);
 		m_Participants.AssignDevice(m_MenuDevice);
-		m_LobbyCharacters[0] = m_Scene.GetCharacter();
 		UpdatePadLights();
 	}
 }
@@ -274,12 +268,12 @@ void Game::Update()
 	const ARM_COST_TABLE costs = m_Net.IsOnline() ? ArmCostCalcDefault() : m_ArmCosts;
 	for (auto& arms : m_Arms) arms.SetCosts(costs);
 	const SCENE oldScene = m_Scene.GetScene();
-	if (oldScene == SCENE_GAME_START || oldScene == SCENE_CHARACTER_SELECT
-		|| oldScene == SCENE_RULE_SELECT || oldScene == SCENE_MODE_SELECT || oldScene == SCENE_JOIN_ADDRESS || oldScene == SCENE_OPTIONS || oldScene == SCENE_ARM_COSTS) {
+	if (oldScene == SCENE_GAME_START || oldScene == SCENE_RULE_SELECT || oldScene == SCENE_MODE_SELECT || oldScene == SCENE_JOIN_ADDRESS || oldScene == SCENE_OPTIONS || oldScene == SCENE_ARM_COSTS) {
 		UpdateMenu();
 		return;
 	}
-	if (oldScene == SCENE_TITLE && IsLobbyBack()) {
+	// オフラインのキャラ選択の戻るは、機器ごとに下で扱う（準備OKの取り消し・参加をやめる・1P は前の画面へ）。
+	if (oldScene == SCENE_TITLE && m_Net.IsOnline() && IsLobbyBack()) {
 		m_Scene.Step({ false, false, 0.0f, true }, false);
 		m_Net.Finalize();
 		ActionSetOnlineEquip(false);
@@ -307,6 +301,14 @@ void Game::Update()
 				m_LobbyCharacters[slot] = m_Net.GetCharacter(slot);
 			}
 		}
+		if (oldScene == SCENE_TITLE) {
+			// 機器を選ぶ前はどの機器でも、選んだあとはその機器の左右で自分のキャラを変える。
+			for (int device = 0; device < ACTION_DEVICE_COUNT; ++device) {
+				if (m_Net.GetLocalDevice() >= 0 && m_Net.GetLocalDevice() != device) continue;
+				const int direction = ActionGetMenuInput(device).CharacterDirection;
+				if (direction != 0) { m_Net.CycleLocalCharacter(direction); break; }
+			}
+		}
 		UpdatePadLights();
 		LOCKSTEP_FRAME frame;
 		if (!m_Net.TakeFrame(frame)) return; // ゲームの計算・前入力・カメラは進めない。
@@ -322,17 +324,30 @@ void Game::Update()
 		}
 	}
 	else {
-		// 同一フレームの参加は機器番号順。開始フレームの参加も取り込む。
+		// キャラ選択：決定で参加 → 準備OK → 全員が準備OKなら 1P で開始。戻るで準備OKの取り消し → 参加をやめる。
+		// 同一フレームの参加は機器番号順。
+		bool back = false;
 		for (int device = 0; device < ACTION_DEVICE_COUNT; ++device) {
 			const PLAYER_INPUT current = ActionGetPlayerInput(device);
-			if (oldScene == SCENE_TITLE && ActionCalcPlayerTrigger(current, m_DeviceInputs[device], ACTION_DECIDE)
-				&& m_Participants.JoinOrStart(device)) start = true;
+			if (oldScene == SCENE_TITLE) {
+				if (ActionCalcPlayerTrigger(current, m_DeviceInputs[device], ACTION_DECIDE)) {
+					if (m_Participants.LobbyDecide(device, !m_Scene.IsSolo()) == VERSUS_LOBBY_DECIDE_START) start = true;
+				}
+				else if (ActionGetMenuInput(device).Back
+					&& m_Participants.LobbyCancel(device) == VERSUS_LOBBY_CANCEL_BACK) back = true;
+			}
 			m_DeviceInputs[device] = current;
+		}
+		if (back && !start) {
+			m_Scene.Step({ false, false, 0.0f, true }, false);
+			ResetParticipants();
+			return;
 		}
 		for (int slot = 0; slot < FIGHTER_COUNT; ++slot) {
 			m_PreviousInputs[slot] = m_Inputs[slot];
 			const int device = m_Participants.GetDevice(slot);
-			if (oldScene == SCENE_TITLE && m_Participants.IsHuman(slot)) {
+			// 準備OKにした人は、取り消すまでキャラを変えない。
+			if (oldScene == SCENE_TITLE && m_Participants.IsHuman(slot) && !m_Participants.IsReady(slot)) {
 				m_LobbyCharacters[slot] = SceneCalc::CycleCharacter(m_LobbyCharacters[slot], ActionGetMenuInput(device).CharacterDirection);
 			}
 			m_Inputs[slot] = device >= 0 && device < ACTION_DEVICE_COUNT ? m_DeviceInputs[device] : ActionGetPlayerInput(device);
@@ -368,6 +383,13 @@ void Game::Update()
 	if (event == SCENE_EVENT_START_MATCH) {
 		if (oldScene == SCENE_TITLE) ConfigurePlayers();
 		Restart(oldScene != SCENE_TITLE);
+	}
+	else if (event == SCENE_EVENT_BACK_LOBBY) {
+		// 参加者とキャラはそのまま、準備OKだけ消してキャラ選択へ戻る。
+		if (m_Net.IsOnline()) m_Net.ReturnToLobby();
+		else m_Participants.ClearReady();
+		ConfigurePlayers();
+		m_Match.Reset();
 	}
 	else if (event == SCENE_EVENT_BACK_TITLE) {
 		if (m_Net.IsOnline()) {

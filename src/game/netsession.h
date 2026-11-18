@@ -41,6 +41,9 @@ public:
 	uint8_t GetMask() const { return m_Calc.GetMask(); }
 	/// @brief 機器選択済みスロットのビットを取得する
 	uint8_t GetReadyMask() const { return m_Calc.GetReadyMask(); }
+	/// @brief ロビーで自分のキャラを左右へ切り替える（試合中は無視）
+	/// @param direction 切り替える向き（左 -1、右 +1、なし 0）
+	void CycleLocalCharacter(int direction);
 	/// @brief ロビーで共有したキャラを取得する（スロットは 0〜3）
 	CHARACTER_TYPE GetCharacter(int slot) const { return m_Calc.GetCharacter(slot); }
 	/// @brief ホストが選んだ試合のルールを取得する

@@ -188,6 +188,10 @@ public:
 	uint8_t GetMask() const { return m_Mask; }
 	/// @brief 機器選択済みスロットのビットを取得する
 	uint8_t GetReadyMask() const { return m_Ready; }
+	/// @brief ロビーで自分のキャラを変える（試合中は無視。毎回送り直す接続のメッセージで相手に届く）
+	void SetLocalCharacter(CHARACTER_TYPE character);
+	/// @brief 自分が選んでいるキャラを取得する（ホストから返ってくる前の、手元の選択）
+	CHARACTER_TYPE GetLocalCharacter() const { return m_LocalCharacter; }
 	/// @brief ロビーで共有したキャラをスロット番号で取得する（0〜3）
 	CHARACTER_TYPE GetCharacter(int slot) const { return static_cast<CHARACTER_TYPE>(m_Characters[slot]); }
 	/// @brief ホストが選んだ試合のルールを取得する

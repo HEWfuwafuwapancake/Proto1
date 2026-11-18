@@ -7,7 +7,7 @@
 #include "physics/armcostcalc.h"
 #include "physics/tuningcalc.h"
 
-/// @brief キャラ選択・ロビーで使うキャラ番号
+/// @brief キャラ選択の画面で使うキャラ番号
 enum CHARACTER_TYPE
 {
 	CHARACTER_MEKA, ///< メカ
@@ -29,11 +29,10 @@ enum GAME_RULE : uint8_t
 /// @brief ゲームのシーン
 enum SCENE
 {
-	SCENE_TITLE, ///< ロビー（参加画面）
+	SCENE_TITLE, ///< キャラ選択（参加・キャラ・準備OK。オンラインのロビーも兼ねる）
 	SCENE_MATCH, ///< 試合（時間切れの画面も含む）
 	SCENE_RESULT, ///< 結果
 	SCENE_GAME_START, ///< 起動時の GAME START
-	SCENE_CHARACTER_SELECT, ///< キャラの選択
 	SCENE_RULE_SELECT, ///< 試合のルールの選択
 	SCENE_MODE_SELECT, ///< 対戦方法の選択
 	SCENE_JOIN_ADDRESS, ///< 参加先の IPv4 入力
@@ -48,7 +47,8 @@ enum SCENE_EVENT
 	SCENE_EVENT_START_MATCH, ///< 試合を最初から始める
 	SCENE_EVENT_SHOW_RESULT, ///< 今の得点で結果を表示する
 	SCENE_EVENT_BACK_TITLE, ///< 初期配置に戻してタイトルを表示する
-	SCENE_EVENT_BACK_MENU, ///< 通信と参加を閉じてモード選択へ戻す
+	SCENE_EVENT_BACK_LOBBY, ///< 参加者を保ったまま準備OKを消し、キャラ選択を表示する
+	SCENE_EVENT_BACK_MENU, ///< 通信と参加を閉じて、前のメニュー（オフラインはルール選択、オンラインは対戦方法）へ戻す
 	SCENE_EVENT_HOST, ///< ホストを開く（成功したら OpenLobby を呼ぶ）
 	SCENE_EVENT_JOIN, ///< 入力したアドレスへ接続する（成功したら OpenLobby を呼ぶ）
 	SCENE_EVENT_TUNING_CHANGE, ///< 選択した設定を左右の入力方向へ変更する
@@ -59,9 +59,9 @@ enum SCENE_EVENT
 /// @brief モード選択の項目
 enum MODE_ITEM
 {
-	MODE_ITEM_SOLO, ///< 決定した機器だけで試合を始める
-	MODE_ITEM_LOCAL, ///< この PC で参加を募る
-	MODE_ITEM_HOST, ///< オンラインのホストを開く
+	MODE_ITEM_SOLO, ///< ルール選択のあと、決定した機器だけでキャラ選択へ進む
+	MODE_ITEM_LOCAL, ///< ルール選択のあと、この PC で参加を募るキャラ選択へ進む
+	MODE_ITEM_HOST, ///< ルール選択のあと、オンラインのホストを開く
 	MODE_ITEM_JOIN, ///< 参加先の IP を入力する
 	MODE_ITEM_OPTIONS, ///< 次の試合の設定を開く
 	MODE_ITEM_BACK, ///< GAME START へ戻る
@@ -81,6 +81,7 @@ enum OPTION_ITEM
 enum RESULT_ITEM
 {
 	RESULT_ITEM_RETRY, ///< もう一回
+	RESULT_ITEM_CHARACTER, ///< キャラ選択へ
 	RESULT_ITEM_TITLE, ///< タイトルへ
 	RESULT_ITEM_COUNT, ///< 項目数（選択する項目ではない）
 };
@@ -116,8 +117,8 @@ public:
 	/// @brief ルール選択・モード選択・オプション・結果画面で選んでいる項目の番号を取得する
 	/// （耐久の減る量の表では ArmCostCalcUsedCell の番号。最後の ArmCostCalcUsedCount() は「戻る」）
 	int GetCursor() const { return m_Cursor; }
-	/// @brief GAME START のあとに選んだキャラを取得する
-	CHARACTER_TYPE GetCharacter() const { return m_Character; }
+	/// @brief キャラ選択に、決定した機器のほかは参加できないか取得する（true：SOLO、false：LOCAL VS・オンライン）
+	bool IsSolo() const { return !m_Online && m_LobbyMode == MODE_ITEM_SOLO; }
 	/// @brief 決定した試合のルールを取得する
 	GAME_RULE GetRule() const { return m_Rule; }
 	/// @brief 左右の入力でキャラを一周させる（左 -1、右 +1、なし 0）
@@ -125,7 +126,7 @@ public:
 
 private:
 	void MoveCursor(float moveY, int count);
-	CHARACTER_TYPE m_Character = CHARACTER_DEFAULT;
+	int m_LobbyMode = MODE_ITEM_SOLO; // ルール選択の次に進む対戦方法（SOLO・LOCAL VS・HOST）
 	GAME_RULE m_Rule = GAME_RULE_GAME;
 	SCENE m_Scene = SCENE_GAME_START;
 	SCENE m_OptionsReturn = SCENE_GAME_START;

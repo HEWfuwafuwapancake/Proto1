@@ -25,6 +25,7 @@ void VersusCalc::Reset()
 {
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		m_Devices[i] = VERSUS_DEVICE_DUMMY;
+		m_Ready[i] = false;
 	}
 	ResetMatch();
 }
@@ -37,12 +38,63 @@ void VersusCalc::ResetMatch()
 	}
 }
 
-bool VersusCalc::JoinOrStart(int device)
+VERSUS_LOBBY_DECIDE VersusCalc::LobbyDecide(int device, bool canJoin)
 {
-	if (device < 0 || device > 4) return false;
-	if (m_Devices[0] == device) return true;
-	AssignDevice(device);
-	return false;
+	if (device < 0 || device > 4) return VERSUS_LOBBY_DECIDE_NONE;
+	const int slot = FindSlot(device);
+	if (slot < 0) {
+		if (!canJoin) return VERSUS_LOBBY_DECIDE_NONE;
+		return AssignDevice(device) >= 0 ? VERSUS_LOBBY_DECIDE_JOIN : VERSUS_LOBBY_DECIDE_NONE;
+	}
+	if (!m_Ready[slot]) {
+		m_Ready[slot] = true;
+		return VERSUS_LOBBY_DECIDE_READY;
+	}
+	// 始めるのは 1P だけ。ほかの人が準備OKのまま押しても何も起きない。
+	return slot == 0 && IsAllReady() ? VERSUS_LOBBY_DECIDE_START : VERSUS_LOBBY_DECIDE_NONE;
+}
+
+VERSUS_LOBBY_CANCEL VersusCalc::LobbyCancel(int device)
+{
+	const int slot = FindSlot(device);
+	if (slot < 0) return VERSUS_LOBBY_CANCEL_NONE;
+	if (m_Ready[slot]) {
+		m_Ready[slot] = false;
+		return VERSUS_LOBBY_CANCEL_UNREADY;
+	}
+	if (slot == 0) return VERSUS_LOBBY_CANCEL_BACK;
+	m_Devices[slot] = VERSUS_DEVICE_DUMMY;
+	return VERSUS_LOBBY_CANCEL_LEAVE;
+}
+
+void VersusCalc::ClearReady()
+{
+	for (bool& ready : m_Ready) ready = false;
+}
+
+bool VersusCalc::IsReady(int slot) const
+{
+	return IsHuman(slot) && m_Ready[slot];
+}
+
+bool VersusCalc::IsAllReady() const
+{
+	int humans = 0;
+	for (int i = 0; i < FIGHTER_COUNT; ++i) {
+		if (!IsHuman(i)) continue;
+		if (!m_Ready[i]) return false;
+		++humans;
+	}
+	return humans > 0;
+}
+
+int VersusCalc::FindSlot(int device) const
+{
+	if (device == VERSUS_DEVICE_DUMMY) return -1;
+	for (int i = 0; i < FIGHTER_COUNT; ++i) {
+		if (m_Devices[i] == device) return i;
+	}
+	return -1;
 }
 
 int VersusCalc::GetHumanCount() const
