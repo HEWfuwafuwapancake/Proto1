@@ -176,6 +176,13 @@
     <ClInclude Include="..\..\src\physics\versuscalc.h">
       <Filter>src\physics</Filter>
     </ClInclude>
+    <ClCompile Include="cpucalc_test.cpp" />
+    <ClCompile Include="..\..\src\physics\cpucalc.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
+    <ClInclude Include="..\..\src\physics\cpucalc.h">
+      <Filter>src\physics</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="sessioncalc_test.cpp" />

@@ -33,7 +33,7 @@ void VersusCalc::Reset()
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		m_Devices[i] = VERSUS_DEVICE_DUMMY;
 		m_Ready[i] = false;
-		m_Cpu[i] = false;
+		m_CpuLevels[i] = VERSUS_CPU_NORMAL;
 	}
 	m_Focus = 0;
 	m_FocusReady = true;
@@ -115,15 +115,15 @@ void VersusCalc::MoveLobbyFocus(float moveY, bool editSlots)
 	}
 }
 
-void VersusCalc::ToggleCpu(int slot)
+void VersusCalc::CycleCpu(int slot)
 {
 	if (slot < 0 || slot >= FIGHTER_COUNT || IsHuman(slot)) return;
-	m_Cpu[slot] = !m_Cpu[slot];
+	m_CpuLevels[slot] = (m_CpuLevels[slot] + 1) % VERSUS_CPU_LEVEL_COUNT;
 }
 
-bool VersusCalc::IsCpu(int slot) const
+int VersusCalc::GetCpuLevel(int slot) const
 {
-	return slot >= 0 && slot < FIGHTER_COUNT && !IsHuman(slot) && m_Cpu[slot];
+	return slot >= 0 && slot < FIGHTER_COUNT && !IsHuman(slot) ? m_CpuLevels[slot] : VERSUS_CPU_NONE;
 }
 
 int VersusCalc::FindSlot(int device) const
@@ -160,7 +160,7 @@ int VersusCalc::AssignDevice(int device)
 
 void VersusCalc::SetSlotDevice(int slot, int device)
 {
-	if (slot < 0 || slot >= FIGHTER_COUNT || device < VERSUS_DEVICE_REMOTE || device > 4) return;
+	if (slot < 0 || slot >= FIGHTER_COUNT || device < VERSUS_DEVICE_CPU || device > 4) return;
 	m_Devices[slot] = device;
 }
 

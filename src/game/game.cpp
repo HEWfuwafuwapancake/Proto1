@@ -78,18 +78,33 @@ void Game::ConfigurePlayers()
 {
 	// 前の顔ぶれの保持をすべて離してから、新しい体へ割り当てる。
 	for (int i = 0; i < FIGHTER_COUNT; ++i) m_Arms[i].Reset();
-	m_Fighters.Initialize(m_Stage, m_Participants);
+	// 人のいない枠のうち CPU にした枠は、CPU の機器番号で体を作る（オンラインはダミーだけ）。
+	VersusCalc roster = m_Participants;
+	if (!m_Net.IsOnline()) {
+		for (int slot = 0; slot < FIGHTER_COUNT; ++slot) {
+			if (m_Participants.IsCpu(slot)) roster.SetSlotDevice(slot, VERSUS_DEVICE_CPU);
+		}
+	}
+	m_Fighters.Initialize(m_Stage, roster);
 	m_HumanCount = 0;
+	m_FightingCount = 0;
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		Fighter& fighter = m_Fighters.GetFighter(i);
 		fighter.SetCharacter(m_LobbyCharacters[i]); // ダミー・CPU もキャラ選択で選んだキャラで描く
 		fighter.SetInput(m_Inputs[i], m_PreviousInputs[i]);
-		if (fighter.IsHuman()) m_Humans[m_HumanCount++] = i;
+		if (fighter.IsHuman()) m_Fighting[m_FightingCount++] = i;
+		if (fighter.IsHuman() && !fighter.IsCpu()) m_Humans[m_HumanCount++] = i;
+	}
+	// 腕とカメラは人と CPU の両方に持たせる。CPU のカメラは画面に出さず、ロックオンの相手を選ぶのに使う。
+	for (int k = 0; k < m_FightingCount; ++k) {
+		const int slot = m_Fighting[k];
+		m_Fighters.BindPlayer(slot, m_Cameras[slot], m_Arms[slot]);
+		m_Cameras[slot].SetViewSize((float)SCREEN_WIDTH, (float)SCREEN_HEIGHT);
+		m_Cameras[slot].Reset();
 	}
 	for (int k = 0; k < m_HumanCount; ++k) {
 		const int slot = m_Humans[k];
 		const VERSUS_VIEWPORT view = GetViewport(k);
-		m_Fighters.BindPlayer(slot, m_Cameras[slot], m_Arms[slot]);
 		m_Cameras[slot].SetViewSize(view.Width, view.Height);
 		m_Cameras[slot].Reset();
 		m_Huds[slot].SetViewSize(view.Width, view.Height);
@@ -126,10 +141,14 @@ void Game::Restart(bool retry)
 	m_ArmCapsule.SetAmount(TuningCalcCapsuleCount(tuning), TuningCalcCapsuleSeconds(tuning));
 
 	// 敵を戻す前に腕を離し、プレイヤー・敵のあとにカメラを戻す。
-	for (int k = 0; k < m_HumanCount; ++k) m_Arms[m_Humans[k]].ResetForMatch(rule, tuning);
+	for (int k = 0; k < m_FightingCount; ++k) m_Arms[m_Fighting[k]].ResetForMatch(rule, tuning);
 	m_Fighters.Reset();
 	if (rule == GAME_RULE_GAME) m_ArmCapsule.Reset(m_MatchSeed ^ CAPSULE_SEED_MASK);
-	for (int k = 0; k < m_HumanCount; ++k) m_Cameras[m_Humans[k]].Reset();
+	for (int k = 0; k < m_FightingCount; ++k) m_Cameras[m_Fighting[k]].Reset();
+	for (int k = 0; k < m_FightingCount; ++k) {
+		const int slot = m_Fighting[k];
+		if (m_Fighters.GetFighter(slot).IsCpu()) m_Cpus[slot].Reset(m_MatchSeed, slot, m_Participants.GetCpuLevel(slot));
+	}
 	m_Match.Reset();
 #ifdef _DEBUG
 	hal::dout << "試合：やり直し" << std::endl;
@@ -346,9 +365,9 @@ void Game::Update()
 				}
 				if (focus == VERSUS_LOBBY_FOCUS_RULE) m_Scene.CycleRule(menu.CharacterDirection);
 				else if (focus > 0 && focus != slot) {
-					// 1P が人のいない枠を選んでいる：左右でキャラ、決定でダミーと CPU を切り替える。
+					// 1P が人のいない枠を選んでいる：左右でキャラ、決定でダミー → CPU よわい → ふつう → つよい を切り替える。
 					m_LobbyCharacters[focus] = SceneCalc::CycleCharacter(m_LobbyCharacters[focus], menu.CharacterDirection);
-					if (decide) m_Participants.ToggleCpu(focus);
+					if (decide) m_Participants.CycleCpu(focus);
 				}
 				else if (slot >= 0 && !m_Participants.IsReady(slot)) {
 					// 準備OKにした人は、取り消すまでキャラを変えない。
@@ -372,6 +391,11 @@ void Game::Update()
 			m_Inputs[slot] = device >= 0 && device < ACTION_DEVICE_COUNT ? m_DeviceInputs[device] : ActionGetPlayerInput(device);
 			// F1〜F4は機器ではなく人のスロットを選ぶ。パッドの人にも従来どおり配る。
 			m_Inputs[slot].Equip = m_Participants.IsHuman(slot) ? ActionGetEquipKey(slot) : ACTION_EQUIP_KEY{ -1, -1 };
+			if (m_Fighters.GetFighter(slot).IsCpu()) {
+				// CPU は試合中だけ、前のフレームの状況から人と同じ形の入力を作る。
+				m_Inputs[slot] = oldScene == SCENE_MATCH && m_Match.IsPlaying()
+					? m_Cpus[slot].Update(m_Stage, m_Fighters, m_Arms[slot], m_Cameras[slot], m_ArmCapsule, GetRule()) : PLAYER_INPUT{};
+			}
 			m_Fighters.GetFighter(slot).SetInput(m_Inputs[slot], m_PreviousInputs[slot]);
 		}
 	}
@@ -385,17 +409,17 @@ void Game::Update()
 			m_Fighters.Update();
 			if (GetRule() == GAME_RULE_GAME) {
 				// 復活した地点で拾った腕まで、あとから外さないようにする。
-				for (int k = 0; k < m_HumanCount; ++k) {
-					const int slot = m_Humans[k];
+				for (int k = 0; k < m_FightingCount; ++k) {
+					const int slot = m_Fighting[k];
 					if (m_Fighters.GetFighter(slot).DidRespawn()) m_Arms[slot].ResetForMatch(GAME_RULE_GAME, m_Arms[slot].GetTuning());
 				}
 				m_ArmCapsule.Update(m_Fighters, m_Arms);
 			}
 		}
-		for (int k = 0; k < m_HumanCount; ++k) m_Cameras[m_Humans[k]].Update();
+		for (int k = 0; k < m_FightingCount; ++k) m_Cameras[m_Fighting[k]].Update();
 		if (m_Match.IsPlaying()) m_Fighters.UpdateFacing();
 		// DEBUG の装備切り替えは時間切れのあとも受け付ける。
-		for (int k = 0; k < m_HumanCount; ++k) m_Arms[m_Humans[k]].Update(m_Match.IsPlaying());
+		for (int k = 0; k < m_FightingCount; ++k) m_Arms[m_Fighting[k]].Update(m_Match.IsPlaying());
 		if (m_Match.IsPlaying()) m_Fighters.UpdateAnimation();
 	}
 	const SCENE_EVENT event = m_Scene.Step(input, m_Match.GetState() == MATCH_STATE_FINISHED);
@@ -487,7 +511,7 @@ void Game::Draw() const
 		m_Stage.Draw();
 		if (drawCapsules) m_ArmCapsule.Draw();
 		m_Fighters.Draw(camera.GetTarget());
-		for (int j = 0; j < m_HumanCount; ++j) m_Arms[m_Humans[j]].Draw();
+		for (int j = 0; j < m_FightingCount; ++j) m_Arms[m_Fighting[j]].Draw();
 
 		// ---- 2D描画（UI）：3Dの上に重ねるので最後に描く ----
 		SetDepthEnable(false);

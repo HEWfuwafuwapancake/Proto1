@@ -10,6 +10,18 @@ static constexpr int VERSUS_DEVICE_DUMMY = -1;
 static constexpr int VERSUS_DEVICE_COMBINED = -2;
 /// @brief 別のPCで操作する人の機器番号（このPCのパッドへ出力しない）
 static constexpr int VERSUS_DEVICE_REMOTE = -3;
+/// @brief CPU が操作する体の機器番号（入力は CpuCalc が作る。オフラインだけ）
+static constexpr int VERSUS_DEVICE_CPU = -4;
+
+/// @brief 人のいない枠の相手（ダミーか CPU の強さ）
+enum VERSUS_CPU_LEVEL
+{
+	VERSUS_CPU_NONE, ///< ダミー（その場に立つだけ）
+	VERSUS_CPU_EASY, ///< CPU よわい
+	VERSUS_CPU_NORMAL, ///< CPU ふつう
+	VERSUS_CPU_HARD, ///< CPU つよい
+	VERSUS_CPU_LEVEL_COUNT, ///< 種類の数（選ぶ値ではない）
+};
 
 /// @brief 体当たりの重なりを解く（人対ダミーは従来どおり、人対人は横の押し出しを半分ずつ受ける）
 /// @param firstHuman 1体目の種類を設定する（true：人、false：ダミー）
@@ -82,16 +94,18 @@ public:
 	void MoveLobbyFocus(float moveY, bool editSlots);
 	/// @brief 1P の選択位置を取得する（VERSUS_LOBBY_FOCUS_RULE、または 0〜3 のスロット）
 	int GetLobbyFocus() const { return m_Focus; }
-	/// @brief 人のいない枠の相手を、ダミーと CPU で切り替える（人のいる枠・範囲外は無視）
-	void ToggleCpu(int slot);
+	/// @brief 人のいない枠の相手を ダミー → CPU よわい → ふつう → つよい → ダミー の順に切り替える（人のいる枠・範囲外は無視）
+	void CycleCpu(int slot);
+	/// @brief 人のいない枠の相手の強さを取得する（ダミー・人のいる枠・範囲外は VERSUS_CPU_NONE）
+	int GetCpuLevel(int slot) const;
 	/// @brief 人のいない枠の相手が CPU か取得する（true：CPU、false：ダミー）
-	bool IsCpu(int slot) const;
+	bool IsCpu(int slot) const { return GetCpuLevel(slot) != VERSUS_CPU_NONE; }
 	/// @brief 参加している人の数を取得する
 	int GetHumanCount() const;
 	/// @brief 機器を空いている先頭のスロットに割り当てる（同じ機器は既存スロット、満員・無効な機器は-1）
 	/// @param device パッド0〜3、キーボード4、または1人用合成入力
 	int AssignDevice(int device);
-	/// @brief 指定スロットへオンラインの機器を設定する（remoteは複数枠で使える。無効な指定は無視）
+	/// @brief 指定スロットへオンラインの機器か CPU を設定する（remote・CPU は複数枠で使える。無効な指定は無視）
 	void SetSlotDevice(int slot, int device);
 	/// @brief スロットの機器番号を取得する（ダミー・範囲外は-1）
 	int GetDevice(int slot) const;
@@ -116,7 +130,7 @@ public:
 private:
 	int m_Devices[FIGHTER_COUNT] = { -1, -1, -1, -1 };
 	bool m_Ready[FIGHTER_COUNT] = {}; // キャラ選択の画面で準備OKにしたか
-	bool m_Cpu[FIGHTER_COUNT] = {}; // 人のいない枠の相手を CPU にしたか（false はダミー）
+	int m_CpuLevels[FIGHTER_COUNT] = { VERSUS_CPU_NORMAL, VERSUS_CPU_NORMAL, VERSUS_CPU_NORMAL, VERSUS_CPU_NORMAL }; // 人のいない枠の相手（はじめは CPU ふつう）
 	int m_Focus = 0; // 1P の選択位置（VERSUS_LOBBY_FOCUS_RULE か 0〜3）
 	bool m_FocusReady = true; // 上下を一度戻したか（倒しっぱなしで動き続けない）
 	int m_LastAttackers[FIGHTER_COUNT] = { -1, -1, -1, -1 };

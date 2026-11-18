@@ -105,8 +105,10 @@ public:
 	bool IsLaunched() const { return m_Launched; }
 	/// @brief 浮島に立っているか取得する
 	bool IsOnGround() const { return m_Body.GetOnGround(); }
-	/// @brief 人の体か取得する
+	/// @brief 人か CPU が操作する体か取得する（腕・カメラを持つ。ダミーは false）
 	bool IsHuman() const { return m_Device != VERSUS_DEVICE_DUMMY; }
+	/// @brief CPU が操作する体か取得する（画面・HUD・振動を持たない）
+	bool IsCpu() const { return m_Device == VERSUS_DEVICE_CPU; }
 	/// @brief 入力機器番号を取得する
 	int GetDevice() const { return m_Device; }
 	/// @brief ダメージ%を取得する

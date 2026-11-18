@@ -68,14 +68,15 @@ static constexpr const char* COST_NOTES[ARM_COST_ROW_COUNT][2] = {
 	{ "弱：突き（直線上の全員）", "強：投げた槍が刺さったか" },
 	{ "パリィできずに防いだとき", "" }
 };
+static constexpr const char* CPU_LEVEL_NAMES[VERSUS_CPU_LEVEL_COUNT] = { "ダミー", "CPU よわい", "CPU ふつう", "CPU つよい" };
 static constexpr const char* MODE_NAMES[] = {
 	"ひとりで遊ぶ", "この PC で対戦", "オンラインを開催", "オンラインに参加", "オプション", "タイトルへ戻る"
 };
 static constexpr const char* MODE_SUBTITLES[] = {
-	"SOLO / ダミー相手に練習", "LOCAL VS / 最大 4 人・画面分割", "HOST / 参加者を待つ", "JOIN / ホストの IP を入力", "OPTIONS / 次の試合を調整", "BACK / 最初の画面へ"
+	"SOLO / CPU・ダミーと対戦", "LOCAL VS / 最大 4 人・画面分割", "HOST / 参加者を待つ", "JOIN / ホストの IP を入力", "OPTIONS / 次の試合を調整", "BACK / 最初の画面へ"
 };
 static constexpr const char* MODE_HELP[][3] = {
-	{ "決定した機器を 1P にして遊びます。", "ほかのキャラは練習用のダミーです。", "操作や腕の動きを試すのにおすすめ。" },
+	{ "決定した機器を 1P にして遊びます。", "空いている枠は CPU（強さ3段）かダミー。", "キャラ選択で 1P が選べます。" },
 	{ "キャラ選択でパッドやキーボードから参加。", "人数に合わせて画面を分割します。", "全員が準備OKなら 1P の決定で開始。" },
 	{ "この PC をホストにして待機します。", "表示された IP を相手に伝えます。", "離れた相手とは Tailscale で接続。" },
 	{ "ホストの IPv4 アドレスを入力します。", "接続後はロビーで参加を待ちます。", "ホストと同じ版のゲームを使います。" },
@@ -365,15 +366,15 @@ void CodexMenu::DrawLobby(const SceneCalc& scene, const VersusCalc& participants
 		if (focus == slot) Frame(x, LOBBY_CARD_TOP, LOBBY_CARD_WIDTH, LOBBY_CARD_HEIGHT);
 		if (!joined) {
 			// オンラインの空き枠はダミーだけ（キャラは選べない）。オフラインは 1P がダミーと CPU・キャラを選ぶ。
-			const bool cpu = !online && participants.IsCpu(slot);
-			Text(cpu ? "CPU" : "ダミー", x + 70, LOBBY_CARD_TOP + 24, 14, cpu ? GOLD : MUTED);
+			const int level = online ? VERSUS_CPU_NONE : participants.GetCpuLevel(slot);
+			Text(CPU_LEVEL_NAMES[level], x + 70, LOBBY_CARD_TOP + 24, 14, level != VERSUS_CPU_NONE ? GOLD : MUTED);
 			if (online) {
 				Text("ダミー", x + 18, LOBBY_CARD_TOP + 60, 22, MUTED);
 				continue;
 			}
 			Text(CHARACTER_DATA::Get(characters[slot]).Name, x + 18, LOBBY_CARD_TOP + 60, 22, MUTED);
 			DrawCharacterPreview(characters[slot], x, yaw);
-			if (focus == slot) Text("←→ キャラ   ○ ダミー / CPU", x + 18, LOBBY_STATUS_Y, 16, CYAN);
+			if (focus == slot) Text("←→ キャラ   ○ CPU の強さ・ダミー", x + 18, LOBBY_STATUS_Y, 16, CYAN);
 			else if (!scene.IsSolo()) Text("Enter / ○ で参加", x + 18, LOBBY_STATUS_Y, 16, WHITE);
 			continue;
 		}
@@ -418,7 +419,7 @@ void CodexMenu::DrawResult(const SceneCalc& scene, const VersusCalc& participant
 		char score[80];
 		sprintf_s(score, "%02d", participants.GetRank(slot));
 		Text(score, LEFT + 20, y + 9, 23, order == 0 ? GOLD : WHITE);
-		sprintf_s(score, "%dP", slot + 1);
+		sprintf_s(score, participants.GetDevice(slot) == VERSUS_DEVICE_CPU ? "%dP  CPU" : "%dP", slot + 1);
 		Text(score, LEFT + 180, y + 9, 23, WHITE);
 		sprintf_s(score, "%d", participants.GetScore(slot));
 		Text(score, LEFT + 470, y + 9, 23, WHITE);

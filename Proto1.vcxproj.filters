@@ -99,6 +99,9 @@
     <ClCompile Include="src\game\fightermanager.cpp">
       <Filter>src\game</Filter>
     </ClCompile>
+    <ClCompile Include="src\game\cpu.cpp">
+      <Filter>src\game</Filter>
+    </ClCompile>
     <ClCompile Include="src\physics\tentacleropecalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
@@ -231,6 +234,9 @@
       <Filter>src\physics</Filter>
     </ClInclude>
     <ClInclude Include="src\game\fightermanager.h">
+      <Filter>src\game</Filter>
+    </ClInclude>
+    <ClInclude Include="src\game\cpu.h">
       <Filter>src\game</Filter>
     </ClInclude>
     <ClInclude Include="src\physics\vec3.h">
@@ -539,6 +545,12 @@
       <Filter>src\physics</Filter>
     </ClCompile>
     <ClInclude Include="src\physics\versuscalc.h">
+      <Filter>src\physics</Filter>
+    </ClInclude>
+    <ClCompile Include="src\physics\cpucalc.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
+    <ClInclude Include="src\physics\cpucalc.h">
       <Filter>src\physics</Filter>
     </ClInclude>
   </ItemGroup>

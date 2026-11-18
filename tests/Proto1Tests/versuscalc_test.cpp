@@ -70,7 +70,7 @@ namespace Proto1Tests
 		EXPECT_FALSE(versus.IsAllReady());
 	}
 
-	// 1P の選択位置は上下の弾きで ルール → 1P → 人のいない枠 と動き、人のいる枠は飛ばす。人のいない枠はダミーと CPU を切り替えられる。
+	// 1P の選択位置は上下の弾きで ルール → 1P → 人のいない枠 と動き、人のいる枠は飛ばす。人のいない枠はダミーと CPU の強さを切り替えられる。
 	TEST(VersusCalcTest, Lobby_FocusSkipsHumansAndTogglesCpu)
 	{
 		VersusCalc versus;
@@ -87,11 +87,14 @@ namespace Proto1Tests
 		versus.MoveLobbyFocus(0.0f, true);
 		versus.MoveLobbyFocus(-1.0f, true);
 		EXPECT_EQ(2, versus.GetLobbyFocus()); // 2P は人なので飛ばす
-		EXPECT_FALSE(versus.IsCpu(2));
-		versus.ToggleCpu(2);
-		EXPECT_TRUE(versus.IsCpu(2));
-		versus.ToggleCpu(1);
-		EXPECT_FALSE(versus.IsCpu(1));
+		EXPECT_EQ(VERSUS_CPU_NORMAL, versus.GetCpuLevel(2)); // はじめは CPU ふつう
+		versus.CycleCpu(2);
+		EXPECT_EQ(VERSUS_CPU_HARD, versus.GetCpuLevel(2));
+		versus.CycleCpu(2);
+		EXPECT_FALSE(versus.IsCpu(2)); // つよいの次はダミー
+		versus.CycleCpu(1);
+		EXPECT_EQ(VERSUS_CPU_NONE, versus.GetCpuLevel(1)); // 人のいる枠は変えない
+		versus.CycleCpu(2);
 		versus.AssignDevice(2); // 選んでいた枠に人が入ると 1P のカードへ戻る
 		versus.MoveLobbyFocus(0.0f, true);
 		EXPECT_EQ(0, versus.GetLobbyFocus());
