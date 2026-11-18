@@ -81,12 +81,12 @@
     </ClCompile>
     <ClCompile Include="..\..\src\physics\armcostcalc.cpp">
       <Filter>src\physics</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\src\physics\lasercalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\physics\spearcalc.cpp">
       <Filter>src\physics</Filter>
-    </ClCompile>
     </ClCompile>
     <ClCompile Include="..\..\src\physics\armusecalc.cpp">
       <Filter>src\physics</Filter>
