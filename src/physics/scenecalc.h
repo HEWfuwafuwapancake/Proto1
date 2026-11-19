@@ -53,6 +53,7 @@ enum SCENE_EVENT
 	SCENE_EVENT_TUNING_CHANGE, ///< 選択した設定を左右の入力方向へ変更する
 	SCENE_EVENT_TUNING_RESET, ///< 全設定と耐久の減る量の表をはじめの値へ戻す
 	SCENE_EVENT_ARM_COST_CHANGE, ///< 選択した耐久の減る量を左右の入力方向へ変更する
+	SCENE_EVENT_LOOK_SENSITIVITY_CHANGE, ///< 視点感度を左右の入力方向へ変更する
 };
 
 /// @brief モード選択の項目
@@ -70,7 +71,8 @@ enum MODE_ITEM
 /// @brief オプションの画面で、試合の設定（0〜TUNING_ITEM_COUNT − 1）の後ろに並ぶ項目
 enum OPTION_ITEM
 {
-	OPTION_ITEM_ARM_COSTS = TUNING_ITEM_COUNT, ///< 耐久の減る量の表を開く
+	OPTION_ITEM_LOOK_SENSITIVITY = TUNING_ITEM_COUNT, ///< 視点感度（この PC だけの設定。通信では送らない）
+	OPTION_ITEM_ARM_COSTS, ///< 耐久の減る量の表を開く
 	OPTION_ITEM_RESET, ///< 全設定と表をはじめの値へ戻す
 	OPTION_ITEM_BACK, ///< 元のメニューへ戻る
 	OPTION_ITEM_COUNT, ///< 項目数

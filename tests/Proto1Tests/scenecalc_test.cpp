@@ -167,6 +167,22 @@ namespace Proto1Tests
 		EXPECT_EQ(1, scene.GetCursor());
 	}
 
+	// オプションの視点感度の行で左右を押すと、感度の変更をゲーム側に伝える。
+	TEST(SceneCalcTest, Options_LookSensitivityChange)
+	{
+		SceneCalc scene;
+		scene.Start();
+		scene.Step({ false, false, -1 }, false);
+		scene.Step({ true, false, 0 }, false);
+		for (int i = 0; i < OPTION_ITEM_LOOK_SENSITIVITY; ++i) {
+			scene.Step({ false, false, 0 }, false);
+			scene.Step({ false, false, -1 }, false);
+		}
+		ASSERT_EQ(OPTION_ITEM_LOOK_SENSITIVITY, scene.GetCursor());
+		EXPECT_EQ(SCENE_EVENT_LOOK_SENSITIVITY_CHANGE, scene.Step({ false, false, 0, false, false, 1 }, false));
+		EXPECT_EQ(SCENE_EVENT_LOOK_SENSITIVITY_CHANGE, scene.Step({ false, false, 0, false, false, -1 }, false));
+	}
+
 	// オプションから耐久の減る量の表を開き、値の変更を伝えて、戻るとオプションの同じ行へ戻る。
 	TEST(SceneCalcTest, Options_ArmCostsChangeAndReturnToOptions)
 	{

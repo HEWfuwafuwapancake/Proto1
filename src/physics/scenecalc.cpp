@@ -81,6 +81,7 @@ SCENE_EVENT SceneCalc::Step(const SCENE_INPUT& input, bool matchFinished)
 		}
 		else if (input.Decide && m_Cursor == OPTION_ITEM_RESET) return SCENE_EVENT_TUNING_RESET;
 		else if (m_Cursor < TUNING_ITEM_COUNT && input.CharacterDirection != 0) return SCENE_EVENT_TUNING_CHANGE;
+		else if (m_Cursor == OPTION_ITEM_LOOK_SENSITIVITY && input.CharacterDirection != 0) return SCENE_EVENT_LOOK_SENSITIVITY_CHANGE;
 		return SCENE_EVENT_NONE;
 	}
 	if (m_Scene == SCENE_ARM_COSTS) {

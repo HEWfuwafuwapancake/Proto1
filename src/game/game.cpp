@@ -231,6 +231,10 @@ void Game::UpdateMenu()
 	if (event == SCENE_EVENT_TUNING_RESET) {
 		SetTuning(TuningCalcDefault());
 		m_ArmCosts = ArmCostCalcDefault();
+		ActionSetLookSensitivityLevel(ActionGetLookSensitivityDefaultLevel());
+	}
+	else if (event == SCENE_EVENT_LOOK_SENSITIVITY_CHANGE) {
+		ActionSetLookSensitivityLevel(ActionGetLookSensitivityLevel() + input.CharacterDirection);
 	}
 	else if (event == SCENE_EVENT_ARM_COST_CHANGE) {
 		// オプションはオフラインのメニューからしか開かないので、表はいつでも書き換えてよい。

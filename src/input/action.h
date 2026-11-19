@@ -109,3 +109,24 @@ int ActionGetEquipMode(int player = 0);
 /// @brief F1〜F4で選んだ、キーボードによる腕の切り替え先を取得する
 /// @return プレイヤーのスロット番号（0〜3。はじめは1P＝0）
 int ActionGetEquipPlayer(void);
+
+
+/// @brief 今の視点感度の段を取得する
+/// @return 段（0〜ActionGetLookSensitivityLevelCount() − 1）
+int ActionGetLookSensitivityLevel(void);
+
+/// @brief 視点感度の段の数を取得する
+/// @return 段の数
+int ActionGetLookSensitivityLevelCount(void);
+
+/// @brief 視点感度のはじめの段（倍率 1.0）を取得する
+/// @return 段
+int ActionGetLookSensitivityDefaultLevel(void);
+
+/// @brief 視点感度の段を設定する。マウス・矢印キー・右スティックのカメラの回る速さがすべて変わる
+/// @param level 段（範囲外は端の段にそろえる）
+void ActionSetLookSensitivityLevel(int level);
+
+/// @brief 今の視点感度の倍率を取得する
+/// @return カメラを回す角度に掛ける倍率（はじめは 1.0）
+float ActionGetLookSensitivity(void);
