@@ -18,6 +18,7 @@ static constexpr CPU_ARM ARM_STYLES[ARM_TYPE_COUNT] = {
 	{ true, 2.2f, 0.0f, 0.0f, true, CPU_RECOVERY_NONE }, // 刀：長押しのワープは使わない
 	{ true, 3.0f, 1.0f, 0.20f, true, CPU_RECOVERY_NONE }, // モーニングスター：たまに回してから投げる
 	{ true, 3.0f, 0.8f, 0.20f, true, CPU_RECOVERY_NONE }, // 槍：たまに投げて突っ込む
+	{ true, 12.0f, 0.4f, 0.20f, false, CPU_RECOVERY_NONE }, // ミサイル：遠くから撃つ。たまに長押しで残りを全部撃つ
 	{ false, 0.0f, 0.0f, 0.0f, false, CPU_RECOVERY_NONE }, // 素手：攻撃できない
 };
 static constexpr uint32_t SLOT_SEED_STEP = 0x27d4eb2fu; // スロットごとに乱数の並びを変える

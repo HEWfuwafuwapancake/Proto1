@@ -63,12 +63,13 @@ static constexpr const char* OPTION_HELP[][3] = {
 	{ "腕が壊れるまでの持ちを変えます。", "倍率が大きいほど、長く使えます。", "無制限なら、耐久が減りません。" }
 };
 static constexpr const char* COST_COLUMNS[ARM_COST_ITEM_COUNT] = { "弱・当たり", "弱・外れ", "強・当たり", "強・外れ", "そのほか" };
-static constexpr const char* COST_ROWS[ARM_COST_ROW_COUNT] = { "触手", "ハンマー", "ナックル", "レーザー", "刀", "モーニングスター", "槍", "ガード" };
+static constexpr const char* COST_ROWS[ARM_COST_ROW_COUNT] = { "触手", "ハンマー", "ナックル", "レーザー", "刀", "モーニングスター", "槍", "ミサイル", "ガード" };
 static constexpr const char* COST_NOTES[ARM_COST_ROW_COUNT][2] = {
 	{ "弱：つかんだ・足場に付いた", "強：回転" }, { "強：衝撃波", "そのほか：空中の跳ね" }, { "強：突進（空中も同じ）", "" },
 	{ "弱：単発のレーザー銃", "強：溜めきった砲（貫通）" },
 	{ "強・外れ：飛んだ瞬間に減る", "当たれば強・当たりとの差を足す" }, { "弱：扇　強：投げた鉄球", "回している間は減らない" },
 	{ "弱：突き（直線上の全員）", "強：投げた槍が刺さったか" },
+	{ "1発ごとに16（持ちで割る）", "表では変えられない" },
 	{ "パリィできずに防いだとき", "" }
 };
 static constexpr const char* CPU_LEVEL_NAMES[VERSUS_CPU_LEVEL_COUNT] = { "ダミー", "CPU よわい", "CPU ふつう", "CPU つよい" };

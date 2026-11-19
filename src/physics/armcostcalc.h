@@ -3,7 +3,7 @@
 /// @file armcostcalc.h
 /// @brief 腕の耐久が攻撃ごとに減る量の表（DirectX・Windows なし。オプションの画面で書き換える）
 
-/// @brief 表の行（腕の並びは ARM_TYPE の触手〜モーニングスターと同じ。最後はガード）
+/// @brief 表の行（腕の並びは ARM_TYPE の触手〜ミサイルと同じ。最後はガード）
 enum ARM_COST_ROW
 {
 	ARM_COST_ROW_TENTACLE, ///< 触手
@@ -13,6 +13,7 @@ enum ARM_COST_ROW
 	ARM_COST_ROW_KATANA, ///< 刀
 	ARM_COST_ROW_FLAIL, ///< モーニングスター
 	ARM_COST_ROW_SPEAR, ///< 槍
+	ARM_COST_ROW_MISSILE, ///< ミサイル（表では変えない。減り方は arm_missile.cpp）
 	ARM_COST_ROW_GUARD, ///< ガード（パリィできずに防いだ）
 	ARM_COST_ROW_COUNT ///< 行の数
 };

@@ -216,6 +216,20 @@ void ShapeDrawCylinder(const XMFLOAT3& start, const XMFLOAT3& end, float radius,
 	DrawMesh(g_Cylinder, world, color);
 }
 
+void ShapeDrawBoxAlong(const XMFLOAT3& start, const XMFLOAT3& end, float width, float depth, const XMFLOAT4& color)
+{
+	const VEC3 from{ start.x, start.y, start.z }, to{ end.x, end.y, end.z };
+	const float length = Vec3Length(Vec3Sub(to, from));
+	if (length <= 0.0f || width <= 0.0f || depth <= 0.0f) return;
+	// 箱は1辺1の立方体なので、円柱と同じ軸に幅・長さ・厚さを掛ける。
+	const TENTACLE_PIECE_AXES axes = TentacleCalcPieceAxes(from, to, { 0, -1, 0 });
+	const VEC3 x = Vec3Scale(axes.X, width), y = Vec3Scale(axes.Y, length), z = Vec3Scale(axes.Z, depth);
+	const VEC3 center = Vec3Scale(Vec3Add(from, to), 0.5f);
+	const XMMATRIX world = XMMatrixSet(x.X, x.Y, x.Z, 0, y.X, y.Y, y.Z, 0,
+		z.X, z.Y, z.Z, 0, center.X, center.Y, center.Z, 1);
+	DrawMesh(g_Box, world, color);
+}
+
 void ShapeDrawCapsule(const XMFLOAT3& bottom, float radius, float height, const XMFLOAT4& color)
 {
 	// 真ん中の円柱の長さ（全体の高さから、上下の半球の分を引く）
