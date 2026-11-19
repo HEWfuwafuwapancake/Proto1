@@ -449,9 +449,14 @@ float ArmManager::GetMoveScale() const
 	return m_GuardHand >= 0 ? fminf(scale, GUARD_MOVE_SCALE) : scale;
 }
 
-bool ArmManager::BlocksJumpAndDash() const
+bool ArmManager::BlocksJump() const
 {
-	return m_Arms[0][m_Types[0]]->BlocksJumpAndDash() || m_Arms[1][m_Types[1]]->BlocksJumpAndDash();
+	return m_Arms[0][m_Types[0]]->BlocksJump() || m_Arms[1][m_Types[1]]->BlocksJump();
+}
+
+bool ArmManager::BlocksDash() const
+{
+	return m_Arms[0][m_Types[0]]->BlocksDash() || m_Arms[1][m_Types[1]]->BlocksDash();
 }
 
 GUARD ArmManager::GetGuard() const

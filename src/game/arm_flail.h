@@ -38,8 +38,8 @@ public:
 	bool CanTakeHold() const override;
 	/// @brief 回している間は歩く速さを半分にする
 	float GetMoveScale() const override;
-	/// @brief 回している間はジャンプとダッシュをできなくする
-	bool BlocksJumpAndDash() const override;
+	/// @brief 回している間はジャンプをできなくする（ダッシュ（ステップ）はできる）
+	bool BlocksJump() const override;
 	/// @brief 扇と投げにナックルの殴りのクリップを使う
 	ARM_BODY_CLIP GetBodyClip() const override;
 

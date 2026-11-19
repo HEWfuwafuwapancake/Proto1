@@ -319,9 +319,9 @@ float FlailArm::GetMoveScale() const
 	return m_Spinning ? SPIN_MOVE_SCALE : 1.0f;
 }
 
-bool FlailArm::BlocksJumpAndDash() const
+bool FlailArm::BlocksJump() const
 {
-	return m_Spinning;
+	return m_Spinning; // 回している間もダッシュ（ステップ）はできる
 }
 
 ARM_BODY_CLIP FlailArm::GetBodyClip() const

@@ -295,7 +295,12 @@ float SpearArm::GetMoveScale() const
 	return m_Throw && m_Phase.GetPhase() == SPEAR_RAISE ? THROW_MOVE_SCALE : 1.0f;
 }
 
-bool SpearArm::BlocksJumpAndDash() const
+bool SpearArm::BlocksJump() const
+{
+	return m_Rushing;
+}
+
+bool SpearArm::BlocksDash() const
 {
 	return m_Rushing;
 }

@@ -99,8 +99,10 @@ public:
 	virtual bool CanTakeHold() const { return !IsActive(); }
 	/// @brief 歩く速さの倍率を取得する（基本は 1.0、派生クラスで変更できる）
 	virtual float GetMoveScale() const { return 1.0f; }
-	/// @brief この腕の動作中、ジャンプとダッシュをできなくするなら true を返す（基本は false）
-	virtual bool BlocksJumpAndDash() const { return false; }
+	/// @brief この腕の動作中、ジャンプをできなくするなら true を返す（基本は false）
+	virtual bool BlocksJump() const { return false; }
+	/// @brief この腕の動作中、ダッシュ（ステップ）をできなくするなら true を返す（基本は false）
+	virtual bool BlocksDash() const { return false; }
 	/// @brief 突進のワールド速度を取得する（水平のみ。突進していなければゼロ）
 	virtual VEC3 GetRushVelocity() const { return {}; }
 	/// @brief 今のガードを取得する（基本はガードなし）
@@ -266,8 +268,10 @@ public:
 	GUARD GetGuard() const;
 	/// @brief 左右の装備している腕の、歩く速さの倍率の小さいほうを取得する
 	float GetMoveScale() const;
-	/// @brief 左右どちらかの装備が、ジャンプとダッシュをできなくしているなら true を返す
-	bool BlocksJumpAndDash() const;
+	/// @brief 左右どちらかの装備が、ジャンプをできなくしているなら true を返す
+	bool BlocksJump() const;
+	/// @brief 左右どちらかの装備が、ダッシュ（ステップ）をできなくしているなら true を返す
+	bool BlocksDash() const;
 	/// @brief 左右の装備の突進速度を取得する（両手なら後から使った手を優先）
 	VEC3 GetRushVelocity() const;
 	/// @brief 片手の装備を取得する
