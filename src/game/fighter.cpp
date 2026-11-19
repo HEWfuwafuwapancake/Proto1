@@ -202,10 +202,10 @@ DUMMY_EVENT Fighter::Update(const Camera* camera, const ArmManager* arms)
 			params.JumpSpeed = JUMP_SPEED;
 			if (!m_Status.IsActive(STATUS_STUN)) {
 				// 茨の中と、腕が止めている間（モーニングスターを回している間）は跳べない。
-				jump = IsTrigger(ACTION_JUMP) && !m_Status.IsActive(STATUS_THORN) && !arms->BlocksJumpAndDash();
+				jump = IsTrigger(ACTION_JUMP) && !m_Status.IsActive(STATUS_THORN) && !arms->BlocksJump();
 				rushVelocity = arms->GetRushVelocity();
 				// 腕の突進中と、腕が足を止めている間（刀が空間を斬っている間など）はダッシュできない。
-				dash = IsTrigger(ACTION_DASH) && rushVelocity.X == 0.0f && rushVelocity.Z == 0.0f && arms->GetMoveScale() > 0.0f && !arms->BlocksJumpAndDash();
+				dash = IsTrigger(ACTION_DASH) && rushVelocity.X == 0.0f && rushVelocity.Z == 0.0f && arms->GetMoveScale() > 0.0f && !arms->BlocksDash();
 			}
 		}
 		// ダッシュの向きは移動の入力、入力がなければキャラの向き。

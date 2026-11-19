@@ -31,8 +31,10 @@ public:
 	ARM_BODY_CLIP GetBodyClip() const override;
 	/// @brief 投げる構えの間だけ歩く速さを下げる
 	float GetMoveScale() const override;
-	/// @brief 刺さった相手へ突っ込んでいる間は、ジャンプとダッシュをできなくするので true を返す
-	bool BlocksJumpAndDash() const override;
+	/// @brief 刺さった相手へ突っ込んでいる間は、ジャンプをできなくするので true を返す
+	bool BlocksJump() const override;
+	/// @brief 刺さった相手へ突っ込んでいる間は、ダッシュをできなくするので true を返す
+	bool BlocksDash() const override;
 	/// @brief 単押しの突きの前の構えの間だけ、狙いの方へ踏み込む速度を返す（No.178）
 	VEC3 GetRushVelocity() const override;
 
