@@ -20,6 +20,7 @@ struct KNOCKBACK_PARAMS
 	float MaxFallSpeed = 0.0f;	///< 重力で落ちる速さの上限（0 以下なら上限なし）
 	float AirControl = 0.0f;	///< 空中で、移動の入力の向きへ1秒ごとに足せる横の速さ（0 なら動かせない）
 	float ControlSpeed = 0.0f;	///< 自分の入力だけで出せる、入力の向きの速さの上限
+	float HitstunPerPercent = 0.0f;	///< 吹っ飛ばされてから何もできない秒数の、ダメージ 1% あたりの長さ（0 なら何もできない時間はない）
 };
 
 /// @brief ダメージ%にダメージを足す
@@ -40,6 +41,12 @@ float KnockbackCalcHeal(float percent, float amount);
 /// @param params 調整用の値
 /// @return 吹っ飛ぶ速さ =（BaseSpeed ＋ percent × Growth）× power
 float KnockbackCalcSpeed(float percent, float power, const KNOCKBACK_PARAMS& params);
+
+/// @brief 吹っ飛ばされてから何もできない秒数を求める
+/// @param percent ダメージ%（攻撃のダメージを足したあとの値）
+/// @param params 調整用の値
+/// @return 何もできない秒数 = percent × HitstunPerPercent（0 より下にしない）
+float KnockbackCalcHitstun(float percent, const KNOCKBACK_PARAMS& params);
 
 /// @brief 吹っ飛ぶ速度（向きと速さ）を求める
 /// @details 攻撃の向き（横だけを使う）に、LaunchAngle だけ上向きの角度をつける。攻撃の向きが横に向いていないときは真上に飛ぶ

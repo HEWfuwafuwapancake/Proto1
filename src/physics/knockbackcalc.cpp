@@ -21,6 +21,12 @@ float KnockbackCalcSpeed(float percent, float power, const KNOCKBACK_PARAMS& par
 	return (params.BaseSpeed + percent * params.Growth) * power;
 }
 
+float KnockbackCalcHitstun(float percent, const KNOCKBACK_PARAMS& params)
+{
+	const float seconds = percent * params.HitstunPerPercent;
+	return seconds > 0.0f ? seconds : 0.0f;
+}
+
 VEC3 KnockbackCalcVelocity(const VEC3& direction, float speed, const KNOCKBACK_PARAMS& params)
 {
 	const float horizontal = sqrtf(direction.X * direction.X + direction.Z * direction.Z);
