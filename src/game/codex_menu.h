@@ -41,6 +41,7 @@ private:
 	void Detail(const char* tag, const char* title, const char* line1, const char* line2, const char* line3) const;
 	void Frame(float x, float y, float width, float height) const; // 選んでいる場所を水色の枠で囲む
 	void Footer(const char* help) const;
+	void ScrollBar(float x, float y, float height, int top, int shown, int count) const; // 表のスクロールの位置を縦の棒で見せる（全部見えていれば出さない）
 	void DrawOptions(const SceneCalc& scene, const MATCH_TUNING& tuning) const;
 	void DrawArmCosts(const SceneCalc& scene, const ARM_COST_TABLE& costs) const;
 	void DrawLobby(const SceneCalc& scene, const VersusCalc& participants, const NetSession& net,

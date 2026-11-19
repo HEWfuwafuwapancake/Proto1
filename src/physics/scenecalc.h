@@ -87,6 +87,18 @@ enum RESULT_ITEM
 	RESULT_ITEM_COUNT, ///< 項目数（選択する項目ではない）
 };
 
+/// @brief 耐久の減る量の表に一度に見せる行の数（調整用の値。これより行が多いと上下にスクロールする）
+static constexpr int ARM_COST_VISIBLE_ROWS = 8;
+
+/// @brief 選んでいる行が見える範囲に入るように、スクロールの先頭の行を求める
+/// @details 見えている行を選んでいる間は動かさず、範囲の外へ出たときだけ、その行が端に来るまで動かす
+/// @param top 今の先頭の行
+/// @param selected 選んでいる行（行を選んでいないときは -1）
+/// @param visible 一度に見せる行の数
+/// @param count 行の数
+/// @return 新しい先頭の行（0 〜 count − visible。行が visible 以下なら 0）
+int SceneCalcScrollTop(int top, int selected, int visible, int count);
+
 /// @brief シーンに渡す1フレーム分の入力
 struct SCENE_INPUT
 {
@@ -121,6 +133,8 @@ public:
 	/// @brief モード選択・オプション・結果画面で選んでいる項目の番号を取得する
 	/// （耐久の減る量の表では ArmCostCalcUsedCell の番号。最後の ArmCostCalcUsedCount() は「戻る」）
 	int GetCursor() const { return m_Cursor; }
+	/// @brief 耐久の減る量の表で、いちばん上に見せる行（ARM_COST_ROW）を取得する
+	int GetCostScrollTop() const { return m_CostScrollTop; }
 	/// @brief キャラ選択に、決定した機器のほかは参加できないか取得する（true：SOLO、false：LOCAL VS・オンライン）
 	bool IsSolo() const { return !m_Online && m_LobbyMode == MODE_ITEM_SOLO; }
 	/// @brief キャラ選択で選んでいる試合のルールを取得する
@@ -135,6 +149,7 @@ private:
 	SCENE m_Scene = SCENE_GAME_START;
 	SCENE m_OptionsReturn = SCENE_GAME_START;
 	int m_Cursor = RESULT_ITEM_RETRY;
+	int m_CostScrollTop = 0; // 耐久の減る量の表のスクロール（いちばん上に見せる行）
 	bool m_MenuReady = true;
 	bool m_Online = false;
 };
