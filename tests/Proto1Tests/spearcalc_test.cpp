@@ -58,3 +58,34 @@ TEST(SpearCalcTest, HasFallenWhenOffIsland)
 	EXPECT_TRUE(SpearCalcHasFallen(stage, { 12.0f, 2.0f, 0.0f }));
 	EXPECT_TRUE(SpearCalcHasFallen(stage, { 0.0f, -1.0f, 0.0f }));
 }
+
+namespace
+{
+	const SPEAR_THRUST_PARAMS THRUST{ 2.2f, 12.0f, 2.4f, 7.0f, 1.4f };
+}
+
+// 突きは、体の手前の面が肩から 2.2m より先なら穂先の強い当たり、近ければ手元の弱い当たりになる。
+TEST(SpearCalcTest, ThrustTipHitsHarderThanBase)
+{
+	const VEC3 shoulder{ 0.0f, 1.0f, 0.0f };
+	const VEC3 forward{ 0.0f, 0.0f, 1.0f };
+	const SPEAR_THRUST_HIT tip = SpearCalcThrustHit(shoulder, forward, Body(0.0f, 2.9f).Body, THRUST);
+	EXPECT_TRUE(tip.Tip);
+	EXPECT_NEAR(12.0f, tip.Damage, 1e-4f);
+	EXPECT_NEAR(2.4f, tip.Power, 1e-4f);
+	const SPEAR_THRUST_HIT base = SpearCalcThrustHit(shoulder, forward, Body(0.0f, 1.5f).Body, THRUST);
+	EXPECT_FALSE(base.Tip);
+	EXPECT_NEAR(7.0f, base.Damage, 1e-4f);
+	EXPECT_NEAR(1.4f, base.Power, 1e-4f);
+}
+
+// 踏み込みは、前の直線上で穂先の距離より近くに相手が入ったら止める（遠い相手・横の相手では止めない）。
+TEST(SpearCalcTest, LungeStopsWhenTargetWithinTipStart)
+{
+	const VEC3 shoulder{ 0.0f, 1.0f, 0.0f };
+	const VEC3 forward{ 0.0f, 0.0f, 1.0f };
+	const TENTACLE_TARGET farTargets[] = { Body(0.0f, 4.0f), Body(2.0f, 1.0f) };
+	EXPECT_FALSE(SpearCalcShouldStopLunge(shoulder, forward, THRUST, 0.4f, farTargets, 2));
+	const TENTACLE_TARGET nearTargets[] = { Body(0.0f, 4.0f), Body(0.0f, 2.2f) };
+	EXPECT_TRUE(SpearCalcShouldStopLunge(shoulder, forward, THRUST, 0.4f, nearTargets, 2));
+}
