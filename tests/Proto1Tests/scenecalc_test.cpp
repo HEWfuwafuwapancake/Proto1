@@ -202,6 +202,18 @@ namespace Proto1Tests
 		EXPECT_EQ(OPTION_ITEM_ARM_COSTS, scene.GetCursor());
 	}
 
+	// 表の行が見せる数より多いとき、選んでいる行が下の端・上の端を越えたぶんだけスクロールし、見えている間は動かさない。
+	TEST(SceneCalcTest, ScrollTopFollowsSelectedRowOnlyWhenItLeavesView)
+	{
+		EXPECT_EQ(0, SceneCalcScrollTop(0, 7, 8, 10));
+		EXPECT_EQ(1, SceneCalcScrollTop(0, 8, 8, 10));
+		EXPECT_EQ(2, SceneCalcScrollTop(1, 9, 8, 10));
+		EXPECT_EQ(2, SceneCalcScrollTop(2, 3, 8, 10));
+		EXPECT_EQ(1, SceneCalcScrollTop(2, 1, 8, 10));
+		EXPECT_EQ(1, SceneCalcScrollTop(1, -1, 8, 10));
+		EXPECT_EQ(0, SceneCalcScrollTop(0, 7, 8, 8));
+	}
+
 	// モード選択からの設定変更でも、ルールと戻り先のカーソルを保つ。
 	TEST(SceneCalcTest, Options_ModesKeepRuleAndReturnToOptionsRow)
 	{

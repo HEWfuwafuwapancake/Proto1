@@ -32,6 +32,16 @@ void SceneCalc::ShowModes()
 	m_MenuReady = false;
 }
 
+int SceneCalcScrollTop(int top, int selected, int visible, int count)
+{
+	const int maxTop = count > visible ? count - visible : 0;
+	if (selected >= 0) {
+		if (selected < top) top = selected;
+		if (selected >= top + visible) top = selected - visible + 1;
+	}
+	return top < 0 ? 0 : (top > maxTop ? maxTop : top);
+}
+
 void SceneCalc::MoveCursor(float moveY, int count)
 {
 	if (fabsf(moveY) < MENU_STICK_DEADZONE) m_MenuReady = true;
@@ -77,6 +87,7 @@ SCENE_EVENT SceneCalc::Step(const SCENE_INPUT& input, bool matchFinished)
 		else if (input.Decide && m_Cursor == OPTION_ITEM_ARM_COSTS) {
 			m_Scene = SCENE_ARM_COSTS;
 			m_Cursor = 0;
+			m_CostScrollTop = 0;
 			m_MenuReady = false;
 		}
 		else if (input.Decide && m_Cursor == OPTION_ITEM_RESET) return SCENE_EVENT_TUNING_RESET;
@@ -88,6 +99,10 @@ SCENE_EVENT SceneCalc::Step(const SCENE_INPUT& input, bool matchFinished)
 		// 使う欄を上から順に並べ、最後が「戻る」。
 		const int back = ArmCostCalcUsedCount();
 		MoveCursor(input.MoveY, back + 1);
+		// 行が多いときは、選んでいる欄の行が見えるまで表を上下にスクロールする（「戻る」を選んでいる間は動かさない）。
+		int row = -1, item = -1;
+		ArmCostCalcUsedCell(m_Cursor, row, item);
+		m_CostScrollTop = SceneCalcScrollTop(m_CostScrollTop, row, ARM_COST_VISIBLE_ROWS, ARM_COST_ROW_COUNT);
 		if (input.Back || (input.Decide && m_Cursor == back)) {
 			m_Scene = SCENE_OPTIONS;
 			m_Cursor = OPTION_ITEM_ARM_COSTS;

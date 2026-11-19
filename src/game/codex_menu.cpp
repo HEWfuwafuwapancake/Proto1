@@ -6,6 +6,7 @@
 #include "input/action.h"
 #include "render/number2d.h"
 #include "render/text2d.h"
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 
@@ -46,6 +47,8 @@ static constexpr float COST_TOP = 178.0f; // 耐久の減る量の表の1行目
 static constexpr float COST_GAP = 49.0f; // 表の行の間隔
 static constexpr float COST_LABEL_WIDTH = 150.0f; // 表の腕の名前の列の幅
 static constexpr float COST_CELL_WIDTH = 86.0f; // 表の数字の欄の幅
+static constexpr float COST_SCROLL_GAP = 6.0f; // 表の右の端からスクロールの位置の棒までの間
+static constexpr float COST_SCROLL_WIDTH = 4.0f; // スクロールの位置の棒の幅
 static constexpr const char* OPTION_NAMES[] = {
 	"突進・移動技の距離", "吹っ飛びの強さ", "ハンマーのしびれ時間", "ダメージの倍率",
 	"マップの広さ", "カプセルの出現量", "腕の耐久の持ち"
@@ -306,6 +309,16 @@ void CodexMenu::DrawOptions(const SceneCalc& scene, const MATCH_TUNING& tuning) 
 	Footer("↑↓ / W S  選択    ←→ / A D  変更    Enter / ○  決定    Backspace / ×  戻る");
 }
 
+void CodexMenu::ScrollBar(float x, float y, float height, int top, int shown, int count) const
+{
+	// 全部の行が見えているときは出さない。
+	if (shown <= 0 || count <= shown) return;
+	const float thumbHeight = height * shown / count;
+	const float thumbY = y + (height - thumbHeight) * top / (count - shown);
+	Number2DDrawBox({ x, y, COST_SCROLL_WIDTH, height }, LINE);
+	Number2DDrawBox({ x, thumbY, COST_SCROLL_WIDTH, thumbHeight }, CYAN);
+}
+
 void CodexMenu::DrawArmCosts(const SceneCalc& scene, const ARM_COST_TABLE& costs) const
 {
 	Header("腕の耐久の減る量", "OPTIONS / ARM DURABILITY", 0);
@@ -315,8 +328,12 @@ void CodexMenu::DrawArmCosts(const SceneCalc& scene, const ARM_COST_TABLE& costs
 	for (int item = 0; item < ARM_COST_ITEM_COUNT; ++item) {
 		Text(COST_COLUMNS[item], cellLeft + item * COST_CELL_WIDTH + 4, 150, 13, item == selectedItem ? CYAN : MUTED);
 	}
-	for (int row = 0; row < ARM_COST_ROW_COUNT; ++row) {
-		const float y = COST_TOP + row * COST_GAP;
+	// 行が多いときは、見せる行の数だけ描き、右にスクロールの位置を出す（行の間隔は変えない）。
+	const int top = scene.GetCostScrollTop();
+	const int shown = (std::min)(static_cast<int>(ARM_COST_ROW_COUNT), ARM_COST_VISIBLE_ROWS);
+	ScrollBar(LEFT + ROW_WIDTH + COST_SCROLL_GAP, COST_TOP, shown * COST_GAP - 6, top, shown, ARM_COST_ROW_COUNT);
+	for (int row = top; row < top + shown; ++row) {
+		const float y = COST_TOP + (row - top) * COST_GAP;
 		const bool rowSelected = row == selectedRow;
 		Number2DDrawBox({ LEFT, y, ROW_WIDTH, COST_GAP - 6 }, rowSelected ? XMFLOAT4{ 0.055f, 0.20f, 0.25f, 1 } : PANEL);
 		Number2DDrawBox({ LEFT, y, rowSelected ? 4.0f : 1.0f, COST_GAP - 6 }, rowSelected ? CYAN : LINE);
@@ -332,7 +349,7 @@ void CodexMenu::DrawArmCosts(const SceneCalc& scene, const ARM_COST_TABLE& costs
 		}
 	}
 	const int back = ArmCostCalcUsedCount();
-	Row("戻る", "", ARM_COST_ROW_COUNT, scene.GetCursor() == back, COST_TOP + ARM_COST_ROW_COUNT * COST_GAP + 4, 41);
+	Row("戻る", "", ARM_COST_ROW_COUNT, scene.GetCursor() == back, COST_TOP + shown * COST_GAP + 4, 41);
 	if (selectedRow >= 0) {
 		char line1[64];
 		sprintf_s(line1, "%s：%d（はじめは %d）", COST_COLUMNS[selectedItem], costs.Values[selectedRow][selectedItem],
