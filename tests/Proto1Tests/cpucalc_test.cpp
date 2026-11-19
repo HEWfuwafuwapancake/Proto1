@@ -105,4 +105,65 @@ namespace Proto1Tests
 			EXPECT_EQ(x.MoveY, y.MoveY);
 		}
 	}
+
+	// 同じくらいの近さの相手が2人いても、考え直すたびに狙う相手を入れ替えない。
+	TEST(CpuCalcTest, Target_KeepsCurrentWhenOpponentsAreSimilar)
+	{
+		CPU_VIEW view = MakeView();
+		CpuCalc cpu;
+		cpu.Reset(5, 0, VERSUS_CPU_HARD);
+		int first = -1;
+		bool switched = false;
+		for (int i = 0; i < CPU_STEPS * 4; ++i) {
+			// 2人の近さが 0.3 m ずつ交互に入れ替わる。
+			const bool odd = (i / 4) % 2 == 1;
+			view.Opponents[1] = { true, { 0.0f, 0.0f, odd ? 5.0f : 5.3f }, 0.0f };
+			view.Opponents[2] = { true, { 0.0f, 0.0f, odd ? -5.3f : -5.0f }, 0.0f };
+			cpu.Step(view);
+			if (first < 0) first = cpu.GetTarget();
+			else switched = switched || cpu.GetTarget() != first;
+		}
+		EXPECT_GE(first, 1);
+		EXPECT_FALSE(switched);
+	}
+
+	// 止まる距離まで近づいて止まったら、相手が少し揺れても歩き出さない。
+	TEST(CpuCalcTest, Chase_StaysStoppedWhenOpponentWobblesAtRange)
+	{
+		CPU_VIEW view = MakeView();
+		view.Arms[0] = { false, 0.0f, 0.0f, 0.0f, false, CPU_RECOVERY_NONE }; // 腕なし：2 m で止まる
+		view.Opponents[1] = { true, { 0.0f, 0.0f, 6.0f }, 0.0f };
+		CpuCalc cpu;
+		cpu.Reset(6, 0, VERSUS_CPU_NORMAL);
+		for (int i = 0; i < CPU_STEPS; ++i) cpu.Step(view);
+		bool moved = false;
+		for (int i = 0; i < CPU_STEPS; ++i) {
+			view.Opponents[1].Position.Z = i % 2 == 0 ? 1.9f : 2.3f;
+			const PLAYER_INPUT input = cpu.Step(view);
+			if (i > 0) moved = moved || input.MoveX != 0 || input.MoveY != 0;
+		}
+		EXPECT_FALSE(moved);
+	}
+
+	// ロックオンを合わせるときは、狙う相手のいる側へ切り替える。カメラがロックしていなければ押さない。
+	TEST(CpuCalcTest, TargetSwitch_PressesTowardWantedSide)
+	{
+		CPU_VIEW view = MakeView();
+		view.Opponents[1] = { true, { 0.0f, 0.0f, 3.0f }, 0.0f };
+		view.Opponents[2] = { false, { 3.0f, 0.0f, 0.0f }, 0.0f }; // ロックしているが狙えない相手（右）
+		CpuCalc cpu;
+		cpu.Reset(7, 0, VERSUS_CPU_NORMAL);
+		view.CameraTarget = -1;
+		bool pressedWithoutLock = false;
+		for (int i = 0; i < CPU_STEPS; ++i) {
+			const PLAYER_INPUT input = cpu.Step(view);
+			pressedWithoutLock = pressedWithoutLock || Pressed(input, ACTION_TARGET_LEFT) || Pressed(input, ACTION_TARGET_RIGHT);
+		}
+		EXPECT_EQ(1, cpu.GetTarget());
+		EXPECT_FALSE(pressedWithoutLock);
+		view.CameraTarget = 2;
+		const PLAYER_INPUT input = cpu.Step(view);
+		EXPECT_TRUE(Pressed(input, ACTION_TARGET_LEFT)); // 正面（+Z）の相手は、右（+X）の相手から見て左
+		EXPECT_FALSE(Pressed(input, ACTION_TARGET_RIGHT));
+	}
 }

@@ -101,6 +101,7 @@ private:
 	int m_GuardHand = -1; // ガードしている手（なしは -1）
 	float m_HoldTimer = 0.0f; // 長押しを続ける残り秒数
 	int m_HoldHand = -1; // 長押ししている手（なしは -1）
+	bool m_Chasing = false; // 目的地へ歩いているか（止まる距離の前後で歩く・止まるを繰り返さないため）
 	bool m_AirDashed = false; // 足場を離れてからダッシュを使ったか
 	bool m_AirRecovered = false; // 足場を離れてから腕の復帰技を使ったか
 };

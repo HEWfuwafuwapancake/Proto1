@@ -1,6 +1,6 @@
 ﻿# Proto1 開発タスク一覧
 
-最終更新：2026-11-18（Claude。Shota の PC、`Proto1`）。No.172 キャラ選択と No.24・173〜175 CPU（[PR #228](https://github.com/HEWfuwafuwapancake/Proto1/pull/228)）。
+最終更新：2026-11-19（Claude。Shota の PC、`Proto1`）。No.177 CPU のガタガタ直し。
 
 企画書「腕ダフルアームズ 〜変な腕でぶっ飛ばせ！〜」のプロトタイプを作るためのタスクです。
 上から順に、**プラン → 管理者の確認 → 実装 → テスト → 完了チェック** の流れで1つずつ進めます。
@@ -215,6 +215,7 @@ No.114 を最初にマージする。No.115〜119 は触るファイルを分け
 | 174 | CPU 段階2：腕ごとの間合い・長押しの表（`cpu.cpp` の `ARM_STYLES`）、カプセルを拾う、腕の復帰技、ガード。実装 Claude | 173 | 拾った腕を使い分けて戦わせる（[PR #228](https://github.com/HEWfuwafuwapancake/Proto1/pull/228)）。 | ✅ |
 | 175 | CPU 段階3：強さ3段（よわい・ふつう・つよい。キャラ選択で枠ごとに選ぶ。`cpucalc.cpp` の `LEVEL_PARAMS`）。数字は管理者が遊んで調整する。実装 Claude | 174 | 強さを選べるようにする（[PR #228](https://github.com/HEWfuwafuwapancake/Proto1/pull/228)）。 | ✅ |
 | 176 | 吹っ飛ばされてからダメージ%に比例した間（`HITSTUN_PER_PERCENT`。100% で 0.5 秒）は何もできない。吹っ飛び中のダッシュは吹っ飛びの速度をすべて 0 にしてふつうのダッシュをする（前は速度に足していて、重なるととても速くなった）。実装 Claude | 115 | 管理者の依頼（2026-11-19。[PR #229](https://github.com/HEWfuwafuwapancake/Proto1/pull/229)）。 | ✅ |
+| 177 | CPU のガタガタを直す：カメラでロックできない相手（場外へ落ちている相手など）を狙わない（狙うとロックオン切り替えを押し続けて画面と体が回り続けた）、同じくらいの相手で狙いを入れ替え続けない（`TARGET_KEEP_BONUS`）、止まる距離の前後で歩く・止まるを繰り返さない（`CHASE_RESUME_MARGIN`）、ロックオンは狙う相手のいる側へ切り替える。実装 Claude | 175 | 管理者の依頼（2026-11-19。[PR #230](https://github.com/HEWfuwafuwapancake/Proto1/pull/230)）。 | ✅ |
 
 ### Codex 専用 worktree の並行作業
 

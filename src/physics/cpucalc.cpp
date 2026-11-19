@@ -12,7 +12,9 @@ static constexpr CPU_PARAMS LEVEL_PARAMS[VERSUS_CPU_LEVEL_COUNT] = {
 };
 static constexpr float THINK_JITTER = 0.25f; // 考え直す間隔・攻撃の間隔のばらつき（±割合）
 static constexpr float PERCENT_WEIGHT = 0.02f; // 相手を選ぶとき、%が1増えるごとに近いとみなす距離（m）
+static constexpr float TARGET_KEEP_BONUS = 1.5f; // 相手を選び直すとき、今の相手をこの距離（m）だけ近いとみなす（同じくらいの相手で入れ替わり続けない）
 static constexpr float CHASE_RANGE_MIN = 2.0f; // 腕を使えないときに近づく距離（m。体どうしが押し合わない距離）
+static constexpr float CHASE_RESUME_MARGIN = 0.8f; // 止まったあと、止まる距離よりこの距離（m）離れてから歩き出す（歩く・止まるを毎フレーム繰り返さない）
 static constexpr float CAPSULE_SEEK_RANGE = 14.0f; // 使える腕があるとき、この距離（m）以内のカプセルを拾いに行く（素手なら距離を問わない）
 static constexpr float EDGE_LOOKAHEAD = 1.2f; // 足場のふちを避けるため、この距離（m）先に足場があるかを見る
 static constexpr float FALL_MARGIN = 0.5f; // 浮島の上の面よりこの高さ（m）下なら落ちているとみなす
@@ -70,14 +72,16 @@ int CpuCalc::ChooseHand(const CPU_VIEW& view, float distance) const
 void CpuCalc::Think(const CPU_VIEW& view)
 {
 	m_ThinkTimer = m_Params.ThinkSeconds * m_Random.NextFloat(1.0f - THINK_JITTER, 1.0f + THINK_JITTER);
-	// 近くて%の高い相手を狙う（高い%の相手ほど場外にしやすい）。
+	// 近くて%の高い相手を狙う（高い%の相手ほど場外にしやすい）。今の相手は少し優先する。
+	const int previous = m_Target;
 	m_Target = -1;
 	float bestScore = 0.0f;
 	for (int slot = 0; slot < FIGHTER_COUNT; ++slot) {
 		const CPU_OPPONENT& opponent = view.Opponents[slot];
 		if (slot == m_Slot || !opponent.Available) continue;
 		const float dx = opponent.Position.X - view.Position.X, dz = opponent.Position.Z - view.Position.Z;
-		const float score = sqrtf(dx * dx + dz * dz) - opponent.Percent * PERCENT_WEIGHT;
+		float score = sqrtf(dx * dx + dz * dz) - opponent.Percent * PERCENT_WEIGHT;
+		if (slot == previous) score -= TARGET_KEEP_BONUS;
 		if (m_Target < 0 || score < bestScore) { m_Target = slot; bestScore = score; }
 	}
 	// 相手が近ければ、ある割合でガードする。
@@ -168,7 +172,10 @@ PLAYER_INPUT CpuCalc::Step(const CPU_VIEW& view)
 		}
 		const float gx = goalX - self.X, gz = goalZ - self.Z;
 		const float goalDistance = sqrtf(gx * gx + gz * gz);
-		if (goalDistance > stopDistance && goalDistance > 0.0f) {
+		// 止まる距離まで近づいたら止まり、少し離れるまでは歩き出さない（カプセルは近づき続ける）。
+		if (goalDistance <= stopDistance) m_Chasing = false;
+		else if (seeking || goalDistance > stopDistance + CHASE_RESUME_MARGIN) m_Chasing = true;
+		if (m_Chasing && goalDistance > 0.0f) {
 			worldX = gx / goalDistance;
 			worldZ = gz / goalDistance;
 			// 自分から場外へ歩き出さないよう、少し先に足場がなければ止まる。
@@ -198,8 +205,15 @@ PLAYER_INPUT CpuCalc::Step(const CPU_VIEW& view)
 		m_GuardTimer -= dt;
 	}
 	// ロックオンの相手を、狙っている相手にそろえる（攻撃の向きはハードロックが合わせる）。
-	if (m_Target >= 0 && view.CameraTarget != m_Target && m_TargetTimer <= 0.0f) {
-		buttons |= Bit(ACTION_TARGET_RIGHT);
+	// カメラがロックしていないときは、カメラが自分で正面の相手を選ぶので押さない。
+	// 狙う相手が今のロックの相手より右にいれば右、左にいれば左へ切り替える（遠回りして画面を回さない）。
+	if (m_Target >= 0 && view.CameraTarget >= 0 && view.CameraTarget < FIGHTER_COUNT
+		&& view.CameraTarget != m_Target && m_TargetTimer <= 0.0f) {
+		const VEC3& locked = view.Opponents[view.CameraTarget].Position;
+		const VEC3& wanted = view.Opponents[m_Target].Position;
+		float turn = atan2f(wanted.X - self.X, wanted.Z - self.Z) - atan2f(locked.X - self.X, locked.Z - self.Z);
+		turn = atan2f(sinf(turn), cosf(turn));
+		buttons |= Bit(turn >= 0.0f ? ACTION_TARGET_RIGHT : ACTION_TARGET_LEFT);
 		m_TargetTimer = TARGET_SWITCH_SECONDS;
 	}
 	return ActionCalcPlayerInput(CpuCalcWorldToMove(worldX, worldZ, view.CameraYaw), {}, buttons);

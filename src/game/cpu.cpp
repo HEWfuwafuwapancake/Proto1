@@ -59,7 +59,10 @@ PLAYER_INPUT Cpu::Update(const Stage& stage, const FighterManager& fighters, con
 	for (int slot = 0; slot < FIGHTER_COUNT; ++slot) {
 		const Fighter& other = fighters.GetFighter(slot);
 		CPU_OPPONENT& opponent = view.Opponents[slot];
-		opponent.Available = slot != m_Slot && fighters.IsActive(slot) && !fighters.IsHidden(slot) && !other.IsInvincible();
+		// カメラでロックオンできない相手（場外へ落ちている相手など）は狙わない。
+		// 狙うと、ロックオンを合わせようと切り替えボタンを押し続け、カメラと体の向きが回り続ける。
+		opponent.Available = slot != m_Slot && fighters.IsActive(slot) && !fighters.IsHidden(slot) && !other.IsInvincible()
+			&& camera.CanLockOn(slot);
 		const XMFLOAT3 p = other.GetPosition();
 		opponent.Position = { p.x, p.y, p.z };
 		opponent.Percent = fighters.GetPercent(slot);
