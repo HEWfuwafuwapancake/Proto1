@@ -383,6 +383,13 @@ float Camera::GetYaw(void) const
 	return m_Yaw;
 }
 
+bool Camera::CanLockOn(int slot) const
+{
+	CAMERA_FOCUS_TARGET targets[FIGHTER_COUNT];
+	CollectTargets(targets);
+	return slot != m_Slot && IsTargetAvailable(slot, targets);
+}
+
 int Camera::GetTarget(void) const
 {
 	// 触腕はカメラのあとに更新されるので、つかんだフレームから公開上も解除する。

@@ -89,6 +89,11 @@ public:
 	/// @return スロット番号（0〜3。自分を除く）。ターゲットなし・フリー・敵をつかんでいる間は-1
 	int GetTarget(void) const;
 
+	/// @brief その相手をロックオンできるかを取得する（CPU が、カメラで狙えない相手を選ばないために使う）
+	/// @param slot 相手のスロット番号（0〜3）
+	/// @return true：ロックオンできる、false：自分・復活待ち・場外へ落ちている・隠れている相手
+	bool CanLockOn(int slot) const;
+
 private:
 	VEC3 PlayerHead(void) const;
 	void CollectTargets(CAMERA_FOCUS_TARGET* targets) const;
