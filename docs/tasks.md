@@ -218,7 +218,7 @@ No.114 を最初にマージする。No.115〜119 は触るファイルを分け
 | 177 | CPU のガタガタを直す：カメラでロックできない相手（場外へ落ちている相手など）を狙わない（狙うとロックオン切り替えを押し続けて画面と体が回り続けた）、同じくらいの相手で狙いを入れ替え続けない（`TARGET_KEEP_BONUS`）、止まる距離の前後で歩く・止まるを繰り返さない（`CHASE_RESUME_MARGIN`）、ロックオンは狙う相手のいる側へ切り替える。実装 Claude | 175 | 管理者の依頼（2026-11-19。[PR #230](https://github.com/HEWfuwafuwapancake/Proto1/pull/230)）。 | ✅ |
 | 178 | 槍の単押しを強くする：突く前に前へ踏み込み（約1.8m。ロックオン中は相手の方へ）、穂先の近くで当てると強い（＋12%・強さ2.4）、手元だと弱い（＋7%・強さ1.4）。計算は `physics/spearcalc`。通信の版26。実装 Claude | 166 | 管理者の依頼（2026-11-19。単押しが弱い。[PR #231](https://github.com/HEWfuwafuwapancake/Proto1/pull/231)）。 | ✅ |
 | 179 | オプションに視点感度を足す：×0.25〜×3.0 の9段（はじめ ×1.0。`action.cpp` の `LOOK_SENSITIVITY_SCALES`）。マウス・矢印キー・右スティックに効き、この PC だけの設定（通信では送らない。「標準に戻す」で ×1.0）。実装 Claude | 5 | 管理者の依頼（2026-11-19。[PR #232](https://github.com/HEWfuwafuwapancake/Proto1/pull/232)）。 | ✅ |
-| 180 | モーニングスターを回している間（長押し中）もステップ（ダッシュ）できるようにする。ジャンプは今まで通りできない（`Arm::BlocksJumpAndDash` を `BlocksJump`・`BlocksDash` に分けた）。通信の版27。実装 Claude | 154 | 管理者の依頼（2026-11-19）。 | ✅ |
+| 180 | モーニングスターを回している間（長押し中）もステップ（ダッシュ）できるようにする。ジャンプは今まで通りできない（`Arm::BlocksJumpAndDash` を `BlocksJump`・`BlocksDash` に分けた）。通信の版27。実装 Claude | 154 | 管理者の依頼（2026-11-19。[PR #233](https://github.com/HEWfuwafuwapancake/Proto1/pull/233)）。 | ✅ |
 
 ### Codex 専用 worktree の並行作業
 
