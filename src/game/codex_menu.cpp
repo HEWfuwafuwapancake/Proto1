@@ -21,7 +21,7 @@ static constexpr float LEFT = 64.0f;
 static constexpr float ROW_WIDTH = 580.0f;
 static constexpr float RIGHT = 708.0f;
 static constexpr float OPTION_TOP = 156.0f;
-static constexpr float OPTION_GAP = 46.0f;
+static constexpr float OPTION_GAP = 43.0f; // 11行が下の操作説明に重ならない間隔
 static constexpr float TEXT_SCALE = 1.35f; // 文字画像の上下の余白を見込み、メニューの文字を大きくする。
 static constexpr float PI = 3.14159265f;
 static constexpr float PREVIEW_TURN_SECONDS = 12.0f; // 全身を見せる1回転の秒数
@@ -258,9 +258,16 @@ void CodexMenu::DrawOptions(const SceneCalc& scene, const MATCH_TUNING& tuning) 
 	Header("オプション", "OPTIONS / MATCH SETTINGS", 0);
 	for (int i = 0; i < OPTION_ITEM_COUNT; ++i) {
 		const float y = OPTION_TOP + i * OPTION_GAP;
-		Row(i < TUNING_ITEM_COUNT ? OPTION_NAMES[i] : i == OPTION_ITEM_ARM_COSTS ? "腕の耐久の減る量"
-			: i == OPTION_ITEM_RESET ? "標準に戻す" : "戻る", "", i, scene.GetCursor() == i, y, 41);
-		if (i == OPTION_ITEM_ARM_COSTS) Text("表を開く >", 458, y + 9, 20, scene.GetCursor() == i ? CYAN : WHITE);
+		Row(i < TUNING_ITEM_COUNT ? OPTION_NAMES[i] : i == OPTION_ITEM_LOOK_SENSITIVITY ? "視点感度"
+			: i == OPTION_ITEM_ARM_COSTS ? "腕の耐久の減る量"
+			: i == OPTION_ITEM_RESET ? "標準に戻す" : "戻る", "", i, scene.GetCursor() == i, y, 39);
+		if (i == OPTION_ITEM_ARM_COSTS) Text("表を開く >", 458, y + 8, 20, scene.GetCursor() == i ? CYAN : WHITE);
+		if (i == OPTION_ITEM_LOOK_SENSITIVITY) {
+			char value[32];
+			sprintf_s(value, "× %.2f", ActionGetLookSensitivity());
+			Text(value, 458, y + 8, 20, scene.GetCursor() == i ? CYAN : WHITE);
+			if (scene.GetCursor() == i) Text("<", 428, y + 8, 20, CYAN);
+		}
 		if (i >= TUNING_ITEM_COUNT) continue;
 		const auto item = static_cast<TUNING_ITEM>(i);
 		char value[80];
@@ -268,8 +275,8 @@ void CodexMenu::DrawOptions(const SceneCalc& scene, const MATCH_TUNING& tuning) 
 		else if (item == TUNING_HAMMER_STUN) sprintf_s(value, "%.1f 秒", TuningCalcValue(tuning, item));
 		else if (item == TUNING_CAPSULES) sprintf_s(value, "%d 個 / %.1f 秒", TuningCalcCapsuleCount(tuning), TuningCalcCapsuleSeconds(tuning));
 		else sprintf_s(value, "× %.2f", TuningCalcValue(tuning, item));
-		Text(value, 458, y + 9, 20, scene.GetCursor() == i ? CYAN : WHITE);
-		if (scene.GetCursor() == i) Text("<", 428, y + 9, 20, CYAN);
+		Text(value, 458, y + 8, 20, scene.GetCursor() == i ? CYAN : WHITE);
+		if (scene.GetCursor() == i) Text("<", 428, y + 8, 20, CYAN);
 	}
 	const int selected = scene.GetCursor();
 	if (selected < TUNING_ITEM_COUNT) {
@@ -277,6 +284,16 @@ void CodexMenu::DrawOptions(const SceneCalc& scene, const MATCH_TUNING& tuning) 
 		const int levels = TuningCalcLevelCount(static_cast<TUNING_ITEM>(selected));
 		for (int level = 0; level < levels; ++level) {
 			Number2DDrawBox({ RIGHT + 28 + level * 60.0f, 481, 48, 5 }, level <= tuning.Levels[selected] ? CYAN : LINE);
+		}
+	}
+	else if (selected == OPTION_ITEM_LOOK_SENSITIVITY) {
+		Detail("CAMERA", "視点感度", "カメラを回す速さの倍率です。", "マウス・矢印キー・右スティックに効きます。",
+			"この PC だけの設定で、すぐに効きます。");
+		const int levels = ActionGetLookSensitivityLevelCount();
+		const float width = 48.0f * 7 / levels, step = 60.0f * 7 / levels;
+		for (int level = 0; level < levels; ++level) {
+			Number2DDrawBox({ RIGHT + 28 + level * step, 481, width, 5 },
+				level <= ActionGetLookSensitivityLevel() ? CYAN : LINE);
 		}
 	}
 	else if (selected == OPTION_ITEM_ARM_COSTS) Detail("ARM DURABILITY", "腕の耐久の減る量",

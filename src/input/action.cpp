@@ -70,6 +70,11 @@ static constexpr bool  MOUSE_INVERT_Y = false;			// true にすると上下が�
 static constexpr float KEY_LOOK_SPEED = 120.0f * 3.14159265f / 180.0f;	// 矢印キーで1秒に回る角度（120度）
 static constexpr float PAD_LOOK_SPEED = 180.0f * 3.14159265f / 180.0f;	// 右スティックを端まで倒したときに1秒に回る角度（180度）
 
+// 視点感度：オプションで選ぶ段ごとの倍率（マウス・矢印キー・右スティックの回る速さに掛ける）
+static constexpr float LOOK_SENSITIVITY_SCALES[] = { 0.25f, 0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f, 2.5f, 3.0f };
+static constexpr int LOOK_SENSITIVITY_DEFAULT_LEVEL = 3;	// はじめの段（× 1.0）
+static constexpr int LOOK_SENSITIVITY_LEVEL_COUNT = sizeof(LOOK_SENSITIVITY_SCALES) / sizeof(LOOK_SENSITIVITY_SCALES[0]);
+
 static constexpr float TARGET_PAD_DEADZONE = 0.3f;	// 次の弾きを受け付ける右スティックXの遊び
 static constexpr float TARGET_PAD_THRESHOLD = 0.7f;	// この大きさを超えた瞬間に切り替える
 static constexpr float TARGET_MOUSE_WINDOW = 0.15f;	// マウス移動量を合計する直近の秒数
@@ -95,6 +100,7 @@ static int g_EquipModes[ACTION_EQUIP_PLAYER_COUNT];
 static int g_EquipPlayer = 0;
 static bool g_OnlineEquip = false;
 static float g_TargetMouseCooldown = 0.0f;	// マウスで次の切り替えを受け付けるまでの残り秒数
+static int g_LookSensitivityLevel = LOOK_SENSITIVITY_DEFAULT_LEVEL;	// 視点感度の段（ActionInitialize では戻さない）
 struct TARGET_MOUSE_SAMPLE
 {
 	float Age;	// 入力からの秒数
@@ -176,7 +182,8 @@ static void UpdatePadInput(int device, float dt)
 	}
 	state.Move = PadGetLeftStick(device);
 	const ACTION_AXIS stick = PadGetRightStick(device);
-	state.Look = { stick.X * PAD_LOOK_SPEED * dt, stick.Y * PAD_LOOK_SPEED * dt };
+	const float look = PAD_LOOK_SPEED * dt * ActionGetLookSensitivity();
+	state.Look = { stick.X * look, stick.Y * look };
 	if (fabsf(stick.X) <= TARGET_PAD_DEADZONE) state.TargetPadReady = true;
 	const bool flick = state.TargetPadReady && fabsf(stick.X) > TARGET_PAD_THRESHOLD;
 	SetTargetInput(state, flick && stick.X < 0.0f, flick && stick.X > 0.0f);
@@ -231,6 +238,11 @@ static void UpdateKeyboardInput(float dt)
 	if (KeyboardIsPress(VK_RIGHT)) state.Look.X += KEY_LOOK_SPEED * dt;
 	if (KeyboardIsPress(VK_UP))    state.Look.Y += KEY_LOOK_SPEED * dt;
 	if (KeyboardIsPress(VK_DOWN))  state.Look.Y -= KEY_LOOK_SPEED * dt;
+
+	// オプションの視点感度を掛ける（マウスと矢印キーの両方）
+	const float sensitivity = ActionGetLookSensitivity();
+	state.Look.X *= sensitivity;
+	state.Look.Y *= sensitivity;
 }
 
 void ActionUpdate(void)
@@ -368,4 +380,31 @@ PLAYER_INPUT ActionGetPlayerInput(int device)
 		input.Equip = ActionGetEquipKey(g_EquipPlayer);
 	}
 	return input;
+}
+
+int ActionGetLookSensitivityLevel(void)
+{
+	return g_LookSensitivityLevel;
+}
+
+int ActionGetLookSensitivityLevelCount(void)
+{
+	return LOOK_SENSITIVITY_LEVEL_COUNT;
+}
+
+int ActionGetLookSensitivityDefaultLevel(void)
+{
+	return LOOK_SENSITIVITY_DEFAULT_LEVEL;
+}
+
+void ActionSetLookSensitivityLevel(int level)
+{
+	if (level < 0) level = 0;
+	if (level >= LOOK_SENSITIVITY_LEVEL_COUNT) level = LOOK_SENSITIVITY_LEVEL_COUNT - 1;
+	g_LookSensitivityLevel = level;
+}
+
+float ActionGetLookSensitivity(void)
+{
+	return LOOK_SENSITIVITY_SCALES[g_LookSensitivityLevel];
 }
