@@ -78,12 +78,13 @@ static constexpr float KNOCKBACK_FRICTION = 20.0f;
 static constexpr float KNOCKBACK_STOP_SPEED = 0.5f;
 static constexpr float KNOCKBACK_GRAVITY = 25.0f; // 吹っ飛び中の重力（移動の重力を上げても、飛ぶ距離・KOのしやすさを変えない）
 static constexpr float KNOCKBACK_MOVE_SPEED = 6.0f; // 吹っ飛び中に動ける速さの上限（移動の速さを上げても、吹っ飛びへの逆らいやすさを変えない）
+static constexpr float HITSTUN_PER_PERCENT = 0.005f; // 吹っ飛ばされてから何もできない秒数の、ダメージ 1% あたりの長さ（100% で 0.5 秒）
 
 KNOCKBACK_PARAMS Fighter::KnockbackParams() const
 {
 	return { KNOCKBACK_BASE_SPEED, KNOCKBACK_GROWTH, KNOCKBACK_ANGLE,
 		KNOCKBACK_AIR_DRAG, KNOCKBACK_FRICTION, KNOCKBACK_STOP_SPEED, KNOCKBACK_GRAVITY,
-		MAX_FALL_SPEED, AIR_CONTROL, KNOCKBACK_MOVE_SPEED };
+		MAX_FALL_SPEED, AIR_CONTROL, KNOCKBACK_MOVE_SPEED, HITSTUN_PER_PERCENT };
 }
 
 XMFLOAT4 Fighter::GetPlayerColor(int slot)
@@ -119,6 +120,7 @@ void Fighter::PlaceAtSpawn()
 	m_Yaw = 0.0f;
 	m_Launched = false;
 	m_FlinchFrames = 0;
+	m_HitstunTime = 0.0f;
 	m_Dash.Reset();
 	m_HeldBy = -1;
 	m_Pulled = false;
@@ -178,6 +180,7 @@ DUMMY_EVENT Fighter::Update(const Camera* camera, const ArmManager* arms)
 	if (m_InvincibleTime > 0.0f) m_InvincibleTime = fmaxf(0.0f, m_InvincibleTime - dt);
 	const STAGE& stage = m_Stage->GetStage();
 	if (m_FlinchFrames > 0) --m_FlinchFrames;
+	if (m_HitstunTime > 0.0f) m_HitstunTime = fmaxf(0.0f, m_HitstunTime - dt);
 	// 茨の中はダッシュの距離が短い。
 	const DASH_PARAMS dashParams{ DASH_SPEED, IsStatus(STATUS_THORN) ? DASH_SECONDS * THORN_DASH_SCALE : DASH_SECONDS, DASH_COOLDOWN };
 	if (IsActive() && !IsHeld() && !m_Pulled) {
@@ -189,7 +192,8 @@ DUMMY_EVENT Fighter::Update(const Camera* camera, const ArmManager* arms)
 		bool jump = false;
 		bool dash = false;
 		VEC3 rushVelocity{};
-		if (IsHuman() && camera != nullptr && arms != nullptr) {
+		// 吹っ飛ばされてから何もできない間は、移動・ジャンプ・ダッシュの入力を読まない。
+		if (IsHuman() && camera != nullptr && arms != nullptr && m_HitstunTime <= 0.0f) {
 			const ACTION_AXIS move = GetMoveInput();
 			const float yaw = camera->GetYaw();
 			moveX = cosf(yaw) * move.X + sinf(yaw) * move.Y;
@@ -208,21 +212,25 @@ DUMMY_EVENT Fighter::Update(const Camera* camera, const ArmManager* arms)
 		const bool hasMove = moveX != 0.0f || moveZ != 0.0f;
 		const VEC3 dashDirection = hasMove ? VEC3{ moveX, 0.0f, moveZ } : VEC3{ sinf(m_Yaw), 0.0f, cosf(m_Yaw) };
 		const bool onGround = m_Body.GetOnGround();
+		// 吹っ飛び中のダッシュは、吹っ飛びの速度をすべて 0 にして（吹っ飛びを終わらせて）ふつうのダッシュをする。
+		if (m_Launched && dash && m_Dash.TryStart(dashDirection, onGround, dashParams, true)) {
+			m_Launched = false;
+			m_HitstunTime = 0.0f;
+			m_Body.SetVelocity({});
+			CancelLaunchAnimation();
+			StartDashAnimation(onGround);
+			dash = false;
+		}
 		if (m_Launched) {
-			// 吹っ飛び中もすぐ動ける。空中ジャンプとダッシュは吹っ飛びの速度を消さずに足す。
+			// 何もできない時間が過ぎれば、吹っ飛び中も動ける。空中ジャンプは吹っ飛びの速度を消さずに足す。
 			if (m_Status.IsActive(STATUS_STUN)) moveX = moveZ = 0.0f;
 			if (jump) {
 				m_Body.Jump(JUMP_SPEED, AIR_JUMPS);
 				CancelLaunchAnimation();
 			}
-			if (dash && m_Dash.TryStart(dashDirection, onGround, dashParams, false)) {
-				StartDashAnimation(onGround);
-				CancelLaunchAnimation();
-				const VEC3 push = Vec3Scale(m_Dash.GetDirection(), DASH_SPEED);
-				m_Body.SetVelocity({ m_Body.GetVelocityX() + push.X, m_Body.GetVelocityY(), m_Body.GetVelocityZ() + push.Z });
-			}
 			m_Dash.Step(dt, m_Body.GetOnGround(), dashParams);
 			m_Launched = KnockbackCalcStep(m_Body, dt, KnockbackParams(), stage, moveX, moveZ);
+			if (!m_Launched) m_HitstunTime = 0.0f;
 		}
 		else {
 			if (dash && m_Dash.TryStart(dashDirection, onGround, dashParams, true)) StartDashAnimation(onGround);
@@ -572,6 +580,7 @@ bool Fighter::Grab(int holder)
 	if (!IsActive() || IsHeld() || holder < 0 || holder >= FIGHTER_COUNT) return false;
 	m_HeldBy = holder;
 	m_Launched = false;
+	m_HitstunTime = 0.0f;
 	m_Pulled = false;
 	m_Dash.Reset();
 	m_Body.ResetAirJumps();
@@ -612,7 +621,7 @@ STATUS_STEP Fighter::StepStatus(float dt)
 	return IsActive() ? m_Status.Step(dt) : STATUS_STEP{ 0.0f, -1 };
 }
 
-void Fighter::SetLaunchVelocity(const VEC3& velocity)
+void Fighter::SetLaunchVelocity(const VEC3& velocity, float hitstun)
 {
 	m_Body.SetVelocity(velocity);
 	m_Body.SetOnGround(false);
@@ -622,6 +631,7 @@ void Fighter::SetLaunchVelocity(const VEC3& velocity)
 	m_LaunchAnimElapsed = 0.0f;
 	m_LaunchAnimCancelled = false;
 	m_FlinchFrames = FLINCH_FRAMES;
+	m_HitstunTime = hitstun;
 	m_Dash.Cancel();
 }
 
@@ -631,18 +641,19 @@ void Fighter::Hit(const VEC3& direction, float damage, float power)
 	AddDamage(damage);
 	const KNOCKBACK_PARAMS params = KnockbackParams();
 	const float speed = KnockbackCalcSpeed(m_Percent, power, params) * m_KnockbackScale;
-	SetLaunchVelocity(KnockbackCalcVelocity(direction, speed, params));
+	SetLaunchVelocity(KnockbackCalcVelocity(direction, speed, params), KnockbackCalcHitstun(m_Percent, params));
 }
 
 void Fighter::Launch(const VEC3& direction, float damage, float power)
 {
 	if (!IsActive()) return;
 	AddDamage(damage);
-	const float speed = KnockbackCalcSpeed(m_Percent, power, KnockbackParams()) * m_KnockbackScale;
-	SetLaunchVelocity(KnockbackCalcDirectedVelocity(direction, speed));
+	const KNOCKBACK_PARAMS params = KnockbackParams();
+	const float speed = KnockbackCalcSpeed(m_Percent, power, params) * m_KnockbackScale;
+	SetLaunchVelocity(KnockbackCalcDirectedVelocity(direction, speed), KnockbackCalcHitstun(m_Percent, params));
 }
 
 void Fighter::Push(const VEC3& velocity)
 {
-	if (IsActive() && !IsHeld()) SetLaunchVelocity(velocity);
+	if (IsActive() && !IsHeld()) SetLaunchVelocity(velocity, 0.0f); // ダメージのない押し出しでは、何もできない時間を作らない
 }

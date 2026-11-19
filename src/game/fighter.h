@@ -97,8 +97,8 @@ public:
 	bool IsHeldBy(int holder) const { return IsActive() && IsHeld() && m_HeldBy == holder; }
 	/// @brief グラップリングで引っぱられているか取得する
 	bool IsPulled() const { return m_Pulled; }
-	/// @brief 腕を操作できる状態か取得する（吹っ飛び中も使える。吹っ飛ばされた直後の一瞬だけ使えず、出していた腕が中断される）
-	bool CanUseArms() const { return IsActive() && !IsHeld() && m_FlinchFrames <= 0; }
+	/// @brief 腕を操作できる状態か取得する（吹っ飛ばされた直後の一瞬と、ダメージ%に応じた何もできない間は使えず、出していた腕が中断される。そのあとは吹っ飛び中も使える）
+	bool CanUseArms() const { return IsActive() && !IsHeld() && m_FlinchFrames <= 0 && m_HitstunTime <= 0.0f; }
 	/// @brief 体当たりで押し合える状態か取得する（吹っ飛び中・保持中・復活待ちは押し合わない）
 	bool CanPushBodies() const { return IsActive() && !IsHeld() && !m_Launched; }
 	/// @brief 吹っ飛ばされている途中か取得する
@@ -159,7 +159,7 @@ public:
 
 private:
 	void PlaceAtSpawn();
-	void SetLaunchVelocity(const VEC3& velocity);
+	void SetLaunchVelocity(const VEC3& velocity, float hitstun);
 	KNOCKBACK_PARAMS KnockbackParams() const;
 	XMFLOAT3 GetStunShake() const;
 	void DrawStunStars() const;
@@ -177,6 +177,7 @@ private:
 	float m_Yaw = 0.0f;
 	bool m_Launched = false;
 	int m_FlinchFrames = 0; // 吹っ飛ばされた直後に腕を使えないフレーム数（出していた腕を中断させる）
+	float m_HitstunTime = 0.0f; // 吹っ飛び中に何もできない残り秒数（ダメージ%が高いほど長い。吹っ飛びが終わったら 0）
 	DashCalc m_Dash;
 	int m_HeldBy = -1;
 	bool m_Pulled = false;

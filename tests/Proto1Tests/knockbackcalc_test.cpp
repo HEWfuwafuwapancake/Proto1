@@ -73,6 +73,15 @@ namespace Proto1Tests
 		EXPECT_NEAR(20.5f, KnockbackCalcAddDamage(percent, -5.0f), KB_EPSILON);
 	}
 
+	// 何もできない秒数：ダメージ% に比例する（0.005 秒/% なら 100% で 0.5 秒）
+	TEST(KnockbackCalcTest, Hitstun_GrowsWithPercent)
+	{
+		KNOCKBACK_PARAMS params = MakeKnockbackParams();
+		params.HitstunPerPercent = 0.005f;
+		EXPECT_NEAR(0.0f, KnockbackCalcHitstun(0.0f, params), KB_EPSILON);
+		EXPECT_NEAR(0.5f, KnockbackCalcHitstun(100.0f, params), KB_EPSILON);
+	}
+
 	// 吹っ飛ぶ速さ：% が高いほど速く、攻撃の強さを掛ける
 	TEST(KnockbackCalcTest, Speed_GrowsWithPercentAndPower)
 	{
