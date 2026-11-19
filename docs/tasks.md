@@ -214,7 +214,7 @@ No.114 を最初にマージする。No.115〜119 は触るファイルを分け
 | 173 | CPU 段階1：`VERSUS_DEVICE_CPU` と人・CPU の区別、`Cpu`・`CpuCalc`。相手へ近づいて攻撃する・ふちを避ける・落ちたら戻る。実装 Claude | 24, 172 | CPU の土台（[PR #228](https://github.com/HEWfuwafuwapancake/Proto1/pull/228)）。 | ✅ |
 | 174 | CPU 段階2：腕ごとの間合い・長押しの表（`cpu.cpp` の `ARM_STYLES`）、カプセルを拾う、腕の復帰技、ガード。実装 Claude | 173 | 拾った腕を使い分けて戦わせる（[PR #228](https://github.com/HEWfuwafuwapancake/Proto1/pull/228)）。 | ✅ |
 | 175 | CPU 段階3：強さ3段（よわい・ふつう・つよい。キャラ選択で枠ごとに選ぶ。`cpucalc.cpp` の `LEVEL_PARAMS`）。数字は管理者が遊んで調整する。実装 Claude | 174 | 強さを選べるようにする（[PR #228](https://github.com/HEWfuwafuwapancake/Proto1/pull/228)）。 | ✅ |
-| 176 | 吹っ飛ばされてからダメージ%に比例した間（`HITSTUN_PER_PERCENT`。100% で 0.5 秒）は何もできない。吹っ飛び中のダッシュは吹っ飛びの速度をすべて 0 にしてふつうのダッシュをする（前は速度に足していて、重なるととても速くなった）。実装 Claude | 115 | 管理者の依頼（2026-11-19）。 | 🔄 |
+| 176 | 吹っ飛ばされてからダメージ%に比例した間（`HITSTUN_PER_PERCENT`。100% で 0.5 秒）は何もできない。吹っ飛び中のダッシュは吹っ飛びの速度をすべて 0 にしてふつうのダッシュをする（前は速度に足していて、重なるととても速くなった）。実装 Claude | 115 | 管理者の依頼（2026-11-19。[PR #229](https://github.com/HEWfuwafuwapancake/Proto1/pull/229)）。 | ✅ |
 
 ### Codex 専用 worktree の並行作業
 
