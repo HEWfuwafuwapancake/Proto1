@@ -1,5 +1,6 @@
 ﻿#include "physics/spearcalc.h"
 #include "physics/areacalc.h"
+#include "physics/lasercalc.h"
 #include <cmath>
 
 void SpearCalc::Reset()
@@ -40,4 +41,25 @@ SPEAR_THROW_EVENT SpearCalc::Step(float dt, const SPEAR_THROW_PARAMS& params, co
 bool SpearCalcHasFallen(const STAGE& stage, const VEC3& feet)
 {
 	return feet.Y < stage.TopY || !StageCalcIsOnPlatform(stage, feet.X, feet.Z);
+}
+
+float SpearCalcFrontDistance(const VEC3& origin, const VEC3& direction, const CAPSULE& body)
+{
+	const VEC3 center = Vec3Scale(Vec3Add(body.Start, body.End), 0.5f);
+	return Vec3Dot(Vec3Sub(center, origin), direction) - body.Radius;
+}
+
+SPEAR_THRUST_HIT SpearCalcThrustHit(const VEC3& origin, const VEC3& direction, const CAPSULE& body, const SPEAR_THRUST_PARAMS& params)
+{
+	if (SpearCalcFrontDistance(origin, direction, body) >= params.TipStart) return { params.TipDamage, params.TipPower, true };
+	return { params.BaseDamage, params.BasePower, false };
+}
+
+bool SpearCalcShouldStopLunge(const VEC3& origin, const VEC3& direction, const SPEAR_THRUST_PARAMS& params, float radius,
+	const TENTACLE_TARGET* targets, int count)
+{
+	// 穂先の始まる距離までの短い突きに誰かが入れば、もう踏み込まなくても穂先が届く。
+	bool hits[16] = {};
+	if (count > 16) count = 16;
+	return LaserCalcPierce(origin, direction, params.TipStart, radius, targets, count, hits) > 0;
 }

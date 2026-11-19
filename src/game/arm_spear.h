@@ -33,9 +33,12 @@ public:
 	float GetMoveScale() const override;
 	/// @brief 刺さった相手へ突っ込んでいる間は、ジャンプとダッシュをできなくするので true を返す
 	bool BlocksJumpAndDash() const override;
+	/// @brief 単押しの突きの前の構えの間だけ、狙いの方へ踏み込む速度を返す（No.178）
+	VEC3 GetRushVelocity() const override;
 
 private:
 	void Thrust();
+	void StepLunge();
 	void StepSpear(float dt);
 	void OnStuck();
 	void StepRush(float dt);
@@ -46,6 +49,7 @@ private:
 	SpearCalc m_Spear;
 	bool m_Throw = false; // true：長押しの投げ、false：単押しの突き
 	bool m_UseConsumed = false; // 今の動作で耐久を消費したか
+	bool m_Lunging = false; // true：単押しの突きの前に踏み込んでいる
 	bool m_Rushing = false; // true：刺さった相手へ突っ込んでいる
 	bool m_OwnPull = false; // true：突っ込むために自分で体の計算を止めている
 	float m_StuckSeconds = 0.0f; // 刺さってからの秒数

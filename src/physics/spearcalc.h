@@ -64,3 +64,47 @@ private:
 /// @param feet 相手の足元の位置
 /// @return 浮島の範囲の外にいるか、浮島の上の面より下にいれば true
 bool SpearCalcHasFallen(const STAGE& stage, const VEC3& feet);
+
+/// @brief 槍の単押しの突きの、穂先と手元の強さ
+struct SPEAR_THRUST_PARAMS
+{
+	float TipStart; ///< 肩からこの距離より先（体の手前の面まで）で当たれば穂先の当たり
+	float TipDamage; ///< 穂先の当たりで足すダメージ（%）
+	float TipPower; ///< 穂先の当たりの吹っ飛ばしの強さ
+	float BaseDamage; ///< 手元の当たりで足すダメージ（%）
+	float BasePower; ///< 手元の当たりの吹っ飛ばしの強さ
+};
+
+/// @brief 突きの当たりのダメージと吹っ飛ばしの強さ
+struct SPEAR_THRUST_HIT
+{
+	float Damage; ///< 足すダメージ（%）
+	float Power; ///< 吹っ飛ばしの強さ
+	bool Tip; ///< 穂先の当たりなら true、手元なら false
+};
+
+/// @brief 突きの直線上の、肩から相手の体の手前の面までの距離を求める
+/// @param origin 突きの始まり（肩）
+/// @param direction 突きの単位方向
+/// @param body 相手の体
+/// @return 体の中心を直線へ映した距離から体の半径を引いた距離
+float SpearCalcFrontDistance(const VEC3& origin, const VEC3& direction, const CAPSULE& body);
+
+/// @brief 突きが当たった相手への強さを、穂先か手元かで決める
+/// @param origin 突きの始まり（肩）
+/// @param direction 突きの単位方向
+/// @param body 当たった相手の体
+/// @param params 穂先と手元の強さ
+/// @return ダメージ・吹っ飛ばしの強さと、穂先の当たりか
+SPEAR_THRUST_HIT SpearCalcThrustHit(const VEC3& origin, const VEC3& direction, const CAPSULE& body, const SPEAR_THRUST_PARAMS& params);
+
+/// @brief 踏み込みを止めるか調べる（突きの直線上で、穂先の距離より近くに相手がいれば止める）
+/// @param origin 突きの始まり（肩）
+/// @param direction 突きの単位方向
+/// @param params 穂先の始まる距離（TipStart）を使う
+/// @param radius 突きの太さ（半径）
+/// @param targets 相手の並び（Available が false の相手は見ない）
+/// @param count 相手の数
+/// @return 穂先の距離より近くに相手がいれば true
+bool SpearCalcShouldStopLunge(const VEC3& origin, const VEC3& direction, const SPEAR_THRUST_PARAMS& params, float radius,
+	const TENTACLE_TARGET* targets, int count);

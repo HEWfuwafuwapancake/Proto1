@@ -18,8 +18,9 @@ static constexpr ARM_COST_ROW COST_ROW = ARM_COST_ROW_SPEAR;
 static constexpr float THRUST_SECONDS[] = { 0.12f, 0.1f, 0.2f }; // 構え・突き・休み
 static constexpr float THRUST_REACH = 3.2f; // 肩から突きの届く距離（ナックルの殴りは 1.6）。
 static constexpr float THRUST_RADIUS = 0.4f;
-static constexpr float THRUST_DAMAGE = 9.0f;
-static constexpr float THRUST_POWER = 1.8f;
+// 穂先（体の手前の面が肩から 2.2m より先）で当てると強く、手元だと弱い（No.178）。
+static constexpr SPEAR_THRUST_PARAMS THRUST{ 2.2f, 12.0f, 2.4f, 7.0f, 1.4f }; // 穂先の始まる距離・穂先のダメージと強さ・手元のダメージと強さ
+static constexpr float LUNGE_SPEED = 15.0f; // 突く前の構えの間、前へ踏み込む速さ（構え 0.12 秒で約 1.8m）。
 static constexpr float THRUST_UP = 0.6f; // 水平の単位方向に足す上向きの量。
 // 長押し：構えて、離すと槍を直線上に投げる（吹っ飛びは刀の斬撃と同じ）
 static constexpr float THROW_SECONDS[] = { 0.25f, 0.1f, 0.2f }; // 構え（押している間は待つ）・投げ・休み
@@ -71,6 +72,7 @@ void SpearArm::Reset()
 	EndRush();
 	m_Phase.Reset();
 	m_Throw = false;
+	m_Lunging = false;
 	m_Straighten = 0.0f;
 	m_Extend = 0.0f;
 }
@@ -89,15 +91,31 @@ void SpearArm::Thrust()
 	TENTACLE_TARGET targets[FIGHTER_COUNT];
 	for (int i = 0; i < FIGHTER_COUNT; ++i) targets[i] = GetFighters().GetMeleeTarget(i, GetSlot());
 	bool hits[FIGHTER_COUNT];
-	LaserCalcPierce(GetShoulder(), GetStrikeDirection(m_Direction), THRUST_REACH, THRUST_RADIUS, targets, FIGHTER_COUNT, hits);
+	const VEC3 shoulder = GetShoulder();
+	const VEC3 direction = GetStrikeDirection(m_Direction);
+	LaserCalcPierce(shoulder, direction, THRUST_REACH, THRUST_RADIUS, targets, FIGHTER_COUNT, hits);
 	bool hit = false;
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
-		if (hits[i] && GetFighters().Launch(i, GetSlot(), AreaCalcLaunchDirection(m_Direction, THRUST_UP), THRUST_DAMAGE, THRUST_POWER)) hit = true;
+		if (!hits[i]) continue;
+		const SPEAR_THRUST_HIT strike = SpearCalcThrustHit(shoulder, direction, targets[i].Body, THRUST);
+		if (GetFighters().Launch(i, GetSlot(), AreaCalcLaunchDirection(m_Direction, THRUST_UP), strike.Damage, strike.Power)) hit = true;
 	}
 	if (hit) {
 		Consume(ARM_COST_TAP_HIT);
 		Rumble(HIT_RUMBLE, HIT_RUMBLE, HIT_RUMBLE_SECONDS);
 	}
+}
+
+// 突く前の構えの間：狙いの方へ踏み込み、前の相手が穂先の距離まで近づいたら止まる（No.178）。
+void SpearArm::StepLunge()
+{
+	if (!m_Lunging) return;
+	if (m_Throw || m_Phase.GetPhase() != SPEAR_RAISE) { m_Lunging = false; return; }
+	// ロックオン中は動いた相手の方へ向き直しながら踏み込む。
+	m_Direction = GetAim(false);
+	TENTACLE_TARGET targets[FIGHTER_COUNT];
+	for (int i = 0; i < FIGHTER_COUNT; ++i) targets[i] = GetFighters().GetMeleeTarget(i, GetSlot());
+	if (SpearCalcShouldStopLunge(GetShoulder(), GetStrikeDirection(m_Direction), THRUST, THRUST_RADIUS, targets, FIGHTER_COUNT)) m_Lunging = false;
 }
 
 // 刺さった瞬間：相手を吹っ飛ばしてしびれさせ、相手が浮島の上にいれば突っ込み始める。
@@ -177,6 +195,7 @@ void SpearArm::Update(const ARM_INPUT& input)
 		m_Direction = GetAim(false);
 		m_Phase.Start(SPEAR_RAISE);
 		m_Phase.SetHeld(m_Throw);
+		m_Lunging = !m_Throw;
 		if (input.HoldReleased) m_Phase.Release();
 	}
 	else if (input.HoldReleased && m_Throw) m_Phase.Release();
@@ -186,6 +205,7 @@ void SpearArm::Update(const ARM_INPUT& input)
 		m_UseConsumed = true;
 	}
 	const ARM_PHASE_STEP step = m_Phase.Step(dt, m_Throw ? THROW_SECONDS : THRUST_SECONDS, SPEAR_PHASE_COUNT);
+	StepLunge();
 	if (step.Entered == SPEAR_STRIKE) {
 		m_Direction = GetAim(false);
 		if (!m_Throw) Thrust();
@@ -278,4 +298,10 @@ float SpearArm::GetMoveScale() const
 bool SpearArm::BlocksJumpAndDash() const
 {
 	return m_Rushing;
+}
+
+VEC3 SpearArm::GetRushVelocity() const
+{
+	if (!m_Lunging) return {};
+	return Vec3Scale(m_Direction, LUNGE_SPEED);
 }
