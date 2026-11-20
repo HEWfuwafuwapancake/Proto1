@@ -36,6 +36,7 @@ void VersusCalc::Reset()
 		m_CpuLevels[i] = VERSUS_CPU_NORMAL;
 	}
 	m_Focus = 0;
+	m_CardFocus = 0;
 	m_FocusReady = true;
 	ResetMatch();
 }
@@ -98,27 +99,39 @@ bool VersusCalc::IsAllReady() const
 	return humans > 0;
 }
 
-void VersusCalc::MoveLobbyFocus(float moveY, bool editSlots)
+void VersusCalc::MoveLobbyFocus(float moveX, float moveY, bool editSlots)
 {
-	if (fabsf(moveY) < LOBBY_STICK_DEADZONE) m_FocusReady = true;
+	const float size = fmaxf(fabsf(moveX), fabsf(moveY));
+	if (size < LOBBY_STICK_DEADZONE) m_FocusReady = true;
 	// 選んでいた枠に人が入ったら 1P のカードへ戻す。
-	if (m_Focus > 0 && (!editSlots || IsHuman(m_Focus))) m_Focus = 0;
-	if (!m_FocusReady || fabsf(moveY) <= LOBBY_STICK_THRESHOLD) return;
+	const auto selectable = [&](int slot) { return slot == 0 || (slot > 0 && slot < FIGHTER_COUNT && editSlots && !IsHuman(slot)); };
+	if (m_Focus > 0 && !selectable(m_Focus)) m_Focus = 0;
+	if (!m_FocusReady || size <= LOBBY_STICK_THRESHOLD) return;
 	m_FocusReady = false;
-	// 上がルール、下へ 1P → 2P → … の順。人のいる枠は飛ばす。
-	const int step = moveY > 0.0f ? -1 : 1;
-	for (int next = m_Focus + step; next >= VERSUS_LOBBY_FOCUS_RULE && next < FIGHTER_COUNT; next += step) {
-		if (next <= 0 || (editSlots && !IsHuman(next))) {
+	if (fabsf(moveY) >= fabsf(moveX)) {
+		// 上下：画面の上のルールの行と、横に並んだカードを行き来する（下では前に選んでいたカードへ戻る）。
+		if (moveY > 0.0f && m_Focus != VERSUS_LOBBY_FOCUS_RULE) {
+			m_CardFocus = m_Focus;
+			m_Focus = VERSUS_LOBBY_FOCUS_RULE;
+		}
+		else if (moveY < 0.0f && m_Focus == VERSUS_LOBBY_FOCUS_RULE) m_Focus = selectable(m_CardFocus) ? m_CardFocus : 0;
+		return;
+	}
+	// 左右：カードを 1P → 2P → … の順に動く。人のいる枠は飛ばす。ルールの行では動かない。
+	if (m_Focus == VERSUS_LOBBY_FOCUS_RULE) return;
+	const int step = moveX > 0.0f ? 1 : -1;
+	for (int next = m_Focus + step; next >= 0 && next < FIGHTER_COUNT; next += step) {
+		if (selectable(next)) {
 			m_Focus = next;
 			return;
 		}
 	}
 }
 
-void VersusCalc::CycleCpu(int slot)
+void VersusCalc::CycleCpu(int slot, int direction)
 {
 	if (slot < 0 || slot >= FIGHTER_COUNT || IsHuman(slot)) return;
-	m_CpuLevels[slot] = (m_CpuLevels[slot] + 1) % VERSUS_CPU_LEVEL_COUNT;
+	m_CpuLevels[slot] = ((m_CpuLevels[slot] + direction) % VERSUS_CPU_LEVEL_COUNT + VERSUS_CPU_LEVEL_COUNT) % VERSUS_CPU_LEVEL_COUNT;
 }
 
 int VersusCalc::GetCpuLevel(int slot) const

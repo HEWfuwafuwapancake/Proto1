@@ -333,10 +333,10 @@ void Game::Update()
 			for (int device = 0; device < ACTION_DEVICE_COUNT; ++device) {
 				if (m_Net.GetLocalDevice() >= 0 && m_Net.GetLocalDevice() != device) continue;
 				const ACTION_MENU_INPUT candidate = ActionGetMenuInput(device);
-				if (candidate.MoveY != 0.0f || candidate.CharacterDirection != 0) { menu = candidate; break; }
+				if (candidate.MoveX != 0.0f || candidate.MoveY != 0.0f || candidate.CharacterDirection != 0) { menu = candidate; break; }
 			}
-			// ホストは上下でルールの行と自分のカードを行き来し、ルールの行では左右でルールを変える。
-			if (m_Net.IsHost()) m_Participants.MoveLobbyFocus(menu.MoveY, false);
+			// ホストは左スティックの上下でルールの行と自分のカードを行き来し、ルールの行では十字キーの左右でルールを変える。
+			if (m_Net.IsHost()) m_Participants.MoveLobbyFocus(menu.MoveX, menu.MoveY, false);
 			if (m_Net.IsHost() && m_Participants.GetLobbyFocus() == VERSUS_LOBBY_FOCUS_RULE) m_Net.CycleRule(menu.CharacterDirection);
 			else m_Net.CycleLocalCharacter(menu.CharacterDirection);
 		}
@@ -356,7 +356,7 @@ void Game::Update()
 	}
 	else {
 		// キャラ選択：決定で参加 → 準備OK → 全員が準備OKなら 1P で開始。戻るで準備OKの取り消し → 参加をやめる。
-		// 1P は上下でルールの行・自分のカード・人のいない枠を選び、ルール・ダミーや CPU のキャラも変える。
+		// 1P は左スティック（上でルールの行、左右で横に並んだカード）で選び、十字キーでルール・ダミーや CPU のキャラと強さも変える。
 		// 同一フレームの参加は機器番号順。
 		bool back = false;
 		for (int device = 0; device < ACTION_DEVICE_COUNT; ++device) {
@@ -367,14 +367,16 @@ void Game::Update()
 				const int slot = m_Participants.FindSlot(device);
 				int focus = slot; // 1P 以外は自分のカードだけを操作する
 				if (slot == 0) {
-					m_Participants.MoveLobbyFocus(menu.MoveY, true);
+					m_Participants.MoveLobbyFocus(menu.MoveX, menu.MoveY, true);
 					focus = m_Participants.GetLobbyFocus();
 				}
 				if (focus == VERSUS_LOBBY_FOCUS_RULE) m_Scene.CycleRule(menu.CharacterDirection);
 				else if (focus > 0 && focus != slot) {
-					// 1P が人のいない枠を選んでいる：左右でキャラ、決定でダミー → CPU よわい → ふつう → つよい を切り替える。
+					// 1P が人のいない枠を選んでいる：十字キーの左右でキャラ、上下でダミー ⇔ CPU よわい ⇔ ふつう ⇔ つよい を切り替える。
+					// キーボードには十字キーの上下がないので、決定（Enter）でも強いほうへ回す。
 					m_LobbyCharacters[focus] = SceneCalc::CycleCharacter(m_LobbyCharacters[focus], menu.CharacterDirection);
-					if (decide) m_Participants.CycleCpu(focus);
+					if (menu.Vertical != 0) m_Participants.CycleCpu(focus, menu.Vertical);
+					else if (decide) m_Participants.CycleCpu(focus, 1);
 				}
 				else if (slot >= 0 && !m_Participants.IsReady(slot)) {
 					// 準備OKにした人は、取り消すまでキャラを変えない。

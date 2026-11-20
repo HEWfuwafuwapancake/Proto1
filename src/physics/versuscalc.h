@@ -88,14 +88,17 @@ public:
 	bool IsAllReady() const;
 	/// @brief 機器が入っているスロットを取得する（入っていなければ -1）
 	int FindSlot(int device) const;
-	/// @brief 1P の上下の弾きで、キャラ選択の選択位置を ルール → 1P → 人のいない枠 の順に動かす（両端で止まる）
-	/// @param moveY 上下の入力（上がプラス。弾いて一度戻すたびに1つ動く）
+	/// @brief 1P の左スティックの弾きで、キャラ選択の選択位置を動かす（上でルールの行、下でカードへ戻る、左右で横に並んだカードを 1P → 人のいない枠 の順に。両端で止まる）
+	/// @param moveX 左右の入力（右がプラス）
+	/// @param moveY 上下の入力（上がプラス。大きいほうの向きだけを使い、弾いて一度戻すたびに1つ動く）
 	/// @param editSlots 人のいない枠を選べるかを設定する（true：選べる、false：ルールと 1P だけ。オンライン）
-	void MoveLobbyFocus(float moveY, bool editSlots);
+	void MoveLobbyFocus(float moveX, float moveY, bool editSlots);
 	/// @brief 1P の選択位置を取得する（VERSUS_LOBBY_FOCUS_RULE、または 0〜3 のスロット）
 	int GetLobbyFocus() const { return m_Focus; }
-	/// @brief 人のいない枠の相手を ダミー → CPU よわい → ふつう → つよい → ダミー の順に切り替える（人のいる枠・範囲外は無視）
-	void CycleCpu(int slot);
+	/// @brief 人のいない枠の相手を ダミー ⇔ CPU よわい ⇔ ふつう ⇔ つよい の順に切り替える（端は反対の端へ回る。人のいる枠・範囲外は無視）
+	/// @param slot 切り替えるスロット（0〜3）
+	/// @param direction 切り替える向き（+1：強いほうへ、-1：弱いほうへ）
+	void CycleCpu(int slot, int direction = 1);
 	/// @brief 人のいない枠の相手の強さを取得する（ダミー・人のいる枠・範囲外は VERSUS_CPU_NONE）
 	int GetCpuLevel(int slot) const;
 	/// @brief 人のいない枠の相手が CPU か取得する（true：CPU、false：ダミー）
@@ -132,7 +135,8 @@ private:
 	bool m_Ready[FIGHTER_COUNT] = {}; // キャラ選択の画面で準備OKにしたか
 	int m_CpuLevels[FIGHTER_COUNT] = { VERSUS_CPU_NORMAL, VERSUS_CPU_NORMAL, VERSUS_CPU_NORMAL, VERSUS_CPU_NORMAL }; // 人のいない枠の相手（はじめは CPU ふつう）
 	int m_Focus = 0; // 1P の選択位置（VERSUS_LOBBY_FOCUS_RULE か 0〜3）
-	bool m_FocusReady = true; // 上下を一度戻したか（倒しっぱなしで動き続けない）
+	int m_CardFocus = 0; // ルールの行へ上がる前に選んでいたカード（下で戻る先）
+	bool m_FocusReady = true; // スティックを一度戻したか（倒しっぱなしで動き続けない）
 	int m_LastAttackers[FIGHTER_COUNT] = { -1, -1, -1, -1 };
 	int m_Scores[FIGHTER_COUNT] = {};
 };

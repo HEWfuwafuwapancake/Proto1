@@ -509,7 +509,7 @@ void CodexMenu::DrawOptions(const SceneCalc& scene, const MATCH_TUNING& tuning) 
 	Bar({ INFO_CARD.X + 10, INFO_CARD.Y + INFO_CARD.Height + 30, 330, 40 }, SLANT, INK, 0, 0);
 	Word("変更は次の試合から適用", INFO_CARD.X + 30, INFO_CARD.Y + INFO_CARD.Height + 37, 18, LIME, TEXT2D_FONT_POP);
 	Word("オンラインはホストの設定を全員に適用します。", INFO_CARD.X + 20, INFO_CARD.Y + INFO_CARD.Height + 86, 15, INK);
-	Footer("↑↓ / W S / 左スティック  選ぶ    ←→ / A D / 十字キー  変える    Enter / ○  決定    Backspace / ×  戻る");
+	Footer("↑↓ / W S / 左スティック  選ぶ    ←→ / 十字キー  変える    Enter / ○  決定    Backspace / ×  戻る");
 }
 
 void CodexMenu::DrawArmCosts(const SceneCalc& scene, const ARM_COST_TABLE& costs) const
@@ -552,7 +552,7 @@ void CodexMenu::DrawArmCosts(const SceneCalc& scene, const ARM_COST_TABLE& costs
 	else InfoCard(INFO_CARD, "表を閉じる", "変更した値は、そのまま保持されます。", "Enter / ○ でオプションへ戻ります。", "");
 	Word("当たり：1人でも効いた　外れ：誰にも効かなかった", INFO_CARD.X + 10, INFO_CARD.Y + INFO_CARD.Height + 34, 15, INK);
 	Word("耐久は 100。オンラインははじめの値を使います。", INFO_CARD.X + 10, INFO_CARD.Y + INFO_CARD.Height + 64, 15, INK);
-	Footer("↑↓ / W S / 左スティック  選ぶ    ←→ / A D / 十字キー  5 ずつ変える    Backspace / ×  戻る");
+	Footer("↑↓ / W S / 左スティック  選ぶ    ←→ / 十字キー  5 ずつ変える    Backspace / ×  戻る");
 }
 
 void CodexMenu::DrawLobby(const SceneCalc& scene, const VersusCalc& participants, const NetSession& net,
@@ -604,7 +604,7 @@ void CodexMenu::DrawLobby(const SceneCalc& scene, const VersusCalc& participants
 			DrawCharacterPreview(characters[slot], preview, yaw, PREVIEW_VIEW_HEIGHT);
 			Word(CHARACTER_DATA::Get(characters[slot]).Name, x + LOBBY_CARD_WIDTH * 0.5f, LOBBY_CARD_TOP + 382, 22, MUTED,
 				TEXT2D_FONT_POP, GLYPH_ALIGN_CENTER);
-			if (focus == slot) Word("←→ キャラ   ○ CPU の強さ", x + 6, LOBBY_STATUS_Y, 15, INK);
+			if (focus == slot) Word("十字キー  ←→ キャラ   ↑↓ 強さ", x + 6, LOBBY_STATUS_Y, 15, INK);
 			else if (!scene.IsSolo()) Word("Enter / ○ で参加", x + 6, LOBBY_STATUS_Y, 15, INK);
 			continue;
 		}
@@ -618,7 +618,7 @@ void CodexMenu::DrawLobby(const SceneCalc& scene, const VersusCalc& participants
 			Word("準備OK！", x + LOBBY_CARD_WIDTH * 0.5f, LOBBY_STATUS_Y - 12, 22, INK,
 				TEXT2D_FONT_POP, GLYPH_ALIGN_CENTER, stamp);
 		}
-		else Word("←→ キャラ   ○ 準備OK", x + 6, LOBBY_STATUS_Y, 15, INK);
+		else Word("十字キー  ←→ キャラ   ○ 準備OK", x + 6, LOBBY_STATUS_Y, 15, INK);
 	}
 	// 全員が準備OKなら開始の帯を出す（オンラインはホストのほかに1人以上つながっていること）。
 	const bool allReady = readyCount > 0 && readyCount == joinedCount && (!online || joinedCount > 1);
@@ -640,8 +640,8 @@ void CodexMenu::DrawLobby(const SceneCalc& scene, const VersusCalc& participants
 			Word(ip.c_str(), 784, LOBBY_BANNER_Y + 16, 15, LIME);
 		}
 	}
-	Footer(online ? "↑↓ / 左スティック  ルール（ホスト）   ←→ / 十字キー  キャラ・ルール   Enter / ○  準備OK・ホストが開始   ×  戻る"
-		: "↑↓ / 左スティック  選ぶ（1P）   ←→ / 十字キー  キャラ・ルール   Enter / ○  参加・準備OK・開始   Backspace / ×  取り消し・戻る");
+	Footer(online ? "左スティック / W S  ルール（ホスト）   十字キー / ←→  キャラ・ルール   Enter / ○  準備OK・ホストが開始   ×  戻る"
+		: "左スティック / W A S D  選ぶ（1P）   十字キー / ←→  キャラ・ルール・CPU の強さ   Enter / ○  参加・準備OK・開始   Backspace / ×  取り消し・戻る");
 }
 
 void CodexMenu::DrawResult(const SceneCalc& scene, const VersusCalc& participants,
