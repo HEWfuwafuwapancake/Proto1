@@ -37,3 +37,11 @@ void ShapeDrawCapsule(const XMFLOAT3& bottom, float radius, float height, const 
 /// @param radius 円柱の半径（0 以下なら描かない）
 /// @param color 色（RGBA）
 void ShapeDrawCylinder(const XMFLOAT3& start, const XMFLOAT3& end, float radius, const XMFLOAT4& color);
+
+/// @brief 始点と終点を結ぶ向きに伸ばした箱を描く（ShapeDrawCylinder の箱の版）
+/// @param start 始点（箱の一方の端の面の中心）
+/// @param end 終点（箱のもう一方の端の面の中心）
+/// @param width 箱の幅（伸ばす向きに直角で、水平に近い向きの長さ）
+/// @param depth 箱の厚さ（伸ばす向きと幅の両方に直角な向きの長さ）
+/// @param color 色（RGBA）
+void ShapeDrawBoxAlong(const XMFLOAT3& start, const XMFLOAT3& end, float width, float depth, const XMFLOAT4& color);

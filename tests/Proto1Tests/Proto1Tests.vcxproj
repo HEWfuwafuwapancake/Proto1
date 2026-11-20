@@ -94,6 +94,7 @@
     <ClCompile Include="..\..\src\physics\armcostcalc.cpp" />
     <ClCompile Include="..\..\src\physics\lasercalc.cpp" />
     <ClCompile Include="..\..\src\physics\spearcalc.cpp" />
+    <ClCompile Include="..\..\src\physics\missilecalc.cpp" />
     <ClCompile Include="..\..\src\physics\armusecalc.cpp" />
     <ClCompile Include="..\..\src\physics\breachcalc.cpp" />
     <ClCompile Include="..\..\src\physics\collision.cpp" />
@@ -121,6 +122,7 @@
     <ClCompile Include="armcostcalc_test.cpp" />
     <ClCompile Include="lasercalc_test.cpp" />
     <ClCompile Include="spearcalc_test.cpp" />
+    <ClCompile Include="missilecalc_test.cpp" />
     <ClCompile Include="armusecalc_test.cpp" />
     <ClCompile Include="capsulecalc_test.cpp" />
     <ClCompile Include="tuningcalc_test.cpp" />

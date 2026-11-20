@@ -11,12 +11,13 @@ static constexpr float CAPSULE_HEIGHT = 1.1f;
 static constexpr float CAPSULE_FLOAT_HEIGHT = 0.15f;
 static constexpr float CAPSULE_BOB_HEIGHT = 0.1f;
 static constexpr float CAPSULE_BOB_SPEED = 3.0f;
-// 触手・ハンマー・ナックル・レーザー・刀・モーニングスター・槍の順。
+// 触手・ハンマー・ナックル・レーザー・刀・モーニングスター・槍・ミサイルの順。
 static constexpr XMFLOAT4 CAPSULE_COLORS[] = {
 	{ 0.82f, 0.25f, 0.72f, 1.0f }, { 1.0f, 0.72f, 0.15f, 1.0f },
 	{ 0.95f, 0.26f, 0.18f, 1.0f }, { 0.20f, 0.90f, 0.42f, 1.0f },
 	{ 0.45f, 0.95f, 1.0f, 1.0f },
 	{ 0.55f, 0.55f, 0.62f, 1.0f }, { 0.85f, 0.65f, 0.4f, 1.0f },
+	{ 0.45f, 0.05f, 0.15f, 1.0f }, // ミサイル：ワインレッド（ナックルの赤より暗く）
 };
 static_assert(ArmCapsuleCalc::TYPE_COUNT == ARM_TYPE_NONE, "袋には素手以外の腕を入れる");
 static_assert(sizeof(CAPSULE_COLORS) / sizeof(CAPSULE_COLORS[0]) == ArmCapsuleCalc::TYPE_COUNT, "腕ごとに色を設定する");
