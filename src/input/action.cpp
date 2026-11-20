@@ -285,15 +285,15 @@ ACTION_MENU_INPUT ActionGetMenuInput(int device)
 	ACTION_MENU_INPUT input;
 	if (!IsValidDevice(device)) return input;
 	input.Decide = ActionIsTrigger(device, ACTION_DECIDE);
+	// W A S D は左スティック（カーソル）、←→ は十字キー（中身の変更）と同じ扱い。
+	input.MoveX = ActionGetMove(device).X;
 	input.MoveY = ActionGetMove(device).Y;
 	if (device == ACTION_DEVICE_KEYBOARD) {
 		input.Back = KeyboardIsTrigger(VK_BACK);
 		if (KeyboardIsPress(VK_UP)) input.MoveY = 1.0f;
 		if (KeyboardIsPress(VK_DOWN)) input.MoveY = -1.0f;
 		input.Horizontal = (KeyboardIsTrigger(VK_RIGHT) ? 1 : 0) - (KeyboardIsTrigger(VK_LEFT) ? 1 : 0);
-		const bool left = KeyboardIsTrigger(VK_LEFT) || KeyboardIsTrigger(MOVE_KEY_LEFT);
-		const bool right = KeyboardIsTrigger(VK_RIGHT) || KeyboardIsTrigger(MOVE_KEY_RIGHT);
-		input.CharacterDirection = (right ? 1 : 0) - (left ? 1 : 0);
+		input.CharacterDirection = input.Horizontal;
 		input.Text = KeyboardGetAddressText();
 	}
 	else {

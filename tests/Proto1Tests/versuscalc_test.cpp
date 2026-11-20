@@ -70,7 +70,8 @@ namespace Proto1Tests
 		EXPECT_FALSE(versus.IsAllReady());
 	}
 
-	// 1P の選択位置は上下の弾きで ルール → 1P → 人のいない枠 と動き、人のいる枠は飛ばす。人のいない枠はダミーと CPU の強さを切り替えられる。
+	// 1P の選択位置は、左右の弾きで横に並んだカードを 1P → 人のいない枠 と動き（人のいる枠は飛ばす）、上でルールの行、下で前のカードへ戻る。
+	// 人のいない枠はダミーと CPU の強さを両方向に切り替えられる。
 	TEST(VersusCalcTest, Lobby_FocusSkipsHumansAndTogglesCpu)
 	{
 		VersusCalc versus;
@@ -78,25 +79,31 @@ namespace Proto1Tests
 		versus.AssignDevice(4);
 		versus.AssignDevice(0);
 		EXPECT_EQ(0, versus.GetLobbyFocus());
-		versus.MoveLobbyFocus(1.0f, true);
-		EXPECT_EQ(VERSUS_LOBBY_FOCUS_RULE, versus.GetLobbyFocus());
-		versus.MoveLobbyFocus(-1.0f, true); // 戻さずに倒しても動かない
-		EXPECT_EQ(VERSUS_LOBBY_FOCUS_RULE, versus.GetLobbyFocus());
-		versus.MoveLobbyFocus(0.0f, true);
-		versus.MoveLobbyFocus(-1.0f, true);
-		versus.MoveLobbyFocus(0.0f, true);
-		versus.MoveLobbyFocus(-1.0f, true);
+		versus.MoveLobbyFocus(0.0f, -1.0f, true); // カードの行で下へ倒しても横へは動かない
+		EXPECT_EQ(0, versus.GetLobbyFocus());
+		versus.MoveLobbyFocus(0.0f, 0.0f, true);
+		versus.MoveLobbyFocus(1.0f, 0.0f, true);
 		EXPECT_EQ(2, versus.GetLobbyFocus()); // 2P は人なので飛ばす
+		versus.MoveLobbyFocus(-1.0f, 0.0f, true); // 戻さずに倒しても動かない
+		EXPECT_EQ(2, versus.GetLobbyFocus());
+		versus.MoveLobbyFocus(0.0f, 0.0f, true);
+		versus.MoveLobbyFocus(0.0f, 1.0f, true);
+		EXPECT_EQ(VERSUS_LOBBY_FOCUS_RULE, versus.GetLobbyFocus());
+		versus.MoveLobbyFocus(0.0f, 0.0f, true);
+		versus.MoveLobbyFocus(0.0f, -1.0f, true);
+		EXPECT_EQ(2, versus.GetLobbyFocus()); // 下で前に選んでいたカードへ戻る
 		EXPECT_EQ(VERSUS_CPU_NORMAL, versus.GetCpuLevel(2)); // はじめは CPU ふつう
-		versus.CycleCpu(2);
+		versus.CycleCpu(2, 1);
 		EXPECT_EQ(VERSUS_CPU_HARD, versus.GetCpuLevel(2));
-		versus.CycleCpu(2);
+		versus.CycleCpu(2, 1);
 		EXPECT_FALSE(versus.IsCpu(2)); // つよいの次はダミー
-		versus.CycleCpu(1);
+		versus.CycleCpu(2, -1);
+		EXPECT_EQ(VERSUS_CPU_HARD, versus.GetCpuLevel(2)); // 逆向きではダミーの前がつよい
+		versus.CycleCpu(1, 1);
 		EXPECT_EQ(VERSUS_CPU_NONE, versus.GetCpuLevel(1)); // 人のいる枠は変えない
-		versus.CycleCpu(2);
+		versus.CycleCpu(2, 1);
 		versus.AssignDevice(2); // 選んでいた枠に人が入ると 1P のカードへ戻る
-		versus.MoveLobbyFocus(0.0f, true);
+		versus.MoveLobbyFocus(0.0f, 0.0f, true);
 		EXPECT_EQ(0, versus.GetLobbyFocus());
 		EXPECT_FALSE(versus.IsCpu(2));
 	}
