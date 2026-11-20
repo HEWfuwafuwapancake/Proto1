@@ -61,7 +61,7 @@ private:
 	bool m_Spinning = false; // 頭の上で回している間 true
 	float m_SpinSeconds = 0.0f; // 回し始めてからの秒数
 	float m_SpinAngle = 0.0f; // 回している角度
-	VEC3 m_SpinPrevious = {}; // 前のフレームの回している鉄球の位置
+	float m_SpinDrainSeconds = 0.0f; // 回している間、耐久をまだ減らしていない秒数
 	bool m_FanConsumed = true; // 扇の耐久を減らし終えたら true
 	bool m_ThrowHit = false; // 投げで1人でも当たったら true
 	float m_ThrowPower = 0.0f; // 行きの吹っ飛ばす強さ（ためた分）
