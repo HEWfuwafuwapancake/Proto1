@@ -8,7 +8,7 @@
 #include "render/shape.h"
 
 // 調整用の値（ダメージは低く、吹っ飛ばしは強く）
-// 耐久の減る量は physics/armcostcalc の表のモーニングスターの行（弱：扇、強：投げ。回している間の当たりでは減らない）。
+// 耐久の減る量は physics/armcostcalc の表のモーニングスターの行（弱：扇、強：投げ）。回している間は当たりに関係なく1秒ごとに SPIN_DRAIN_COST 減る。
 static constexpr ARM_COST_ROW COST_ROW = ARM_COST_ROW_FLAIL;
 static constexpr float FAN_SECONDS[] = { 0.15f, 0.1f, 0.25f }; // 単押し：振りかぶり・振り・休み
 static constexpr float FAN_CLIP_SECONDS[] = { 4.0f / 24.0f, 3.0f / 24.0f, 5.0f / 24.0f }; // ナックルの殴りのクリップの区切り
@@ -20,13 +20,14 @@ static constexpr float FAN_POWER = 2.6f;
 static constexpr float FAN_UP = 0.5f;
 static constexpr float SPIN_FULL_SECONDS = 1.5f; // 最大までためる秒数
 static constexpr float SPIN_SPEED = XM_2PI * 2.0f; // 回す速さ（1秒に2周）
-static constexpr float SPIN_RADIUS = 2.2f; // 頭の上の輪の半径
+static constexpr float SPIN_RADIUS = 2.2f; // 頭の上の輪の半径（この内側の全方向に当たる）
 static constexpr float SPIN_HEIGHT = 1.6f; // 輪の足元からの高さ（頭の高さ）
 static constexpr float SPIN_MOVE_SCALE = 0.5f; // 回している間の歩く速さの倍率
 static constexpr float SPIN_DAMAGE = 2.0f;
 static constexpr float SPIN_POWER = 1.0f;
 static constexpr float SPIN_UP = 0.5f;
 static constexpr float SPIN_HIT_COOLDOWN = 0.5f; // 同じ相手にまた当たるまでの秒数
+static constexpr int SPIN_DRAIN_COST = 5; // 回している間、1秒ごとに減る耐久（持ちの倍率で割る）
 static constexpr float THROW_RANGE_MIN = 6.0f; // ためなしの飛距離
 static constexpr float THROW_RANGE_MAX = 14.0f; // 最大までためた飛距離
 static constexpr float OUT_POWER_MIN = 2.6f; // 行きの強さ（ためなし）
@@ -127,20 +128,25 @@ void FlailArm::StrikeFan()
 	}
 }
 
-// 頭の上で回し、輪に触れた相手を外へ小さく弾く（同じ相手には少しあけて当てる）。
+// 頭の上で回し、輪の中（全方向）にいる相手を外へ小さく弾く（同じ相手には少しあけて当てる）。
+// 回している間は1秒ごとに耐久が減る。
 void FlailArm::StepSpin(float dt)
 {
 	m_SpinSeconds += dt;
+	m_SpinDrainSeconds += dt;
+	while (m_SpinDrainSeconds >= 1.0f) {
+		m_SpinDrainSeconds -= 1.0f;
+		ConsumeDurability(SPIN_DRAIN_COST);
+	}
 	m_SpinAngle = fmodf(m_SpinAngle + SPIN_SPEED * dt, XM_2PI);
 	const VEC3 center = GetSpinCenter();
-	const VEC3 ball = FlailCalcSpinPosition(center, m_SpinAngle, SPIN_RADIUS);
-	const CAPSULE sweep{ m_SpinPrevious, ball, BALL_RADIUS };
-	m_SpinPrevious = ball;
 	bool hit = false;
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		m_SpinCooldowns[i] = fmaxf(0.0f, m_SpinCooldowns[i] - dt);
 		const TENTACLE_TARGET target = GetFighters().GetMeleeTarget(i, GetSlot());
-		if (!target.Available || m_SpinCooldowns[i] > 0.0f || !CollisionCapsuleCapsule(sweep, target.Body).Hit) continue;
+		// 輪の半径（＋鉄球の太さ）の中なら、前後左右どこでも当たる（扇の開きを半周にして全方向）。
+		if (!target.Available || m_SpinCooldowns[i] > 0.0f
+			|| !AreaCalcInSector(center, GetForward(), 0.0f, SPIN_RADIUS + BALL_RADIUS, XM_PI, BALL_RADIUS, target.Body)) continue;
 		m_SpinCooldowns[i] = SPIN_HIT_COOLDOWN;
 		if (GetFighters().Launch(i, GetSlot(), AreaCalcRadialDirection(center, target.Body, SPIN_UP, GetForward()), SPIN_DAMAGE, SPIN_POWER)) {
 			hit = true;
@@ -206,7 +212,7 @@ void FlailArm::Update(const ARM_INPUT& input)
 			m_Spinning = true;
 			m_SpinSeconds = 0.0f;
 			m_SpinAngle = atan2f(GetForward().X, GetForward().Z);
-			m_SpinPrevious = FlailCalcSpinPosition(GetSpinCenter(), m_SpinAngle, SPIN_RADIUS);
+			m_SpinDrainSeconds = 0.0f;
 			for (float& cooldown : m_SpinCooldowns) cooldown = 0.0f;
 		}
 	}
@@ -218,8 +224,8 @@ void FlailArm::Update(const ARM_INPUT& input)
 		m_FanConsumed = true;
 	}
 	if (m_Spinning) {
-		// 離したら、ためた分だけ遠くへ投げる。
-		if (!input.Pressed) ThrowBall();
+		// 離したら、ためた分だけ遠くへ投げる。回している間に耐久が尽きたら、その場で投げる。
+		if (!input.Pressed || !CanUse()) ThrowBall();
 		else StepSpin(dt);
 	}
 	StepBall(dt);
