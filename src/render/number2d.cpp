@@ -26,6 +26,20 @@ void Number2DFinalize(void)
 
 void Number2DDrawRects(const RECT2D rects[], int count, const XMFLOAT4& color)
 {
+	if (count <= 0) return;
+	if (count > NUMBER2D_MAX_RECTS) count = NUMBER2D_MAX_RECTS;
+	QUAD2D quads[NUMBER2D_MAX_RECTS];
+	for (int i = 0; i < count; i++) quads[i] = QuadCalcRect(rects[i]);
+	Number2DDrawQuads(quads, count, color);
+}
+
+void Number2DDrawQuad(const QUAD2D& quad, const XMFLOAT4& color)
+{
+	Number2DDrawQuads(&quad, 1, color);
+}
+
+void Number2DDrawQuads(const QUAD2D quads[], int count, const XMFLOAT4& color)
+{
 	if (g_pVertexBuffer == nullptr || count <= 0) return;
 	if (count > NUMBER2D_MAX_RECTS) count = NUMBER2D_MAX_RECTS;
 
@@ -34,15 +48,11 @@ void Number2DDrawRects(const RECT2D rects[], int count, const XMFLOAT4& color)
 	if (FAILED(DirectXGetDeviceContext()->Map(g_pVertexBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr))) return;
 	VERTEX_3D* v = (VERTEX_3D*)msr.pData;
 	for (int i = 0; i < count; i++) {
-		const float left = rects[i].X;
-		const float top = rects[i].Y;
-		const float right = rects[i].X + rects[i].Width;
-		const float bottom = rects[i].Y + rects[i].Height;
-
+		const QUAD2D& q = quads[i];
 		// 画面で見て時計回り（左上 → 右上 → 左下、右上 → 右下 → 左下）
 		const XMFLOAT3 corners[VERTICES_PER_RECT] = {
-			{ left,  top,    0.0f }, { right, top,    0.0f }, { left,  bottom, 0.0f },
-			{ right, top,    0.0f }, { right, bottom, 0.0f }, { left,  bottom, 0.0f },
+			{ q.X[0], q.Y[0], 0.0f }, { q.X[1], q.Y[1], 0.0f }, { q.X[2], q.Y[2], 0.0f },
+			{ q.X[1], q.Y[1], 0.0f }, { q.X[3], q.Y[3], 0.0f }, { q.X[2], q.Y[2], 0.0f },
 		};
 		for (int k = 0; k < VERTICES_PER_RECT; k++) {
 			VERTEX_3D& vertex = v[i * VERTICES_PER_RECT + k];

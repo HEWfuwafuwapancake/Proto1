@@ -542,7 +542,8 @@ void Hud::DrawScene(const VersusCalc& participants, const NetSession& net, const
 
 void Hud::Draw(void) const
 {
-	if (m_Scene->GetScene() != SCENE_MATCH) return;
+	// 試合中のメニューを開いている間も、止まった試合の HUD は見せておく。
+	if (m_Scene->GetScene() != SCENE_MATCH && m_Scene->GetScene() != SCENE_PAUSE) return;
 	// 自分の画面に 1280×720 の座標を縦横同じ倍率で当てはめ、描き終わったら画面全体に戻す。
 	Shader_Set2DSize(m_Width, m_Height);
 	const float centerX = m_Width * 0.5f;

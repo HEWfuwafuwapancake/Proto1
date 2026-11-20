@@ -3,7 +3,9 @@
 #include "core/dx11.h"
 #include "physics/armcostcalc.h"
 #include "physics/scenecalc.h"
+#include "physics/stagecalc.h"
 #include "physics/versuscalc.h"
+#include "render/glyphcalc.h"
 #include "render/skinnedmodel.h"
 #include <array>
 #include <chrono>
@@ -11,15 +13,23 @@
 class NetSession;
 class SessionAddressCalc;
 
-/// @brief Codex が担当する専用メニュー。試合の HUD・腕の描画とは独立している
+/// @brief 試合以外の画面（タイトル・対戦方法・キャラ選択・オプション・結果）を、ポップな見た目（ピンク・黄緑・紫の斜めの帯）で描く
+/// @details 背景は、ステージのまわりをゆっくり回るカメラで描いた3Dを ぼかしたもの（render/backdrop.h）。試合の HUD・腕の描画とは独立している
 class CodexMenu
 {
 public:
 	/// @brief 日本語の文字画像と選択画面専用のモデル・待機姿勢を初期化する
 	void Initialize();
-	/// @brief 選択画面専用のモデルと姿勢を解放する
+	/// @brief 選択画面専用のモデルと姿勢、背景をぼかす画面を解放する
 	void Finalize();
-	/// @brief 専用背景と現在の画面を描く（全画面のビューポート・深度無効で呼ぶ）
+	/// @brief 画面や選んでいる項目が変わった時刻を覚える（選んだボタンが弾む動きに使う。毎フレーム呼ぶ）
+	/// @param scene 現在のメニューとカーソル
+	void Update(const SceneCalc& scene);
+	/// @brief 背景用に、ステージのまわりを斜め上からゆっくり回るカメラの行列をシェーダーに設定する
+	/// @details BackdropBegin のあと、ステージなどの3Dを描く前に呼ぶ
+	/// @param stage 見るステージ（浮島の中心と大きさから、回る中心と距離を決める）
+	void SetBackdropCamera(const STAGE& stage) const;
+	/// @brief 背景と現在の画面を描く（全画面のビューポート・深度無効で呼ぶ）
 	/// @param scene 現在のメニューとカーソル
 	/// @param participants ロビーの参加者、結果画面では試合の順位
 	/// @param net 接続状態とホストのアドレス
@@ -30,24 +40,32 @@ public:
 	void Draw(const SceneCalc& scene, const VersusCalc& participants, const NetSession& net,
 		const SessionAddressCalc& address, const std::array<CHARACTER_TYPE, FIGHTER_COUNT>& characters,
 		const MATCH_TUNING& tuning, const ARM_COST_TABLE& costs) const;
+	/// @brief 試合中のメニュー（再開・ロビーへ・タイトルへ）を、止まった試合の画面の上に重ねて描く（全画面のビューポート・深度無効で呼ぶ）
+	/// @param scene 現在のメニューとカーソル
+	void DrawPause(const SceneCalc& scene) const;
 
 private:
-	void DrawCharacterPreview(CHARACTER_TYPE character, float x, float yaw) const;
-	void Text(const char* text, float x, float y, float height, const XMFLOAT4& color) const;
+	float GetSeconds() const; // メニューを作ってからの秒数（背景のカメラ・帯の流れ・揺れに使う）
+	float GetPop() const; // 選んでいる項目が変わってからの弾み（0 から始まり少し行き過ぎて 1）
+	void DrawCharacterPreview(CHARACTER_TYPE character, const RECT2D& area, float yaw, float viewHeight) const;
 	void Background() const;
-	void Reactor(float x, float y, float radius) const;
-	void Header(const char* title, const char* eyebrow, int step) const;
-	void Row(const char* title, const char* subtitle, int index, bool selected, float y, float height = 66.0f) const;
-	void Detail(const char* tag, const char* title, const char* line1, const char* line2, const char* line3) const;
-	void Frame(float x, float y, float width, float height) const; // 選んでいる場所を水色の枠で囲む
+	void Header(const char* title, const char* eyebrow) const;
 	void Footer(const char* help) const;
-	void ScrollBar(float x, float y, float height, int top, int shown, int count) const; // 表のスクロールの位置を縦の棒で見せる（全部見えていれば出さない）
+	void Button(int index, const char* title, const char* subtitle, bool selected, bool dark, float x, float y, float width, float height) const;
+	void InfoCard(const RECT2D& area, const char* title, const char* line1, const char* line2, const char* line3) const;
+	void DrawTitle(const SceneCalc& scene, const std::array<CHARACTER_TYPE, FIGHTER_COUNT>& characters) const;
+	void DrawModeSelect(const SceneCalc& scene) const;
+	void DrawJoinAddress(const SessionAddressCalc& address) const;
 	void DrawOptions(const SceneCalc& scene, const MATCH_TUNING& tuning) const;
 	void DrawArmCosts(const SceneCalc& scene, const ARM_COST_TABLE& costs) const;
 	void DrawLobby(const SceneCalc& scene, const VersusCalc& participants, const NetSession& net,
 		const std::array<CHARACTER_TYPE, FIGHTER_COUNT>& characters) const;
-	void DrawResult(const SceneCalc& scene, const VersusCalc& participants) const;
+	void DrawResult(const SceneCalc& scene, const VersusCalc& participants,
+		const std::array<CHARACTER_TYPE, FIGHTER_COUNT>& characters) const;
 	std::array<SkinnedModel, CHARACTER_COUNT> m_PreviewModels;
 	std::array<SKINNED_POSE, CHARACTER_COUNT> m_PreviewPoses;
 	std::chrono::steady_clock::time_point m_PreviewStart{};
+	std::chrono::steady_clock::time_point m_ChangeTime{}; // 画面か選んでいる項目が最後に変わった時刻
+	SCENE m_LastScene = SCENE_GAME_START; // 前のフレームの画面
+	int m_LastCursor = -1; // 前のフレームのカーソル
 };

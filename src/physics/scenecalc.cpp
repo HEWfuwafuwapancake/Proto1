@@ -157,7 +157,30 @@ SCENE_EVENT SceneCalc::Step(const SCENE_INPUT& input, bool matchFinished)
 		m_Scene = SCENE_MATCH;
 		return SCENE_EVENT_START_MATCH;
 	}
+	if (m_Scene == SCENE_PAUSE) {
+		// 開いたボタン・戻る・「再開」で試合へ戻る。ロビー・タイトルへは結果画面と同じ処理で戻る。
+		MoveCursor(input.MoveY, PAUSE_ITEM_COUNT);
+		if (input.Pause || input.Back || (input.Decide && m_Cursor == PAUSE_ITEM_RESUME)) {
+			m_Scene = SCENE_MATCH;
+			return SCENE_EVENT_NONE;
+		}
+		if (!input.Decide) return SCENE_EVENT_NONE;
+		if (m_Cursor == PAUSE_ITEM_LOBBY) {
+			m_Scene = SCENE_TITLE;
+			return SCENE_EVENT_BACK_LOBBY;
+		}
+		m_Scene = SCENE_GAME_START;
+		m_Cursor = 0;
+		m_MenuReady = false;
+		return SCENE_EVENT_BACK_TITLE;
+	}
 	if (m_Scene == SCENE_MATCH) {
+		if (input.Pause && !matchFinished) {
+			m_Scene = SCENE_PAUSE;
+			m_Cursor = PAUSE_ITEM_RESUME;
+			m_MenuReady = fabsf(input.MoveY) < MENU_STICK_DEADZONE;
+			return SCENE_EVENT_NONE;
+		}
 		if (input.Restart) return SCENE_EVENT_START_MATCH;
 		if (!matchFinished || !input.Decide) return SCENE_EVENT_NONE;
 		m_Scene = SCENE_RESULT;

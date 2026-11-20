@@ -152,6 +152,9 @@
     <ClCompile Include="src\render\number2d.cpp" />
     <ClCompile Include="src\render\text2d.cpp" />
     <ClCompile Include="src\render\cubeflipcalc.cpp" />
+    <ClCompile Include="src\render\backdrop.cpp" />
+    <ClCompile Include="src\render\menucalc.cpp" />
+    <ClCompile Include="src\render\quadcalc.cpp" />
     <ClCompile Include="src\render\animcalc.cpp" />
     <ClCompile Include="src\render\motioncalc.cpp" />
     <ClCompile Include="src\render\skinnedmodel.cpp" />
@@ -238,6 +241,9 @@
     <ClInclude Include="src\render\number2d.h" />
     <ClInclude Include="src\render\text2d.h" />
     <ClInclude Include="src\render\cubeflipcalc.h" />
+    <ClInclude Include="src\render\backdrop.h" />
+    <ClInclude Include="src\render\menucalc.h" />
+    <ClInclude Include="src\render\quadcalc.h" />
     <ClInclude Include="src\render\animcalc.h" />
     <ClInclude Include="src\render\motioncalc.h" />
     <ClInclude Include="src\render\skinnedmodel.h" />

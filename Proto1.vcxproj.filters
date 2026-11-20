@@ -141,6 +141,15 @@
     <ClCompile Include="src\render\cubeflipcalc.cpp">
       <Filter>src\render</Filter>
     </ClCompile>
+    <ClCompile Include="src\render\backdrop.cpp">
+      <Filter>src\render</Filter>
+    </ClCompile>
+    <ClCompile Include="src\render\menucalc.cpp">
+      <Filter>src\render</Filter>
+    </ClCompile>
+    <ClCompile Include="src\render\quadcalc.cpp">
+      <Filter>src\render</Filter>
+    </ClCompile>
     <ClCompile Include="src\render\animcalc.cpp">
       <Filter>src\render</Filter>
     </ClCompile>
@@ -282,6 +291,15 @@
       <Filter>src\render</Filter>
     </ClInclude>
     <ClInclude Include="src\render\cubeflipcalc.h">
+      <Filter>src\render</Filter>
+    </ClInclude>
+    <ClInclude Include="src\render\backdrop.h">
+      <Filter>src\render</Filter>
+    </ClInclude>
+    <ClInclude Include="src\render\menucalc.h">
+      <Filter>src\render</Filter>
+    </ClInclude>
+    <ClInclude Include="src\render\quadcalc.h">
       <Filter>src\render</Filter>
     </ClInclude>
     <ClInclude Include="src\render\animcalc.h">

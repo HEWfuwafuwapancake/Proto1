@@ -37,6 +37,7 @@ enum SCENE
 	SCENE_JOIN_ADDRESS, ///< 参加先の IPv4 入力
 	SCENE_OPTIONS, ///< 次の試合の設定
 	SCENE_ARM_COSTS, ///< オプションの中の、腕の耐久の減る量の表
+	SCENE_PAUSE, ///< 試合を止めて開くメニュー（再開・ロビーへ・タイトルへ。オフラインだけ）
 };
 
 /// @brief シーンの更新後にゲーム側で行う処理
@@ -87,6 +88,15 @@ enum RESULT_ITEM
 	RESULT_ITEM_COUNT, ///< 項目数（選択する項目ではない）
 };
 
+/// @brief 試合中のメニュー（ポーズ）の項目
+enum PAUSE_ITEM
+{
+	PAUSE_ITEM_RESUME, ///< 試合に戻る
+	PAUSE_ITEM_LOBBY, ///< 参加者とキャラを残してキャラ選択へ戻る
+	PAUSE_ITEM_TITLE, ///< タイトル（GAME START）へ戻る
+	PAUSE_ITEM_COUNT, ///< 項目数（選択する項目ではない）
+};
+
 /// @brief 耐久の減る量の表に一度に見せる行の数（調整用の値。これより行が多いと上下にスクロールする）
 static constexpr int ARM_COST_VISIBLE_ROWS = 8;
 
@@ -108,6 +118,7 @@ struct SCENE_INPUT
 	bool Back = false; ///< 戻るを押した瞬間なら true
 	bool AddressValid = false; ///< IP の全区切りが入力済みで 0〜255 なら true
 	int CharacterDirection = 0; ///< キャラの切り替え（左 -1、右 +1、なし 0）
+	bool Pause = false; ///< 試合中のメニューを開く・閉じるボタンを押した瞬間なら true（オフラインだけ。オンラインは Restart を使う）
 };
 
 /// @brief シーンの遷移と、弾くたびに1つ動くメニューを管理する
