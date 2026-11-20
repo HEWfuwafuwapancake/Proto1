@@ -78,6 +78,10 @@ static constexpr int LOOK_SENSITIVITY_LEVEL_COUNT = sizeof(LOOK_SENSITIVITY_SCAL
 static constexpr float TARGET_PAD_DEADZONE = 0.3f;	// 次の弾きを受け付ける右スティックXの遊び
 static constexpr float TARGET_PAD_THRESHOLD = 0.7f;	// この大きさを超えた瞬間に切り替える
 static constexpr float TARGET_MOUSE_WINDOW = 0.15f;	// マウス移動量を合計する直近の秒数
+
+// メニューのパッド操作の決まり：左スティックはカーソル（どのボタン・項目を選ぶか）だけ、
+// 十字キーは選んでいるものの中身（キャラ・ダミー/CPU・オプションの値・ルール・IP の数値）を変えるだけ。
+static constexpr float MENU_STICK_X_THRESHOLD = 0.5f;	// IP の区切りを左スティックの左右で1つ動かす倒し具合
 static constexpr float TARGET_MOUSE_DISTANCE = 40.0f;	// 切り替える横移動量（ピクセル）
 static constexpr float TARGET_MOUSE_COOLDOWN = 0.3f;	// マウスで切り替えてから次を受け付けるまでの秒数（管理者確認済み）
 
@@ -92,6 +96,8 @@ struct ACTION_STATE
 	bool TargetPadReady = true;       ///< スティックを遊びへ戻したか
 	unsigned int MenuButtons = 0;     ///< 今のメニュー用十字キー・×
 	unsigned int OldMenuButtons = 0;  ///< 前のメニュー用十字キー・×
+	int MenuStickX = 0;               ///< 今の左スティックの左右（左 -1、真ん中 0、右 +1）
+	int OldMenuStickX = 0;            ///< 前の左スティックの左右
 };
 static ACTION_STATE g_Devices[ACTION_DEVICE_COUNT];
 static ACTION_STATE g_SinglePlayer; // 段階Aでは既存のゲームにパッド0＋キーボードを渡す
@@ -181,6 +187,8 @@ static void UpdatePadInput(int device, float dt)
 		state.Press[i] = PadIsPress(device, button);
 	}
 	state.Move = PadGetLeftStick(device);
+	state.OldMenuStickX = state.MenuStickX;
+	state.MenuStickX = state.Move.X > MENU_STICK_X_THRESHOLD ? 1 : (state.Move.X < -MENU_STICK_X_THRESHOLD ? -1 : 0);
 	const ACTION_AXIS stick = PadGetRightStick(device);
 	const float look = PAD_LOOK_SPEED * dt * ActionGetLookSensitivity();
 	state.Look = { stick.X * look, stick.Y * look };
@@ -292,10 +300,9 @@ ACTION_MENU_INPUT ActionGetMenuInput(int device)
 		const auto& state = g_Devices[device];
 		const unsigned int trigger = state.MenuButtons & ~state.OldMenuButtons;
 		input.Back = (trigger & PAD_BUTTON_CROSS) != 0;
-		if (state.MenuButtons & PAD_BUTTON_DPAD_UP) input.MoveY = 1.0f;
-		if (state.MenuButtons & PAD_BUTTON_DPAD_DOWN) input.MoveY = -1.0f;
-		input.Horizontal = ((trigger & PAD_BUTTON_DPAD_RIGHT) ? 1 : 0) - ((trigger & PAD_BUTTON_DPAD_LEFT) ? 1 : 0);
-		input.CharacterDirection = input.Horizontal;
+		// カーソル（MoveY・IP の区切り）は左スティックだけ。十字キーではカーソルを動かさない。
+		input.Horizontal = state.MenuStickX != state.OldMenuStickX ? state.MenuStickX : 0;
+		input.CharacterDirection = ((trigger & PAD_BUTTON_DPAD_RIGHT) ? 1 : 0) - ((trigger & PAD_BUTTON_DPAD_LEFT) ? 1 : 0);
 		input.Vertical = ((trigger & PAD_BUTTON_DPAD_UP) ? 1 : 0) - ((trigger & PAD_BUTTON_DPAD_DOWN) ? 1 : 0);
 	}
 	return input;
