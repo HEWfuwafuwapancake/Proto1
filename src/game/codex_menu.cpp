@@ -447,7 +447,7 @@ void CodexMenu::DrawJoinAddress(const SessionAddressCalc& address) const
 	Word("Backspace は削除 / 空欄から戻る", 64, 436, 17, INK);
 	InfoCard(INFO_CARD, "ホストに IP を聞こう",
 		"キーボードで数字とピリオドを入力。", "パッドは左右で区切り、上下で数値変更。", "離れた相手とは Tailscale で接続します。");
-	Footer("←→  区切りを選ぶ    ↑↓  数値を変える    Enter / ○  接続    ×  戻る");
+	Footer("←→ / 左スティック  区切りを選ぶ    十字キー↑↓  数値を変える    Enter / ○  接続    ×  戻る");
 }
 
 void CodexMenu::DrawOptions(const SceneCalc& scene, const MATCH_TUNING& tuning) const
@@ -509,7 +509,7 @@ void CodexMenu::DrawOptions(const SceneCalc& scene, const MATCH_TUNING& tuning) 
 	Bar({ INFO_CARD.X + 10, INFO_CARD.Y + INFO_CARD.Height + 30, 330, 40 }, SLANT, INK, 0, 0);
 	Word("変更は次の試合から適用", INFO_CARD.X + 30, INFO_CARD.Y + INFO_CARD.Height + 37, 18, LIME, TEXT2D_FONT_POP);
 	Word("オンラインはホストの設定を全員に適用します。", INFO_CARD.X + 20, INFO_CARD.Y + INFO_CARD.Height + 86, 15, INK);
-	Footer("↑↓ / W S  選ぶ    ←→ / A D  変える    Enter / ○  決定    Backspace / ×  戻る");
+	Footer("↑↓ / W S / 左スティック  選ぶ    ←→ / A D / 十字キー  変える    Enter / ○  決定    Backspace / ×  戻る");
 }
 
 void CodexMenu::DrawArmCosts(const SceneCalc& scene, const ARM_COST_TABLE& costs) const
@@ -552,7 +552,7 @@ void CodexMenu::DrawArmCosts(const SceneCalc& scene, const ARM_COST_TABLE& costs
 	else InfoCard(INFO_CARD, "表を閉じる", "変更した値は、そのまま保持されます。", "Enter / ○ でオプションへ戻ります。", "");
 	Word("当たり：1人でも効いた　外れ：誰にも効かなかった", INFO_CARD.X + 10, INFO_CARD.Y + INFO_CARD.Height + 34, 15, INK);
 	Word("耐久は 100。オンラインははじめの値を使います。", INFO_CARD.X + 10, INFO_CARD.Y + INFO_CARD.Height + 64, 15, INK);
-	Footer("↑↓ / W S  選ぶ    ←→ / A D  5 ずつ変える    Backspace / ×  戻る");
+	Footer("↑↓ / W S / 左スティック  選ぶ    ←→ / A D / 十字キー  5 ずつ変える    Backspace / ×  戻る");
 }
 
 void CodexMenu::DrawLobby(const SceneCalc& scene, const VersusCalc& participants, const NetSession& net,
@@ -640,8 +640,8 @@ void CodexMenu::DrawLobby(const SceneCalc& scene, const VersusCalc& participants
 			Word(ip.c_str(), 784, LOBBY_BANNER_Y + 16, 15, LIME);
 		}
 	}
-	Footer(online ? "↑↓  ルール（ホスト）   ←→  キャラ・ルール   Enter / ○  準備OK・ホストが開始   ×  戻る"
-		: "↑↓  選ぶ（1P）   ←→  キャラ・ルール   Enter / ○  参加・準備OK・開始   Backspace / ×  取り消し・戻る");
+	Footer(online ? "↑↓ / 左スティック  ルール（ホスト）   ←→ / 十字キー  キャラ・ルール   Enter / ○  準備OK・ホストが開始   ×  戻る"
+		: "↑↓ / 左スティック  選ぶ（1P）   ←→ / 十字キー  キャラ・ルール   Enter / ○  参加・準備OK・開始   Backspace / ×  取り消し・戻る");
 }
 
 void CodexMenu::DrawResult(const SceneCalc& scene, const VersusCalc& participants,
@@ -693,7 +693,7 @@ void CodexMenu::DrawResult(const SceneCalc& scene, const VersusCalc& participant
 	Button(2, "メニューへ", "", scene.GetCursor() == RESULT_ITEM_TITLE, true,
 		RESULT_BUTTON_X, RESULT_BUTTON_TOP + RESULT_BUTTON_GAP * 2, RESULT_BUTTON_WIDTH, 62);
 	Word("同じ参加者・キャラでもう一度", RESULT_BUTTON_X + 10, RESULT_BUTTON_TOP - 30, 14, INK);
-	Footer("1P : ↑↓ / W S  選ぶ    Enter / ○  決定    （オンラインのメニューへは、ロビーへ戻ります）");
+	Footer("1P : ↑↓ / W S / 左スティック  選ぶ    Enter / ○  決定    （オンラインのメニューへは、ロビーへ戻ります）");
 }
 
 void CodexMenu::DrawPause(const SceneCalc& scene) const
@@ -710,7 +710,7 @@ void CodexMenu::DrawPause(const SceneCalc& scene) const
 	for (int i = 0; i < PAUSE_ITEM_COUNT; ++i) {
 		Button(i, NAMES[i], SUBTITLES[i], scene.GetCursor() == i, i == PAUSE_ITEM_TITLE, 560, 230 + i * 84.0f, 470, 66);
 	}
-	Footer("↑↓ / W S  選ぶ    Enter / ○  決定    R / OPTIONS・Backspace / ×  試合に戻る");
+	Footer("↑↓ / W S / 左スティック  選ぶ    Enter / ○  決定    R / OPTIONS・Backspace / ×  試合に戻る");
 }
 
 void CodexMenu::Draw(const SceneCalc& scene, const VersusCalc& participants, const NetSession& net,
