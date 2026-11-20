@@ -9,7 +9,11 @@
 static constexpr int FONT_HEIGHTS[TEXT2D_FONT_COUNT] = { 32, 48, 96 }; // 書体ごとの文字画像の高さ（大きく出す書体ほど大きく作る）
 static constexpr int BITMAP_PADDING = 2;
 static constexpr const char* POP_FONT_FILE = "assets/fonts/MochiyPopOne-Regular.ttf"; // 置けば最優先で使うフォントのファイル
-static constexpr const char* POP_FONT_FACES[] = { "Mochiy Pop One", "HGP創英角ﾎﾟｯﾌﾟ体" }; // ポップな見出しに使う書体名（前から順に探す）
+// ポップな見出しに使う書体（前から順に探す）。GDI は日本語の Windows で日本語の書体名を返すので、その名前も持つ。
+static constexpr const char* POP_FONT_FACES[][2] = {
+	{ "Mochiy Pop One", "モッチーポップ One" },
+	{ "HGP創英角ﾎﾟｯﾌﾟ体", "HGP創英角ﾎﾟｯﾌﾟ体" },
+};
 
 struct TEXT2D_IMAGE
 {
@@ -32,15 +36,15 @@ static HFONT CreateFace(const char* face, int height, int weight)
 		OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, ANTIALIASED_QUALITY, DEFAULT_PITCH, face);
 }
 
-// その書体が本当に入っているか（GDI は無い書体を黙って別の書体に替えるので、選んだ名前を読み直す）。
-static bool HasFace(HFONT font, const char* face)
+// その書体が本当に入っているか（GDI は無い書体を黙って別の書体に替えるので、選んだ名前を読み直す。英語名・日本語名のどちらでもよい）。
+static bool HasFace(HFONT font, const char* const names[2])
 {
 	if (font == nullptr) return false;
 	const HGDIOBJ previous = SelectObject(g_TextDC, font);
 	char selected[LF_FACESIZE] = {};
 	GetTextFaceA(g_TextDC, LF_FACESIZE, selected);
 	SelectObject(g_TextDC, previous);
-	return std::strcmp(selected, face) == 0;
+	return std::strcmp(selected, names[0]) == 0 || std::strcmp(selected, names[1]) == 0;
 }
 
 static HFONT CreatePopFont()
@@ -48,9 +52,9 @@ static HFONT CreatePopFont()
 	if (!g_PopFontFileAdded) {
 		g_PopFontFileAdded = AddFontResourceExA(POP_FONT_FILE, FR_PRIVATE, nullptr) > 0;
 	}
-	for (const char* face : POP_FONT_FACES) {
-		const HFONT font = CreateFace(face, FONT_HEIGHTS[TEXT2D_FONT_POP], FW_NORMAL);
-		if (HasFace(font, face)) return font;
+	for (const auto& names : POP_FONT_FACES) {
+		const HFONT font = CreateFace(names[0], FONT_HEIGHTS[TEXT2D_FONT_POP], FW_NORMAL);
+		if (HasFace(font, names)) return font;
 		if (font != nullptr) DeleteObject(font);
 	}
 	return CreateFace("Meiryo", FONT_HEIGHTS[TEXT2D_FONT_POP], FW_BOLD);

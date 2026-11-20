@@ -22,7 +22,7 @@
 
 ## 2. 次にやること
 
-0. **管理者が No.184・185 を遊んで確かめる**：メニューの色・文字の大きさ・背景のぼけ具合（`codex_menu.cpp` の「調整用の値」、ぼけは `backdrop.cpp` の `DRAW_LEVEL`）。ポーズからロビー・タイトルへ戻れるか。見出しの書体を Mochiy Pop One にするなら `assets/fonts/MochiyPopOne-Regular.ttf` を置く（今はこの PC の HG創英角ポップ体。ない PC はメイリオ太字になる）。
+0. **管理者が No.184・185 を遊んで確かめる**：メニューの色・文字の大きさ・背景のぼけ具合（`codex_menu.cpp` の「調整用の値」、ぼけは `backdrop.cpp` の `DRAW_LEVEL`）。ポーズからロビー・タイトルへ戻れるか。見出しの書体は `assets/fonts/MochiyPopOne-Regular.ttf`（Google Fonts の Mochiy Pop One。ライセンスは同じフォルダの OFL。リポジトリに入れたのでどの PC でも同じ見た目）。
 
 0. **管理者が No.182 のミサイル腕を遊んで確かめる**：ダッシュでギリギリ避けられるか（弾の速さ `SHOT_SPEED`・曲がる強さ `SHOT_PARAMS`）、指は150%・腕は100%くらいで場外になるか（`FINGER_POWER`・`ARM_POWER`）、GAME で6回撃つと素手に戻るか、オプションの「腕の耐久の持ち」を ×0.5 にすると2本ずつ撃つか。腕の仮の形が小さくて見にくければ `arm_missile.cpp` の見た目の値を大きくする。値は `arm_missile.cpp` の「調整用の値」。
 0. 耐久の表が9行になって下へ送れるのは画面で確かめた（No.181）。
