@@ -254,4 +254,40 @@ namespace Proto1Tests
 		scene.ShowModes();
 		EXPECT_EQ((int)SCENE_MODE_SELECT, (int)scene.GetScene());
 	}
+
+	// 試合中のメニュー：開く・閉じる、2つ目でキャラ選択、3つ目でタイトルへ。時間切れのあとは開かない
+	TEST(SceneCalcTest, Pause_ResumesOrBacksToLobbyOrTitle)
+	{
+		SceneCalc scene;
+		scene.Start(false);
+		scene.Step({ true, false, 0 }, false); // モード選択へ
+		scene.Step({ true, false, 0 }, false); // キャラ選択へ
+		scene.Step({ true, false, 0 }, false); // 試合へ
+		ASSERT_EQ((int)SCENE_MATCH, (int)scene.GetScene());
+		SCENE_INPUT pause{ false, false, 0 };
+		pause.Pause = true;
+		EXPECT_EQ((int)SCENE_EVENT_NONE, (int)scene.Step(pause, false));
+		EXPECT_EQ((int)SCENE_PAUSE, (int)scene.GetScene());
+		EXPECT_EQ((int)SCENE_EVENT_NONE, (int)scene.Step(pause, false));
+		EXPECT_EQ((int)SCENE_MATCH, (int)scene.GetScene());
+
+		scene.Step(pause, false);
+		scene.Step({ false, false, -1.0f }, false);
+		EXPECT_EQ((int)SCENE_EVENT_BACK_LOBBY, (int)scene.Step({ true, false, 0 }, false));
+		EXPECT_EQ((int)SCENE_TITLE, (int)scene.GetScene());
+
+		scene.Step({ true, false, 0 }, false); // もう一度試合へ
+		scene.Step(pause, false);
+		scene.Step({ false, false, -1.0f }, false);
+		scene.Step({ false, false, 0 }, false);
+		scene.Step({ false, false, -1.0f }, false);
+		EXPECT_EQ((int)SCENE_EVENT_BACK_TITLE, (int)scene.Step({ true, false, 0 }, false));
+		EXPECT_EQ((int)SCENE_GAME_START, (int)scene.GetScene());
+
+		SceneCalc finished;
+		finished.Start(true);
+		finished.Step({ true, false, 0 }, false);
+		finished.Step(pause, true);
+		EXPECT_EQ((int)SCENE_MATCH, (int)finished.GetScene());
+	}
 }

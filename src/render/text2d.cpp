@@ -6,21 +6,55 @@
 #include <vector>
 
 // 調整用の値
-static constexpr int FONT_HEIGHT = 32;
+static constexpr int FONT_HEIGHTS[TEXT2D_FONT_COUNT] = { 32, 48, 96 }; // 書体ごとの文字画像の高さ（大きく出す書体ほど大きく作る）
 static constexpr int BITMAP_PADDING = 2;
+static constexpr const char* POP_FONT_FILE = "assets/fonts/MochiyPopOne-Regular.ttf"; // 置けば最優先で使うフォントのファイル
+static constexpr const char* POP_FONT_FACES[] = { "Mochiy Pop One", "HGP創英角ﾎﾟｯﾌﾟ体" }; // ポップな見出しに使う書体名（前から順に探す）
 
 struct TEXT2D_IMAGE
 {
 	std::string Text;
+	TEXT2D_FONT Font;
 	ID3D11ShaderResourceView* View;
 	float Aspect;
 };
 
 static HDC g_TextDC = nullptr;
-static HFONT g_Font = nullptr;
+static HFONT g_Fonts[TEXT2D_FONT_COUNT] = {};
 static HGDIOBJ g_PreviousFont = nullptr;
+static bool g_PopFontFileAdded = false;
 static ID3D11Buffer* g_VertexBuffer = nullptr;
 static std::vector<TEXT2D_IMAGE> g_Images;
+
+static HFONT CreateFace(const char* face, int height, int weight)
+{
+	return CreateFontA(-height, 0, 0, 0, weight, FALSE, FALSE, FALSE, SHIFTJIS_CHARSET,
+		OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, ANTIALIASED_QUALITY, DEFAULT_PITCH, face);
+}
+
+// その書体が本当に入っているか（GDI は無い書体を黙って別の書体に替えるので、選んだ名前を読み直す）。
+static bool HasFace(HFONT font, const char* face)
+{
+	if (font == nullptr) return false;
+	const HGDIOBJ previous = SelectObject(g_TextDC, font);
+	char selected[LF_FACESIZE] = {};
+	GetTextFaceA(g_TextDC, LF_FACESIZE, selected);
+	SelectObject(g_TextDC, previous);
+	return std::strcmp(selected, face) == 0;
+}
+
+static HFONT CreatePopFont()
+{
+	if (!g_PopFontFileAdded) {
+		g_PopFontFileAdded = AddFontResourceExA(POP_FONT_FILE, FR_PRIVATE, nullptr) > 0;
+	}
+	for (const char* face : POP_FONT_FACES) {
+		const HFONT font = CreateFace(face, FONT_HEIGHTS[TEXT2D_FONT_POP], FW_NORMAL);
+		if (HasFace(font, face)) return font;
+		if (font != nullptr) DeleteObject(font);
+	}
+	return CreateFace("Meiryo", FONT_HEIGHTS[TEXT2D_FONT_POP], FW_BOLD);
+}
 
 static bool PrepareDrawing()
 {
@@ -28,9 +62,10 @@ static bool PrepareDrawing()
 
 	g_TextDC = CreateCompatibleDC(nullptr);
 	if (g_TextDC == nullptr) return false;
-	g_Font = CreateFontA(-FONT_HEIGHT, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, SHIFTJIS_CHARSET,
-		OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, ANTIALIASED_QUALITY, DEFAULT_PITCH, "Meiryo");
-	if (g_Font != nullptr) g_PreviousFont = SelectObject(g_TextDC, g_Font);
+	g_Fonts[TEXT2D_FONT_BODY] = CreateFace("Meiryo", FONT_HEIGHTS[TEXT2D_FONT_BODY], FW_NORMAL);
+	g_Fonts[TEXT2D_FONT_BOLD] = CreateFace("Meiryo", FONT_HEIGHTS[TEXT2D_FONT_BOLD], FW_BOLD);
+	g_Fonts[TEXT2D_FONT_POP] = CreatePopFont();
+	if (g_Fonts[TEXT2D_FONT_BODY] != nullptr) g_PreviousFont = SelectObject(g_TextDC, g_Fonts[TEXT2D_FONT_BODY]);
 	if (g_PreviousFont == nullptr) {
 		Text2DFinalize();
 		return false;
@@ -72,13 +107,15 @@ static ID3D11ShaderResourceView* CreateTexture(const uint32_t* pixels, UINT widt
 	return view;
 }
 
-int Text2DCreate(const char* text)
+int Text2DCreate(const char* text, TEXT2D_FONT font)
 {
-	if (text == nullptr || *text == '\0') return -1;
+	if (text == nullptr || *text == '\0' || font < 0 || font >= TEXT2D_FONT_COUNT) return -1;
 	for (size_t i = 0; i < g_Images.size(); ++i) {
-		if (g_Images[i].Text == text) return static_cast<int>(i);
+		if (g_Images[i].Font == font && g_Images[i].Text == text) return static_cast<int>(i);
 	}
 	if (!PrepareDrawing()) return -1;
+	const HFONT face = g_Fonts[font] != nullptr ? g_Fonts[font] : g_Fonts[TEXT2D_FONT_BODY];
+	SelectObject(g_TextDC, face);
 
 	const int length = static_cast<int>(std::strlen(text));
 	SIZE size{};
@@ -114,7 +151,7 @@ int Text2DCreate(const char* text)
 	DeleteObject(bitmap);
 	if (view == nullptr) return -1;
 
-	g_Images.push_back({ text, view, static_cast<float>(width) / static_cast<float>(height) });
+	g_Images.push_back({ text, font, view, static_cast<float>(width) / static_cast<float>(height) });
 	return static_cast<int>(g_Images.size() - 1);
 }
 
@@ -124,27 +161,42 @@ void Text2DFinalize(void)
 	g_Images.clear();
 	SAFE_RELEASE(g_VertexBuffer);
 	if (g_PreviousFont != nullptr) SelectObject(g_TextDC, g_PreviousFont);
-	if (g_Font != nullptr) DeleteObject(g_Font);
+	for (HFONT& font : g_Fonts) {
+		if (font != nullptr) DeleteObject(font);
+		font = nullptr;
+	}
 	if (g_TextDC != nullptr) DeleteDC(g_TextDC);
+	if (g_PopFontFileAdded) RemoveFontResourceExA(POP_FONT_FILE, FR_PRIVATE, nullptr);
+	g_PopFontFileAdded = false;
 	g_PreviousFont = nullptr;
-	g_Font = nullptr;
 	g_TextDC = nullptr;
+}
+
+float Text2DGetAspect(int id)
+{
+	if (id < 0 || static_cast<size_t>(id) >= g_Images.size()) return 0.0f;
+	return g_Images[id].Aspect;
 }
 
 void Text2DDraw(int id, float x, float y, float height, GLYPH_ALIGN align, const XMFLOAT4& color, float fullHeight)
 {
 	if (id < 0 || static_cast<size_t>(id) >= g_Images.size() || height <= 0.0f) return;
-	const TEXT2D_IMAGE& image = g_Images[id];
-	const float width = image.Aspect * (fullHeight > 0.0f ? fullHeight : height);
+	const float width = g_Images[id].Aspect * (fullHeight > 0.0f ? fullHeight : height);
 	if (align == GLYPH_ALIGN_CENTER) x -= width * 0.5f;
 	if (align == GLYPH_ALIGN_RIGHT) x -= width;
+	Text2DDrawQuad(id, QuadCalcRect({ x, y, width, height }), color);
+}
 
+void Text2DDrawQuad(int id, const QUAD2D& quad, const XMFLOAT4& color)
+{
+	if (id < 0 || static_cast<size_t>(id) >= g_Images.size() || g_VertexBuffer == nullptr) return;
+	const TEXT2D_IMAGE& image = g_Images[id];
 	const XMFLOAT3 normal{ 0.0f, 0.0f, -1.0f };
 	const VERTEX_3D vertices[] = {
-		{ { x, y, 0.0f }, normal, color, { 0.0f, 0.0f } },
-		{ { x + width, y, 0.0f }, normal, color, { 1.0f, 0.0f } },
-		{ { x, y + height, 0.0f }, normal, color, { 0.0f, 1.0f } },
-		{ { x + width, y + height, 0.0f }, normal, color, { 1.0f, 1.0f } },
+		{ { quad.X[0], quad.Y[0], 0.0f }, normal, color, { 0.0f, 0.0f } },
+		{ { quad.X[1], quad.Y[1], 0.0f }, normal, color, { 1.0f, 0.0f } },
+		{ { quad.X[2], quad.Y[2], 0.0f }, normal, color, { 0.0f, 1.0f } },
+		{ { quad.X[3], quad.Y[3], 0.0f }, normal, color, { 1.0f, 1.0f } },
 	};
 
 	ID3D11DeviceContext* context = DirectXGetDeviceContext();

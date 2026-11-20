@@ -2,6 +2,7 @@
 #include "core/shader.h"
 #include "input/action.h"
 #include "input/pad.h"
+#include "render/backdrop.h"
 #include "render/number2d.h"
 #include "render/text2d.h"
 #include <chrono>
@@ -290,6 +291,8 @@ void Game::Update()
 	// オンラインは全員が同じ減り方になるよう、はじめの表を使う。
 	const ARM_COST_TABLE costs = m_Net.IsOnline() ? ArmCostCalcDefault() : m_ArmCosts;
 	for (auto& arms : m_Arms) arms.SetCosts(costs);
+	// 前のフレームで変わった画面・カーソルを覚え、選んだボタンを弾ませる（1フレーム遅れても見た目は変わらない）。
+	m_CodexMenu.Update(m_Scene);
 	const SCENE oldScene = m_Scene.GetScene();
 	if (oldScene == SCENE_GAME_START || oldScene == SCENE_MODE_SELECT || oldScene == SCENE_JOIN_ADDRESS || oldScene == SCENE_OPTIONS || oldScene == SCENE_ARM_COSTS) {
 		UpdateMenu();
@@ -406,6 +409,29 @@ void Game::Update()
 	SCENE_INPUT input{ ActionCalcPlayerTrigger(m_Inputs[0], m_PreviousInputs[0], ACTION_DECIDE),
 		ActionCalcPlayerTrigger(m_Inputs[0], m_PreviousInputs[0], ACTION_RESTART), ActionCalcPlayerMove(m_Inputs[0]).Y };
 	if (oldScene == SCENE_TITLE) input = { start, false, 0.0f };
+	if (!m_Net.IsOnline() && (oldScene == SCENE_MATCH || oldScene == SCENE_PAUSE)) {
+		// オフラインの OPTIONS（キーボードは R）は、試合を止めるメニューを開く・閉じる。参加しているだれが押してもよい。
+		// やり直しは時間切れのあとだけ（オンラインは全員の入力をそろえる必要があるので、今までどおり 1P のやり直し）。
+		bool pause = false;
+		for (int k = 0; k < m_HumanCount; ++k) {
+			const int slot = m_Humans[k];
+			if (ActionCalcPlayerTrigger(m_Inputs[slot], m_PreviousInputs[slot], ACTION_RESTART)) pause = true;
+		}
+		const bool finished = m_Match.GetState() == MATCH_STATE_FINISHED;
+		input.Restart = input.Restart && finished;
+		input.Pause = pause;
+		if (oldScene == SCENE_PAUSE) {
+			// メニューの中は、どの機器の上下・決定・戻るでも動かせる。
+			input.Decide = false;
+			input.MoveY = 0.0f;
+			for (int device = 0; device < ACTION_DEVICE_COUNT; ++device) {
+				const ACTION_MENU_INPUT menu = ActionGetMenuInput(device);
+				if (menu.Decide) input.Decide = true;
+				if (menu.Back) input.Back = true;
+				if (fabsf(menu.MoveY) > fabsf(input.MoveY)) input.MoveY = menu.MoveY;
+			}
+		}
+	}
 	if (oldScene == SCENE_MATCH) {
 		// 全員の体・体当たり → カプセル → カメラ → キャラの向き → 腕の順を保つ。
 		m_Stage.Update();
@@ -451,7 +477,7 @@ void Game::Update()
 	if (oldScene != m_Scene.GetScene()) {
 		const SCENE scene = m_Scene.GetScene();
 		const char* name = scene == SCENE_TITLE ? "ロビー" : scene == SCENE_MATCH ? "試合"
-			: scene == SCENE_RESULT ? "結果" : "メニュー";
+			: scene == SCENE_RESULT ? "結果" : scene == SCENE_PAUSE ? "試合中のメニュー" : "メニュー";
 		hal::dout << "シーン：" << name << std::endl;
 	}
 #endif
@@ -484,8 +510,18 @@ void Game::Draw() const
 	light.Ambient = { 0.3f, 0.3f, 0.3f, 1.0f };
 	light.Direction = { 0.5f, -1.0f, 0.8f, 0.0f };
 	const SCENE scene = m_Scene.GetScene();
-	if (scene != SCENE_MATCH) {
-		// メニューではゲームの背景を描かず、Codex 用の専用 UI だけを描く。
+	if (scene != SCENE_MATCH && scene != SCENE_PAUSE) {
+		// メニューの背景：ステージのまわりをゆっくり回るカメラで3Dを小さく描き、ぼかしておく（貼るのは CodexMenu::Draw）。
+		if (BackdropBegin()) {
+			m_CodexMenu.SetBackdropCamera(m_Stage.GetStage());
+			light.Enable = TRUE;
+			Shader_SetLight(light);
+			m_Stage.Draw();
+			m_Fighters.Draw(-1);
+			for (int j = 0; j < m_FightingCount; ++j) m_Arms[m_Fighting[j]].Draw();
+			BackdropEnd();
+		}
+		// メニューの UI は、ぼかした背景の上に2Dで描く。
 		SetViewport(0.0f, 0.0f, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT);
 		SetDepthEnable(false);
 		light.Enable = FALSE;
@@ -532,5 +568,7 @@ void Game::Draw() const
 		Number2DDrawBox({ empty.X, empty.Y, empty.Width, empty.Height }, EMPTY_VIEW_COLOR);
 	}
 	m_Huds[0].DrawScene(m_Participants, m_Net, m_JoinAddress, m_LobbyCharacters);
+	// 試合中のメニューは、止まった試合の画面の上に重ねる。
+	if (scene == SCENE_PAUSE) m_CodexMenu.DrawPause(m_Scene);
 	if (m_Fullscreen) m_Huds[0].DrawCornerWarning(m_Net);
 }

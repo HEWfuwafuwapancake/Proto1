@@ -2,6 +2,7 @@
 
 #include "core/dx11.h"
 #include "render/glyphcalc.h"
+#include "render/quadcalc.h"
 
 /// @file number2d.h
 /// @brief 画面（2D）に四角・数字（7 セグ）・英字（5×7 ドット）を描く部品（フォントは読み込まない）
@@ -22,6 +23,17 @@ void Number2DFinalize(void);
 /// @param count 四角の数（NUMBER2D_MAX_RECTS を超えた分は描かない）
 /// @param color 色（RGBA）
 void Number2DDrawRects(const RECT2D rects[], int count, const XMFLOAT4& color);
+
+/// @brief 傾いた四角（4つの角）の一覧を同じ色で描く（メニューの斜めのボタンなど）
+/// @param quads 4つの角の一覧（角の求め方は render/quadcalc.h）
+/// @param count 数（NUMBER2D_MAX_RECTS を超えた分は描かない）
+/// @param color 色（RGBA）
+void Number2DDrawQuads(const QUAD2D quads[], int count, const XMFLOAT4& color);
+
+/// @brief 傾いた四角を1つ描く
+/// @param quad 4つの角
+/// @param color 色（RGBA。半透明にできる）
+void Number2DDrawQuad(const QUAD2D& quad, const XMFLOAT4& color);
 
 /// @brief 数字を 7 セグで描く
 /// @param value 数（負は 0）

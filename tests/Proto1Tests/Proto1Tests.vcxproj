@@ -167,6 +167,10 @@
     <ClCompile Include="glyphcalc_test.cpp" />
     <ClCompile Include="..\..\src\render\cubeflipcalc.cpp" />
     <ClCompile Include="cubeflipcalc_test.cpp" />
+    <ClCompile Include="..\..\src\render\menucalc.cpp" />
+    <ClCompile Include="menucalc_test.cpp" />
+    <ClCompile Include="..\..\src\render\quadcalc.cpp" />
+    <ClCompile Include="quadcalc_test.cpp" />
     <ClCompile Include="..\..\src\render\animcalc.cpp" />
     <ClCompile Include="animcalc_test.cpp" />
     <ClCompile Include="..\..\src\render\motioncalc.cpp" />
@@ -197,6 +201,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\render\cubeflipcalc.h" />
+    <ClInclude Include="..\..\src\render\menucalc.h" />
+    <ClInclude Include="..\..\src\render\quadcalc.h" />
     <ClInclude Include="..\..\src\render\animcalc.h" />
     <ClInclude Include="..\..\src\render\motioncalc.h" />
   </ItemGroup>
