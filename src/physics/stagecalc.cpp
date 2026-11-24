@@ -46,6 +46,12 @@ static bool TerrainHeight(const STAGE& stage, float x, float z, float& height, i
 	return true;
 }
 
+// 足の高さが、実体の区画の中（地盤の下面より上で、上面より下）にあるか調べる。
+static bool IsInsideSolid(const STAGE& stage, int region, float height, float y)
+{
+	return region >= 0 && stage.Regions[region].Solid && y < height && y > stage.GroundBottomY;
+}
+
 bool StageCalcGroundHeight(const STAGE& stage, float x, float z, float& height)
 {
 	if (stage.HasTerrain) return TerrainHeight(stage, x, z, height);
@@ -67,7 +73,11 @@ bool StageCalcFollowGround(const STAGE& stage, float x, float y, float z, float&
 		return StageCalcHasSupport(stage, x, y, z);
 	}
 	float height = 0.0f;
-	if (!TerrainHeight(stage, x, z, height) || fabsf(height - y) > GROUND_STEP) return false;
+	int region = -1;
+	if (!TerrainHeight(stage, x, z, height, &region)) return false;
+	// 段差の上限の中なら坂として合わせる。押し合い・引っぱりなどで実体の区画の中（上面より下）に入っていたら、
+	// すり抜けて落ちないように上面へ押し上げる（歩いては側面で止まるので、ふつうは入らない）。
+	if (fabsf(height - y) > GROUND_STEP && !IsInsideSolid(stage, region, height, y)) return false;
 	groundY = height;
 	return true;
 }
@@ -234,8 +244,10 @@ bool StageCalcFindLanding(const STAGE& stage, float x, float z, float previousY,
 		int region = -1;
 		if (!TerrainHeight(stage, x, z, height, &region)) return false;
 		// 実体の区画は、少し下から斜めに入ったとき（坂へ跳び込んだときなど）も上面に拾う。片面の橋は上から通った分だけ。
+		// 押し合い・引っぱりなどで実体の区画の中に入っていた体も、すり抜けて落ちないように上面に拾う。
 		const float reach = stage.Regions[region].Solid ? AIR_STEP : 0.0f;
-		if (y > height || previousY < height - reach) return false;
+		if (y > height) return false;
+		if (previousY < height - reach && !IsInsideSolid(stage, region, height, previousY)) return false;
 		landingY = height;
 		return true;
 	}

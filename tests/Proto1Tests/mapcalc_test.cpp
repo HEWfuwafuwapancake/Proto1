@@ -1,6 +1,7 @@
 ﻿// 対戦マップの配置台帳と地形の判定（設計書 第13節の受入例。DirectX なし）
 #include <gtest/gtest.h>
 #include "physics/mapcalc.h"
+#include "physics/playercalc.h"
 
 namespace Proto1Tests
 {
@@ -104,6 +105,27 @@ namespace Proto1Tests
 
 		const STAGE market = Build(STAGE_MAP_MARKET);
 		EXPECT_EQ(STAGE_STOP_X | STAGE_STOP_Z, StageCalcMoveBody(market, 3.0f, -4.0f, 7.0f, 0.6f, 0.0f, false, x, z));
+	}
+
+	// 押し合い・触手で引っぱられるなどで仕分け台の中（上面より下）に入った体は、台をすり抜けて落ちず、台の上面へ押し上げる。
+	TEST(MapCalcTest, BodyInsideCenterTable_IsPushedUpInsteadOfFallingThrough)
+	{
+		const STAGE post = Build(STAGE_MAP_POST_OFFICE);
+		PLAYER_PARAMS params{ 8.5f, 12.0f, 30.0f, 30.0f, 1 };
+		// 立っている体（床の高さ 0）が、台の中へ押し込まれた。
+		PlayerBodyCalc standing;
+		standing.SetPosition({ 7.5f, 0.0f, 0.0f });
+		standing.SetOnGround(true);
+		standing.Step(0.0f, 0.0f, false, 1.0f / 60.0f, params, post);
+		EXPECT_TRUE(standing.GetOnGround());
+		EXPECT_NEAR(1.2f, standing.GetY(), 0.001f);
+		// 空中で台の中へ引っぱられた体も、落ちるときに台の上面に着地する。
+		PlayerBodyCalc falling;
+		falling.SetPosition({ 6.0f, 0.5f, 0.0f });
+		for (int i = 0; i < 30; ++i) falling.Step(0.0f, 0.0f, false, 1.0f / 60.0f, params, post);
+		EXPECT_TRUE(falling.GetOnGround());
+		EXPECT_NEAR(1.2f, falling.GetY(), 0.001f);
+		EXPECT_FALSE(StageCalcIsOut(post, falling.GetY()));
 	}
 
 	// 倍率：台帳は x = 世界X ÷ s で引く。高さはそのまま。
