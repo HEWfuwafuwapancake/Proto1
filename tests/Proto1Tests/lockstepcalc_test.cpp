@@ -69,8 +69,8 @@ namespace Proto1Tests
 		EXPECT_TRUE(sender.Initialize(15, 0));
 		for (int frame = 0; frame < 8; ++frame) {
 			for (int slot = 0; slot < FIGHTER_COUNT; ++slot) {
-				// いちばん後ろの行動（17 番目のＧ）も送れる。
-				auto input = ActionCalcPlayerInput({ -0.6f, 0.8f }, { -0.02f, 0.04f }, (1u << ACTION_JUMP) | (1u << ACTION_LIFT));
+				// いちばん後ろの行動も送れる。
+				auto input = ActionCalcPlayerInput({ -0.6f, 0.8f }, { -0.02f, 0.04f }, (1u << ACTION_JUMP) | (1u << (ACTION_COUNT - 1)));
 				// 3段目の腕（25 まで）の番号も送れる。
 				if (slot != 0) input.Equip = { slot % 2, (frame * 3 + slot) % ACTION_EQUIP_NUMBER_COUNT };
 				EXPECT_TRUE(sender.StoreInput(frame, slot, input));

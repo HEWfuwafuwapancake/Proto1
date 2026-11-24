@@ -104,8 +104,8 @@ static constexpr float MAP_PLAN_HEIGHT = 210.0f; // カードの中の上から�
 static constexpr const char* MAP_NAMES[STAGE_MAP_COUNT] = { "ソラツギ中央郵便局", "汐跡市場の三本橋", "浮島（標準）" };
 static constexpr const char* MAP_SUBTITLES[STAGE_MAP_COUNT] = { "近未来都市　52 × 52", "荒廃都市　60 × 48", "デバッグ用　30 × 30" };
 static constexpr const char* MAP_HELP[STAGE_MAP_COUNT][3] = {
-	{ "中央の仕分け台で腕を拾い合う。", "屋根へは △ / G のＧで上がる。", "ベルトに乗ると中央へ早く着く。" },
-	{ "高さの違う3本の橋を奪い合う。", "地割れに落ちると場外。", "南の橋は乗ると空き缶が鳴る。" },
+	{ "中央の仕分け台を奪い合う。", "屋根へはＧの輪で触手を押して上がる。", "ダッシュ板に乗ると中央へ飛ぶ。" },
+	{ "高さの違う3本の橋を奪い合う。", "地割れに落ちると場外。", "高い橋へはＧの輪で触手を押す。" },
 	{ "今までの四角い浮島。", "下から通れる高台が4つ。", "腕を試すのに向いている。" },
 };
 static constexpr const char* CPU_LEVEL_NAMES[VERSUS_CPU_LEVEL_COUNT] = { "ダミー", "CPU よわい", "CPU ふつう", "CPU つよい" };
@@ -715,17 +715,19 @@ void CodexMenu::DrawMiniMap(STAGE_MAP map, const RECT2D& area) const
 {
 	// 上から見た図：北（+Z）が上。床のない所は濃い色のまま残す。
 	static constexpr XMFLOAT4 VOID_COLOR{ 0.16f, 0.20f, 0.30f, 1.0f };
+	// 試合の景観（game/stage.cpp）と同じ色。
 	static constexpr XMFLOAT4 SURFACE_COLORS[] = {
-		{ 0.780f, 0.855f, 0.812f, 1.0f }, // 床（郵便局。市場は下で岸の色にする）
-		{ 0.910f, 0.925f, 0.753f, 1.0f }, // 仕分け台
-		{ 0.467f, 0.651f, 0.612f, 1.0f }, // 屋根
-		{ 0.560f, 0.740f, 0.700f, 1.0f }, // 坂
-		{ 0.612f, 0.671f, 0.612f, 1.0f }, // 低い荷道
-		{ 0.420f, 0.560f, 0.660f, 1.0f }, // 市電の屋根
-		{ 0.702f, 0.490f, 0.353f, 1.0f }, // シャッターの橋
-		{ 0.660f, 0.580f, 0.480f, 1.0f }, // 建物の基礎
+		{ 0.88f, 0.84f, 1.00f, 1.0f }, // 床（郵便局。市場は下で岸の色にする）
+		{ 0.78f, 0.96f, 0.20f, 1.0f }, // 仕分け台
+		{ 1.00f, 0.36f, 0.70f, 1.0f }, // 屋根
+		{ 0.62f, 0.40f, 1.00f, 1.0f }, // 坂（市場は下でオレンジにする）
+		{ 0.25f, 0.82f, 0.76f, 1.0f }, // 低い荷道
+		{ 0.30f, 0.62f, 1.00f, 1.0f }, // 市電の屋根
+		{ 1.00f, 0.42f, 0.30f, 1.0f }, // シャッターの橋
+		{ 1.00f, 0.45f, 0.62f, 1.0f }, // 建物の基礎
 	};
-	static constexpr XMFLOAT4 SHORE_COLOR{ 0.796f, 0.718f, 0.600f, 1.0f };
+	static constexpr XMFLOAT4 SHORE_COLOR{ 1.00f, 0.86f, 0.45f, 1.0f };
+	static constexpr XMFLOAT4 MARKET_RAMP_COLOR{ 1.00f, 0.66f, 0.35f, 1.0f };
 	static constexpr XMFLOAT4 ISLAND_COLOR{ 0.45f, 0.65f, 0.40f, 1.0f };
 	STAGE stage{};
 	if (!MapCalcBuild(map, 1.0f, stage)) {
@@ -753,7 +755,8 @@ void CodexMenu::DrawMiniMap(STAGE_MAP map, const RECT2D& area) const
 	for (int i = stage.RegionCount - 1; i >= 0; --i) {
 		const STAGE_REGION& region = stage.Regions[i];
 		XMFLOAT4 color = SURFACE_COLORS[region.Surface];
-		if (map == STAGE_MAP_MARKET && (region.Surface == STAGE_SURFACE_FLOOR || region.Surface == STAGE_SURFACE_RAMP)) color = SHORE_COLOR;
+		if (map == STAGE_MAP_MARKET && region.Surface == STAGE_SURFACE_FLOOR) color = SHORE_COLOR;
+		if (map == STAGE_MAP_MARKET && region.Surface == STAGE_SURFACE_RAMP) color = MARKET_RAMP_COLOR;
 		if (region.DiagonalLimit <= 0.0f) {
 			box(region.MinX, region.MaxX, region.MinZ, region.MaxZ, color);
 			continue;

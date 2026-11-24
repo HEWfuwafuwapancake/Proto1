@@ -119,6 +119,7 @@ void Fighter::PlaceAtSpawn()
 	m_Percent = 0.0f;
 	m_Yaw = m_SpawnYaw;
 	m_Launched = false;
+	m_Boosted = false;
 	m_FlinchFrames = 0;
 	m_HitstunTime = 0.0f;
 	m_Dash.Reset();
@@ -215,6 +216,7 @@ DUMMY_EVENT Fighter::Update(const Camera* camera, const ArmManager* arms)
 		// 吹っ飛び中のダッシュは、吹っ飛びの速度をすべて 0 にして（吹っ飛びを終わらせて）ふつうのダッシュをする。
 		if (m_Launched && dash && m_Dash.TryStart(dashDirection, onGround, dashParams, true)) {
 			m_Launched = false;
+			m_Boosted = false;
 			m_HitstunTime = 0.0f;
 			m_Body.SetVelocity({});
 			CancelLaunchAnimation();
@@ -230,7 +232,15 @@ DUMMY_EVENT Fighter::Update(const Camera* camera, const ArmManager* arms)
 			}
 			m_Dash.Step(dt, m_Body.GetOnGround(), dashParams);
 			m_Launched = KnockbackCalcStep(m_Body, dt, KnockbackParams(), stage, moveX, moveZ);
-			if (!m_Launched) m_HitstunTime = 0.0f;
+			// ダッシュ板で飛んだときは移動なので、着地したらすべらずにふつうの歩きへ戻す。
+			if (m_Boosted && m_Body.GetOnGround()) {
+				m_Launched = false;
+				m_Body.SetVelocity({});
+			}
+			if (!m_Launched) {
+				m_HitstunTime = 0.0f;
+				m_Boosted = false;
+			}
 		}
 		else {
 			if (dash && m_Dash.TryStart(dashDirection, onGround, dashParams, true)) StartDashAnimation(onGround);
@@ -635,10 +645,27 @@ void Fighter::SetLaunchVelocity(const VEC3& velocity, float hitstun)
 	m_HeldBy = -1;
 	m_Pulled = false;
 	m_Launched = true;
+	m_Boosted = false; // 攻撃の吹っ飛びは、着地してもすべる
 	m_LaunchAnimElapsed = 0.0f;
 	m_LaunchAnimCancelled = false;
 	m_FlinchFrames = FLINCH_FRAMES;
 	m_HitstunTime = hitstun;
+	m_Dash.Cancel();
+}
+
+void Fighter::Boost(const VEC3& velocity)
+{
+	if (!IsActive() || IsHeld()) return;
+	// 吹っ飛びと同じ物理で飛ばすが、移動なのでダメージ・何もできない時間・やられの姿勢は付けない。
+	m_Body.SetVelocity(velocity);
+	m_Body.SetOnGround(false);
+	m_Pulled = false;
+	m_Launched = true;
+	m_FlinchFrames = 0;
+	m_HitstunTime = 0.0f;
+	m_LaunchAnimElapsed = (std::numeric_limits<float>::max)();
+	m_LaunchAnimCancelled = true; // ふつうの空中の姿勢のまま飛ぶ
+	m_Boosted = true;
 	m_Dash.Cancel();
 }
 

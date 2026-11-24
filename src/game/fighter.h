@@ -138,6 +138,9 @@ public:
 	void Launch(const VEC3& direction, float damage, float power);
 	/// @brief %を変えず、指定速度で吹っ飛ばす
 	void Push(const VEC3& velocity);
+	/// @brief 移動として飛ばす（ダッシュ板）。ダメージ・何もできない時間・やられの姿勢はなく、空中ジャンプ・ダッシュ・腕も使える
+	/// @param velocity 飛ばす速度（1秒あたりの移動量）
+	void Boost(const VEC3& velocity);
 	/// @brief 状態異常をかける（生存中だけ。残り時間は長い方、値は上書き）
 	/// @param type 種類
 	/// @param seconds 続く秒数
@@ -177,6 +180,7 @@ private:
 	DummyLifeCalc m_Life;
 	VEC3 m_Spawn = {};
 	float m_SpawnYaw = 0.0f; // 開始・復活のときの体の向き
+	bool m_Boosted = false; // ダッシュ板で飛んでいる途中（着地したら吹っ飛びを終わらせる）
 	float m_InvincibleTime = 0.0f; // 復活後の無敵の残り秒数
 	int m_KoBy = -1; // 場外にした相手のスロット番号（復活待ちのカメラが映す。いなければ -1）
 	float m_Percent = 0.0f;

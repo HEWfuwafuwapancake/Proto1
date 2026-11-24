@@ -457,12 +457,17 @@ void Game::Update()
 		m_Stage.Update();
 		if (m_Match.IsPlaying()) {
 			// Ｇで動いている人（今受け付けた人を含む）は、このフレームの移動・ジャンプ・攻撃などの入力を使わない。
+			// Ｇに使った触手のボタンは、離すまで腕に渡さない（着地したあとに触手が出ないように）。
 			const int lifting = m_Gimmick.PreUpdate();
 			for (int slot = 0; slot < FIGHTER_COUNT; ++slot) {
-				if ((lifting & (1 << slot)) == 0) continue;
-				m_Inputs[slot].MoveX = 0;
-				m_Inputs[slot].MoveY = 0;
-				m_Inputs[slot].Buttons &= LIFT_KEPT_BUTTONS;
+				const uint32_t held = m_Gimmick.GetHeldButtons(slot);
+				if ((lifting & (1 << slot)) == 0 && held == 0) continue;
+				m_Inputs[slot].Buttons &= ~held;
+				if (lifting & (1 << slot)) {
+					m_Inputs[slot].MoveX = 0;
+					m_Inputs[slot].MoveY = 0;
+					m_Inputs[slot].Buttons &= LIFT_KEPT_BUTTONS;
+				}
 				m_Fighters.GetFighter(slot).SetInput(m_Inputs[slot], m_PreviousInputs[slot]);
 			}
 			m_Fighters.Update();
