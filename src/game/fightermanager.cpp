@@ -178,6 +178,10 @@ void FighterManager::PushBodies()
 			const XMFLOAT3 pa = a.GetPosition(), pb = b.GetPosition();
 			VEC3 first{ pa.x, pa.y, pa.z }, second{ pb.x, pb.y, pb.z };
 			if (VersusCalcPushBodies(first, second, a.IsHuman(), b.IsHuman(), a.GetBody().Radius, a.GetHeight())) {
+				// 押された横の分は、地形の側面（仕分け台・屋根など）で止める。押し込まれて台の中に入らないように。
+				const STAGE& stage = m_Stage->GetStage();
+				StageCalcMoveBody(stage, pa.x, first.Y, pa.z, first.X - pa.x, first.Z - pa.z, a.IsOnGround(), first.X, first.Z);
+				StageCalcMoveBody(stage, pb.x, second.Y, pb.z, second.X - pb.x, second.Z - pb.z, b.IsOnGround(), second.X, second.Z);
 				a.SetPosition({ first.X, first.Y, first.Z });
 				b.SetPosition({ second.X, second.Y, second.Z });
 			}
