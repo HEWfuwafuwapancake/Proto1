@@ -1,6 +1,7 @@
 ﻿// physics/capsulecalc.h（腕カプセル）の単体テスト
 #include <gtest/gtest.h>
 #include "physics/capsulecalc.h"
+#include "physics/mapcalc.h"
 
 static STAGE MakeCapsuleStage()
 {
@@ -84,4 +85,25 @@ TEST(ArmCapsuleCalcTest, FindsTouchingBodyAndIgnoresRemovedItem)
 	EXPECT_EQ(calc.FindTouching(body), 0);
 	calc.Remove(0);
 	EXPECT_NE(calc.FindTouching(body), 0);
+}
+
+// 対戦マップでは、決まった地点ではなく、坂でない床のいろいろな所（低い荷道・高い橋・岸など）に置く。穴の上には置かない。
+TEST(ArmCapsuleCalcTest, TerrainMap_PlacesOnFlatFloorsAcrossTheMap)
+{
+	STAGE stage{};
+	ASSERT_TRUE(MapCalcBuild(STAGE_MAP_MARKET, 1.0f, stage));
+	ArmCapsuleCalc calc;
+	calc.SetAmount(ArmCapsuleCalc::CAPACITY, 1.0);
+	calc.Start(stage, 7u);
+	int west = 0, east = 0;
+	for (const ARM_CAPSULE_ITEM& item : calc.GetItems()) {
+		ASSERT_TRUE(item.Active);
+		float height = 0.0f;
+		ASSERT_TRUE(StageCalcGroundHeight(stage, item.Position.X, item.Position.Z, height));
+		EXPECT_NEAR(height, item.Position.Y, 0.001f);
+		if (item.Position.X < 0.0f) ++west; else ++east;
+	}
+	// 両岸に散らばる。
+	EXPECT_GT(west, 2);
+	EXPECT_GT(east, 2);
 }

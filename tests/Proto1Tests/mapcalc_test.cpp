@@ -113,7 +113,7 @@ namespace Proto1Tests
 		ExpectHeight(stage, 12.0f, 18.0f, 1.5f);
 	}
 
-	// 最低・最高の倍率でも、P・Ｇの始点と着地点・補給の地点が、意図した高さの床に載る。
+	// 最低・最高の倍率でも、P・Ｇの始点と着地点が、意図した高さの床に載る。
 	TEST(MapCalcTest, PointsStandOnIntendedFloorsAtEveryScale)
 	{
 		const STAGE_MAP maps[] = { STAGE_MAP_POST_OFFICE, STAGE_MAP_MARKET };
@@ -123,32 +123,27 @@ namespace Proto1Tests
 				const STAGE stage = Build(map, scale);
 				ASSERT_EQ(4, stage.SpawnCount);
 				ASSERT_EQ(4, stage.LiftCount);
-				ASSERT_EQ(16, stage.SupplyCount);
 				for (int i = 0; i < stage.SpawnCount; ++i) ExpectHeight(stage, stage.Spawns[i].X, stage.Spawns[i].Z, 0.0f);
 				for (int i = 0; i < stage.LiftCount; ++i) {
 					ExpectHeight(stage, stage.Lifts[i].StartX, stage.Lifts[i].StartZ, 0.0f);
 					ExpectHeight(stage, stage.Lifts[i].Landing.X, stage.Lifts[i].Landing.Z, stage.Lifts[i].Landing.Y);
 				}
-				for (int i = 0; i < stage.SupplyCount; ++i) ExpectHeight(stage, stage.Supplies[i].X, stage.Supplies[i].Z, stage.Supplies[i].Y);
 			}
 		}
 	}
 
-	// 空き缶：2人が同じ更新で乗っても1回。鳴ってから120更新は鳴らず、乗り続けても鳴らない。
-	TEST(MapCalcTest, CanBell_RingsOncePerEntryWithInterval)
+	// 市場の西岸の路面から、荷道と坂（x −16〜−4、|z| ≤ 4）を除くと、上下の2枚と左の1枚が残り、面積が合う。
+	TEST(MapCalcTest, SubtractRects_LeavesShoreAroundRoadCut)
 	{
-		CanBellCalc cans;
-		cans.Reset();
-		bool on[4] = { true, true, false, false };
-		EXPECT_TRUE(cans.Step(100, on, 4));
-		EXPECT_FALSE(cans.Step(101, on, 4)); // 居続けるだけでは鳴らない
-		EXPECT_NE(0.0f, cans.GetTilt(103));
-		EXPECT_EQ(0.0f, cans.GetTilt(160));
-		bool off[4] = {};
-		bool third[4] = { false, false, true, false };
-		cans.Step(218, off, 4);
-		EXPECT_FALSE(cans.Step(219, third, 4));
-		cans.Step(219, off, 4);
-		EXPECT_TRUE(cans.Step(220, third, 4));
+		const float holes[2][4] = { { -10.0f, -4.0f, -4.0f, 4.0f }, { -16.0f, -10.0f, -4.0f, 4.0f } };
+		float pieces[16][4];
+		const int count = MapCalcSubtractRects(-30.0f, -4.0f, -24.0f, 24.0f, holes, 2, pieces, 16);
+		float area = 0.0f;
+		for (int i = 0; i < count; ++i) {
+			area += (pieces[i][1] - pieces[i][0]) * (pieces[i][3] - pieces[i][2]);
+			// 残りの四角は、荷道と坂に重ならない。
+			EXPECT_FALSE(pieces[i][0] < -4.0f && pieces[i][1] > -16.0f && pieces[i][2] < 4.0f && pieces[i][3] > -4.0f);
+		}
+		EXPECT_NEAR(26.0f * 48.0f - 12.0f * 8.0f, area, 0.01f);
 	}
 }

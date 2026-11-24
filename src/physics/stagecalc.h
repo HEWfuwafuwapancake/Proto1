@@ -25,8 +25,6 @@ struct STAGE_PLATFORM
 static constexpr int STAGE_REGION_MAX = 16;
 /// @brief 開始・復活の候補（P1〜P4）の数
 static constexpr int STAGE_SPAWN_MAX = 4;
-/// @brief 腕カプセルの決まった出現地点の最大数
-static constexpr int STAGE_SUPPLY_MAX = 16;
 /// @brief Ｇ（補助触腕で高所へ上がる場所）の最大数
 static constexpr int STAGE_LIFT_MAX = 4;
 /// @brief 荷送りベルトの最大数
@@ -50,7 +48,7 @@ enum STAGE_SURFACE
 	STAGE_SURFACE_RAMP,			///< 坂
 	STAGE_SURFACE_LOW_ROAD,		///< 市場の低い搬入橋と、掘り下げた荷道
 	STAGE_SURFACE_TRAM,			///< 市場の北の高い橋（市電の屋根）
-	STAGE_SURFACE_SHUTTER,		///< 市場の南の高い橋（シャッター。空き缶が鳴る）
+	STAGE_SURFACE_SHUTTER,		///< 市場の南の高い橋（シャッター）
 	STAGE_SURFACE_BASE,			///< 市場の建物の基礎
 };
 
@@ -78,7 +76,7 @@ struct STAGE_LIFT
 	VEC3 Landing;	///< 名目着地点（足元。Y は高所の上面）
 };
 
-/// @brief 荷送りベルト（接地して歩いている人を Z の中央向きに運ぶ範囲）
+/// @brief ダッシュ板（荷送りベルト。立って乗った人を Z の中央向きに吹っ飛ばす範囲）
 struct STAGE_BELT
 {
 	float MinX;	///< 範囲の X の最小
@@ -87,7 +85,7 @@ struct STAGE_BELT
 	float MaxZ;	///< 範囲の Z の最大
 };
 
-/// @brief 浮島、高台、場外の線（対戦マップでは地形の区画・開始位置・Ｇ・補給・ベルトも持つ）
+/// @brief 浮島、高台、場外の線（対戦マップでは地形の区画・開始位置・Ｇ・ダッシュ板も持つ）
 struct STAGE
 {
 	float CenterX;		///< 浮島の中心の X（地形のマップでは全体の中心）
@@ -105,16 +103,11 @@ struct STAGE
 	float GroundBottomY = -6.0f;	///< 地盤の下面の高さ（側面の壁はここから上面まで）
 	VEC3 Spawns[STAGE_SPAWN_MAX]{};	///< 開始・復活の候補（P1〜P4 の足元）
 	int SpawnCount = 0;	///< 開始・復活の候補の数（0 なら浮島の決まった配置を使う）
-	VEC3 Supplies[STAGE_SUPPLY_MAX]{};	///< 腕カプセルの決まった出現地点（抽選の順）
-	int SupplyCount = 0;	///< 決まった出現地点の数（0 なら浮島・高台の上に乱数で置く）
 	STAGE_LIFT Lifts[STAGE_LIFT_MAX]{};	///< Ｇの並び（P1〜P4 と同じ象限の順）
 	int LiftCount = 0;	///< Ｇの数
 	float LiftSideSign = 1.0f;	///< Ｇの着地点が塞がれたとき横へずらす向き（名目着地点の X の符号に掛ける）
-	STAGE_BELT Belts[STAGE_BELT_MAX]{};	///< 荷送りベルト
-	int BeltCount = 0;	///< 荷送りベルトの数
-	float BeltSpeed = 0.0f;	///< ベルトが運ぶ速さ（1秒に進む距離）
-	VEC3 Cans[2]{};	///< 南の橋の両端の空き缶の位置（足元）
-	bool HasCans = false;	///< 南の橋の空き缶があるかを設定する（true：STAGE_SURFACE_SHUTTER に乗ると鳴る、false：なし）
+	STAGE_BELT Belts[STAGE_BELT_MAX]{};	///< ダッシュ板（荷送りベルト）
+	int BeltCount = 0;	///< ダッシュ板の数
 };
 
 /// @brief 地形の区画の、その場所の上面の高さを求める（範囲は見ない）

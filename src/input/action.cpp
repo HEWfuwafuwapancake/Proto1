@@ -30,7 +30,6 @@ static constexpr int ACTION_KEYS[ACTION_COUNT] = {
 	'C',			// ACTION_DASH
 	'Z',			// ACTION_GUARD_LEFT
 	'X',			// ACTION_GUARD_RIGHT
-	'G',			// ACTION_LIFT
 };
 
 // 行動ごとのパッドのボタン（ACTION の並びと同じ順番。企画書の「5. 操作方法」のとおり）
@@ -51,7 +50,6 @@ static constexpr PAD_BUTTON ACTION_PAD_BUTTONS[ACTION_COUNT] = {
 	PAD_BUTTON_CIRCLE,		// ACTION_DASH（○。Xbox の B。決定と同じボタンだが、決定はメニューと TIME UP だけで使う）
 	PAD_BUTTON_L2,			// ACTION_GUARD_LEFT（L2。Switch の ZL）
 	PAD_BUTTON_R2,			// ACTION_GUARD_RIGHT（R2。Switch の ZR）
-	PAD_BUTTON_TRIANGLE,	// ACTION_LIFT（△。Xbox の Y）
 };
 
 // 移動のキー

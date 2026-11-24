@@ -21,7 +21,6 @@ enum ACTION
 	ACTION_DASH, ///< ダッシュ
 	ACTION_GUARD_LEFT, ///< 左の腕でガードする
 	ACTION_GUARD_RIGHT, ///< 右の腕でガードする
-	ACTION_LIFT, ///< 対戦マップのＧ（地上の始点の近くで押すと、補助触腕で高所へ上がる）
 	ACTION_COUNT ///< 行動の数
 };
 

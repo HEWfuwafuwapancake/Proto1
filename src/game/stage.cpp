@@ -20,20 +20,22 @@ static constexpr STAGE_PLATFORM STAGE_PLATFORMS[] = {
 };
 static constexpr int STAGE_PLATFORM_COUNT = sizeof(STAGE_PLATFORMS) / sizeof(STAGE_PLATFORMS[0]);
 static_assert(STAGE_PLATFORM_COUNT <= STAGE_PLATFORM_MAX, "Too many stage platforms");
-// 対戦マップの色（設計書 第12節の sRGB のベース色）
-static constexpr XMFLOAT4 POST_FLOOR_COLOR = { 0.780f, 0.855f, 0.812f, 1.0f };		// #C7DACF 屋上の床
-static constexpr XMFLOAT4 POST_ROOF_COLOR = { 0.467f, 0.651f, 0.612f, 1.0f };		// #77A69C 集配棟
-static constexpr XMFLOAT4 POST_CENTER_COLOR = { 0.910f, 0.925f, 0.753f, 1.0f };		// #E8ECC0 仕分け台
-static constexpr XMFLOAT4 POST_EDGE_COLOR = { 1.0f, 0.729f, 0.592f, 1.0f };			// #FFBA97 外周の帯
-static constexpr XMFLOAT4 BELT_COLOR = { 0.36f, 0.40f, 0.44f, 1.0f };				// ベルトの帯
-static constexpr XMFLOAT4 BELT_ARROW_COLOR = { 0.45f, 0.95f, 1.0f, 1.0f };			// ベルトの走る光の山形
-static constexpr XMFLOAT4 MARKET_SHORE_COLOR = { 0.796f, 0.718f, 0.600f, 1.0f };	// #CBB799 岸
-static constexpr XMFLOAT4 MARKET_LOW_COLOR = { 0.612f, 0.671f, 0.612f, 1.0f };		// #9CAB9C 低い荷道
-static constexpr XMFLOAT4 MARKET_SHUTTER_COLOR = { 0.702f, 0.490f, 0.353f, 1.0f };	// #B37D5A 南の橋
-static constexpr XMFLOAT4 MARKET_TRAM_COLOR = { 0.42f, 0.56f, 0.66f, 1.0f };		// 北の橋（市電の屋根）
-static constexpr XMFLOAT4 MARKET_TRAM_WINDOW_COLOR = { 0.18f, 0.22f, 0.28f, 1.0f };	// 市電の窓枠
-static constexpr XMFLOAT4 MARKET_BASE_COLOR = { 0.66f, 0.58f, 0.48f, 1.0f };		// 建物の基礎
-static constexpr XMFLOAT4 MARKET_LINE_COLOR = { 0.97f, 0.97f, 0.95f, 1.0f };		// 地割れの縁の白線
+// 対戦マップの色（メニューと同じピンク・黄緑・紫を軸にした、ポップな色。2026-11-24 に管理者の依頼で設計書の色から変えた）
+static constexpr XMFLOAT4 POST_FLOOR_COLOR = { 0.88f, 0.84f, 1.00f, 1.0f };		// 屋上の床（薄いラベンダー）
+static constexpr XMFLOAT4 POST_ROOF_COLOR = { 1.00f, 0.36f, 0.70f, 1.0f };		// 集配棟（ピンク）
+static constexpr XMFLOAT4 POST_RAMP_COLOR = { 0.62f, 0.40f, 1.00f, 1.0f };		// 保守用の坂（紫）
+static constexpr XMFLOAT4 POST_CENTER_COLOR = { 0.78f, 0.96f, 0.20f, 1.0f };		// 仕分け台（黄緑）
+static constexpr XMFLOAT4 POST_EDGE_COLOR = { 1.00f, 0.80f, 0.15f, 1.0f };		// 外周の帯（黄色）
+static constexpr XMFLOAT4 BELT_COLOR = { 0.30f, 0.14f, 0.55f, 1.0f };				// ダッシュ板の帯（濃い紫）
+static constexpr XMFLOAT4 BELT_ARROW_COLOR = { 0.35f, 1.00f, 1.00f, 1.0f };		// ダッシュ板の山形（水色）
+static constexpr XMFLOAT4 MARKET_SHORE_COLOR = { 1.00f, 0.86f, 0.45f, 1.0f };	// 岸（ひまわり色）
+static constexpr XMFLOAT4 MARKET_RAMP_COLOR = { 1.00f, 0.66f, 0.35f, 1.0f };		// 坂（オレンジ）
+static constexpr XMFLOAT4 MARKET_LOW_COLOR = { 0.25f, 0.82f, 0.76f, 1.0f };		// 低い荷道と搬入橋（ミント）
+static constexpr XMFLOAT4 MARKET_SHUTTER_COLOR = { 1.00f, 0.42f, 0.30f, 1.0f };	// 南の橋（朱色）
+static constexpr XMFLOAT4 MARKET_TRAM_COLOR = { 0.30f, 0.62f, 1.00f, 1.0f };		// 北の橋（市電の屋根。空色）
+static constexpr XMFLOAT4 MARKET_TRAM_WINDOW_COLOR = { 0.20f, 0.12f, 0.40f, 1.0f };	// 市電の窓枠（濃い紫）
+static constexpr XMFLOAT4 MARKET_BASE_COLOR = { 1.00f, 0.45f, 0.62f, 1.0f };		// 建物の基礎（ピンク）
+static constexpr XMFLOAT4 MARKET_LINE_COLOR = { 1.00f, 1.00f, 1.00f, 1.0f };		// 地割れの縁の白線
 static constexpr float BRIDGE_DRAW_THICKNESS = 0.5f;	// 片面の橋の板の厚さ（見た目だけ）
 static constexpr float RAMP_SLAB_THICKNESS = 0.5f;		// 坂の上面の板の厚さ（見た目だけ）
 static constexpr int RAMP_COLUMNS = 8;					// 坂の下を埋める段の数（見た目だけ）
@@ -136,7 +138,7 @@ void Stage::DrawRegion(const STAGE_REGION& region) const
 	switch (region.Surface) {
 	case STAGE_SURFACE_CENTER: color = POST_CENTER_COLOR; break;
 	case STAGE_SURFACE_ROOF: color = POST_ROOF_COLOR; break;
-	case STAGE_SURFACE_RAMP: color = post ? POST_ROOF_COLOR : MARKET_SHORE_COLOR; break;
+	case STAGE_SURFACE_RAMP: color = post ? POST_RAMP_COLOR : MARKET_RAMP_COLOR; break;
 	case STAGE_SURFACE_LOW_ROAD: color = MARKET_LOW_COLOR; break;
 	case STAGE_SURFACE_TRAM: color = MARKET_TRAM_COLOR; break;
 	case STAGE_SURFACE_SHUTTER: color = MARKET_SHUTTER_COLOR; break;
@@ -155,7 +157,25 @@ void Stage::DrawRegion(const STAGE_REGION& region) const
 		const float height = top - bottom;
 		const float middle = (top + bottom) * 0.5f;
 		if (region.DiagonalLimit <= 0.0f) {
-			ShapeDrawBox({ centerX, middle, centerZ }, { width, height, depth }, color);
+			// 先に調べる区画で、この上面より低い所がある区画（荷道・坂など）は、そこを除いて描く。
+			// 除かないと、当たり判定のない見た目だけの床がその上にかぶさって隠してしまう。
+			float holes[STAGE_REGION_MAX][4];
+			int holeCount = 0;
+			const int index = static_cast<int>(&region - m_Stage.Regions);
+			for (int i = 0; i < index; ++i) {
+				const STAGE_REGION& other = m_Stage.Regions[i];
+				const float low = fminf(StageCalcRegionHeight(other, other.MinX, other.MinZ), StageCalcRegionHeight(other, other.MaxX, other.MaxZ));
+				if (low >= top) continue;
+				holes[holeCount][0] = other.MinX; holes[holeCount][1] = other.MaxX;
+				holes[holeCount][2] = other.MinZ; holes[holeCount][3] = other.MaxZ;
+				++holeCount;
+			}
+			float pieces[32][4];
+			const int count = MapCalcSubtractRects(region.MinX, region.MaxX, region.MinZ, region.MaxZ, holes, holeCount, pieces, 32);
+			for (int i = 0; i < count; ++i) {
+				const float* r = pieces[i];
+				ShapeDrawBox({ (r[0] + r[1]) * 0.5f, middle, (r[2] + r[3]) * 0.5f }, { r[1] - r[0], height, r[3] - r[2] }, color);
+			}
 			return;
 		}
 		// 四隅を切り落とした八角形：十字の2つの箱と、切り口に沿った4本の箱で描く（原点が中心の区画だけ）。

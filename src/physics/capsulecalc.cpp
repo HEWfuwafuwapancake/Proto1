@@ -7,6 +7,7 @@ static constexpr int PLATFORM_CHANCE_DIVISOR = 4; // 高台を選ぶのは4回�
 static constexpr float CAPSULE_EDGE_MARGIN = 1.25f;
 static constexpr float CAPSULE_SPACING = 2.0f;
 static constexpr int POSITION_ATTEMPTS = 8;
+static constexpr int TERRAIN_ATTEMPTS = 32; // 対戦マップで平らな床の点を引き直す回数（穴の多い市場でも見つかる回数）
 static constexpr float PICKUP_RADIUS = 0.65f;
 static constexpr float PICKUP_CENTER_HEIGHT = 0.7f;
 
@@ -53,19 +54,6 @@ void ArmCapsuleCalc::Remove(int index)
 
 void ArmCapsuleCalc::Spawn(const STAGE& stage)
 {
-	if (stage.SupplyCount > 0) {
-		// 対戦マップは決まった地点の空きを順に並べ、乱数で1点を選んでから腕の種類を引く（枠の番号＝地点の番号）。
-		int freePoints[CAPACITY];
-		int freeCount = 0;
-		const int pointCount = (std::min)(stage.SupplyCount, CAPACITY);
-		for (int i = 0; i < pointCount; ++i) {
-			if (!m_Items[i].Active) freePoints[freeCount++] = i;
-		}
-		if (freeCount == 0) return; // 満杯なら何もせず、乱数も進めない
-		const int point = freePoints[m_Random.NextInt(freeCount)];
-		m_Items[point] = { stage.Supplies[point], DrawType(), true };
-		return;
-	}
 	for (auto& item : m_Items) {
 		if (item.Active) continue;
 		item = { ChoosePosition(stage), DrawType(), true };
@@ -73,8 +61,41 @@ void ArmCapsuleCalc::Spawn(const STAGE& stage)
 	}
 }
 
+// 地形のマップで、その点が平らな床の上で、ふちから CAPSULE_EDGE_MARGIN 以上内側か調べる（坂と、ふちのそばには置かない）。
+static bool IsFlatFloor(const STAGE& stage, float x, float z, float& height)
+{
+	const int region = StageCalcFindRegion(stage, x, z);
+	if (region < 0 || stage.Regions[region].SlopeX != 0.0f || stage.Regions[region].SlopeZ != 0.0f) return false;
+	height = StageCalcRegionHeight(stage.Regions[region], x, z);
+	const float probes[4][2] = { { CAPSULE_EDGE_MARGIN, 0 }, { -CAPSULE_EDGE_MARGIN, 0 }, { 0, CAPSULE_EDGE_MARGIN }, { 0, -CAPSULE_EDGE_MARGIN } };
+	for (const auto& probe : probes) {
+		float around = 0.0f;
+		if (!StageCalcGroundHeight(stage, x + probe[0], z + probe[1], around) || fabsf(around - height) > 0.01f) return false;
+	}
+	return true;
+}
+
 VEC3 ArmCapsuleCalc::ChoosePosition(const STAGE& stage)
 {
+	if (stage.HasTerrain) {
+		// 対戦マップは、全体を囲む四角の中から平らな床の点を引き、ほかのカプセルとの間隔が取れる点を選ぶ。
+		VEC3 best{ stage.CenterX, stage.TopY, stage.CenterZ };
+		float bestDistanceSq = -1.0f;
+		for (int i = 0; i < TERRAIN_ATTEMPTS; ++i) {
+			const float x = stage.CenterX + m_Random.NextFloat(-stage.HalfWidth, stage.HalfWidth);
+			const float z = stage.CenterZ + m_Random.NextFloat(-stage.HalfDepth, stage.HalfDepth);
+			float height = 0.0f;
+			if (!IsFlatFloor(stage, x, z, height)) continue;
+			const VEC3 position{ x, height, z };
+			const float distanceSq = NearestDistanceSq(position);
+			if (distanceSq >= CAPSULE_SPACING * CAPSULE_SPACING) return position;
+			if (distanceSq > bestDistanceSq) {
+				best = position;
+				bestDistanceSq = distanceSq;
+			}
+		}
+		return best;
+	}
 	const bool onPlatform = stage.PlatformCount > 0 && m_Random.NextInt(PLATFORM_CHANCE_DIVISOR) == 0;
 	const STAGE_PLATFORM surface = onPlatform
 		? stage.Platforms[m_Random.NextInt(stage.PlatformCount)] : StageCalcIslandSurface(stage);
