@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "core/dx11.h"
+#include "audio/se.h"
 #include "input/actioncalc.h"
 #include "physics/playercalc.h"
 #include "physics/dashcalc.h"
@@ -174,6 +175,7 @@ private:
 	XMFLOAT3 GetStunShake() const;
 	void DrawStunStars() const;
 	void CancelLaunchAnimation(); // 吹っ飛び中に自分で動いたので、やられのクリップ（のけぞり・吹っ飛び）をやめる（描画だけ）
+	void PlayVoice(SE_ID id, bool force); // キャラの声を鳴らす（声のあるキャラだけ。force でなければ前の声から少しあける）
 	void StartDashAnimation(bool onGround); // ダッシュのクリップを頭から見せる（描画だけ）
 	PlayerBodyCalc m_Body;
 	StatusCalc m_Status;
@@ -194,6 +196,8 @@ private:
 	int m_HeldBy = -1;
 	bool m_Pulled = false;
 	bool m_Respawned = false;
+	float m_VoiceCooldown = 0.0f; // 次の声（攻撃・被弾）を鳴らせるまでの秒数（音だけ。ゲームの計算には使わない）
+	float m_VoicePercent = 0.0f; // 前の更新でのダメージ%（増えたら被弾の声を鳴らす。音だけ）
 	int m_ArmActiveHands = 0;	// 前のフレームで使っていた手（左 1・右 2 のビット。使い始めを見つける）
 	int m_Device = VERSUS_DEVICE_DUMMY;
 	int m_Slot = 0;

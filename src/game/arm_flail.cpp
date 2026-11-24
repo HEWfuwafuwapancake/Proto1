@@ -59,6 +59,7 @@ static constexpr XMFLOAT4 CHAIN_COLOR{ 0.6f, 0.6f, 0.65f, 1.0f };
 static constexpr float HIT_RUMBLE_SMALL = 1.0f;
 static constexpr float HIT_RUMBLE_LARGE = 1.0f;
 static constexpr float HIT_RUMBLE_SECONDS = 0.35f;
+static constexpr float FAN_SE_VOLUME = 0.7f; // 単押しで振るときに鳴らす「鎖」の音の大きさ（投げは 1.0）
 static constexpr float SPIN_RUMBLE_SECONDS = 0.2f;
 
 enum FAN_PHASE { FAN_WINDUP, FAN_STRIKE, FAN_RECOVER, FAN_PHASE_COUNT };
@@ -77,6 +78,7 @@ void FlailArm::Reset()
 	m_Ball.Reset();
 	m_FanConsumed = true;
 	m_Spinning = false;
+	m_SpinSe.Stop();
 	m_SpinSeconds = 0.0f;
 	m_ThrowHit = true;
 	m_ThrowClipSeconds = -1.0f;
@@ -90,6 +92,7 @@ void FlailArm::Interrupt()
 	m_FanConsumed = true;
 	m_Phase.Reset();
 	m_Spinning = false;
+	m_SpinSe.Stop();
 	m_SpinSeconds = 0.0f;
 	m_Straighten = 0.0f;
 	StepBall(dt);
@@ -123,6 +126,7 @@ void FlailArm::StrikeFan()
 	}
 	if (hit) {
 		Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
+		SePlay(SE_FLAIL_HIT);
 		if (!m_FanConsumed) ConsumeDurability(GetCost(COST_ROW, ARM_COST_TAP_HIT));
 		m_FanConsumed = true;
 	}
@@ -152,7 +156,10 @@ void FlailArm::StepSpin(float dt)
 			hit = true;
 		}
 	}
-	if (hit) Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, SPIN_RUMBLE_SECONDS);
+	if (hit) {
+		Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, SPIN_RUMBLE_SECONDS);
+		SePlay(SE_FLAIL_HIT);
+	}
 }
 
 void FlailArm::ThrowBall()
@@ -168,6 +175,8 @@ void FlailArm::ThrowBall()
 	m_ThrowClipSeconds = 0.0f;
 	m_Spinning = false;
 	m_SpinSeconds = 0.0f;
+	m_SpinSe.Stop();
+	SePlay(SE_FLAIL_CHAIN);
 }
 
 // 投げた鉄球を進め、行きは投げた向きへ、帰りは自分の方へ飛ばす（行きと帰りで同じ相手に1回ずつ当たる）。
@@ -191,7 +200,10 @@ void FlailArm::StepBall(float dt)
 		if (!m_ThrowHit) ConsumeDurability(GetCost(COST_ROW, ARM_COST_HOLD_HIT));
 		m_ThrowHit = true;
 	}
-	if (hit) Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
+	if (hit) {
+		Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
+		SePlay(SE_FLAIL_HIT);
+	}
 	if (!m_Ball.IsFlying() && !m_ThrowHit) {
 		ConsumeDurability(GetCost(COST_ROW, ARM_COST_HOLD_MISS));
 		m_ThrowHit = true;
@@ -218,7 +230,10 @@ void FlailArm::Update(const ARM_INPUT& input)
 	}
 	if (m_Phase.GetPhase() == FAN_WINDUP) m_Direction = GetAim(false);
 	const ARM_PHASE_STEP step = m_Phase.Step(dt, FAN_SECONDS, FAN_PHASE_COUNT);
-	if (step.Entered == FAN_STRIKE) StrikeFan();
+	if (step.Entered == FAN_STRIKE) {
+		SePlay(SE_FLAIL_CHAIN, FAN_SE_VOLUME);
+		StrikeFan();
+	}
 	if (step.Finished && !m_FanConsumed) {
 		ConsumeDurability(GetCost(COST_ROW, ARM_COST_TAP_MISS));
 		m_FanConsumed = true;
@@ -226,7 +241,10 @@ void FlailArm::Update(const ARM_INPUT& input)
 	if (m_Spinning) {
 		// 離したら、ためた分だけ遠くへ投げる。回している間に耐久が尽きたら、その場で投げる。
 		if (!input.Pressed || !CanUse()) ThrowBall();
-		else StepSpin(dt);
+		else {
+			m_SpinSe.Keep(SE_FLAIL_SPIN); // 鳴り終わったら、回している間はもう一度鳴らす
+			StepSpin(dt);
+		}
 	}
 	StepBall(dt);
 	if (m_ThrowClipSeconds >= 0.0f) {

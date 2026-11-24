@@ -1,4 +1,5 @@
 ﻿#include "game/tentacle.h"
+#include "audio/se.h"
 #include "game/camera.h"
 #include "game/fightermanager.h"
 #include "game/fighter.h"
@@ -296,6 +297,7 @@ void TentacleArm::StepSpin(const ARM_INPUT& input, float dt)
 		m_Spin.Start(SPIN_CHARGE);
 		m_Spin.SetHeld(true);
 		if (input.HoldReleased) m_Spin.Release();
+		else SePlay(SE_ARM_HOLD);
 		m_ThrowClipElapsed = -1.0f;
 	}
 	else if (input.HoldReleased) m_Spin.Release();
@@ -304,6 +306,7 @@ void TentacleArm::StepSpin(const ARM_INPUT& input, float dt)
 	// ためている間は狙いを追い、離した瞬間の向きから回す。
 	if (m_Spin.GetPhase() == SPIN_CHARGE) m_SpinForward = GetAim(false);
 	const ARM_PHASE_STEP step = m_Spin.Step(dt, SPIN_PHASE_SECONDS, SPIN_PHASE_COUNT);
+	if (step.Entered == SPIN_SWING) SePlay(SE_TENTACLE_SWING);
 	if (step.Finished && !m_SpinConsumed) {
 		ConsumeDurability(GetCost(COST_ROW, ARM_COST_HOLD_MISS));
 		m_SpinConsumed = true;
@@ -331,7 +334,10 @@ void TentacleArm::StepSpin(const ARM_INPUT& input, float dt)
 		hit = true;
 	}
 	m_SpinAngle = angle;
-	if (hit) Rumble(SPIN_RUMBLE_SMALL, SPIN_RUMBLE_LARGE, SPIN_RUMBLE_SECONDS);
+	if (hit) {
+		Rumble(SPIN_RUMBLE_SMALL, SPIN_RUMBLE_LARGE, SPIN_RUMBLE_SECONDS);
+		SePlay(SE_TENTACLE_SWING_HIT);
+	}
 }
 
 void TentacleArm::Update(const ARM_INPUT& input)
@@ -373,6 +379,7 @@ void TentacleArm::Update(const ARM_INPUT& input)
 				m_SlamHit = true;
 				GetFighters().AddDamage(arm.GetTarget(), GetSlot(), SLAM_DAMAGE);
 				Rumble(SLAM_RUMBLE_SMALL, SLAM_RUMBLE_LARGE, SLAM_RUMBLE_SECONDS);
+				SePlay(SE_TENTACLE_SLAM);
 			}
 			swing = (trigger && m_ComboTime >= SLAM_SECONDS) || m_ComboTime >= SLAM_SECONDS + SLAM_WINDOW;
 			m_SwingFinish = swing;
@@ -381,6 +388,7 @@ void TentacleArm::Update(const ARM_INPUT& input)
 		if (swing) {
 			m_GrabStep = 3;
 			m_ComboTime = 0.0f;
+			SePlay(SE_TENTACLE_SWING);
 		}
 		// 離す瞬間は、体のクリップの振り抜きを途中から続ける。
 		if (throwNow) m_ThrowClipElapsed = m_ComboTime - WINDUP_SECONDS;
@@ -390,6 +398,7 @@ void TentacleArm::Update(const ARM_INPUT& input)
 		m_ReachPending = true;
 		m_ThrowClipElapsed = -1.0f;
 		StartReach(targets, origin, cameraForward, aim, grip, hasGrip);
+		SePlay(SE_TENTACLE_EXTEND);
 	}
 	const bool cancel = GetPlayer().DidRespawn() || (arm.GetTarget() >= 0 && !GetFighters().IsHeldBy(arm.GetTarget(), GetSlot()));
 	// 段階攻撃は腕のほうで投げる時を決めるので、計算の自動の投げ・解放は使わない。

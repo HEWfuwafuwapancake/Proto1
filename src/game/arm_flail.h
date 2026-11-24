@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "game/arm.h"
+#include "audio/se.h"
 #include "physics/armphasecalc.h"
 #include "physics/collision.h"
 #include "physics/flailcalc.h"
@@ -62,6 +63,7 @@ private:
 	float m_SpinSeconds = 0.0f; // 回し始めてからの秒数
 	float m_SpinAngle = 0.0f; // 回している角度
 	float m_SpinDrainSeconds = 0.0f; // 回している間、耐久をまだ減らしていない秒数
+	SeVoice m_SpinSe; // 回している間の音（投げる・やめるときに止める）
 	bool m_FanConsumed = true; // 扇の耐久を減らし終えたら true
 	bool m_ThrowHit = false; // 投げで1人でも当たったら true
 	float m_ThrowPower = 0.0f; // 行きの吹っ飛ばす強さ（ためた分）

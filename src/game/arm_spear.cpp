@@ -1,4 +1,5 @@
 ﻿#include "game/arm_spear.h"
+#include "audio/se.h"
 #include "game/fightermanager.h"
 #include "game/fighter.h"
 #include "game/stage.h"
@@ -55,6 +56,7 @@ static constexpr float HIT_RUMBLE = 1.0f;
 static constexpr float HIT_RUMBLE_SECONDS = 0.25f;
 static constexpr float THROW_RUMBLE = 0.4f;
 static constexpr float THROW_RUMBLE_SECONDS = 0.1f;
+static constexpr float THRUST_SE_VOLUME = 0.6f; // 突きで鳴らす「槍投げ」の音の大きさ（投げは 1.0）
 
 enum SPEAR_PHASE { SPEAR_RAISE, SPEAR_STRIKE, SPEAR_RECOVER, SPEAR_PHASE_COUNT };
 
@@ -103,6 +105,7 @@ void SpearArm::Thrust()
 	if (hit) {
 		Consume(ARM_COST_TAP_HIT);
 		Rumble(HIT_RUMBLE, HIT_RUMBLE, HIT_RUMBLE_SECONDS);
+		SePlay(SE_SPEAR_STAB);
 	}
 }
 
@@ -131,12 +134,14 @@ void SpearArm::OnStuck()
 	Consume(ARM_COST_HOLD_HIT);
 	GetFighters().ApplyStatus(target, GetSlot(), STATUS_STUN, STUN_TICK_SECONDS, 0.0f);
 	Rumble(HIT_RUMBLE, HIT_RUMBLE, HIT_RUMBLE_SECONDS);
+	SePlay(SE_SPEAR_STAB);
 	m_StuckSeconds = 0.0f;
 	// もう一方の手や触手が体を動かしている間は突っ込まない（吹っ飛ばしとしびれは入る）。
 	if (GetPlayer().IsPulled()) return;
 	m_Rushing = true;
 	m_OwnPull = true;
 	GetPlayer().SetPulled(true);
+	SePlay(SE_SPEAR_PULL);
 }
 
 // 刺さっている間：吹っ飛んでいる相手をしびれさせ続け、自分は相手の足元へ突っ込む。
@@ -197,6 +202,7 @@ void SpearArm::Update(const ARM_INPUT& input)
 		m_Phase.SetHeld(m_Throw);
 		m_Lunging = !m_Throw;
 		if (input.HoldReleased) m_Phase.Release();
+		else if (m_Throw) SePlay(SE_ARM_HOLD);
 	}
 	else if (input.HoldReleased && m_Throw) m_Phase.Release();
 	// 構えている間にボタンを受け付けなくなった（ガードなど）ときは、投げずにやめる。
@@ -208,6 +214,7 @@ void SpearArm::Update(const ARM_INPUT& input)
 	StepLunge();
 	if (step.Entered == SPEAR_STRIKE) {
 		m_Direction = GetAim(false);
+		SePlay(SE_SPEAR_THROW, m_Throw ? 1.0f : THRUST_SE_VOLUME); // 突きも投げと同じ風を切る音（小さめ）
 		if (!m_Throw) Thrust();
 		else {
 			m_Spear.Throw(GetShoulder(), GetStrikeDirection(m_Direction));

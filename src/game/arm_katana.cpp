@@ -1,4 +1,5 @@
 ﻿#include "game/arm_katana.h"
+#include "audio/se.h"
 #include "game/camera.h"
 #include "game/fightermanager.h"
 #include "game/fighter.h"
@@ -201,7 +202,10 @@ void KatanaArm::SlashTargets()
 		m_SlashSeconds[i] = SLASH_SHOW_SECONDS;
 		hit = true;
 	}
-	if (hit) Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
+	if (hit) {
+		Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
+		SePlay(SE_KATANA_HIT);
+	}
 }
 
 // 長押しで飛んで着いたときの居合の一閃：当たったことだけを覚え、少しあとから斬撃としてダメージを入れる。
@@ -227,7 +231,10 @@ void KatanaArm::IaiTargets()
 		m_SlashDirections[i] = m_IaiDirection;
 		hit = true;
 	}
-	if (hit) Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
+	if (hit) {
+		Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
+		SePlay(SE_KATANA_HIT);
+	}
 }
 
 // 飛んだ通り道をまとめて調べ、高速移動でも相手を通り抜けて見逃さない。
@@ -248,7 +255,10 @@ void KatanaArm::DashTargets(const VEC3& from, const VEC3& to)
 		m_SlashSeconds[i] = SLASH_SHOW_SECONDS;
 		hit = true;
 	}
-	if (hit) Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
+	if (hit) {
+		Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
+		SePlay(SE_KATANA_HIT);
+	}
 }
 
 void KatanaArm::StepDelayedHits(float dt)
@@ -260,6 +270,7 @@ void KatanaArm::StepDelayedHits(float dt)
 		GetFighters().Launch(hits[i].Target, GetSlot(), hits[i].Direction, hits[i].Damage, hits[i].Power);
 		m_SlashSeconds[hits[i].Target] = SLASH_SHOW_SECONDS;
 		Rumble(SLASH_RUMBLE_SMALL, SLASH_RUMBLE_LARGE, SLASH_RUMBLE_SECONDS);
+		SePlay(SE_KATANA_HIT);
 	}
 	for (float& seconds : m_SlashSeconds) seconds = fmaxf(0.0f, seconds - dt);
 }
@@ -328,6 +339,7 @@ void KatanaArm::StepIai(float dt)
 	const ARM_PHASE_STEP step = m_Phase.Step(dt, IAI_SECONDS[m_TapStep], IAI_PHASE_COUNT);
 	if (step.Entered == IAI_DRAW) {
 		BeginDraw();
+		SePlay(SE_KATANA_MISS); // 振った音（当たったら当たった音を重ねる）
 		if (m_TapStep == PIERCE_STEP) StartPierce();
 	}
 	if (m_TapStep == PIERCE_STEP) {
@@ -394,6 +406,7 @@ void KatanaArm::StartDash()
 	ConsumeDurability(GetCost(COST_ROW, ARM_COST_HOLD_MISS));
 	m_DashHitConsumed = false;
 	Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
+	SePlay(SE_KATANA_DASH);
 }
 
 // 自分が止めていた体の計算を、ふつうに戻す。
@@ -457,7 +470,10 @@ void KatanaArm::Update(const ARM_INPUT& input)
 	}
 	if (!IsActive()) {
 		if (input.Tap) StartIai();
-		else if (input.HoldStarted) SetBreach(BREACH_AIM);
+		else if (input.HoldStarted) {
+			SetBreach(BREACH_AIM);
+			SePlay(SE_ARM_HOLD);
+		}
 	}
 	StepIai(dt);
 	StepBreach(input, dt);

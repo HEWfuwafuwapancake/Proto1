@@ -31,6 +31,7 @@ DX11 の土台は `HEW2026GitTest` から持ってきた（水のレイトレー
 - `git push --force`、`git reset --hard`、ブランチやタグの削除は、ユーザーに確認してから。
 - develop / main へのマージ、release / hotfix、タグ付けは **管理者だけ**（`tools/admin/`）。ユーザーが管理者かどうか分からなければ聞く。
 - 画像・モデル・音声は Git LFS（`.gitattributes`）。新しい種類の素材ファイルを入れるときは `.gitattributes` に追加する。
+- 効果音は **16bit PCM の WAV** で `assets/sounds/se/` に置く（MP3 などはそのまま鳴らせないので、入れる前に WAV に変換する。足し方は `docs/dev/01_DX11基盤の構成.md` の「効果音の足し方」）。
 
 ## コードの構成（フォルダ分け）
 | フォルダ | 入れるもの |
@@ -41,6 +42,7 @@ DX11 の土台は `HEW2026GitTest` から持ってきた（水のレイトレー
 | `src/game/` | プレイヤー・カメラ・ステージ・敵・触腕・試合の流れ（ゲームの中身） |
 | `src/physics/` | 当たり判定・吹っ飛びの計算（**DirectX を使わない**。単体テストする） |
 | `src/net/` | 通信のための入力保管・パケット変換（計算は Windows・DirectX を使わず単体テストする） |
+| `src/audio/` | 音（XAudio2 で WAV を鳴らす `sound`、効果音を名前で鳴らす `se`、WAV を読む計算 `wavcalc`） |
 | `shaders/` | `.hlsl` / `.hlsli` |
 | `tests/` | 単体テストのプロジェクト |
 | `third_party/` | 外から持ってきたライブラリ（Google Test と、FBX を読む Assimp。中身は書き換えない） |
@@ -48,7 +50,7 @@ DX11 の土台は `HEW2026GitTest` から持ってきた（水のレイトレー
 - `#include` は **`src` からのパス**で書く（例：`#include "core/dx11.h"`、`#include "game/player.h"`）。同じフォルダのファイルでも省略しない。
 - 新しいフォルダを作るときは、この表と `docs/dev/01_DX11基盤の構成.md` に追記し、`.vcxproj.filters` にも同じ名前のフィルターを作る。
 - **ゲームの計算（当たり判定・吹っ飛び・スコアなど）は、DirectX を使わないファイルに分ける。** 描画するファイルは、計算した結果を使って描くだけにする。
-- 依存の向き：`game` は `core`・`input`・`render`・`physics`・`net` を使ってよい。`core`・`input`・`render`・`physics`・`net` は `game` を使わない（`main.cpp` だけは全体をまとめるので例外）。
+- 依存の向き：`game` は `core`・`input`・`render`・`physics`・`net`・`audio` を使ってよい。`core`・`input`・`render`・`physics`・`net`・`audio` は `game` を使わない（`main.cpp` だけは全体をまとめるので例外）。
 - 調整する値（速さ・強さ・時間など）は、各ファイルの上の「調整用の値」に `static constexpr` でまとめる。
 
 ## コードの約束

@@ -294,6 +294,46 @@ void Game::UpdateMenu()
 
 void Game::Update()
 {
+	// メニューの効果音は、更新の前と後で変わったことから選ぶ（途中で return するところがあるので、ここでまとめて見る）。
+	const MENU_SE_STATE before = GetMenuSeState();
+	bool back = false;
+	bool decide = false;
+	for (int device = 0; device < ACTION_DEVICE_COUNT; ++device) {
+		if (m_Net.IsOnline() && m_Net.GetLocalDevice() >= 0 && device != m_Net.GetLocalDevice()) continue;
+		const ACTION_MENU_INPUT menu = ActionGetMenuInput(device);
+		back = back || menu.Back;
+		decide = decide || menu.Decide;
+	}
+	UpdateFrame();
+	m_MenuSe.Update(before, GetMenuSeState(), back, decide);
+}
+
+MENU_SE_STATE Game::GetMenuSeState() const
+{
+	MENU_SE_STATE state;
+	state.Scene = m_Scene.GetScene();
+	state.Cursor = m_Scene.GetCursor();
+	state.Map = static_cast<int>(m_Scene.GetMap());
+	state.Rule = static_cast<int>(GetRule());
+	state.Focus = m_Participants.GetLobbyFocus();
+	// 設定のどれかが変わったと分かればよいので、段と表の値を重みをつけて足す。
+	unsigned values = static_cast<unsigned>(ActionGetLookSensitivityLevel());
+	for (uint8_t level : GetTuning().Levels) values = values * 31u + level;
+	for (const auto& row : m_ArmCosts.Values) {
+		for (int value : row) values = values * 31u + static_cast<unsigned>(value);
+	}
+	state.Values = values;
+	for (int slot = 0; slot < FIGHTER_COUNT; ++slot) {
+		state.Characters[slot] = static_cast<int>(m_LobbyCharacters[slot]);
+		state.CpuLevels[slot] = m_Participants.GetCpuLevel(slot);
+		if (m_Participants.GetDevice(slot) != VERSUS_DEVICE_DUMMY) state.Joined |= 1u << slot;
+		if (m_Participants.IsReady(slot)) state.Ready |= 1u << slot;
+	}
+	return state;
+}
+
+void Game::UpdateFrame()
+{
 	// オンラインは全員が同じ減り方になるよう、はじめの表を使う。
 	const ARM_COST_TABLE costs = m_Net.IsOnline() ? ArmCostCalcDefault() : m_ArmCosts;
 	for (auto& arms : m_Arms) arms.SetCosts(costs);

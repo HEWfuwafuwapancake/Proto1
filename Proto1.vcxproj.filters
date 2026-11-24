@@ -19,6 +19,9 @@
     <Filter Include="src\physics">
       <UniqueIdentifier>{3F6C2B8E-7D41-5A9C-B2E5-8C1D4F7A6E30}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\audio">
+      <UniqueIdentifier>{11E9CADC-8906-4B93-99F9-BD1E085BA6F7}</UniqueIdentifier>
+    </Filter>
     <Filter Include="src\net">
       <UniqueIdentifier>{92FE875A-7C6C-42F1-A966-5F118976C7B2}</UniqueIdentifier>
     </Filter>
@@ -116,6 +119,18 @@
     </ClCompile>
     <ClCompile Include="src\physics\liftcalc.cpp">
       <Filter>src\physics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\game\menuse.cpp">
+      <Filter>src\game</Filter>
+    </ClCompile>
+    <ClCompile Include="src\audio\sound.cpp">
+      <Filter>src\audio</Filter>
+    </ClCompile>
+    <ClCompile Include="src\audio\se.cpp">
+      <Filter>src\audio</Filter>
+    </ClCompile>
+    <ClCompile Include="src\audio\wavcalc.cpp">
+      <Filter>src\audio</Filter>
     </ClCompile>
     <ClCompile Include="src\game\mapgimmick.cpp">
       <Filter>src\game</Filter>
@@ -274,6 +289,18 @@
     </ClInclude>
     <ClInclude Include="src\physics\liftcalc.h">
       <Filter>src\physics</Filter>
+    </ClInclude>
+    <ClInclude Include="src\game\menuse.h">
+      <Filter>src\game</Filter>
+    </ClInclude>
+    <ClInclude Include="src\audio\sound.h">
+      <Filter>src\audio</Filter>
+    </ClInclude>
+    <ClInclude Include="src\audio\se.h">
+      <Filter>src\audio</Filter>
+    </ClInclude>
+    <ClInclude Include="src\audio\wavcalc.h">
+      <Filter>src\audio</Filter>
     </ClInclude>
     <ClInclude Include="src\game\mapgimmick.h">
       <Filter>src\game</Filter>

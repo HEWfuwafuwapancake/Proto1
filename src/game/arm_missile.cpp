@@ -1,4 +1,5 @@
 ﻿#include "game/arm_missile.h"
+#include "audio/se.h"
 #include "game/fightermanager.h"
 #include "game/fighter.h"
 #include "game/stage.h"
@@ -162,6 +163,7 @@ void MissileArm::FireVolley(bool all)
 	else ConsumeDurability(SHOT_COST);
 	if (all) Rumble(HOLD_RUMBLE, HOLD_RUMBLE, HOLD_RUMBLE_SECONDS);
 	else Rumble(TAP_RUMBLE, TAP_RUMBLE, TAP_RUMBLE_SECONDS);
+	SePlay(SE_MISSILE_FIRE);
 }
 
 void MissileArm::AddBlast(const VEC3& position, float radius)
@@ -190,6 +192,8 @@ void MissileArm::StepEffects(float dt)
 		AddBlast(events[e].Position, radius);
 		m_ShotIsArm[events[e].Index] = false;
 	}
+	// 同じフレームにいくつ爆発しても、音は1回だけ鳴らす（重なって大きくなりすぎないように）。
+	if (count > 0) SePlay(SE_MISSILE_EXPLODE);
 }
 
 void MissileArm::Update(const ARM_INPUT& input)
@@ -203,6 +207,7 @@ void MissileArm::Update(const ARM_INPUT& input)
 			m_Phase.Start(MISSILE_AIM);
 			m_Phase.SetHeld(true);
 			if (input.HoldReleased) m_Phase.Release();
+			else SePlay(SE_MISSILE_LOCK);
 		}
 		else {
 			m_Phase.Start(MISSILE_FIRE);
