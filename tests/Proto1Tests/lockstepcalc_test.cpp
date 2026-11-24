@@ -69,8 +69,8 @@ namespace Proto1Tests
 		EXPECT_TRUE(sender.Initialize(15, 0));
 		for (int frame = 0; frame < 8; ++frame) {
 			for (int slot = 0; slot < FIGHTER_COUNT; ++slot) {
-				// いちばん上のビット（16 番目の行動）も送れる。
-				auto input = ActionCalcPlayerInput({ -0.6f, 0.8f }, { -0.02f, 0.04f }, (1u << ACTION_JUMP) | (1u << ACTION_GUARD_RIGHT));
+				// いちばん後ろの行動（17 番目のＧ）も送れる。
+				auto input = ActionCalcPlayerInput({ -0.6f, 0.8f }, { -0.02f, 0.04f }, (1u << ACTION_JUMP) | (1u << ACTION_LIFT));
 				// 3段目の腕（25 まで）の番号も送れる。
 				if (slot != 0) input.Equip = { slot % 2, (frame * 3 + slot) % ACTION_EQUIP_NUMBER_COUNT };
 				EXPECT_TRUE(sender.StoreInput(frame, slot, input));
@@ -81,7 +81,7 @@ namespace Proto1Tests
 		packet.Acknowledged = 42;
 		std::vector<uint8_t> bytes;
 		EXPECT_TRUE(LockstepCalc::EncodePacket(packet, bytes));
-		EXPECT_EQ(431, static_cast<int>(bytes.size()));
+		EXPECT_EQ(495, static_cast<int>(bytes.size()));
 		EXPECT_EQ(0x50, static_cast<int>(bytes[0])); // P1N1
 		EXPECT_EQ(0x31, static_cast<int>(bytes[1]));
 		EXPECT_EQ(static_cast<int>(LOCKSTEP_VERSION), static_cast<int>(bytes[4])); // 版はリトルエンディアン

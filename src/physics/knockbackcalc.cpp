@@ -48,9 +48,11 @@ bool KnockbackCalcStep(PlayerBodyCalc& body, float dt, const KNOCKBACK_PARAMS& p
 	float VelocityY = body.GetVelocityY();
 	float VelocityZ = body.GetVelocityZ();
 	bool OnGround = body.GetOnGround();
-	// 足元の高さに足場がなければ落ち始める
-	if (OnGround && !StageCalcHasSupport(stage, X, Y, Z)) {
-		OnGround = false;
+	// 足元の高さに足場がなければ落ち始める（地形のマップでは坂の高さへ合わせる）
+	float groundY = Y;
+	if (OnGround) {
+		if (StageCalcFollowGround(stage, X, Y, Z, groundY)) Y = groundY;
+		else OnGround = false;
 	}
 
 	if (OnGround) {
@@ -94,14 +96,17 @@ bool KnockbackCalcStep(PlayerBodyCalc& body, float dt, const KNOCKBACK_PARAMS& p
 	}
 
 	const float previousY = Y;
-	X += VelocityX * dt;
+	// 横の移動は地形の側面で止め、止まった軸の速さを 0 にする（壁に沿ってすべる）。
+	const int stopped = StageCalcMoveBody(stage, X, Y, Z, VelocityX * dt, VelocityZ * dt, OnGround, X, Z);
+	if (stopped & STAGE_STOP_X) VelocityX = 0.0f;
+	if (stopped & STAGE_STOP_Z) VelocityZ = 0.0f;
 	Y += VelocityY * dt;
-	Z += VelocityZ * dt;
 
 	// 着地（上から落ちてきて、上の面を通り過ぎたときだけ。横の速さは残してすべらせる）
 	float landingY;
 	if (OnGround) {
-		OnGround = StageCalcHasSupport(stage, X, Y, Z);
+		OnGround = StageCalcFollowGround(stage, X, Y, Z, groundY);
+		if (OnGround) Y = groundY;
 	} else if (VelocityY <= 0.0f && StageCalcFindLanding(stage, X, Z, previousY, Y, landingY)) {
 		Y = landingY;
 		VelocityY = 0.0f;

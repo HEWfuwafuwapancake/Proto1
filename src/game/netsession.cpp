@@ -152,7 +152,7 @@ void NetSession::Update()
 	if (!m_Calc.IsRunning()) {
 		// 試合の開始に押した決定（○・B）は、入力の遅れの分だけあとのフレームに届き、ダッシュになる。
 		// 試合が始まる前から押しているボタンは、離すまで送らない。
-		m_HeldButtons = 0xFFFF;
+		m_HeldButtons = 0xFFFFFFFFu;
 		// 最初に決定を押した機器に固定。開始はホストの同じ機器からの再決定だけ。
 		for (int device = 0; device < ACTION_DEVICE_COUNT; ++device) {
 			if ((m_Device < 0 || m_Device == device) && ActionIsTrigger(device, ACTION_DECIDE)) {

@@ -62,10 +62,13 @@ private:
 		const std::array<CHARACTER_TYPE, FIGHTER_COUNT>& characters) const;
 	void DrawResult(const SceneCalc& scene, const VersusCalc& participants,
 		const std::array<CHARACTER_TYPE, FIGHTER_COUNT>& characters) const;
+	void DrawMapSelect(const SceneCalc& scene, const NetSession& net, float sizeScale) const;
+	void DrawMiniMap(STAGE_MAP map, const RECT2D& area) const;
 	std::array<SkinnedModel, CHARACTER_COUNT> m_PreviewModels;
 	std::array<SKINNED_POSE, CHARACTER_COUNT> m_PreviewPoses;
 	std::chrono::steady_clock::time_point m_PreviewStart{};
 	std::chrono::steady_clock::time_point m_ChangeTime{}; // 画面か選んでいる項目が最後に変わった時刻
 	SCENE m_LastScene = SCENE_GAME_START; // 前のフレームの画面
 	int m_LastCursor = -1; // 前のフレームのカーソル
+	STAGE_MAP m_LastMap = STAGE_MAP_DEFAULT; // 前のフレームのマップ選択の選択
 };

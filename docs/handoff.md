@@ -3,11 +3,11 @@
 作業を始めるときに読む。ここには今の状態と次にやることだけを書く。
 タスクの状態は [tasks.md](tasks.md) と Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」、決定事項は [decisions.md](decisions.md)。
 
-- 最終更新：2026-11-24（Codex。Shota の PC、`Proto1`。対戦マップ設計書の全文をMarkdown・Word化）
+- 最終更新：2026-11-24（Claude。Shota の PC、`Proto1`。対戦マップ２面とマップ選択を実装途中・未ビルド）
 
 ## 1. 今の状態
 
-- **対戦マップの企画**：Claude は[対戦マップ設計書の全文](plan/08_対戦マップ案/実装基準.md) を読む。第01～06節に郵便局と市場の俯瞰図・断面・世界観、第07～14節に実装基準と受入例がある。[Word版](plan/08_対戦マップ案/４人対戦マップ設計書.docx) も同内容。`feature/city-arena-concepts` で管理者の採否確認待ち。ゲーム実装と試遊は未着手。
+- **対戦マップ２面の実装（途中。`feature/city-arena-concepts`）**：[設計書](plan/08_対戦マップ案/実装基準.md) どおりに、地形の区画（`stagecalc` の Regions・坂・片面の橋・側面の壁）、台帳（`physics/mapcalc`）、Ｇ（`physics/liftcalc`、△ / G、`game/mapgimmick`）、ベルト・空き缶、カプセルの16地点、P1〜P4 の開始と復活、キャラ選択のあとに 1P（オンラインはホスト）が選ぶマップ選択画面（`SCENE_MAP_SELECT`、`codex_menu` の `DrawMapSelect`）を書いた。入力のボタンを32ビットにし、通信の版を30にした。**まだ一度もビルド・テストしていない**（時間切れで一時停止）。
 
 - **No.187・188（[PR #242](https://github.com/HEWfuwafuwapancake/Proto1/pull/242) ・[#243](https://github.com/HEWfuwafuwapancake/Proto1/pull/243)。メニューのパッド操作）**：左スティックはカーソルだけ（キャラ選択のカードは左右、ルールの行へは上下）、十字キーは中身を変えるだけ（左右でキャラ・ルール・オプションの値、上下で CPU の強さ）。決まりは decisions.md。両構成417件通過・警告0。キーボードでキャラ選択のカードを横へ動かし、CPU の強さを変える画面を撮って確かめた。パッドの実機ではまだ確かめていない。
 - **No.186（[PR #241](https://github.com/HEWfuwafuwapancake/Proto1/pull/241)。モーニングスター。develop に入っている）**：回している間は1秒ごとに耐久が5減り（尽きたらその場で投げる）、当たりは輪の内側の全方向になった。通信の版29。両構成417件通過・警告0。画面ではまだ確かめていない。
@@ -26,7 +26,7 @@
 
 ## 2. 次にやること
 
-- **対戦マップ案の確認**：管理者が２面の配置と実装基準、特にＧの同時入力・着地予約・カプセルの固定候補を確認する。採用する面が決まったら白箱の実装プランを立てる。
+- **対戦マップの実装を仕上げる**：Debug / Release をビルドして警告0にする → `run-tests.ps1`（新しい `mapcalc_test`・`liftcalc_test` と、直した `scenecalc_test`・`lockstepcalc_test`・`actioncalc_test`）→ わざと壊す確認（mapcalc・liftcalc）→ マップ選択と２面を画面で確かめる → tasks.md・Notion に No. を足して PR。わかっている近似：刀のワープ先（breachcalc）・触手の箱の当たり（tentaclecalc / grapplecalc）・CPU は地形の壁と Ｇ を考えていない。
 
 0. **管理者が No.187・188 をパッドで確かめる**：十字キーでカーソルが動かないこと、キャラ選択で左スティックの左右でカードを選べること、十字キーの左右でキャラ・ルール・オプションの値、上下で CPU の強さが変わること。
 

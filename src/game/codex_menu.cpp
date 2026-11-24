@@ -2,6 +2,7 @@
 #include "game/netsession.h"
 #include "game/character.h"
 #include "game/fighter.h"
+#include "game/stage.h"
 #include "core/shader.h"
 #include "input/action.h"
 #include "render/backdrop.h"
@@ -93,6 +94,19 @@ static constexpr const char* COST_NOTES[ARM_COST_ROW_COUNT][2] = {
 	{ "弱：突き（直線上の全員）", "強：投げた槍が刺さったか" },
 	{ "1発ごとに16（持ちで割る）", "表では変えられない" },
 	{ "パリィできずに防いだとき", "" }
+};
+static constexpr float MAP_CARD_LEFT = 40.0f; // マップ選択のカード
+static constexpr float MAP_CARD_TOP = 118.0f;
+static constexpr float MAP_CARD_WIDTH = 388.0f;
+static constexpr float MAP_CARD_HEIGHT = 470.0f;
+static constexpr float MAP_CARD_GAP = 18.0f;
+static constexpr float MAP_PLAN_HEIGHT = 210.0f; // カードの中の上から見た図の高さ
+static constexpr const char* MAP_NAMES[STAGE_MAP_COUNT] = { "ソラツギ中央郵便局", "汐跡市場の三本橋", "浮島（標準）" };
+static constexpr const char* MAP_SUBTITLES[STAGE_MAP_COUNT] = { "近未来都市　52 × 52", "荒廃都市　60 × 48", "デバッグ用　30 × 30" };
+static constexpr const char* MAP_HELP[STAGE_MAP_COUNT][3] = {
+	{ "中央の仕分け台で腕を拾い合う。", "屋根へは △ / G のＧで上がる。", "ベルトに乗ると中央へ早く着く。" },
+	{ "高さの違う3本の橋を奪い合う。", "地割れに落ちると場外。", "南の橋は乗ると空き缶が鳴る。" },
+	{ "今までの四角い浮島。", "下から通れる高台が4つ。", "腕を試すのに向いている。" },
 };
 static constexpr const char* CPU_LEVEL_NAMES[VERSUS_CPU_LEVEL_COUNT] = { "ダミー", "CPU よわい", "CPU ふつう", "CPU つよい" };
 static constexpr const char* MODE_NAMES[] = {
@@ -254,9 +268,10 @@ void CodexMenu::Finalize()
 
 void CodexMenu::Update(const SceneCalc& scene)
 {
-	if (scene.GetScene() == m_LastScene && scene.GetCursor() == m_LastCursor) return;
+	if (scene.GetScene() == m_LastScene && scene.GetCursor() == m_LastCursor && scene.GetMap() == m_LastMap) return;
 	m_LastScene = scene.GetScene();
 	m_LastCursor = scene.GetCursor();
+	m_LastMap = scene.GetMap();
 	m_ChangeTime = std::chrono::steady_clock::now();
 }
 
@@ -696,6 +711,101 @@ void CodexMenu::DrawResult(const SceneCalc& scene, const VersusCalc& participant
 	Footer("1P : ↑↓ / W S / 左スティック  選ぶ    Enter / ○  決定    （オンラインのメニューへは、ロビーへ戻ります）");
 }
 
+void CodexMenu::DrawMiniMap(STAGE_MAP map, const RECT2D& area) const
+{
+	// 上から見た図：北（+Z）が上。床のない所は濃い色のまま残す。
+	static constexpr XMFLOAT4 VOID_COLOR{ 0.16f, 0.20f, 0.30f, 1.0f };
+	static constexpr XMFLOAT4 SURFACE_COLORS[] = {
+		{ 0.780f, 0.855f, 0.812f, 1.0f }, // 床（郵便局。市場は下で岸の色にする）
+		{ 0.910f, 0.925f, 0.753f, 1.0f }, // 仕分け台
+		{ 0.467f, 0.651f, 0.612f, 1.0f }, // 屋根
+		{ 0.560f, 0.740f, 0.700f, 1.0f }, // 坂
+		{ 0.612f, 0.671f, 0.612f, 1.0f }, // 低い荷道
+		{ 0.420f, 0.560f, 0.660f, 1.0f }, // 市電の屋根
+		{ 0.702f, 0.490f, 0.353f, 1.0f }, // シャッターの橋
+		{ 0.660f, 0.580f, 0.480f, 1.0f }, // 建物の基礎
+	};
+	static constexpr XMFLOAT4 SHORE_COLOR{ 0.796f, 0.718f, 0.600f, 1.0f };
+	static constexpr XMFLOAT4 ISLAND_COLOR{ 0.45f, 0.65f, 0.40f, 1.0f };
+	STAGE stage{};
+	if (!MapCalcBuild(map, 1.0f, stage)) {
+		Stage island;
+		island.Initialize();
+		stage = island.GetStage();
+	}
+	Number2DDrawBox(area, VOID_COLOR);
+	const float halfWidth = stage.HalfWidth + (stage.HasTerrain ? 0.0f : 2.0f);
+	const float halfDepth = stage.HalfDepth + (stage.HasTerrain ? 0.0f : 2.0f);
+	const float scale = (std::min)(area.Width / (halfWidth * 2.0f), area.Height / (halfDepth * 2.0f)) * 0.92f;
+	const float centerX = area.X + area.Width * 0.5f, centerY = area.Y + area.Height * 0.5f;
+	const auto box = [&](float minX, float maxX, float minZ, float maxZ, const XMFLOAT4& color) {
+		Number2DDrawBox({ centerX + minX * scale, centerY - maxZ * scale, (maxX - minX) * scale, (maxZ - minZ) * scale }, color);
+	};
+	if (!stage.HasTerrain) {
+		box(stage.CenterX - stage.HalfWidth, stage.CenterX + stage.HalfWidth, stage.CenterZ - stage.HalfDepth, stage.CenterZ + stage.HalfDepth, ISLAND_COLOR);
+		for (int i = 0; i < stage.PlatformCount; ++i) {
+			const STAGE_PLATFORM& p = stage.Platforms[i];
+			box(p.CenterX - p.HalfWidth, p.CenterX + p.HalfWidth, p.CenterZ - p.HalfDepth, p.CenterZ + p.HalfDepth, { 0.32f, 0.50f, 0.30f, 1.0f });
+		}
+		return;
+	}
+	// 区画は上から順に調べるので、下の行（基準の床）から描いて上の行を重ねる。四隅を切った区画は十字の2つの四角で描く。
+	for (int i = stage.RegionCount - 1; i >= 0; --i) {
+		const STAGE_REGION& region = stage.Regions[i];
+		XMFLOAT4 color = SURFACE_COLORS[region.Surface];
+		if (map == STAGE_MAP_MARKET && (region.Surface == STAGE_SURFACE_FLOOR || region.Surface == STAGE_SURFACE_RAMP)) color = SHORE_COLOR;
+		if (region.DiagonalLimit <= 0.0f) {
+			box(region.MinX, region.MaxX, region.MinZ, region.MaxZ, color);
+			continue;
+		}
+		const float cut = region.MaxX + region.MaxZ - region.DiagonalLimit;
+		box(region.MinX, region.MaxX, region.MinZ + cut, region.MaxZ - cut, color);
+		box(region.MinX + cut, region.MaxX - cut, region.MinZ, region.MaxZ, color);
+	}
+	// Ｇの始点（黄緑）と開始位置（プレイヤーの色）。
+	const float dot = 7.0f;
+	for (int i = 0; i < stage.LiftCount; ++i) {
+		const STAGE_LIFT& lift = stage.Lifts[i];
+		Number2DDrawBox({ centerX + lift.StartX * scale - dot * 0.5f, centerY - lift.StartZ * scale - dot * 0.5f, dot, dot }, INK);
+		Number2DDrawBox({ centerX + lift.StartX * scale - dot * 0.35f, centerY - lift.StartZ * scale - dot * 0.35f, dot * 0.7f, dot * 0.7f }, LIME);
+	}
+	for (int i = 0; i < stage.SpawnCount; ++i) {
+		const VEC3& spawn = stage.Spawns[i];
+		Number2DDrawBox({ centerX + spawn.X * scale - dot * 0.6f, centerY - spawn.Z * scale - dot * 0.6f, dot * 1.2f, dot * 1.2f }, Fighter::GetPlayerColor(i));
+	}
+}
+
+void CodexMenu::DrawMapSelect(const SceneCalc& scene, const NetSession& net, float sizeScale) const
+{
+	const bool online = net.IsOnline();
+	const bool owner = !online || net.IsHost();
+	Header("マップをえらぶ", online ? "STAGE SELECT / ONLINE" : "STAGE SELECT");
+	for (int i = 0; i < STAGE_MAP_COUNT; ++i) {
+		const bool selected = scene.GetMap() == i;
+		const float x = MAP_CARD_LEFT + i * (MAP_CARD_WIDTH + MAP_CARD_GAP);
+		// 選んだカードは黄緑の太いふちで、少し持ち上げる。
+		const float top = MAP_CARD_TOP - (selected ? 10.0f * GetPop() : 0.0f);
+		const RECT2D card{ x, top, MAP_CARD_WIDTH, MAP_CARD_HEIGHT };
+		if (selected) Number2DDrawBox(Grow(card, 11), LIME);
+		Bar(card, 0.0f, WHITE, 5, selected ? 12.0f : 8.0f, selected ? PINK : INK);
+		Bar({ x + 8, top + 10, MAP_CARD_WIDTH - 30, 48 }, SLANT, selected ? PURPLE : MUTED, 0, 0);
+		Word(MAP_NAMES[i], x + 26, top + 18, 24, WHITE, TEXT2D_FONT_POP);
+		Word(MAP_SUBTITLES[i], x + 26, top + 66, 14, MUTED);
+		DrawMiniMap(static_cast<STAGE_MAP>(i), { x + 16, top + 92, MAP_CARD_WIDTH - 32, MAP_PLAN_HEIGHT });
+		for (int k = 0; k < 3; ++k) {
+			Word(MAP_HELP[i][k], x + 22, top + 322 + k * 36.0f, 17, k == 0 ? INK : MUTED);
+		}
+	}
+	char size[48];
+	sprintf_s(size, "マップの広さ  ×%.2f（オプションで変更）", sizeScale);
+	Word(size, MAP_CARD_LEFT, LOBBY_BANNER_Y + 2, 15, INK);
+	const char* who = !owner ? "ホストがマップを選んでいます…" : online ? "ホストが Enter / ○ で決定" : "1P が Enter / ○ で決定";
+	Bar({ 760, LOBBY_BANNER_Y + 4, 470, 42 }, SLANT, INK, 0, 0);
+	Word(who, 995, LOBBY_BANNER_Y + 12, 18, LIME, TEXT2D_FONT_POP, GLYPH_ALIGN_CENTER);
+	Footer(online ? "ホスト : 左スティック / A D  マップを選ぶ    Enter / ○  決定"
+		: "1P : 左スティック / A D  マップを選ぶ    Enter / ○  決定    Backspace / ×  キャラ選択へ");
+}
+
 void CodexMenu::DrawPause(const SceneCalc& scene) const
 {
 	// 試合の画面を暗くして、斜めのピンクの帯の上にボタンを並べる。
@@ -726,6 +836,7 @@ void CodexMenu::Draw(const SceneCalc& scene, const VersusCalc& participants, con
 	case SCENE_GAME_START: DrawTitle(scene, characters); break;
 	case SCENE_MODE_SELECT: DrawModeSelect(scene); break;
 	case SCENE_JOIN_ADDRESS: DrawJoinAddress(address); break;
+	case SCENE_MAP_SELECT: DrawMapSelect(scene, net, TuningCalcValue(tuning, TUNING_MAP_SIZE)); break;
 	default: break;
 	}
 }

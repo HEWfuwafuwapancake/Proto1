@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "physics/stagecalc.h"
+#include "physics/mapcalc.h"
 
 
 /// @file stage.h
@@ -19,6 +20,12 @@ public:
 	void Reset(void);
 	/// @brief 浮島の幅・奥行きと高台の配置を元の値から指定倍率にする（高さと高台の大きさはそのまま）
 	void SetSizeScale(float scale);
+	/// @brief 試合で使うマップを、指定の広さの倍率で作り直す（浮島は SetSizeScale と同じ）
+	/// @param map マップ
+	/// @param scale マップの広さの倍率
+	void SetMap(STAGE_MAP map, float scale);
+	/// @brief 今のマップを取得する
+	STAGE_MAP GetMap() const { return m_Map; }
 
 	/// @brief ステージの終了処理（今は何もしない）
 	void Finalize(void);
@@ -26,7 +33,7 @@ public:
 	/// @brief ステージを更新する（毎フレーム呼ぶ。今は何もしない。崩れる・縮むなどは入れないと決まっている）
 	void Update(void);
 
-	/// @brief 浮島と高台を描く（render/shape.h の箱を使う）
+	/// @brief 浮島と高台、または対戦マップの地形を描く（render/shape.h の箱を使う）
 	void Draw(void) const;
 
 	/// @brief 浮島・高台・場外の線を取得する（着地や場外の判定に使う）
@@ -34,5 +41,11 @@ public:
 	const STAGE& GetStage(void) const;
 
 private:
+	void DrawTerrain(void) const;
+	void DrawRegion(const STAGE_REGION& region) const;
+	void DrawMarks(void) const;
+
 	STAGE m_Stage = {};		// 浮島・高台・場外の線
+	STAGE_MAP m_Map = STAGE_MAP_ISLAND;	// 今のマップ
+	float m_Scale = 1.0f;	// 今のマップの広さの倍率
 };

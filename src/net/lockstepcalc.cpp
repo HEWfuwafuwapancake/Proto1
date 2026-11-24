@@ -5,9 +5,9 @@
 // 調整用の値（通信の配置はEncodePacket・DecodePacketで同じ順にする）
 static constexpr uint32_t PACKET_MAGIC = 0x314E3150; // P1N1
 static constexpr uint8_t PLAYER_MASK = (1u << FIGHTER_COUNT) - 1u;
-static constexpr uint16_t BUTTON_MASK = (1u << ACTION_COUNT) - 1u;
+static constexpr uint32_t BUTTON_MASK = ACTION_COUNT >= 32 ? 0xFFFFFFFFu : (1u << ACTION_COUNT) - 1u;
 static constexpr size_t PACKET_HEADER_BYTES = 15;
-static constexpr size_t PLAYER_INPUT_BYTES = 12;
+static constexpr size_t PLAYER_INPUT_BYTES = 14;
 static constexpr size_t FRAME_NUMBER_BYTES = 4;
 static constexpr uint32_t CHECKSUM_SEED = 2166136261u;
 static constexpr uint32_t CHECKSUM_PRIME = 16777619u;
@@ -190,7 +190,7 @@ bool LockstepCalc::EncodePacket(const LOCKSTEP_PACKET& packet, std::vector<uint8
 			Write(bytes, static_cast<uint16_t>(input.MoveY), 2);
 			Write(bytes, static_cast<uint16_t>(input.LookX), 2);
 			Write(bytes, static_cast<uint16_t>(input.LookY), 2);
-			Write(bytes, input.Buttons, 2);
+			Write(bytes, input.Buttons, 4);
 			Write(bytes, static_cast<uint8_t>(input.Equip.Hand), 1);
 			Write(bytes, static_cast<uint8_t>(input.Equip.Number), 1);
 		}
@@ -229,7 +229,7 @@ bool LockstepCalc::DecodePacket(const uint8_t* bytes, size_t size, LOCKSTEP_PACK
 			input.MoveY = ReadAxis(bytes);
 			input.LookX = ReadAxis(bytes);
 			input.LookY = ReadAxis(bytes);
-			input.Buttons = static_cast<uint16_t>(Read(bytes, 2));
+			input.Buttons = Read(bytes, 4);
 			const int hand = static_cast<int>(Read(bytes, 1));
 			const int equip = static_cast<int>(Read(bytes, 1));
 			input.Equip = { hand == 255 ? -1 : hand, equip == 255 ? -1 : equip };

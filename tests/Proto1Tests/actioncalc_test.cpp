@@ -46,7 +46,7 @@ namespace Proto1Tests
 	{
 		PLAYER_INPUT released;
 		PLAYER_INPUT held;
-		held.Buttons = static_cast<uint16_t>((1u << ACTION_DASH) | (1u << ACTION_GUARD_RIGHT));
+		held.Buttons = (1u << ACTION_DASH) | (1u << ACTION_GUARD_RIGHT);
 		EXPECT_TRUE(ActionCalcPlayerTrigger(held, released, ACTION_DASH));
 		EXPECT_TRUE(ActionCalcPlayerPress(held, ACTION_GUARD_RIGHT));
 		EXPECT_FALSE(ActionCalcPlayerPress(held, ACTION_GUARD_LEFT));
@@ -255,14 +255,14 @@ namespace Proto1Tests
 	// 試合の開始前から押し続けているボタンは、離すまで消え、押し直すと届く。ほかのボタンはそのまま届く。
 	TEST(ActionCalcTest, MaskHeld_IgnoresUntilReleased)
 	{
-		const uint16_t dash = static_cast<uint16_t>(1u << ACTION_DASH);
-		const uint16_t jump = static_cast<uint16_t>(1u << ACTION_JUMP);
-		uint16_t held = 0xFFFF;
+		const uint32_t dash = 1u << ACTION_DASH;
+		const uint32_t jump = 1u << ACTION_JUMP;
+		uint32_t held = 0xFFFFFFFFu;
 		PLAYER_INPUT input{};
-		input.Buttons = static_cast<uint16_t>(dash);
+		input.Buttons = dash;
 		ActionCalcMaskHeld(input, held);
-		EXPECT_EQ(0, input.Buttons);
-		input.Buttons = static_cast<uint16_t>(dash | jump);
+		EXPECT_EQ(0u, input.Buttons);
+		input.Buttons = dash | jump;
 		ActionCalcMaskHeld(input, held);
 		EXPECT_EQ(jump, input.Buttons);
 		input.Buttons = 0;

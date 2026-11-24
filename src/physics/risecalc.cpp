@@ -17,6 +17,22 @@ bool RiseCalcNearestLanding(const STAGE& stage, const VEC3& position, float inse
 {
 	bool found = false;
 	float best = maxDistance;
+	if (stage.HasTerrain) {
+		// 地形のマップは、区画ごとにいちばん近い点（ふちから inset だけ内側）のうち、ほかの区画が上に重なっていない点を使う。
+		for (int i = 0; i < stage.RegionCount; ++i) {
+			const STAGE_REGION& region = stage.Regions[i];
+			const float x = fminf(fmaxf(position.X, region.MinX + inset), region.MaxX - inset);
+			const float z = fminf(fmaxf(position.Z, region.MinZ + inset), region.MaxZ - inset);
+			if (StageCalcFindRegion(stage, x, z) != i) continue;
+			const VEC3 point{ x, StageCalcRegionHeight(region, x, z), z };
+			const float distance = Vec3Length(Vec3Sub(point, position));
+			if (distance > best) continue;
+			best = distance;
+			landing = point;
+			found = true;
+		}
+		return found;
+	}
 	for (int i = -1; i < stage.PlatformCount; ++i) {
 		const STAGE_PLATFORM surface = i < 0 ? StageCalcIslandSurface(stage) : stage.Platforms[i];
 		const VEC3 point = NearestOnSurface(surface, position, inset);

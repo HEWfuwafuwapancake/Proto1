@@ -53,6 +53,19 @@ void ArmCapsuleCalc::Remove(int index)
 
 void ArmCapsuleCalc::Spawn(const STAGE& stage)
 {
+	if (stage.SupplyCount > 0) {
+		// 対戦マップは決まった地点の空きを順に並べ、乱数で1点を選んでから腕の種類を引く（枠の番号＝地点の番号）。
+		int freePoints[CAPACITY];
+		int freeCount = 0;
+		const int pointCount = (std::min)(stage.SupplyCount, CAPACITY);
+		for (int i = 0; i < pointCount; ++i) {
+			if (!m_Items[i].Active) freePoints[freeCount++] = i;
+		}
+		if (freeCount == 0) return; // 満杯なら何もせず、乱数も進めない
+		const int point = freePoints[m_Random.NextInt(freeCount)];
+		m_Items[point] = { stage.Supplies[point], DrawType(), true };
+		return;
+	}
 	for (auto& item : m_Items) {
 		if (item.Active) continue;
 		item = { ChoosePosition(stage), DrawType(), true };

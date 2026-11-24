@@ -11,8 +11,28 @@ VEC3 CameraCalcOrbitPosition(const VEC3& target, float yaw, float pitch, float d
 	return { target.X - dirX * distance, target.Y - dirY * distance, target.Z - dirZ * distance };
 }
 
+// 地形のマップで、点が実体の区画の中（地盤の下面から上面の margin 上まで）にあるか調べる。
+static bool InsideTerrain(const STAGE& stage, const VEC3& point, float margin)
+{
+	const int region = StageCalcFindRegion(stage, point.X, point.Z);
+	if (region < 0 || !stage.Regions[region].Solid) return false;
+	const float top = StageCalcRegionHeight(stage.Regions[region], point.X, point.Z);
+	return point.Y < top + margin && point.Y > stage.GroundBottomY - margin;
+}
+
 VEC3 CameraCalcClipToStage(const VEC3& target, const VEC3& camera, const STAGE& stage, float margin)
 {
+	if (stage.HasTerrain) {
+		// 見ている点からカメラへ向かって進み、建物や地盤に入る手前で止める。
+		static constexpr int CLIP_SAMPLES = 32;
+		const VEC3 delta = Vec3Sub(camera, target);
+		if (InsideTerrain(stage, target, 0.0f)) return camera;
+		for (int i = 1; i <= CLIP_SAMPLES; ++i) {
+			const VEC3 point = Vec3Add(target, Vec3Scale(delta, (float)i / CLIP_SAMPLES));
+			if (InsideTerrain(stage, point, margin)) return Vec3Add(target, Vec3Scale(delta, (float)(i - 1) / CLIP_SAMPLES));
+		}
+		return camera;
+	}
 	// 浮島の箱（margin だけ大きくする）
 	const float boxMin[3] = { stage.CenterX - stage.HalfWidth - margin, stage.TopY - stage.Thickness - margin, stage.CenterZ - stage.HalfDepth - margin };
 	const float boxMax[3] = { stage.CenterX + stage.HalfWidth + margin, stage.TopY + margin, stage.CenterZ + stage.HalfDepth + margin };

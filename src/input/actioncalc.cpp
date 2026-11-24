@@ -11,7 +11,7 @@ static int16_t Quantize(float value, float scale)
 	return static_cast<int16_t>(roundf(fmaxf(-INPUT_INTEGER_LIMIT, fminf(INPUT_INTEGER_LIMIT, value * scale))));
 }
 
-PLAYER_INPUT ActionCalcPlayerInput(ACTION_AXIS move, ACTION_AXIS look, uint16_t buttons)
+PLAYER_INPUT ActionCalcPlayerInput(ACTION_AXIS move, ACTION_AXIS look, uint32_t buttons)
 {
 	move = ActionCalcClampLength(move);
 	PLAYER_INPUT input;
@@ -36,7 +36,7 @@ ACTION_AXIS ActionCalcPlayerLook(const PLAYER_INPUT& input)
 bool ActionCalcPlayerPress(const PLAYER_INPUT& input, ACTION action)
 {
 	if (action < 0 || action >= ACTION_COUNT) return false;
-	const uint16_t bit = static_cast<uint16_t>(1u << action);
+	const uint32_t bit = 1u << action;
 	return (input.Buttons & bit) != 0;
 }
 
@@ -46,10 +46,10 @@ bool ActionCalcPlayerTrigger(const PLAYER_INPUT& current, const PLAYER_INPUT& pr
 	return ActionCalcPlayerPress(current, action) && (event || !ActionCalcPlayerPress(previous, action));
 }
 
-void ActionCalcMaskHeld(PLAYER_INPUT& input, uint16_t& held)
+void ActionCalcMaskHeld(PLAYER_INPUT& input, uint32_t& held)
 {
-	held = static_cast<uint16_t>(held & input.Buttons);
-	input.Buttons = static_cast<uint16_t>(input.Buttons & ~held);
+	held &= input.Buttons;
+	input.Buttons &= ~held;
 }
 
 
