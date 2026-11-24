@@ -421,6 +421,11 @@ void Game::Update()
 		// マップは 1P（オンラインはホスト）が、全員の PC に届いた 1P の入力で選ぶ（オンラインでも全員同じに進む）。
 		input.Restart = false;
 		input.MoveX = ActionCalcPlayerMove(m_Inputs[0]).X;
+		// キャラ選択の開始に押した決定は、1P の入力に1フレーム遅れて届くことがある。一度離すまでマップを決めない。
+		if (m_MapDecideHeld) {
+			if (!ActionCalcPlayerPress(m_Inputs[0], ACTION_DECIDE)) m_MapDecideHeld = false;
+			input.Decide = false;
+		}
 		// 戻る（キャラ選択へ）はオフラインだけ。1P の機器の Backspace / ×。
 		if (!m_Net.IsOnline()) input.Back = ActionGetMenuInput(m_Participants.GetDevice(0)).Back;
 	}
@@ -481,6 +486,7 @@ void Game::Update()
 	if (event == SCENE_EVENT_OPEN_MAP_SELECT) {
 		// キャラ選択で決まった参加者で体を作り、選んでいるマップを背景に映す。
 		ConfigurePlayers();
+		m_MapDecideHeld = true;
 		m_Stage.SetMap(m_Scene.GetMap(), TuningCalcValue(GetTuning(), TUNING_MAP_SIZE));
 	}
 	else if (event == SCENE_EVENT_START_MATCH) {

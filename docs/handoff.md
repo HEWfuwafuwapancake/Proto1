@@ -3,11 +3,11 @@
 作業を始めるときに読む。ここには今の状態と次にやることだけを書く。
 タスクの状態は [tasks.md](tasks.md) と Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」、決定事項は [decisions.md](decisions.md)。
 
-- 最終更新：2026-11-24（Claude。Shota の PC、`Proto1`。対戦マップ２面とマップ選択を実装途中・未ビルド）
+- 最終更新：2026-11-24（Claude。Shota の PC、`Proto1`。No.189 対戦マップ２面とマップ選択を PR にした）
 
 ## 1. 今の状態
 
-- **対戦マップ２面の実装（途中。`feature/city-arena-concepts`）**：[設計書](plan/08_対戦マップ案/実装基準.md) どおりに、地形の区画（`stagecalc` の Regions・坂・片面の橋・側面の壁）、台帳（`physics/mapcalc`）、Ｇ（`physics/liftcalc`、△ / G、`game/mapgimmick`）、ベルト・空き缶、カプセルの16地点、P1〜P4 の開始と復活、キャラ選択のあとに 1P（オンラインはホスト）が選ぶマップ選択画面（`SCENE_MAP_SELECT`、`codex_menu` の `DrawMapSelect`）を書いた。入力のボタンを32ビットにし、通信の版を30にした。**まだ一度もビルド・テストしていない**（時間切れで一時停止）。
+- **No.189（対戦マップ２面とマップ選択。`feature/city-arena-concepts`）**：[設計書](plan/08_対戦マップ案/実装基準.md) どおりに、地形の区画（`stagecalc` の Regions・坂・片面の橋・側面の壁）、台帳（`physics/mapcalc`）、Ｇ（`physics/liftcalc`、△ / G、`game/mapgimmick`）、ベルト・空き缶（音はなく揺れだけ）、カプセルの16地点、P1〜P4 の開始と復活を入れた。キャラ選択のあとに 1P（オンラインはホスト）がマップを選ぶ（`SCENE_MAP_SELECT`）。入力のボタンを32ビットにし、通信の版30。両構成428件通過・警告0、mapcalc・liftcalc をわざと壊す確認済み。マップ選択・郵便局・市場の試合画面と、郵便局のＧで屋根へ上がるのを（開始位置をＧの始点にした一時ビルドで）撮って確かめた。オンライン・パッドの実機では未確認。
 
 - **No.187・188（[PR #242](https://github.com/HEWfuwafuwapancake/Proto1/pull/242) ・[#243](https://github.com/HEWfuwafuwapancake/Proto1/pull/243)。メニューのパッド操作）**：左スティックはカーソルだけ（キャラ選択のカードは左右、ルールの行へは上下）、十字キーは中身を変えるだけ（左右でキャラ・ルール・オプションの値、上下で CPU の強さ）。決まりは decisions.md。両構成417件通過・警告0。キーボードでキャラ選択のカードを横へ動かし、CPU の強さを変える画面を撮って確かめた。パッドの実機ではまだ確かめていない。
 - **No.186（[PR #241](https://github.com/HEWfuwafuwapancake/Proto1/pull/241)。モーニングスター。develop に入っている）**：回している間は1秒ごとに耐久が5減り（尽きたらその場で投げる）、当たりは輪の内側の全方向になった。通信の版29。両構成417件通過・警告0。画面ではまだ確かめていない。
@@ -26,7 +26,7 @@
 
 ## 2. 次にやること
 
-- **対戦マップの実装を仕上げる**：Debug / Release をビルドして警告0にする → `run-tests.ps1`（新しい `mapcalc_test`・`liftcalc_test` と、直した `scenecalc_test`・`lockstepcalc_test`・`actioncalc_test`）→ わざと壊す確認（mapcalc・liftcalc）→ マップ選択と２面を画面で確かめる → tasks.md・Notion に No. を足して PR。わかっている近似：刀のワープ先（breachcalc）・触手の箱の当たり（tentaclecalc / grapplecalc）・CPU は地形の壁と Ｇ を考えていない。
+- **管理者が No.189 を遊んで確かめる**：２面の広さ・高さ・Ｇ（△ / G）・ベルトの速さ、設計書 第05節の試遊目標（初撃5秒・再交戦8秒・乱闘の密度）。オンラインでホストがマップを選べるか。わかっている近似：刀のワープ先（`breachcalc`）・触手の箱の当たり（`tentaclecalc` / `grapplecalc`）は浮島の形のまま、CPU は地形の壁と Ｇ を考えない（壁で詰まることがある）、空き缶の音はない。
 
 0. **管理者が No.187・188 をパッドで確かめる**：十字キーでカーソルが動かないこと、キャラ選択で左スティックの左右でカードを選べること、十字キーの左右でキャラ・ルール・オプションの値、上下で CPU の強さが変わること。
 
