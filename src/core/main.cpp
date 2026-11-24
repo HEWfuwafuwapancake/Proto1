@@ -13,6 +13,8 @@
 #include "core/gametime.h"
 #include "core/main.h"
 #include "core/shader.h"
+#include "audio/se.h"
+#include "audio/sound.h"
 #include "input/action.h"
 #include "input/keyboard.h"
 #include "input/mouse.h"
@@ -429,6 +431,10 @@ bool Initialize(HWND hWnd, const NET_OPTIONS& options)
 	//パッド（PS4 コントローラー）初期化
 	PadInitialize(hWnd);
 
+	//音（XAudio2）の初期化と効果音の読み込み（音の機器がなくても、音なしで続ける）
+	SoundInitialize();
+	SeInitialize();
+
 	//行動（入力を「ジャンプ」「つかむ」などに変える仕組み）初期化
 	ActionInitialize();
 
@@ -457,6 +463,7 @@ void Finalize(void)
 	ModelFinalize();
 	ShapeFinalize();
 
+	SoundFinalize();
 	PadFinalize();
 	MouseFinalize();
 
@@ -514,6 +521,9 @@ void Update(void)
 	}
 
 	g_Game.Update();
+
+	//鳴り終わった音の後片づけ
+	SoundUpdate();
 }
 
 void Draw(void)

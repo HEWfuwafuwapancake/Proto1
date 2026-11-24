@@ -13,6 +13,9 @@
     <Filter Include="src\render">
       <UniqueIdentifier>{DB287C37-CB4C-4F18-884C-0A747D1A1C24}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\audio">
+      <UniqueIdentifier>{14B9B514-1401-4573-8C43-550C829BEF55}</UniqueIdentifier>
+    </Filter>
     <Filter Include="src\net">
       <UniqueIdentifier>{92FE875A-7C6C-42F1-A966-5F118976C7B2}</UniqueIdentifier>
     </Filter>
@@ -137,7 +140,11 @@
     <ClCompile Include="randomcalc_test.cpp" />
     <ClCompile Include="spawncalc_test.cpp" />
     <ClCompile Include="mapcalc_test.cpp" />
+    <ClCompile Include="wavcalc_test.cpp" />
     <ClCompile Include="liftcalc_test.cpp" />
+    <ClCompile Include="..\..\src\audio\wavcalc.cpp">
+      <Filter>src\audio</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\src\physics\mapcalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>

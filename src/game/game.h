@@ -13,6 +13,7 @@
 #include "input/action.h"
 #include "game/netsession.h"
 #include "game/cpu.h"
+#include "game/menuse.h"
 
 /// @brief ゲームの部品を所有し、初期化・更新・描画・やり直しの順番をまとめる
 class Game
@@ -43,6 +44,8 @@ public:
 	bool CanEditTuning() const;
 
 private:
+	void UpdateFrame();
+	MENU_SE_STATE GetMenuSeState() const;
 	void Restart(bool retry);
 	void ResetParticipants();
 	void UpdateMenu();
@@ -76,6 +79,7 @@ private:
 	Match m_Match;
 	SceneCalc m_Scene;
 	CodexMenu m_CodexMenu;
+	MenuSe m_MenuSe; // メニューの状態の変わり方から効果音を鳴らす
 	NetSession m_Net;
 	SessionAddressCalc m_JoinAddress;
 	uint32_t m_OfflineSeed = 0;

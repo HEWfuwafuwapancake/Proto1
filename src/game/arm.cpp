@@ -1,4 +1,5 @@
 ﻿#include "game/arm.h"
+#include "audio/se.h"
 #include "game/fighter.h"
 #include "game/fightermanager.h"
 #include "core/gametime.h"
@@ -217,7 +218,10 @@ void ArmManager::BreakExhaustedArm(int hand)
 {
 	if (!CanBreak() || m_Types[hand] == ARM_TYPE_NONE || !m_Uses[hand].IsExhausted()) return;
 	const Arm& arm = *m_Arms[hand][m_Types[hand]];
-	if (!arm.IsActive() && !arm.IsBusy()) ChangeType(hand, ARM_TYPE_NONE);
+	if (!arm.IsActive() && !arm.IsBusy()) {
+		ChangeType(hand, ARM_TYPE_NONE);
+		SePlay(SE_ARM_BREAK);
+	}
 }
 
 // 前の更新から防いだ攻撃を処理してから、このフレームの構えを決める。
@@ -229,6 +233,7 @@ void ArmManager::UpdateGuards(const Fighter& player, float dt, bool interrupted)
 		const int hand = m_GuardHand;
 		const PARRY_RESULT result = m_Guards[hand].OnHit(true);
 		Arm& arm = *m_Arms[hand][m_Types[hand]];
+		SePlay(SE_ARM_GUARD);
 		if (result == PARRY_SUCCESS || result == PARRY_BREAK_ARM) {
 			m_GuardFeedbackSeconds = GUARD_FEEDBACK_SECONDS;
 			m_GuardFeedbackParry = result == PARRY_SUCCESS;
@@ -242,6 +247,7 @@ void ArmManager::UpdateGuards(const Fighter& player, float dt, bool interrupted)
 			if (CanBreak() && m_Uses[hand].IsExhausted()) {
 				arm.Rumble(BREAK_RUMBLE, BREAK_RUMBLE, BREAK_RUMBLE_SECONDS);
 				ChangeType(hand, ARM_TYPE_NONE);
+				SePlay(SE_ARM_BREAK);
 			}
 		}
 	}

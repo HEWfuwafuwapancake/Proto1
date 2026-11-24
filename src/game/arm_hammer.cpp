@@ -1,4 +1,5 @@
 ﻿#include "game/arm_hammer.h"
+#include "audio/se.h"
 #include "game/fightermanager.h"
 #include "game/fighter.h"
 #include "game/camera.h"
@@ -161,6 +162,7 @@ void HammerArm::Update(const ARM_INPUT& input)
 		m_Phase.Start(HAMMER_CHARGE);
 		m_Phase.SetHeld(m_Wave);
 		if (input.HoldReleased) m_Phase.Release();
+		else if (m_Wave) SePlay(SE_ARM_HOLD);
 	}
 	else if (input.HoldReleased && m_Wave) m_Phase.Release();
 	// ためている間にボタンを受け付けなくなった（ガードなど）ときは、出さずにやめる。
@@ -177,6 +179,7 @@ void HammerArm::Update(const ARM_INPUT& input)
 			StartHop();
 		}
 		Impact();
+		SePlay(m_Wave ? SE_HAMMER_HOLD : SE_HAMMER_TAP);
 	}
 	if (m_Hopping) {
 		if (!m_Phase.IsIdle() && m_Rise.IsActive()) {

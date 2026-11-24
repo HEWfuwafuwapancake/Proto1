@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "game/arm.h"
+#include "audio/se.h"
 #include "physics/lasercalc.h"
 
 /// @file arm_laser.h
@@ -52,4 +53,6 @@ private:
 	bool m_BeamCannon = false; // 最後に撃った光線が砲なら true（描画だけ）
 	float m_Straighten = 0.0f; // 描画だけのまっすぐ度（0：待機、1：狙う向き）
 	float m_GlowTime = 0.0f; // 溜めの光を点滅させる時間（描画だけ）
+	SeVoice m_ChargeSe; // 溜めている間の音（撃つ・やめるときに止める）
+	bool m_ChargeSePlaying = false; // 溜めの音を鳴らし始めたか（溜めている間に何度も鳴らさない）
 };
