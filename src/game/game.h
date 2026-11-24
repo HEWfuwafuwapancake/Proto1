@@ -7,6 +7,7 @@
 #include "game/armcapsule.h"
 #include "game/match.h"
 #include "game/hud.h"
+#include "game/mapgimmick.h"
 #include "game/codex_menu.h"
 #include "physics/scenecalc.h"
 #include "input/action.h"
@@ -58,6 +59,7 @@ private:
 	VersusCalc m_Participants; // タイトルで決まる参加者。試合の得点はFighterManagerが持つ。
 	FighterManager m_Fighters;
 	ArmCapsule m_ArmCapsule;
+	MapGimmick m_Gimmick; // 対戦マップのＧ・ベルト・空き缶
 	std::array<CHARACTER_TYPE, FIGHTER_COUNT> m_LobbyCharacters{};
 	// カメラ・腕・HUD はスロット番号で持つ。使うのは人のスロットだけ。
 	Camera m_Cameras[FIGHTER_COUNT];
@@ -80,4 +82,5 @@ private:
 	uint32_t m_MatchSeed = 0;
 	int m_MenuDevice = ACTION_DEVICE_KEYBOARD; // SOLO の決定を押した機器
 	bool m_Fullscreen = false;
+	bool m_MapDecideHeld = false; // マップ選択に入ってから、1P が決定をまだ離していない（離すまで決定を受け付けない）
 };

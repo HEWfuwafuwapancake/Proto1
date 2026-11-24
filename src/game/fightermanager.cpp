@@ -66,7 +66,12 @@ void FighterManager::SetMatchSettings(GAME_RULE rule, uint32_t seed, const MATCH
 	const STAGE& stage = m_Stage->GetStage();
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		m_Fighters[i].SetTuningScales(TuningCalcValue(tuning, TUNING_DAMAGE), TuningCalcValue(tuning, TUNING_KNOCKBACK));
-		m_Fighters[i].SetSpawn({ stage.CenterX + SPAWN_X[i] * m_MapScale, stage.TopY, stage.CenterZ + SPAWN_Z[i] * m_MapScale });
+		if (i < stage.SpawnCount) {
+			// 対戦マップは P1〜P4 の台帳の点から、体の正面を原点へ向けて始める。
+			const VEC3& spawn = stage.Spawns[i];
+			m_Fighters[i].SetSpawn(spawn, atan2f(-spawn.X, -spawn.Z));
+		}
+		else m_Fighters[i].SetSpawn({ stage.CenterX + SPAWN_X[i] * m_MapScale, stage.TopY, stage.CenterZ + SPAWN_Z[i] * m_MapScale });
 	}
 }
 
@@ -137,12 +142,18 @@ void FighterManager::RespawnAtSafePoint(int slot)
 	const VEC3 center{ stage.CenterX, stage.TopY, stage.CenterZ };
 	VEC3 points[ISLAND_RESPAWN_COUNT + STAGE_PLATFORM_MAX];
 	int pointCount = 0;
-	for (const VEC3& offset : ISLAND_RESPAWN_OFFSETS) points[pointCount++] = Vec3Add(center, Vec3Scale(offset, m_MapScale));
-	// ダミー CPU は高台には出さず、低い浮島の上だけから選ぶ。
-	const int platformCount = m_Versus.IsHuman(slot) ? stage.PlatformCount : 0;
-	for (int i = 0; i < platformCount; ++i) {
-		const STAGE_PLATFORM& platform = stage.Platforms[i];
-		points[pointCount++] = { platform.CenterX, platform.TopY, platform.CenterZ };
+	if (stage.SpawnCount > 0) {
+		// 対戦マップの復活先は P1〜P4 の4点だけ（台帳の順に候補へ渡す）。
+		for (int i = 0; i < stage.SpawnCount; ++i) points[pointCount++] = stage.Spawns[i];
+	}
+	else {
+		for (const VEC3& offset : ISLAND_RESPAWN_OFFSETS) points[pointCount++] = Vec3Add(center, Vec3Scale(offset, m_MapScale));
+		// ダミー CPU は高台には出さず、低い浮島の上だけから選ぶ。
+		const int platformCount = m_Versus.IsHuman(slot) ? stage.PlatformCount : 0;
+		for (int i = 0; i < platformCount; ++i) {
+			const STAGE_PLATFORM& platform = stage.Platforms[i];
+			points[pointCount++] = { platform.CenterX, platform.TopY, platform.CenterZ };
+		}
 	}
 
 	VEC3 opponents[FIGHTER_COUNT - 1];

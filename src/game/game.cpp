@@ -19,6 +19,9 @@ static constexpr uint32_t MATCH_SEED_STEP = 0x9e3779b9u;	// やり直すたび�
 static constexpr uint32_t MATCH_ROUND_STEP = 0xc2b2ae35u;	// メニューやロビーから始め直すたびに種へ足す値
 static constexpr uint32_t CAPSULE_SEED_MASK = 0x85ebca6bu;	// 復活先とは別の乱数列にする
 static constexpr int ARM_COST_STEP = 5;	// オプションで耐久の減る量を左右1回で変える量
+// Ｇで動いている間も残す入力（メニュー・カメラの操作）。ほかの移動・攻撃・ガードなどは使わない。
+static constexpr uint32_t LIFT_KEPT_BUTTONS = (1u << ACTION_RESTART) | (1u << ACTION_RUMBLE_TOGGLE) | (1u << ACTION_DECIDE)
+	| (1u << ACTION_CAMERA_TOGGLE) | (1u << ACTION_TARGET_LEFT) | (1u << ACTION_TARGET_RIGHT);
 
 VERSUS_VIEWPORT Game::GetViewport(int index) const
 {
@@ -44,6 +47,7 @@ bool Game::Initialize(const NET_OPTIONS& options)
 		m_Arms[i].Initialize(m_Stage, m_Fighters, i, m_Cameras[i]);
 	}
 	m_Match.Initialize(m_Fighters, m_Arms);
+	m_Gimmick.Initialize(m_Stage, m_Fighters, m_Arms);
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		m_Huds[i].Initialize(m_Cameras[i], m_Fighters, i, m_Match, m_Scene, m_Arms);
 	}
@@ -137,13 +141,15 @@ void Game::Restart(bool retry)
 	m_MatchSeed = retry ? m_MatchSeed + MATCH_SEED_STEP : GetSeed();
 	m_Match.SetRule(rule);
 	const MATCH_TUNING& tuning = GetTuning();
-	m_Stage.SetSizeScale(TuningCalcValue(tuning, TUNING_MAP_SIZE));
+	// マップはマップ選択で 1P（オンラインはホスト）が選んだもの。もう一度でも同じマップを使う。
+	m_Stage.SetMap(m_Scene.GetMap(), TuningCalcValue(tuning, TUNING_MAP_SIZE));
 	m_Fighters.SetMatchSettings(rule, m_MatchSeed, tuning);
 	m_ArmCapsule.SetAmount(TuningCalcCapsuleCount(tuning), TuningCalcCapsuleSeconds(tuning));
 
 	// 敵を戻す前に腕を離し、プレイヤー・敵のあとにカメラを戻す。
 	for (int k = 0; k < m_FightingCount; ++k) m_Arms[m_Fighting[k]].ResetForMatch(rule, tuning);
 	m_Fighters.Reset();
+	m_Gimmick.Reset();
 	if (rule == GAME_RULE_GAME) m_ArmCapsule.Reset(m_MatchSeed ^ CAPSULE_SEED_MASK);
 	for (int k = 0; k < m_FightingCount; ++k) m_Cameras[m_Fighting[k]].Reset();
 	for (int k = 0; k < m_FightingCount; ++k) {
@@ -411,6 +417,18 @@ void Game::Update()
 	SCENE_INPUT input{ ActionCalcPlayerTrigger(m_Inputs[0], m_PreviousInputs[0], ACTION_DECIDE),
 		ActionCalcPlayerTrigger(m_Inputs[0], m_PreviousInputs[0], ACTION_RESTART), ActionCalcPlayerMove(m_Inputs[0]).Y };
 	if (oldScene == SCENE_TITLE) input = { start, false, 0.0f };
+	if (oldScene == SCENE_MAP_SELECT) {
+		// マップは 1P（オンラインはホスト）が、全員の PC に届いた 1P の入力で選ぶ（オンラインでも全員同じに進む）。
+		input.Restart = false;
+		input.MoveX = ActionCalcPlayerMove(m_Inputs[0]).X;
+		// キャラ選択の開始に押した決定は、1P の入力に1フレーム遅れて届くことがある。一度離すまでマップを決めない。
+		if (m_MapDecideHeld) {
+			if (!ActionCalcPlayerPress(m_Inputs[0], ACTION_DECIDE)) m_MapDecideHeld = false;
+			input.Decide = false;
+		}
+		// 戻る（キャラ選択へ）はオフラインだけ。1P の機器の Backspace / ×。
+		if (!m_Net.IsOnline()) input.Back = ActionGetMenuInput(m_Participants.GetDevice(0)).Back;
+	}
 	if (!m_Net.IsOnline() && (oldScene == SCENE_MATCH || oldScene == SCENE_PAUSE)) {
 		// オフラインの OPTIONS（キーボードは R）は、試合を止めるメニューを開く・閉じる。参加しているだれが押してもよい。
 		// やり直しは時間切れのあとだけ（オンラインは全員の入力をそろえる必要があるので、今までどおり 1P のやり直し）。
@@ -438,7 +456,17 @@ void Game::Update()
 		// 全員の体・体当たり → カプセル → カメラ → キャラの向き → 腕の順を保つ。
 		m_Stage.Update();
 		if (m_Match.IsPlaying()) {
+			// Ｇで動いている人（今受け付けた人を含む）は、このフレームの移動・ジャンプ・攻撃などの入力を使わない。
+			const int lifting = m_Gimmick.PreUpdate();
+			for (int slot = 0; slot < FIGHTER_COUNT; ++slot) {
+				if ((lifting & (1 << slot)) == 0) continue;
+				m_Inputs[slot].MoveX = 0;
+				m_Inputs[slot].MoveY = 0;
+				m_Inputs[slot].Buttons &= LIFT_KEPT_BUTTONS;
+				m_Fighters.GetFighter(slot).SetInput(m_Inputs[slot], m_PreviousInputs[slot]);
+			}
 			m_Fighters.Update();
+			m_Gimmick.PostUpdate();
 			if (GetRule() == GAME_RULE_GAME) {
 				// 復活した地点で拾った腕まで、あとから外さないようにする。
 				for (int k = 0; k < m_FightingCount; ++k) {
@@ -455,9 +483,15 @@ void Game::Update()
 		if (m_Match.IsPlaying()) m_Fighters.UpdateAnimation();
 	}
 	const SCENE_EVENT event = m_Scene.Step(input, m_Match.GetState() == MATCH_STATE_FINISHED);
-	if (event == SCENE_EVENT_START_MATCH) {
-		if (oldScene == SCENE_TITLE) ConfigurePlayers();
-		Restart(oldScene != SCENE_TITLE);
+	if (event == SCENE_EVENT_OPEN_MAP_SELECT) {
+		// キャラ選択で決まった参加者で体を作り、選んでいるマップを背景に映す。
+		ConfigurePlayers();
+		m_MapDecideHeld = true;
+		m_Stage.SetMap(m_Scene.GetMap(), TuningCalcValue(GetTuning(), TUNING_MAP_SIZE));
+	}
+	else if (event == SCENE_EVENT_START_MATCH) {
+		// マップ選択から始めるときは新しい試合、試合中・結果からはもう一度（同じ種の続き）。
+		Restart(oldScene != SCENE_MAP_SELECT);
 	}
 	else if (event == SCENE_EVENT_BACK_LOBBY) {
 		// 参加者とキャラはそのまま、準備OKだけ消してキャラ選択へ戻る。
@@ -475,6 +509,10 @@ void Game::Update()
 		else ResetParticipants();
 	}
 	else if (oldScene == SCENE_MATCH) m_Match.Update();
+	// マップ選択では、選んでいるマップを背景のぼかした3Dに映す。
+	if (m_Scene.GetScene() == SCENE_MAP_SELECT && m_Stage.GetMap() != m_Scene.GetMap()) {
+		m_Stage.SetMap(m_Scene.GetMap(), TuningCalcValue(GetTuning(), TUNING_MAP_SIZE));
+	}
 #ifdef _DEBUG
 	if (oldScene != m_Scene.GetScene()) {
 		const SCENE scene = m_Scene.GetScene();
@@ -519,8 +557,12 @@ void Game::Draw() const
 			light.Enable = TRUE;
 			Shader_SetLight(light);
 			m_Stage.Draw();
-			m_Fighters.Draw(-1);
-			for (int j = 0; j < m_FightingCount; ++j) m_Arms[m_Fighting[j]].Draw();
+			if (scene == SCENE_MAP_SELECT) m_Gimmick.Draw(-1);
+			else {
+				// マップ選択では体が前の試合の位置に残っているので、地形だけを見せる。
+				m_Fighters.Draw(-1);
+				for (int j = 0; j < m_FightingCount; ++j) m_Arms[m_Fighting[j]].Draw();
+			}
 			BackdropEnd();
 		}
 		// メニューの UI は、ぼかした背景の上に2Dで描く。
@@ -551,6 +593,7 @@ void Game::Draw() const
 		Shader_SetLight(light);
 
 		m_Stage.Draw();
+		m_Gimmick.Draw(m_HumanCount > 0 ? slot : -1);
 		if (drawCapsules) m_ArmCapsule.Draw();
 		m_Fighters.Draw(camera.GetTarget());
 		for (int j = 0; j < m_FightingCount; ++j) m_Arms[m_Fighting[j]].Draw();

@@ -16,12 +16,17 @@ void SceneCalc::Start(bool online)
 	m_MenuReady = true;
 	m_Online = online;
 	m_OptionsReturn = SCENE_GAME_START;
+	m_Map = STAGE_MAP_DEFAULT;
+	m_MapReady = true;
 }
 
 void SceneCalc::OpenLobby()
 {
 	m_Online = true;
 	m_Scene = SCENE_TITLE;
+	// マップ選択はホストの入力を全員の PC で同じように進めるので、つないだ時点で全員そろえる。
+	m_Map = STAGE_MAP_DEFAULT;
+	m_MapReady = true;
 }
 
 void SceneCalc::ShowModes()
@@ -152,6 +157,23 @@ SCENE_EVENT SceneCalc::Step(const SCENE_INPUT& input, bool matchFinished)
 			ShowModes();
 			m_Cursor = mode;
 			return SCENE_EVENT_BACK_MENU;
+		}
+		if (!input.Decide) return SCENE_EVENT_NONE;
+		// キャラ選択が終わったら、1P（オンラインはホスト）が試合のマップを選ぶ。
+		m_Scene = SCENE_MAP_SELECT;
+		m_MapReady = fabsf(input.MoveX) < MENU_STICK_DEADZONE;
+		return SCENE_EVENT_OPEN_MAP_SELECT;
+	}
+	if (m_Scene == SCENE_MAP_SELECT) {
+		// 横に並んだマップのカードを、左スティックの左右の弾きで1つずつ選ぶ。
+		if (fabsf(input.MoveX) < MENU_STICK_DEADZONE) m_MapReady = true;
+		if (m_MapReady && fabsf(input.MoveX) > MENU_STICK_THRESHOLD) {
+			m_Map = MapCalcCycle(m_Map, input.MoveX > 0.0f ? 1 : -1);
+			m_MapReady = false;
+		}
+		if (input.Back) {
+			m_Scene = SCENE_TITLE;
+			return SCENE_EVENT_BACK_LOBBY;
 		}
 		if (!input.Decide) return SCENE_EVENT_NONE;
 		m_Scene = SCENE_MATCH;

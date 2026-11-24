@@ -117,7 +117,7 @@ void Fighter::PlaceAtSpawn()
 	m_Body.SetPosition(m_Spawn);
 	m_Body.SetOnGround(true);
 	m_Percent = 0.0f;
-	m_Yaw = 0.0f;
+	m_Yaw = m_SpawnYaw;
 	m_Launched = false;
 	m_FlinchFrames = 0;
 	m_HitstunTime = 0.0f;
@@ -563,6 +563,13 @@ void Fighter::SetPulled(bool pulled)
 		m_Body.SetVelocity({});
 		m_Body.SetOnGround(false);
 	}
+}
+
+void Fighter::PlaceOnGround(const VEC3& feet)
+{
+	m_Body.SetPosition(feet);
+	m_Body.SetVelocity({});
+	m_Body.SetOnGround(true);
 }
 
 float Fighter::GetHeight() const

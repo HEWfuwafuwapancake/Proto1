@@ -31,8 +31,10 @@ public:
 	static XMFLOAT4 GetPlayerColor(int slot);
 	/// @brief 最初の位置・0%・生存状態に戻す（機器の割り当てはそのまま）
 	void Reset();
-	/// @brief 次のリセットと復活で使う最初の足元位置を設定する（今の位置は動かさない）
-	void SetSpawn(const VEC3& spawn) { m_Spawn = spawn; }
+	/// @brief 次のリセットと復活で使う最初の足元位置と向きを設定する（今の位置は動かさない）
+	/// @param spawn 足元の位置
+	/// @param yaw 体の左右の向き（ラジアン。0 で +Z。省略すると 0）
+	void SetSpawn(const VEC3& spawn, float yaw = 0.0f) { m_Spawn = spawn; m_SpawnYaw = yaw; }
 	/// @brief ダメージと吹っ飛び速度の倍率を試合開始時に設定する
 	void SetTuningScales(float damage, float knockback) { m_DamageScale = damage; m_KnockbackScale = knockback; }
 	/// @brief 体を1フレーム進める（人だけカメラ・腕を渡す。ダミーはnullptr）
@@ -74,6 +76,11 @@ public:
 	void Teleport(const VEC3& position);
 	/// @brief 引っぱられ中を設定する（true：通常物理を止めて速度0・空中にする、false：通常物理に戻す）
 	void SetPulled(bool pulled);
+	/// @brief 足元を指定の位置に置き、速さ 0 で立っている状態にする（Ｇで着地したとき）
+	/// @param feet 足元の位置（床の上面）
+	void PlaceOnGround(const VEC3& feet);
+	/// @brief ダッシュ（ステップ）の途中か取得する
+	bool IsDashing() const { return m_Dash.IsDashing(); }
 	/// @brief 体の高さを取得する
 	float GetHeight() const;
 	/// @brief 左右の向き（ラジアン）を取得する
@@ -169,6 +176,7 @@ private:
 	StatusCalc m_Status;
 	DummyLifeCalc m_Life;
 	VEC3 m_Spawn = {};
+	float m_SpawnYaw = 0.0f; // 開始・復活のときの体の向き
 	float m_InvincibleTime = 0.0f; // 復活後の無敵の残り秒数
 	int m_KoBy = -1; // 場外にした相手のスロット番号（復活待ちのカメラが映す。いなければ -1）
 	float m_Percent = 0.0f;

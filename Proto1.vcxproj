@@ -162,6 +162,9 @@
     <ClCompile Include="src\core\shader.cpp" />
     <ClCompile Include="src\game\stage.cpp" />
     <ClCompile Include="src\physics\stagecalc.cpp" />
+    <ClCompile Include="src\physics\mapcalc.cpp" />
+    <ClCompile Include="src\physics\liftcalc.cpp" />
+    <ClCompile Include="src\game\mapgimmick.cpp" />
     <ClCompile Include="src\physics\playercalc.cpp" />
     <ClCompile Include="src\physics\tentacleropecalc.cpp" />
     <ClCompile Include="src\physics\cameracalc.cpp" />
@@ -251,6 +254,9 @@
     <ClInclude Include="src\core\shader.h" />
     <ClInclude Include="src\game\stage.h" />
     <ClInclude Include="src\physics\stagecalc.h" />
+    <ClInclude Include="src\physics\mapcalc.h" />
+    <ClInclude Include="src\physics\liftcalc.h" />
+    <ClInclude Include="src\game\mapgimmick.h" />
     <ClInclude Include="src\physics\playercalc.h" />
     <ClInclude Include="src\physics\tentacleropecalc.h" />
     <ClInclude Include="src\physics\cameracalc.h" />

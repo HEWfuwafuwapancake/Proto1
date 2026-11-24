@@ -46,9 +46,11 @@ void PlayerBodyCalc::Step(float moveX, float moveZ, bool jump, float dt,
 		m_VelocityZ = moveZ * params.MoveSpeed;
 	}
 
-	// 2. 足元の高さに足場があればふつうのジャンプ、空中では残りがあれば空中ジャンプ
-	if (m_OnGround && !StageCalcHasSupport(stage, m_X, m_Y, m_Z)) {
-		m_OnGround = false;
+	// 2. 足元の高さに足場があればふつうのジャンプ、空中では残りがあれば空中ジャンプ（地形のマップでは坂の高さへ合わせる）
+	float groundY = m_Y;
+	if (m_OnGround) {
+		if (StageCalcFollowGround(stage, m_X, m_Y, m_Z, groundY)) m_Y = groundY;
+		else m_OnGround = false;
 	}
 	if (m_OnGround) m_AirJumpsUsed = 0;
 	if (jump) Jump(params.JumpSpeed, params.AirJumps);
@@ -60,14 +62,15 @@ void PlayerBodyCalc::Step(float moveX, float moveZ, bool jump, float dt,
 	} else {
 		m_VelocityY = PlayerCalcFall(m_VelocityY, params.Gravity, params.MaxFallSpeed, dt);
 	}
-	m_X += m_VelocityX * dt;
+	// 横の移動は、地形の側面（足より高い段差）で止めて壁に沿わせる。
+	StageCalcMoveBody(stage, m_X, m_Y, m_Z, m_VelocityX * dt, m_VelocityZ * dt, m_OnGround, m_X, m_Z);
 	m_Y += m_VelocityY * dt;
-	m_Z += m_VelocityZ * dt;
 
-	// 4. 着地（上から落ちてきて、上の面を通り過ぎたときだけ）
+	// 4. 着地（上から落ちてきて、上の面を通り過ぎたときだけ）。立っていれば坂の高さへ合わせ、床がなくなれば落ちる
 	float landingY;
 	if (m_OnGround) {
-		m_OnGround = StageCalcHasSupport(stage, m_X, m_Y, m_Z);
+		m_OnGround = StageCalcFollowGround(stage, m_X, m_Y, m_Z, groundY);
+		if (m_OnGround) m_Y = groundY;
 	} else if (m_VelocityY <= 0.0f && StageCalcFindLanding(stage, m_X, m_Z, previousY, m_Y, landingY)) {
 		m_Y = landingY;
 		m_VelocityY = 0.0f;

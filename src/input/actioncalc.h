@@ -21,11 +21,12 @@ enum ACTION
 	ACTION_DASH, ///< ダッシュ
 	ACTION_GUARD_LEFT, ///< 左の腕でガードする
 	ACTION_GUARD_RIGHT, ///< 右の腕でガードする
+	ACTION_LIFT, ///< 対戦マップのＧ（地上の始点の近くで押すと、補助触腕で高所へ上がる）
 	ACTION_COUNT ///< 行動の数
 };
 
-// PLAYER_INPUT::Buttons は 16 ビットなので、行動は 16 個まで。これ以上足すときは通信の形式（lockstepcalc）も変える。
-static_assert(ACTION_COUNT <= 16, "行動は PLAYER_INPUT::Buttons のビット数（16）までにする");
+// PLAYER_INPUT::Buttons は 32 ビットなので、行動は 32 個まで。これ以上足すときは通信の形式（lockstepcalc）も変える。
+static_assert(ACTION_COUNT <= 32, "行動は PLAYER_INPUT::Buttons のビット数（32）までにする");
 
 /// @file actioncalc.h
 /// @brief 入力を「行動」に変えるときの計算（キーから移動の向きを作る・複数の機器の入力をまとめる）
@@ -68,12 +69,12 @@ struct PLAYER_INPUT
 	int16_t MoveY = 0; ///< 前後の移動（-32767〜32767）
 	int16_t LookX = 0; ///< カメラの左右角（1単位＝1/4096ラジアン）
 	int16_t LookY = 0; ///< カメラの上下角（1単位＝1/4096ラジアン）
-	uint16_t Buttons = 0; ///< ACTION の番号のビットが1なら押下。ターゲット切り替えだけはイベント
+	uint32_t Buttons = 0; ///< ACTION の番号のビットが1なら押下。ターゲット切り替えだけはイベント
 	ACTION_EQUIP_KEY Equip = { -1, -1 }; ///< このフレームの装備の直接選択（なしは両方-1）
 };
 
 /// @brief 移動・カメラの値を通信と同じ整数へ丸める（装備の選択は呼び出し側で設定する）
-PLAYER_INPUT ActionCalcPlayerInput(ACTION_AXIS move, ACTION_AXIS look, uint16_t buttons);
+PLAYER_INPUT ActionCalcPlayerInput(ACTION_AXIS move, ACTION_AXIS look, uint32_t buttons);
 /// @brief 丸めた移動入力を小数に戻す
 ACTION_AXIS ActionCalcPlayerMove(const PLAYER_INPUT& input);
 /// @brief 丸めたカメラ入力をラジアンに戻す
@@ -85,7 +86,7 @@ bool ActionCalcPlayerTrigger(const PLAYER_INPUT& current, const PLAYER_INPUT& pr
 /// @brief 前から押し続けているボタンを、離すまで押していないことにする（試合の開始に押した決定でダッシュしないように）
 /// @param input 今の入力。押し続けているボタンのビットを消す
 /// @param held 離すまで消すボタンのビット。離したボタンのビットを消した値に書き換える
-void ActionCalcMaskHeld(PLAYER_INPUT& input, uint16_t& held);
+void ActionCalcMaskHeld(PLAYER_INPUT& input, uint32_t& held);
 
 /// @brief 切り替えモードのキーと数字キーから、装備の直接選択を作る
 /// @details 左のモードキーで左手、右のモードキーで右手の選択モードの1段目に入る。同じキーを押すたびに次の段へ進み、

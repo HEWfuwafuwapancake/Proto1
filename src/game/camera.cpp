@@ -234,7 +234,8 @@ void Camera::SnapToPlayer(void)
 
 void Camera::Reset(void)
 {
-	m_YawGoal = 0.0f;
+	// 対戦マップでは開始位置から原点を向いて始まるので、カメラも体の向きの後ろから始める。
+	m_YawGoal = m_Player->GetYaw();
 	m_PitchGoal = START_PITCH;
 	SnapToPlayer();
 }

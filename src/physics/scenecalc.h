@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include "physics/armcostcalc.h"
+#include "physics/mapcalc.h"
 #include "physics/tuningcalc.h"
 
 /// @brief キャラ選択の画面で使うキャラ番号
@@ -38,6 +39,7 @@ enum SCENE
 	SCENE_OPTIONS, ///< 次の試合の設定
 	SCENE_ARM_COSTS, ///< オプションの中の、腕の耐久の減る量の表
 	SCENE_PAUSE, ///< 試合を止めて開くメニュー（再開・ロビーへ・タイトルへ。オフラインだけ）
+	SCENE_MAP_SELECT, ///< キャラ選択のあと、1P（オンラインはホスト）が試合のマップを選ぶ
 };
 
 /// @brief シーンの更新後にゲーム側で行う処理
@@ -55,6 +57,7 @@ enum SCENE_EVENT
 	SCENE_EVENT_TUNING_RESET, ///< 全設定と耐久の減る量の表をはじめの値へ戻す
 	SCENE_EVENT_ARM_COST_CHANGE, ///< 選択した耐久の減る量を左右の入力方向へ変更する
 	SCENE_EVENT_LOOK_SENSITIVITY_CHANGE, ///< 視点感度を左右の入力方向へ変更する
+	SCENE_EVENT_OPEN_MAP_SELECT, ///< キャラ選択で決まった参加者で体を作り、マップ選択を表示する
 };
 
 /// @brief モード選択の項目
@@ -119,6 +122,7 @@ struct SCENE_INPUT
 	bool AddressValid = false; ///< IP の全区切りが入力済みで 0〜255 なら true
 	int CharacterDirection = 0; ///< キャラの切り替え（左 -1、右 +1、なし 0）
 	bool Pause = false; ///< 試合中のメニューを開く・閉じるボタンを押した瞬間なら true（オフラインだけ。オンラインは Restart を使う）
+	float MoveX = 0.0f; ///< 左スティック・A / D の左右（右がプラス。マップ選択のカーソルに使う）
 };
 
 /// @brief シーンの遷移と、弾くたびに1つ動くメニューを管理する
@@ -152,9 +156,13 @@ public:
 	GAME_RULE GetRule() const { return m_Rule; }
 	/// @brief 左右の入力でキャラを一周させる（左 -1、右 +1、なし 0）
 	static CHARACTER_TYPE CycleCharacter(CHARACTER_TYPE character, int direction);
+	/// @brief マップ選択で選んでいるマップ（もう一度・試合中は、その試合のマップ）を取得する
+	STAGE_MAP GetMap() const { return m_Map; }
 
 private:
 	void MoveCursor(float moveY, int count);
+	STAGE_MAP m_Map = STAGE_MAP_DEFAULT; // マップ選択で選んだマップ
+	bool m_MapReady = true; // 左右の弾きを次に受け付けるか（一度スティックを戻すまで次へ動かさない）
 	int m_LobbyMode = MODE_ITEM_SOLO; // 選んだ対戦方法（SOLO・LOCAL VS・HOST。キャラ選択から戻るときの行）
 	GAME_RULE m_Rule = GAME_RULE_GAME;
 	SCENE m_Scene = SCENE_GAME_START;

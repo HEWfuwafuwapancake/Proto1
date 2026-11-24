@@ -12,22 +12,64 @@ namespace Proto1Tests
 		}
 	}
 
-	TEST(SceneCalcTest, Title_DecideStartsMatch)
+	// キャラ選択の決定でマップ選択へ進み、マップ選択の決定で試合を始める。
+	static void StartMatch(SceneCalc& scene)
+	{
+		scene.Step({ true, false, 0 }, false);
+		scene.Step({ true, false, 0 }, false);
+	}
+
+	TEST(SceneCalcTest, Title_DecideOpensMapSelectThenStartsMatch)
 	{
 		SceneCalc scene;
 		scene.Start(true);
 		EXPECT_EQ((int)SCENE_TITLE, (int)scene.GetScene());
 		EXPECT_EQ(GAME_RULE_DEBUG, scene.GetRule());
 		EXPECT_EQ((int)SCENE_EVENT_NONE, (int)scene.Step({ false, false, 0 }, false));
+		EXPECT_EQ((int)SCENE_EVENT_OPEN_MAP_SELECT, (int)scene.Step({ true, false, 0 }, false));
+		EXPECT_EQ((int)SCENE_MAP_SELECT, (int)scene.GetScene());
 		EXPECT_EQ((int)SCENE_EVENT_START_MATCH, (int)scene.Step({ true, false, 0 }, false));
 		EXPECT_EQ((int)SCENE_MATCH, (int)scene.GetScene());
+	}
+
+	// マップ選択は左右の弾きで1つずつ動き（一周する）、選んだマップで試合をして、もう一度でも同じマップを使う。
+	// 戻るとキャラ選択へ戻る。
+	TEST(SceneCalcTest, MapSelect_FlickCyclesMapKeptOnRetryAndBackReturnsToLobby)
+	{
+		SceneCalc scene;
+		scene.Start(true);
+		scene.Step({ true, false, 0 }, false);
+		ASSERT_EQ((int)SCENE_MAP_SELECT, (int)scene.GetScene());
+		EXPECT_EQ(STAGE_MAP_POST_OFFICE, scene.GetMap());
+		SCENE_INPUT right{ false, false, 0 };
+		right.MoveX = 1.0f;
+		SCENE_INPUT left{ false, false, 0 };
+		left.MoveX = -1.0f;
+		scene.Step(right, false);
+		scene.Step(right, false); // 倒したままでは次へ動かない
+		EXPECT_EQ(STAGE_MAP_MARKET, scene.GetMap());
+		scene.Step({ false, false, 0 }, false);
+		scene.Step(left, false);
+		scene.Step({ false, false, 0 }, false);
+		scene.Step(left, false);
+		EXPECT_EQ(STAGE_MAP_ISLAND, scene.GetMap());
+		EXPECT_EQ((int)SCENE_EVENT_BACK_LOBBY, (int)scene.Step({ false, false, 0, true }, false));
+		EXPECT_EQ((int)SCENE_TITLE, (int)scene.GetScene());
+		scene.Step({ true, false, 0 }, false);
+		scene.Step({ false, false, 0 }, false);
+		scene.Step(right, false);
+		ASSERT_EQ(STAGE_MAP_POST_OFFICE, scene.GetMap());
+		EXPECT_EQ((int)SCENE_EVENT_START_MATCH, (int)scene.Step({ true, false, 0 }, false));
+		scene.Step({ true, false, 0 }, true);
+		EXPECT_EQ((int)SCENE_EVENT_START_MATCH, (int)scene.Step({ true, false, 0 }, true));
+		EXPECT_EQ(STAGE_MAP_POST_OFFICE, scene.GetMap());
 	}
 
 	TEST(SceneCalcTest, Match_DecideOnlyShowsResultAfterTimeUp)
 	{
 		SceneCalc scene;
 		scene.Start(true);
-		scene.Step({ true, false, 0 }, false);
+		StartMatch(scene);
 		EXPECT_EQ((int)SCENE_EVENT_NONE, (int)scene.Step({ true, false, 0 }, false));
 		EXPECT_EQ((int)SCENE_MATCH, (int)scene.GetScene());
 		EXPECT_EQ((int)SCENE_EVENT_NONE, (int)scene.Step({ false, false, 0 }, true));
@@ -40,7 +82,7 @@ namespace Proto1Tests
 	{
 		SceneCalc scene;
 		scene.Start(true);
-		scene.Step({ true, false, 0 }, false);
+		StartMatch(scene);
 		EXPECT_EQ((int)SCENE_EVENT_START_MATCH, (int)scene.Step({ false, true, 0 }, false));
 		EXPECT_EQ((int)SCENE_EVENT_START_MATCH, (int)scene.Step({ true, true, 0 }, true));
 		EXPECT_EQ((int)SCENE_MATCH, (int)scene.GetScene());
@@ -55,7 +97,7 @@ namespace Proto1Tests
 	{
 		SceneCalc scene;
 		scene.Start(true);
-		scene.Step({ true, false, 0 }, false);
+		StartMatch(scene);
 		scene.Step({ true, false, 0 }, true);
 		EXPECT_EQ((int)SCENE_EVENT_START_MATCH, (int)scene.Step({ true, false, 0 }, true));
 		EXPECT_EQ((int)SCENE_MATCH, (int)scene.GetScene());
@@ -64,7 +106,7 @@ namespace Proto1Tests
 		EXPECT_EQ((int)RESULT_ITEM_CHARACTER, scene.GetCursor());
 		EXPECT_EQ((int)SCENE_EVENT_BACK_LOBBY, (int)scene.Step({ true, false, 0 }, true));
 		EXPECT_EQ((int)SCENE_TITLE, (int)scene.GetScene());
-		scene.Step({ true, false, 0 }, false);
+		StartMatch(scene);
 		scene.Step({ true, false, 0 }, true);
 		for (int i = 0; i < 2; ++i) {
 			scene.Step({ false, false, 0 }, true);
@@ -79,7 +121,7 @@ namespace Proto1Tests
 	{
 		SceneCalc scene;
 		scene.Start(true);
-		scene.Step({ true, false, 0 }, false);
+		StartMatch(scene);
 		scene.Step({ true, false, -1 }, true); // 入る前から倒している
 		scene.Step({ false, false, -1 }, true);
 		EXPECT_EQ((int)RESULT_ITEM_RETRY, scene.GetCursor());
@@ -105,6 +147,7 @@ namespace Proto1Tests
 		scene.Step({ true, false, 0 }, false);
 		EXPECT_EQ(SCENE_TITLE, scene.GetScene());
 		EXPECT_TRUE(scene.IsSolo());
+		EXPECT_EQ(SCENE_EVENT_OPEN_MAP_SELECT, scene.Step({ true, false, 0 }, false));
 		EXPECT_EQ(SCENE_EVENT_START_MATCH, scene.Step({ true, false, 0 }, false));
 		scene.Step({ true, false, 0 }, true);
 		for (int i = 0; i < 2; ++i) {
@@ -125,6 +168,7 @@ namespace Proto1Tests
 		EXPECT_EQ(GAME_RULE_GAME, scene.GetRule());
 		scene.CycleRule(1);
 		EXPECT_EQ(GAME_RULE_DEBUG, scene.GetRule());
+		ASSERT_EQ(SCENE_EVENT_OPEN_MAP_SELECT, scene.Step({ true, false, 0 }, false));
 		ASSERT_EQ(SCENE_EVENT_START_MATCH, scene.Step({ true, false, 0 }, false));
 		ASSERT_EQ(SCENE_EVENT_SHOW_RESULT, scene.Step({ true, false, 0 }, true));
 		EXPECT_EQ(SCENE_EVENT_START_MATCH, scene.Step({ true, false, 0 }, true));
@@ -262,7 +306,7 @@ namespace Proto1Tests
 		scene.Start(false);
 		scene.Step({ true, false, 0 }, false); // モード選択へ
 		scene.Step({ true, false, 0 }, false); // キャラ選択へ
-		scene.Step({ true, false, 0 }, false); // 試合へ
+		StartMatch(scene); // マップ選択を通って試合へ
 		ASSERT_EQ((int)SCENE_MATCH, (int)scene.GetScene());
 		SCENE_INPUT pause{ false, false, 0 };
 		pause.Pause = true;
@@ -276,7 +320,7 @@ namespace Proto1Tests
 		EXPECT_EQ((int)SCENE_EVENT_BACK_LOBBY, (int)scene.Step({ true, false, 0 }, false));
 		EXPECT_EQ((int)SCENE_TITLE, (int)scene.GetScene());
 
-		scene.Step({ true, false, 0 }, false); // もう一度試合へ
+		StartMatch(scene); // もう一度試合へ
 		scene.Step(pause, false);
 		scene.Step({ false, false, -1.0f }, false);
 		scene.Step({ false, false, 0 }, false);
@@ -286,7 +330,7 @@ namespace Proto1Tests
 
 		SceneCalc finished;
 		finished.Start(true);
-		finished.Step({ true, false, 0 }, false);
+		StartMatch(finished);
 		finished.Step(pause, true);
 		EXPECT_EQ((int)SCENE_MATCH, (int)finished.GetScene());
 	}
