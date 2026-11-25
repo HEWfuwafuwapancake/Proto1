@@ -28,6 +28,9 @@ static constexpr float LOOK_DEADZONE = 0.3f;							// 見ている点の左右�
 static constexpr float FOLLOW_TURN_SPEED = XMConvertToRadians(90.0f);	// 横移動について回る速さ（1秒に回る角度。入力の大きさに比例）
 static constexpr float MANUAL_PAUSE = 0.5f;							// 自分でカメラを回したあと、横移動について回るのを止める秒数
 static constexpr float STAGE_MARGIN = 0.3f;							// 浮島の面から、カメラをこれだけ離す（めり込んで見えないように）
+static constexpr float NEAR_CHECK_RADIUS = 0.5f;						// 見ている点からこの距離までは、地形の面から離す余白を付けずに調べる（背中が低い段差に触れただけで寄らないように）
+static constexpr float CLIMB_PITCH_STEP = XMConvertToRadians(2.5f);	// 低い地形を上から越えるとき、見下ろす角度を探す刻み
+static constexpr float CLIMB_SMOOTH_TIME = 0.15f;					// 地形を越えるために見下ろす角度が、目標へ追いつくまでのおよその秒数
 static constexpr float PITCH_MIN = XMConvertToRadians(-35.0f);		// いちばん下を向いたとき（上から見下ろす）
 static constexpr float PITCH_MAX = XMConvertToRadians(50.0f);		// いちばん上を向いたとき（見上げる。高台を狙える）
 static constexpr float START_PITCH = XMConvertToRadians(-12.0f);	// 最初の上下の向き（少し見下ろす）
@@ -88,7 +91,7 @@ int Camera::PickFrontTarget(const CAMERA_FOCUS_TARGET* targets) const
 VEC3 Camera::LockFocusPoint(const VEC3& player, const CAMERA_FOCUS_TARGET* targets) const
 {
 	// 身長を半径にすれば、頭付近を中心に体全体を安全側で囲める。
-	return CameraCalcFocusPoint(player, targets[m_LockTarget].Position, m_Yaw, m_Pitch,
+	return CameraCalcFocusPoint(player, targets[m_LockTarget].Position, m_Yaw, GetViewPitch(),
 		m_Distance, FOV, m_ViewWidth / m_ViewHeight,
 		TARGET_SCREEN_MARGIN, m_Player->GetHeight(), TARGET_POINT_RATE);
 }
@@ -102,7 +105,7 @@ int Camera::PickSoftTarget(const CAMERA_FOCUS_TARGET* targets) const
 		visible[i] = targets[i];
 		if (visible[i].Available && StageCalcIsBlocked(m_Stage->GetStage(), eye, targets[i].Position)) visible[i].Available = false;
 	}
-	return CameraCalcPickVisible(eye, m_Yaw, m_Pitch, FOV, m_ViewWidth / m_ViewHeight, SOFT_SCREEN_MARGIN,
+	return CameraCalcPickVisible(eye, m_Yaw, GetViewPitch(), FOV, m_ViewWidth / m_ViewHeight, SOFT_SCREEN_MARGIN,
 		SOFT_MAX_DISTANCE, visible, FIGHTER_COUNT, m_LockTarget, SOFT_KEEP_BONUS);
 }
 
@@ -176,30 +179,45 @@ void Camera::UpdateWaiting(float dt)
 	m_Target.Y = CameraCalcSmoothDamp(m_Target.Y, focus.Y, m_TargetVelocity.Y, RESPAWN_LOOK_SMOOTH_TIME, dt);
 	m_Target.Z = CameraCalcSmoothDamp(m_Target.Z, focus.Z, m_TargetVelocity.Z, RESPAWN_LOOK_SMOOTH_TIME, dt);
 	m_TargetGoal = focus;
-	m_Distance = CameraCalcSmoothDamp(m_Distance, RESPAWN_DISTANCE, m_DistanceVelocity, RESPAWN_LOOK_SMOOTH_TIME, dt);
 	m_SideOffset = CameraCalcSmoothDamp(m_SideOffset, 0.0f, m_SideVelocity, SIDE_SMOOTH_TIME, dt);
-	const VEC3 pos = CameraCalcOrbitPosition(CameraCalcSideShift(m_Target, m_Yaw, m_SideOffset), m_Yaw, m_Pitch, m_Distance);
-	m_Position = { pos.X, pos.Y, pos.Z };
+	// 少し引いて見渡す。集配棟などに入らないように、ふだんと同じく地形をよける。
+	PlaceCamera(dt, RESPAWN_DISTANCE, false);
 }
 
-// 見ている点のまわりの、向きと距離で決まる位置に置き、浮島にめり込むなら手前まで近づける
+// 見ている点のまわりの、向きと距離で決まる位置に置く。地形が低ければ見下ろす角度を深くして上から越え、
+// 越えられなければ手前まで近づける（snap：true なら角度も距離もすぐに合わせる、false ならバネでつなぐ）。
 // 見ている点ごとカメラを横へずらすので、向きは変えずにキャラが画面の横へ寄る。
-void Camera::PlaceCamera(float dt)
+void Camera::PlaceCamera(float dt, float desiredDistance, bool snap)
 {
+	const STAGE& stage = m_Stage->GetStage();
 	const VEC3 pivot = CameraCalcSideShift(m_Target, m_Yaw, m_SideOffset);
-	const VEC3 orbit = CameraCalcOrbitPosition(pivot, m_Yaw, m_Pitch, FOLLOW_DISTANCE + (AIM_DISTANCE - FOLLOW_DISTANCE) * m_AimZoom);
-	const VEC3 clipped = CameraCalcClipToStage(pivot, orbit, m_Stage->GetStage(), STAGE_MARGIN);
-	const float distanceGoal = Vec3Length(Vec3Sub(clipped, pivot));
-	if (distanceGoal < m_Distance) {
-		// 浮島にぶつかるときは即座に近づけ、離れる向きの速度も消す。
+	// 見せる角度（位置と向きの両方に使う）。操作で決める m_Pitch は変えない。
+	const float climbPitch = CameraCalcClearPitch(pivot, m_Yaw, m_Pitch, desiredDistance, PITCH_MIN, CLIMB_PITCH_STEP,
+		stage, STAGE_MARGIN, NEAR_CHECK_RADIUS);
+	if (snap) {
+		m_ViewPitchOffset = climbPitch - m_Pitch;
+		m_ViewPitchOffsetVelocity = 0.0f;
+	}
+	else {
+		m_ViewPitchOffset = CameraCalcSmoothDamp(m_ViewPitchOffset, climbPitch - m_Pitch, m_ViewPitchOffsetVelocity, CLIMB_SMOOTH_TIME, dt);
+	}
+	const float viewPitch = GetViewPitch();
+	const float distanceGoal = CameraCalcClearDistance(pivot, m_Yaw, viewPitch, desiredDistance, stage, STAGE_MARGIN, NEAR_CHECK_RADIUS);
+	if (snap || distanceGoal < m_Distance) {
+		// 地形にぶつかるときは即座に近づけ、離れる向きの速度も消す。
 		m_Distance = distanceGoal;
 		m_DistanceVelocity = 0.0f;
 	}
 	else {
 		m_Distance = CameraCalcSmoothDamp(m_Distance, distanceGoal, m_DistanceVelocity, DISTANCE_SMOOTH_TIME, dt);
 	}
-	const VEC3 pos = CameraCalcOrbitPosition(pivot, m_Yaw, m_Pitch, m_Distance);
+	const VEC3 pos = CameraCalcOrbitPosition(pivot, m_Yaw, viewPitch, m_Distance);
 	m_Position = { pos.X, pos.Y, pos.Z };
+}
+
+float Camera::GetViewPitch(void) const
+{
+	return m_Pitch + m_ViewPitchOffset;
 }
 
 // やり直し・復活では目標へ瞬時に合わせ、すべてのバネの速度を消す。
@@ -229,7 +247,7 @@ void Camera::SnapToPlayer(void)
 	m_SideVelocity = 0.0f;
 	m_AimZoom = 0.0f;
 	m_AimZoomVelocity = 0.0f;
-	PlaceCamera(0.0f);
+	PlaceCamera(0.0f, FOLLOW_DISTANCE, true);
 }
 
 void Camera::Reset(void)
@@ -323,7 +341,7 @@ void Camera::Update(void)
 	const float sideGoal = aiming ? AIM_SHOULDER_OFFSET
 		: CameraCalcSideOffsetGoal(m_Mode == CAMERA_MODE_HARD && GetTarget() >= 0, moveX, SHOULDER_OFFSET, STRAFE_DRIFT);
 	m_SideOffset = CameraCalcSmoothDamp(m_SideOffset, sideGoal, m_SideVelocity, SIDE_SMOOTH_TIME, dt);
-	PlaceCamera(dt);
+	PlaceCamera(dt, FOLLOW_DISTANCE + (AIM_DISTANCE - FOLLOW_DISTANCE) * m_AimZoom, false);
 }
 
 // ビュー行列とプロジェクション行列を作る（描画と、画面の位置の計算で同じものを使う）
@@ -399,7 +417,8 @@ int Camera::GetTarget(void) const
 
 XMFLOAT3 Camera::GetDirection(void) const
 {
-	return { cosf(m_Pitch) * sinf(m_Yaw), sinf(m_Pitch), cosf(m_Pitch) * cosf(m_Yaw) };
+	const float pitch = GetViewPitch();
+	return { cosf(pitch) * sinf(m_Yaw), sinf(pitch), cosf(pitch) * cosf(m_Yaw) };
 }
 
 void Camera::Initialize(const Stage& stage, const FighterManager& fighters, int slot, const ArmManager& arms, const Match& match)
