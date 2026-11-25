@@ -51,7 +51,7 @@ private:
 	void Background() const;
 	void Header(const char* title, const char* eyebrow) const;
 	void Footer(const char* help) const;
-	void Button(int index, const char* title, const char* subtitle, bool selected, bool dark, float x, float y, float width, float height) const;
+	void Button(int index, const char* title, const char* subtitle, bool selected, bool dark, float x, float y, float width, float height, float growWidth) const; // growWidth：選んだとき右へ伸びる長さ
 	void InfoCard(const RECT2D& area, const char* title, const char* line1, const char* line2, const char* line3) const;
 	void DrawTitle(const SceneCalc& scene, const std::array<CHARACTER_TYPE, FIGHTER_COUNT>& characters) const;
 	void DrawModeSelect(const SceneCalc& scene) const;
