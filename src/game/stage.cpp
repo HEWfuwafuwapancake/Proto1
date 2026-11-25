@@ -38,7 +38,8 @@ static constexpr XMFLOAT4 MARKET_BASE_COLOR = { 1.00f, 0.45f, 0.62f, 1.0f };		//
 static constexpr XMFLOAT4 MARKET_LINE_COLOR = { 1.00f, 1.00f, 1.00f, 1.0f };		// 地割れの縁の白線
 static constexpr float BRIDGE_DRAW_THICKNESS = 0.5f;	// 片面の橋の板の厚さ（見た目だけ）
 static constexpr float RAMP_SLAB_THICKNESS = 0.5f;		// 坂の上面の板の厚さ（見た目だけ）
-static constexpr int RAMP_COLUMNS = 8;					// 坂の下を埋める段の数（見た目だけ）
+static constexpr float DRAW_HEIGHT_EPSILON = 0.01f;	// 地形を描くときに高さをくらべる誤差（台帳の式の小数の誤差を吸収する。見た目だけ）
+static constexpr float HOLE_FILL_THICKNESS = 0.5f;	// 床の穴に入る区画（荷道など）を、穴のいちばん低い所からさらに下へ描く厚さ（見た目だけ）
 static constexpr float MARK_LIFT = 0.02f;				// 床に描く印を浮かせる高さ（床と重ならないように）
 static constexpr float POST_EDGE_WIDTH = 0.20f;			// 郵便局の外周の帯の幅
 static constexpr float MARKET_LINE_WIDTH = 0.15f;		// 市場の縁の白線の幅
@@ -149,32 +150,39 @@ void Stage::DrawRegion(const STAGE_REGION& region) const
 	const float centerZ = (region.MinZ + region.MaxZ) * 0.5f;
 	const float width = region.MaxX - region.MinX;
 	const float depth = region.MaxZ - region.MinZ;
+	const int index = static_cast<int>(&region - m_Stage.Regions);
+	const float solidBottom = GetSolidDrawBottom(index);
 
 	if (region.SlopeX == 0.0f && region.SlopeZ == 0.0f) {
-		// 平らな区画：実体なら地盤の下面から上面まで、片面の橋なら薄い板。
+		// 平らな区画：実体なら下の床（なければ地盤の下面）から上面まで、片面の橋なら薄い板。
 		const float top = region.BaseY;
-		const float bottom = region.Solid ? m_Stage.GroundBottomY : top - BRIDGE_DRAW_THICKNESS;
+		const float bottom = region.Solid ? solidBottom : top - BRIDGE_DRAW_THICKNESS;
 		const float height = top - bottom;
 		const float middle = (top + bottom) * 0.5f;
+		if (height <= 0.0f) return;
 		if (region.DiagonalLimit <= 0.0f) {
 			// 先に調べる区画で、この上面より低い所がある区画（荷道・坂など）は、そこを除いて描く。
 			// 除かないと、当たり判定のない見た目だけの床がその上にかぶさって隠してしまう。
+			// 穴は、いちばん深い穴の底までにとどめ、その下は1つの箱で描く（下から見て継ぎ目が出ないように）。
 			float holes[STAGE_REGION_MAX][4];
 			int holeCount = 0;
-			const int index = static_cast<int>(&region - m_Stage.Regions);
 			for (int i = 0; i < index; ++i) {
 				const STAGE_REGION& other = m_Stage.Regions[i];
-				const float low = fminf(StageCalcRegionHeight(other, other.MinX, other.MinZ), StageCalcRegionHeight(other, other.MaxX, other.MaxZ));
-				if (low >= top) continue;
+				if (!IsHole(other, region)) continue;
 				holes[holeCount][0] = other.MinX; holes[holeCount][1] = other.MaxX;
 				holes[holeCount][2] = other.MinZ; holes[holeCount][3] = other.MaxZ;
 				++holeCount;
 			}
+			const float holeBottom = region.Solid && holeCount > 0 ? fminf(fmaxf(GetHoleBottom(index), bottom), top) : bottom;
+			if (holeBottom > bottom) {
+				ShapeDrawBox({ centerX, (holeBottom + bottom) * 0.5f, centerZ }, { width, holeBottom - bottom, depth }, color);
+			}
+			if (top <= holeBottom) return;
 			float pieces[32][4];
 			const int count = MapCalcSubtractRects(region.MinX, region.MaxX, region.MinZ, region.MaxZ, holes, holeCount, pieces, 32);
 			for (int i = 0; i < count; ++i) {
 				const float* r = pieces[i];
-				ShapeDrawBox({ (r[0] + r[1]) * 0.5f, middle, (r[2] + r[3]) * 0.5f }, { r[1] - r[0], height, r[3] - r[2] }, color);
+				ShapeDrawBox({ (r[0] + r[1]) * 0.5f, (top + holeBottom) * 0.5f, (r[2] + r[3]) * 0.5f }, { r[1] - r[0], top - holeBottom, r[3] - r[2] }, color);
 			}
 			return;
 		}
@@ -193,31 +201,67 @@ void Stage::DrawRegion(const STAGE_REGION& region) const
 		return;
 	}
 
-	// 坂：上面に沿った板と、その下を埋める段（実体の坂だけ）。
+	const float centerTop = StageCalcRegionHeight(region, centerX, centerZ);
+	if (region.Solid) {
+		// 実体の坂：上面が当たり判定の式どおりに斜めの箱1つで、下の床（なければ地盤の下面）から描く。
+		ShapeDrawSlopedBox(region.MinX, region.MaxX, region.MinZ, region.MaxZ, solidBottom,
+			centerTop, region.SlopeX, region.SlopeZ, color);
+		return;
+	}
+	// 片面の坂：上面に沿った板だけ。
 	const bool alongX = region.SlopeX != 0.0f;
-	const float lowA = alongX ? region.MinX : region.MinZ;
-	const float highA = alongX ? region.MaxX : region.MaxZ;
 	const auto point = [&](float a) {
 		const float x = alongX ? a : centerX;
 		const float z = alongX ? centerZ : a;
-		return XMFLOAT3{ x, StageCalcRegionHeight(region, x, z), z };
+		return XMFLOAT3{ x, StageCalcRegionHeight(region, x, z) - RAMP_SLAB_THICKNESS * 0.5f, z };
 	};
-	XMFLOAT3 from = point(lowA), to = point(highA);
-	from.y -= RAMP_SLAB_THICKNESS * 0.5f;
-	to.y -= RAMP_SLAB_THICKNESS * 0.5f;
-	ShapeDrawBoxAlong(from, to, alongX ? depth : width, RAMP_SLAB_THICKNESS, color);
-	if (!region.Solid) return;
-	for (int i = 0; i < RAMP_COLUMNS; ++i) {
-		const float a0 = lowA + (highA - lowA) * i / RAMP_COLUMNS;
-		const float a1 = lowA + (highA - lowA) * (i + 1) / RAMP_COLUMNS;
-		const float top = fminf(point(a0).y, point(a1).y) - RAMP_SLAB_THICKNESS * 0.5f;
-		const float bottom = m_Stage.GroundBottomY;
-		if (top <= bottom) continue;
-		const float mid = (a0 + a1) * 0.5f;
-		const XMFLOAT3 center{ alongX ? mid : centerX, (top + bottom) * 0.5f, alongX ? centerZ : mid };
-		const XMFLOAT3 size{ alongX ? a1 - a0 : width, top - bottom, alongX ? depth : a1 - a0 };
-		ShapeDrawBox(center, size, color);
+	ShapeDrawBoxAlong(point(alongX ? region.MinX : region.MinZ), point(alongX ? region.MaxX : region.MaxZ),
+		alongX ? depth : width, RAMP_SLAB_THICKNESS, color);
+}
+
+float Stage::GetRegionLow(const STAGE_REGION& region)
+{
+	// 上面は平面なので、いちばん低い所は四隅のどれか。
+	return fminf(fminf(StageCalcRegionHeight(region, region.MinX, region.MinZ), StageCalcRegionHeight(region, region.MaxX, region.MinZ)),
+		fminf(StageCalcRegionHeight(region, region.MinX, region.MaxZ), StageCalcRegionHeight(region, region.MaxX, region.MaxZ)));
+}
+
+bool Stage::IsHole(const STAGE_REGION& region, const STAGE_REGION& floor)
+{
+	const bool overlaps = region.MinX < floor.MaxX && region.MaxX > floor.MinX && region.MinZ < floor.MaxZ && region.MaxZ > floor.MinZ;
+	return overlaps && GetRegionLow(region) < floor.BaseY - DRAW_HEIGHT_EPSILON;
+}
+
+float Stage::GetHoleBottom(int floorIndex) const
+{
+	const STAGE_REGION& floor = m_Stage.Regions[floorIndex];
+	float bottom = floor.BaseY;
+	for (int i = 0; i < floorIndex; ++i) {
+		const STAGE_REGION& other = m_Stage.Regions[i];
+		if (IsHole(other, floor)) bottom = fminf(bottom, GetRegionLow(other) - HOLE_FILL_THICKNESS);
 	}
+	return bottom;
+}
+
+float Stage::GetSolidDrawBottom(int index) const
+{
+	// あとに調べる平らな実体の区画（床）が、この区画の下を全部覆っていれば、床の上面（この区画が床の穴なら穴の底）から描けばよい。
+	// 床は地盤の下面まで伸びているので、上に乗る区画まで地盤の下面へ伸ばすと、下から見たときに面が重なってちらつく。
+	const STAGE_REGION& region = m_Stage.Regions[index];
+	const float corners[4][2] = { { region.MinX, region.MinZ }, { region.MaxX, region.MinZ }, { region.MinX, region.MaxZ }, { region.MaxX, region.MaxZ } };
+	for (int i = index + 1; i < m_Stage.RegionCount; ++i) {
+		const STAGE_REGION& floor = m_Stage.Regions[i];
+		if (!floor.Solid || floor.SlopeX != 0.0f || floor.SlopeZ != 0.0f) continue;
+		bool covers = region.MinX >= floor.MinX && region.MaxX <= floor.MaxX && region.MinZ >= floor.MinZ && region.MaxZ <= floor.MaxZ;
+		for (const auto& c : corners) {
+			if (floor.DiagonalLimit > 0.0f && fabsf(c[0]) + fabsf(c[1]) > floor.DiagonalLimit) covers = false;
+		}
+		if (!covers) continue;
+		if (!IsHole(region, floor)) return floor.BaseY;
+		// 穴の区画は、床の穴の底から描く（穴の底は穴の区画のいちばん低い所以下になる）。床に穴を開けない床（八角形）は使わない。
+		if (floor.DiagonalLimit <= 0.0f) return GetHoleBottom(i);
+	}
+	return m_Stage.GroundBottomY;
 }
 
 void Stage::DrawMarks(void) const
