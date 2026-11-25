@@ -20,6 +20,40 @@ static bool InsideTerrain(const STAGE& stage, const VEC3& point, float margin)
 	return point.Y < top + margin && point.Y > stage.GroundBottomY - margin;
 }
 
+float CameraCalcClearDistance(const VEC3& target, float yaw, float pitch, float distance, const STAGE& stage, float margin, float nearRadius)
+{
+	if (distance <= 0.0f) return 0.0f;
+	const VEC3 camera = CameraCalcOrbitPosition(target, yaw, pitch, distance);
+	if (!stage.HasTerrain) return Vec3Length(Vec3Sub(CameraCalcClipToStage(target, camera, stage, margin), target));
+	// 見ている点からカメラへ向かって進み、地形に入る手前で止める（頭のまわりは余白を付けない）。
+	static constexpr int CLIP_SAMPLES = 32;
+	if (InsideTerrain(stage, target, 0.0f)) return distance;
+	const VEC3 delta = Vec3Sub(camera, target);
+	for (int i = 1; i <= CLIP_SAMPLES; ++i) {
+		const float t = (float)i / CLIP_SAMPLES;
+		const VEC3 point = Vec3Add(target, Vec3Scale(delta, t));
+		if (InsideTerrain(stage, point, t * distance <= nearRadius ? 0.0f : margin)) return distance * (float)(i - 1) / CLIP_SAMPLES;
+	}
+	return distance;
+}
+
+float CameraCalcClearPitch(const VEC3& target, float yaw, float pitch, float distance, float minPitch, float step,
+	const STAGE& stage, float margin, float nearRadius)
+{
+	if (!stage.HasTerrain || step <= 0.0f) return pitch;
+	minPitch = fminf(minPitch, pitch);
+	float bestPitch = pitch;
+	float bestDistance = -1.0f;
+	for (float p = pitch; ; p -= step) {
+		const float candidate = fmaxf(p, minPitch);
+		const float clear = CameraCalcClearDistance(target, yaw, candidate, distance, stage, margin, nearRadius);
+		if (clear >= distance) return candidate;
+		if (clear > bestDistance) { bestDistance = clear; bestPitch = candidate; }
+		if (candidate <= minPitch) break;
+	}
+	return bestPitch;
+}
+
 VEC3 CameraCalcClipToStage(const VEC3& target, const VEC3& camera, const STAGE& stage, float margin)
 {
 	if (stage.HasTerrain) {

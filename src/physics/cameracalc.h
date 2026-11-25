@@ -26,6 +26,36 @@ VEC3 CameraCalcOrbitPosition(const VEC3& target, float yaw, float pitch, float d
 /// @return めり込まない位置（ぶつからなければ camera のまま）
 VEC3 CameraCalcClipToStage(const VEC3& target, const VEC3& camera, const STAGE& stage, float margin);
 
+/// @brief 見ている点のまわりを回るカメラを、地形にめり込まずに置ける距離を出す
+/// @details 地形のマップでは、見ている点からカメラへ向かう線を少しずつ調べ、実体の区画の上面＋margin より下に入る手前で止める。
+///          見ている点から nearRadius 以内は margin を付けずに調べる（背中が低い段差に触れただけで寄らないように。壁の中には入れない）。
+///          浮島（地形のないマップ）では CameraCalcClipToStage と同じ。
+/// @param target 見ている点
+/// @param yaw 左右の向き（ラジアン。0 で +Z 方向を見る、プラスで右回り）
+/// @param pitch 上下の向き（ラジアン。プラスで上を見る）
+/// @param distance 置きたい距離
+/// @param stage 地形
+/// @param margin 地形の面からカメラを離す量（0 以上）
+/// @param nearRadius 見ている点から、margin を付けずに調べる距離（0 以上）
+/// @return めり込まずに置ける距離（0〜distance。ぶつからなければ distance）
+float CameraCalcClearDistance(const VEC3& target, float yaw, float pitch, float distance, const STAGE& stage, float margin, float nearRadius);
+
+/// @brief 地形を上から越えるために、カメラの上下の向きをどこまで下げるか（見下ろす角度を深くするか）を出す
+/// @details pitch から minPitch まで step ずつ下げ、distance のまま置ける最初の角度を返す。どれも置けなければ、いちばん遠くまで置ける角度
+///          （同じなら pitch に近い方）を返す。浮島（地形のないマップ）では pitch のまま。
+/// @param target 見ている点
+/// @param yaw 左右の向き（ラジアン）
+/// @param pitch 今の上下の向き（ラジアン。プラスで上を見る）
+/// @param distance 置きたい距離
+/// @param minPitch いちばん下を向く角度（ラジアン。pitch より大きければ pitch のまま）
+/// @param step 角度を下げる刻み（ラジアン。0 以下なら pitch のまま）
+/// @param stage 地形
+/// @param margin 地形の面からカメラを離す量（0 以上）
+/// @param nearRadius 見ている点から、margin を付けずに調べる距離（0 以上）
+/// @return 地形を越えられる上下の向き（ラジアン。pitch 以下）
+float CameraCalcClearPitch(const VEC3& target, float yaw, float pitch, float distance, float minPitch, float step,
+	const STAGE& stage, float margin, float nearRadius);
+
 /// @brief 臨界減衰バネで目標へ近づけ、行き過ぎるときは目標で止める
 /// @details 速度は呼ぶ側で値ごとに持ち、目標が変わっても初期化せず次の呼び出しへ渡す
 /// @param current 今の値

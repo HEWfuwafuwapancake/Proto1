@@ -81,7 +81,8 @@ public:
 	/// @return 左右の向き（ラジアン。0 で +Z 方向、プラスで右回り）
 	float GetYaw(void) const;
 
-	/// @brief カメラの上下の向きを取得する（ナックルの空中の突進の角度に使う）
+	/// @brief 操作で決めたカメラの上下の向きを取得する（ナックルの空中の突進・モーニングスターの投げの角度に使う）
+	/// @details 低い地形を越えるために画面の向きを下げている分は含めない（画面の向きは GetDirection）
 	/// @return 上下の向き（ラジアン。プラスで上を見る）
 	float GetPitch(void) const { return m_Pitch; }
 
@@ -102,7 +103,8 @@ private:
 	VEC3 LockFocusPoint(const VEC3& player, const CAMERA_FOCUS_TARGET* targets) const;
 	void UpdateLockTarget(const CAMERA_FOCUS_TARGET* targets);
 	int PickSoftTarget(const CAMERA_FOCUS_TARGET* targets) const; // ソフトロック：画面に見えている相手を選ぶ
-	void PlaceCamera(float dt);
+	void PlaceCamera(float dt, float desiredDistance, bool snap);
+	float GetViewPitch(void) const; // 見せる上下の向き（操作で決める m_Pitch に、地形を越えるために見下ろす分を足したもの）
 	void UpdateWaiting(float dt); // 復活待ちの間、浮島の高さへ戻して場外にした相手を映す
 	void SnapToPlayer(void);
 	void MakeMatrices(XMMATRIX* view, XMMATRIX* projection) const;
@@ -116,6 +118,8 @@ private:
 	float m_PitchGoal = {};		// 入力を足す上下の目標角度
 	float m_YawVelocity = {};		// 左右角のバネの速度
 	float m_PitchVelocity = {};	// 上下角のバネの速度
+	float m_ViewPitchOffset = {};			// 低い地形を上から越えるために、見せる角度を下げている量（ラジアン。0 以下）
+	float m_ViewPitchOffsetVelocity = {};	// 見せる角度を下げる量のバネの速度
 	float m_Distance = {};			// 今のカメラまでの距離
 	float m_DistanceVelocity = {};	// 距離のバネの速度
 	float m_ManualPause = {};		// 横移動について回るのを止める残り秒数

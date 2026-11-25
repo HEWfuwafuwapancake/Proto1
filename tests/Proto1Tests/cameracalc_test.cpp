@@ -294,4 +294,58 @@ namespace Proto1Tests
 		EXPECT_EQ(0, CameraCalcPickVisible({ 0, 0, 0 }, 0.0f, 0.0f, fov, aspect, 0.05f, 40.0f, two, 2, -1, 0.0f));
 		EXPECT_EQ(1, CameraCalcPickVisible({ 0, 0, 0 }, 0.0f, 0.0f, fov, aspect, 0.05f, 40.0f, two, 2, 1, 0.25f));
 	}
+
+	// 地形のマップ：見ている点の後ろ（+Z）に、指定した高さの台を1つ置き、残りは高さ 0 の床
+	static STAGE MakeTerrainStage(float blockMinZ, float blockMaxZ, float blockTop)
+	{
+		STAGE stage = MakeCameraStage();
+		stage.HasTerrain = true;
+		stage.GroundBottomY = -6.0f;
+		stage.Regions[0] = { -3.0f, 3.0f, blockMinZ, blockMaxZ, 0.0f, blockTop, 0.0f, 0.0f, true, STAGE_SURFACE_CENTER };
+		stage.Regions[1] = { -30.0f, 30.0f, -30.0f, 30.0f, 0.0f, 0.0f, 0.0f, 0.0f, true, STAGE_SURFACE_FLOOR };
+		stage.RegionCount = 2;
+		return stage;
+	}
+
+	static constexpr float TERRAIN_HEAD_Y = 1.44f;					// 頭の高さ（体の高さ 1.8 × 0.8）
+	static constexpr float TERRAIN_YAW = CAMERA_PI;					// -Z を見る（カメラは +Z 側の台の上へ下がる）
+	static constexpr float TERRAIN_PITCH = -12.0f * CAMERA_PI / 180.0f;	// ふだんの見下ろす角度
+	static constexpr float TERRAIN_MIN_PITCH = -35.0f * CAMERA_PI / 180.0f;
+	static constexpr float TERRAIN_STEP = 2.5f * CAMERA_PI / 180.0f;
+	static constexpr float TERRAIN_DISTANCE = 4.5f;
+	static constexpr float TERRAIN_MARGIN = 0.3f;
+	static constexpr float TERRAIN_NEAR = 0.5f;
+
+	// 不具合の再現：頭（1.44）より低い台（1.2）を背にしても、頭の中まで寄らずに距離を保つ（前は余白 0.3 のせいで距離 0 になった）
+	TEST(CameraCalcTest, ClearDistance_LowStepBehindKeepsDistance)
+	{
+		const STAGE stage = MakeTerrainStage(0.0f, 4.0f, 1.2f);
+		const float clear = CameraCalcClearDistance({ 0.0f, TERRAIN_HEAD_Y, -0.1f }, TERRAIN_YAW, TERRAIN_PITCH, TERRAIN_DISTANCE,
+			stage, TERRAIN_MARGIN, TERRAIN_NEAR);
+		EXPECT_NEAR(TERRAIN_DISTANCE, clear, CAMERA_EPSILON);
+	}
+
+	// 頭より少し高い台は、見下ろす角度を深くして上から越え、距離は保つ
+	TEST(CameraCalcTest, ClearPitch_ClimbsOverLowTerrain)
+	{
+		const STAGE stage = MakeTerrainStage(1.0f, 3.0f, 1.5f);
+		const VEC3 head{ 0.0f, TERRAIN_HEAD_Y, 0.0f };
+		EXPECT_LT(CameraCalcClearDistance(head, TERRAIN_YAW, TERRAIN_PITCH, TERRAIN_DISTANCE, stage, TERRAIN_MARGIN, TERRAIN_NEAR), TERRAIN_DISTANCE);
+		const float pitch = CameraCalcClearPitch(head, TERRAIN_YAW, TERRAIN_PITCH, TERRAIN_DISTANCE, TERRAIN_MIN_PITCH, TERRAIN_STEP,
+			stage, TERRAIN_MARGIN, TERRAIN_NEAR);
+		EXPECT_LT(pitch, TERRAIN_PITCH);
+		EXPECT_NEAR(TERRAIN_DISTANCE, CameraCalcClearDistance(head, TERRAIN_YAW, pitch, TERRAIN_DISTANCE, stage, TERRAIN_MARGIN, TERRAIN_NEAR), CAMERA_EPSILON);
+	}
+
+	// 越えられない高い壁では、壁の手前まで近づける（壁の中には置かない）
+	TEST(CameraCalcTest, ClearPitch_TallWallStopsBeforeWall)
+	{
+		const STAGE stage = MakeTerrainStage(2.0f, 10.0f, 6.0f);
+		const VEC3 head{ 0.0f, TERRAIN_HEAD_Y, 0.0f };
+		const float pitch = CameraCalcClearPitch(head, TERRAIN_YAW, TERRAIN_PITCH, TERRAIN_DISTANCE, TERRAIN_MIN_PITCH, TERRAIN_STEP,
+			stage, TERRAIN_MARGIN, TERRAIN_NEAR);
+		const float clear = CameraCalcClearDistance(head, TERRAIN_YAW, pitch, TERRAIN_DISTANCE, stage, TERRAIN_MARGIN, TERRAIN_NEAR);
+		EXPECT_LT(clear, TERRAIN_DISTANCE);
+		EXPECT_LT(CameraCalcOrbitPosition(head, TERRAIN_YAW, pitch, clear).Z, 2.0f);
+	}
 }
