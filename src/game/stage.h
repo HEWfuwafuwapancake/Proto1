@@ -43,6 +43,10 @@ public:
 private:
 	void DrawTerrain(void) const;
 	void DrawRegion(const STAGE_REGION& region) const;
+	float GetSolidDrawBottom(int index) const;	// 実体の区画を描く下端の高さ（下に床があればその上面か穴の底、なければ地盤の下面）
+	float GetHoleBottom(int floorIndex) const;	// 床に開ける穴の底の高さ（穴がなければ床の上面）
+	static float GetRegionLow(const STAGE_REGION& region);	// 区画の上面のいちばん低い高さ
+	static bool IsHole(const STAGE_REGION& region, const STAGE_REGION& floor);	// 区画が床の穴になるか（重なっていて、床より低い所がある）
 	void DrawMarks(void) const;
 
 	STAGE m_Stage = {};		// 浮島・高台・場外の線
