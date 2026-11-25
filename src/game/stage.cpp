@@ -38,7 +38,6 @@ static constexpr XMFLOAT4 MARKET_BASE_COLOR = { 1.00f, 0.45f, 0.62f, 1.0f };		//
 static constexpr XMFLOAT4 MARKET_LINE_COLOR = { 1.00f, 1.00f, 1.00f, 1.0f };		// 地割れの縁の白線
 static constexpr float BRIDGE_DRAW_THICKNESS = 0.5f;	// 片面の橋の板の厚さ（見た目だけ）
 static constexpr float RAMP_SLAB_THICKNESS = 0.5f;		// 坂の上面の板の厚さ（見た目だけ）
-static constexpr int RAMP_COLUMNS = 8;					// 坂の下を埋める段の数（見た目だけ）
 static constexpr float MARK_LIFT = 0.02f;				// 床に描く印を浮かせる高さ（床と重ならないように）
 static constexpr float POST_EDGE_WIDTH = 0.20f;			// 郵便局の外周の帯の幅
 static constexpr float MARKET_LINE_WIDTH = 0.15f;		// 市場の縁の白線の幅
@@ -193,7 +192,7 @@ void Stage::DrawRegion(const STAGE_REGION& region) const
 		return;
 	}
 
-	// 坂：上面に沿った板と、その下を埋める段（実体の坂だけ）。
+	// 坂：上面に沿った板と、その下を埋める「くさび＋箱」（実体の坂だけ）。
 	const bool alongX = region.SlopeX != 0.0f;
 	const float lowA = alongX ? region.MinX : region.MinZ;
 	const float highA = alongX ? region.MaxX : region.MaxZ;
@@ -207,16 +206,17 @@ void Stage::DrawRegion(const STAGE_REGION& region) const
 	to.y -= RAMP_SLAB_THICKNESS * 0.5f;
 	ShapeDrawBoxAlong(from, to, alongX ? depth : width, RAMP_SLAB_THICKNESS, color);
 	if (!region.Solid) return;
-	for (int i = 0; i < RAMP_COLUMNS; ++i) {
-		const float a0 = lowA + (highA - lowA) * i / RAMP_COLUMNS;
-		const float a1 = lowA + (highA - lowA) * (i + 1) / RAMP_COLUMNS;
-		const float top = fminf(point(a0).y, point(a1).y) - RAMP_SLAB_THICKNESS * 0.5f;
-		const float bottom = m_Stage.GroundBottomY;
-		if (top <= bottom) continue;
-		const float mid = (a0 + a1) * 0.5f;
-		const XMFLOAT3 center{ alongX ? mid : centerX, (top + bottom) * 0.5f, alongX ? centerZ : mid };
-		const XMFLOAT3 size{ alongX ? a1 - a0 : width, top - bottom, alongX ? depth : a1 - a0 };
-		ShapeDrawBox(center, size, color);
+	// くさびの斜めの面は板の真ん中（上面より板の厚さの半分だけ下）に置き、板の中に隠す。
+	// その下は、低い側の端の高さから地盤の下面までを箱で埋める。
+	const float rise = to.y - from.y;	// 範囲の大きい側の端が、小さい側の端よりどれだけ高いか
+	const float base = fminf(from.y, to.y);
+	const float length = highA - lowA;
+	const float across = alongX ? depth : width;
+	ShapeDrawWedge({ centerX, base + fabsf(rise) * 0.5f, centerZ }, length, fabsf(rise), across,
+		alongX ? rise : 0.0f, alongX ? 0.0f : rise, color);
+	const float bottom = m_Stage.GroundBottomY;
+	if (base > bottom) {
+		ShapeDrawBox({ centerX, (base + bottom) * 0.5f, centerZ }, { width, base - bottom, depth }, color);
 	}
 }
 

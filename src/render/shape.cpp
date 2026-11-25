@@ -22,6 +22,7 @@ struct MESH
 static MESH g_Box = {};			// 1辺 1.0 の箱（中心が原点）
 static MESH g_Sphere = {};		// 半径 1.0 の球（中心が原点）
 static MESH g_Cylinder = {};	// 半径 1.0・高さ 1.0 の円柱の側面（中心が原点。ふたはない）
+static MESH g_Wedge = {};		// 1辺 1.0 の箱を斜めに半分に切ったくさび（中心が原点。+X へ上る）
 
 
 // 頂点とインデックスからバッファを作る（中身を変えないので DEFAULT で作り、作るときにデータを渡す）
@@ -160,6 +161,49 @@ static void CreateCylinder(void)
 	g_Cylinder = CreateMesh(vertex, ROWS * COLS, index, (ROWS - 1) * (COLS - 1) * 6);
 }
 
+// くさび：底面（y = -0.5）は全面、+X の端（x = +0.5）は縦の面、-X の下の辺から +X の上の辺へ斜めの面。
+static void CreateWedge(void)
+{
+	static constexpr int VERTEX_COUNT = 18;	// 三角形2枚（3＋3）と四角形3枚（4×3）
+	static constexpr int INDEX_COUNT = 24;	// 三角形2枚（3＋3）と四角形3枚（6×3）
+	const XMFLOAT3 a{ -0.5f, -0.5f, -0.5f }, b{ 0.5f, -0.5f, -0.5f }, c{ 0.5f, 0.5f, -0.5f };	// 手前（-Z）の三角形
+	const XMFLOAT3 a2{ -0.5f, -0.5f, 0.5f }, b2{ 0.5f, -0.5f, 0.5f }, c2{ 0.5f, 0.5f, 0.5f };	// 奥（+Z）の三角形
+	const float s = 0.70710678f;	// 1 ÷ √2
+	// 各面の頂点（外から見て時計回りに並べる）と法線
+	struct FACE { XMFLOAT3 Points[4]; int PointCount; XMFLOAT3 Normal; };
+	const FACE faces[] = {
+		{ { a, c, b }, 3, { 0.0f, 0.0f, -1.0f } },			// 手前
+		{ { b2, c2, a2 }, 3, { 0.0f, 0.0f, 1.0f } },		// 奥
+		{ { c, c2, b, b2 }, 4, { 1.0f, 0.0f, 0.0f } },		// 高い側の縦の面（左上・右上・左下・右下）
+		{ { a, b, a2, b2 }, 4, { 0.0f, -1.0f, 0.0f } },		// 底面
+		{ { c2, c, a2, a }, 4, { -s, s, 0.0f } },			// 斜めの面
+	};
+
+	VERTEX_3D vertex[VERTEX_COUNT];
+	WORD index[INDEX_COUNT];
+	int vertexCount = 0, indexCount = 0;
+	for (const FACE& face : faces) {
+		const WORD first = (WORD)vertexCount;
+		for (int j = 0; j < face.PointCount; j++) {
+			VERTEX_3D& v = vertex[vertexCount++];
+			v.Position = face.Points[j];
+			v.Normal = face.Normal;
+			v.Diffuse = { 1.0f, 1.0f, 1.0f, 1.0f };
+			v.TexCoord = { (float)(j % 2), (float)(j / 2) };
+		}
+		if (face.PointCount == 3) {
+			index[indexCount++] = first; index[indexCount++] = first + 1; index[indexCount++] = first + 2;
+		} else {
+			AddGridIndices(&index[indexCount], 2, 2);
+			for (int j = 0; j < 6; j++) {
+				index[indexCount + j] += first;
+			}
+			indexCount += 6;
+		}
+	}
+	g_Wedge = CreateMesh(vertex, VERTEX_COUNT, index, INDEX_COUNT);
+}
+
 // 形を、ワールド行列と色を指定して描く
 static void DrawMesh(const MESH& mesh, const XMMATRIX& world, const XMFLOAT4& color)
 {
@@ -184,10 +228,12 @@ void ShapeInitialize(void)
 	CreateBox();
 	CreateSphere();
 	CreateCylinder();
+	CreateWedge();
 }
 
 void ShapeFinalize(void)
 {
+	ReleaseMesh(g_Wedge);
 	ReleaseMesh(g_Cylinder);
 	ReleaseMesh(g_Sphere);
 	ReleaseMesh(g_Box);
@@ -228,6 +274,14 @@ void ShapeDrawBoxAlong(const XMFLOAT3& start, const XMFLOAT3& end, float width, 
 	const XMMATRIX world = XMMatrixSet(x.X, x.Y, x.Z, 0, y.X, y.Y, y.Z, 0,
 		z.X, z.Y, z.Z, 0, center.X, center.Y, center.Z, 1);
 	DrawMesh(g_Box, world, color);
+}
+
+void ShapeDrawWedge(const XMFLOAT3& center, float length, float height, float width, float directionX, float directionZ, const XMFLOAT4& color)
+{
+	if (length <= 0.0f || height <= 0.0f || width <= 0.0f) return;
+	// くさびは +X へ上るので、Y 軸まわりに回して +X を上る向きに合わせる（XMMatrixRotationY は +X を (cos, 0, -sin) へ回す）。
+	const float angle = atan2f(-directionZ, directionX);
+	DrawMesh(g_Wedge, XMMatrixScaling(length, height, width) * XMMatrixRotationY(angle) * XMMatrixTranslation(center.x, center.y, center.z), color);
 }
 
 void ShapeDrawCapsule(const XMFLOAT3& bottom, float radius, float height, const XMFLOAT4& color)
