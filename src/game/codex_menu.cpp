@@ -61,7 +61,8 @@ static constexpr float RESULT_PANEL_HEIGHT = 384.0f;
 static constexpr float RESULT_PANEL_GAP = 16.0f;
 static constexpr float RESULT_WINNER_RISE = 28.0f; // 1位のパネルだけ上へ伸ばす高さ
 static constexpr float RESULT_BUTTON_X = 950.0f; // 結果のメニューのボタン
-static constexpr float RESULT_BUTTON_WIDTH = 230.0f;
+static constexpr float RESULT_BUTTON_WIDTH = 230.0f; // 選んだボタンの幅（ここから右へ伸びる）
+static constexpr float RESULT_BUTTON_IDLE_WIDTH = 270.0f; // 選んでいないボタンの幅（「キャラ選択へ」が全部見える幅）
 static constexpr float RESULT_BUTTON_TOP = 300.0f;
 static constexpr float RESULT_BUTTON_GAP = 78.0f;
 static constexpr float COST_LEFT = 40.0f; // 耐久の減る量の表の左端
@@ -701,12 +702,15 @@ void CodexMenu::DrawResult(const SceneCalc& scene, const VersusCalc& participant
 		Word("KO", x + 30, top + height - 48, 17, WHITE, TEXT2D_FONT_POP);
 		Word(text, x + RESULT_PANEL_WIDTH - 30, top + height - 54, 26, LIME, TEXT2D_FONT_POP, GLYPH_ALIGN_RIGHT);
 	}
-	Button(0, "もう一度", "", scene.GetCursor() == RESULT_ITEM_RETRY, false,
-		RESULT_BUTTON_X, RESULT_BUTTON_TOP, RESULT_BUTTON_WIDTH, 62);
-	Button(1, "キャラ選択へ", "", scene.GetCursor() == RESULT_ITEM_CHARACTER, false,
-		RESULT_BUTTON_X, RESULT_BUTTON_TOP + RESULT_BUTTON_GAP, RESULT_BUTTON_WIDTH, 62);
-	Button(2, "メニューへ", "", scene.GetCursor() == RESULT_ITEM_TITLE, true,
-		RESULT_BUTTON_X, RESULT_BUTTON_TOP + RESULT_BUTTON_GAP * 2, RESULT_BUTTON_WIDTH, 62);
+	// 選んでいないボタンは文字が全部見える幅にし、選んだボタンは元の幅から右へ伸ばす（画面の右端からはみ出さない）。
+	const auto resultButton = [&](int index, const char* title, int item, bool dark) {
+		const bool selected = scene.GetCursor() == item;
+		Button(index, title, "", selected, dark, RESULT_BUTTON_X, RESULT_BUTTON_TOP + RESULT_BUTTON_GAP * index,
+			selected ? RESULT_BUTTON_WIDTH : RESULT_BUTTON_IDLE_WIDTH, 62);
+	};
+	resultButton(0, "もう一度", RESULT_ITEM_RETRY, false);
+	resultButton(1, "キャラ選択へ", RESULT_ITEM_CHARACTER, false);
+	resultButton(2, "メニューへ", RESULT_ITEM_TITLE, true);
 	Word("同じ参加者・キャラでもう一度", RESULT_BUTTON_X + 10, RESULT_BUTTON_TOP - 30, 14, INK);
 	Footer("1P : ↑↓ / W S / 左スティック  選ぶ    Enter / ○  決定    （オンラインのメニューへは、ロビーへ戻ります）");
 }
