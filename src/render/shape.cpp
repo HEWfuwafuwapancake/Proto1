@@ -22,7 +22,7 @@ struct MESH
 static MESH g_Box = {};			// 1辺 1.0 の箱（中心が原点）
 static MESH g_Sphere = {};		// 半径 1.0 の球（中心が原点）
 static MESH g_Cylinder = {};	// 半径 1.0・高さ 1.0 の円柱の側面（中心が原点。ふたはない）
-static MESH g_Wedge = {};		// 1辺 1.0 の箱を斜めに半分に切ったくさび（中心が原点。+X へ上る）
+static ID3D11Buffer* g_SlopedBoxVertexBuffer = nullptr;	// 上面が斜めの箱の頂点（描くたびに書き換える。インデックスは箱のものを使う）
 
 
 // 頂点とインデックスからバッファを作る（中身を変えないので DEFAULT で作り、作るときにデータを渡す）
@@ -71,11 +71,15 @@ static void AddGridIndices(WORD* index, int rows, int cols)
 	}
 }
 
-static void CreateBox(void)
+static constexpr int BOX_FACE_COUNT = 6;
+static constexpr int BOX_VERTEX_COUNT = BOX_FACE_COUNT * 4;
+static constexpr int BOX_TOP_FACE = 4;	// 上の面の番号（MakeBoxVertices の並び）
+
+// 1辺 1.0 の箱（中心が原点）の頂点を、面ごとに「左上・右上・左下・右下」の順で作る
+static void MakeBoxVertices(VERTEX_3D* vertex)
 {
-	static constexpr int FACE_COUNT = 6;
 	// 各面の「法線」「外から見て右向き」「外から見て上向き」（作り方は stage.cpp と同じ）
-	const XMFLOAT3 faces[FACE_COUNT][3] = {
+	const XMFLOAT3 faces[BOX_FACE_COUNT][3] = {
 		{ {  0.0f,  0.0f, -1.0f }, {  1.0f, 0.0f,  0.0f }, { 0.0f, 1.0f,  0.0f } },	// 手前
 		{ {  0.0f,  0.0f,  1.0f }, { -1.0f, 0.0f,  0.0f }, { 0.0f, 1.0f,  0.0f } },	// 奥
 		{ {  1.0f,  0.0f,  0.0f }, {  0.0f, 0.0f,  1.0f }, { 0.0f, 1.0f,  0.0f } },	// 右
@@ -83,10 +87,7 @@ static void CreateBox(void)
 		{ {  0.0f,  1.0f,  0.0f }, {  1.0f, 0.0f,  0.0f }, { 0.0f, 0.0f,  1.0f } },	// 上
 		{ {  0.0f, -1.0f,  0.0f }, {  1.0f, 0.0f,  0.0f }, { 0.0f, 0.0f, -1.0f } },	// 下
 	};
-
-	VERTEX_3D vertex[FACE_COUNT * 4];
-	WORD index[FACE_COUNT * 6];
-	for (int i = 0; i < FACE_COUNT; i++) {
+	for (int i = 0; i < BOX_FACE_COUNT; i++) {
 		XMVECTOR r = XMLoadFloat3(&faces[i][1]) * 0.5f;
 		XMVECTOR u = XMLoadFloat3(&faces[i][2]) * 0.5f;
 		XMVECTOR c = XMLoadFloat3(&faces[i][0]) * 0.5f;	// 面の中心
@@ -101,14 +102,30 @@ static void CreateBox(void)
 			v[j].Diffuse = { 1.0f, 1.0f, 1.0f, 1.0f };
 			v[j].TexCoord = { (float)(j % 2), (float)(j / 2) };
 		}
+	}
+}
 
+static void CreateBox(void)
+{
+	VERTEX_3D vertex[BOX_VERTEX_COUNT];
+	WORD index[BOX_FACE_COUNT * 6];
+	MakeBoxVertices(vertex);
+	for (int i = 0; i < BOX_FACE_COUNT; i++) {
 		// 2行 × 2列の格子として三角形2枚にする
 		AddGridIndices(&index[i * 6], 2, 2);
 		for (int j = 0; j < 6; j++) {
 			index[i * 6 + j] += (WORD)(i * 4);
 		}
 	}
-	g_Box = CreateMesh(vertex, FACE_COUNT * 4, index, FACE_COUNT * 6);
+	g_Box = CreateMesh(vertex, BOX_VERTEX_COUNT, index, BOX_FACE_COUNT * 6);
+
+	// 上面が斜めの箱は、同じ並びの頂点を描くたびに書き換えるので DYNAMIC で作る
+	D3D11_BUFFER_DESC bd{};
+	bd.Usage = D3D11_USAGE_DYNAMIC;
+	bd.ByteWidth = sizeof(VERTEX_3D) * BOX_VERTEX_COUNT;
+	bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	DirectXGetDevice()->CreateBuffer(&bd, nullptr, &g_SlopedBoxVertexBuffer);
 }
 
 // 球の表面の点（stack：上から何段目、slice：手前から右回りに何列目）。θ = 0 が手前（-Z）で、θ が増えると右（+X）へ回る
@@ -161,49 +178,6 @@ static void CreateCylinder(void)
 	g_Cylinder = CreateMesh(vertex, ROWS * COLS, index, (ROWS - 1) * (COLS - 1) * 6);
 }
 
-// くさび：底面（y = -0.5）は全面、+X の端（x = +0.5）は縦の面、-X の下の辺から +X の上の辺へ斜めの面。
-static void CreateWedge(void)
-{
-	static constexpr int VERTEX_COUNT = 18;	// 三角形2枚（3＋3）と四角形3枚（4×3）
-	static constexpr int INDEX_COUNT = 24;	// 三角形2枚（3＋3）と四角形3枚（6×3）
-	const XMFLOAT3 a{ -0.5f, -0.5f, -0.5f }, b{ 0.5f, -0.5f, -0.5f }, c{ 0.5f, 0.5f, -0.5f };	// 手前（-Z）の三角形
-	const XMFLOAT3 a2{ -0.5f, -0.5f, 0.5f }, b2{ 0.5f, -0.5f, 0.5f }, c2{ 0.5f, 0.5f, 0.5f };	// 奥（+Z）の三角形
-	const float s = 0.70710678f;	// 1 ÷ √2
-	// 各面の頂点（外から見て時計回りに並べる）と法線
-	struct FACE { XMFLOAT3 Points[4]; int PointCount; XMFLOAT3 Normal; };
-	const FACE faces[] = {
-		{ { a, c, b }, 3, { 0.0f, 0.0f, -1.0f } },			// 手前
-		{ { b2, c2, a2 }, 3, { 0.0f, 0.0f, 1.0f } },		// 奥
-		{ { c, c2, b, b2 }, 4, { 1.0f, 0.0f, 0.0f } },		// 高い側の縦の面（左上・右上・左下・右下）
-		{ { a, b, a2, b2 }, 4, { 0.0f, -1.0f, 0.0f } },		// 底面
-		{ { c2, c, a2, a }, 4, { -s, s, 0.0f } },			// 斜めの面
-	};
-
-	VERTEX_3D vertex[VERTEX_COUNT];
-	WORD index[INDEX_COUNT];
-	int vertexCount = 0, indexCount = 0;
-	for (const FACE& face : faces) {
-		const WORD first = (WORD)vertexCount;
-		for (int j = 0; j < face.PointCount; j++) {
-			VERTEX_3D& v = vertex[vertexCount++];
-			v.Position = face.Points[j];
-			v.Normal = face.Normal;
-			v.Diffuse = { 1.0f, 1.0f, 1.0f, 1.0f };
-			v.TexCoord = { (float)(j % 2), (float)(j / 2) };
-		}
-		if (face.PointCount == 3) {
-			index[indexCount++] = first; index[indexCount++] = first + 1; index[indexCount++] = first + 2;
-		} else {
-			AddGridIndices(&index[indexCount], 2, 2);
-			for (int j = 0; j < 6; j++) {
-				index[indexCount + j] += first;
-			}
-			indexCount += 6;
-		}
-	}
-	g_Wedge = CreateMesh(vertex, VERTEX_COUNT, index, INDEX_COUNT);
-}
-
 // 形を、ワールド行列と色を指定して描く
 static void DrawMesh(const MESH& mesh, const XMMATRIX& world, const XMFLOAT4& color)
 {
@@ -228,12 +202,11 @@ void ShapeInitialize(void)
 	CreateBox();
 	CreateSphere();
 	CreateCylinder();
-	CreateWedge();
 }
 
 void ShapeFinalize(void)
 {
-	ReleaseMesh(g_Wedge);
+	SAFE_RELEASE(g_SlopedBoxVertexBuffer);
 	ReleaseMesh(g_Cylinder);
 	ReleaseMesh(g_Sphere);
 	ReleaseMesh(g_Box);
@@ -276,12 +249,33 @@ void ShapeDrawBoxAlong(const XMFLOAT3& start, const XMFLOAT3& end, float width, 
 	DrawMesh(g_Box, world, color);
 }
 
-void ShapeDrawWedge(const XMFLOAT3& center, float length, float height, float width, float directionX, float directionZ, const XMFLOAT4& color)
+void ShapeDrawSlopedBox(float minX, float maxX, float minZ, float maxZ, float bottomY,
+	float centerTopY, float slopeX, float slopeZ, const XMFLOAT4& color)
 {
-	if (length <= 0.0f || height <= 0.0f || width <= 0.0f) return;
-	// くさびは +X へ上るので、Y 軸まわりに回して +X を上る向きに合わせる（XMMatrixRotationY は +X を (cos, 0, -sin) へ回す）。
-	const float angle = atan2f(-directionZ, directionX);
-	DrawMesh(g_Wedge, XMMatrixScaling(length, height, width) * XMMatrixRotationY(angle) * XMMatrixTranslation(center.x, center.y, center.z), color);
+	if (maxX <= minX || maxZ <= minZ || g_SlopedBoxVertexBuffer == nullptr) return;
+	const float centerX = (minX + maxX) * 0.5f, centerZ = (minZ + maxZ) * 0.5f;
+	// 箱の頂点を、範囲と高さに合わせて置き直す（ワールド行列は使わないので、斜めの面の向きも正しく光る）。
+	VERTEX_3D vertex[BOX_VERTEX_COUNT];
+	MakeBoxVertices(vertex);
+	for (VERTEX_3D& v : vertex) {
+		const float x = v.Position.x < 0.0f ? minX : maxX;
+		const float z = v.Position.z < 0.0f ? minZ : maxZ;
+		const float top = fmaxf(bottomY, centerTopY + slopeX * (x - centerX) + slopeZ * (z - centerZ));
+		v.Position = { x, v.Position.y < 0.0f ? bottomY : top, z };
+	}
+	XMFLOAT3 topNormal;
+	XMStoreFloat3(&topNormal, XMVector3Normalize(XMVectorSet(-slopeX, 1.0f, -slopeZ, 0.0f)));
+	for (int j = 0; j < 4; j++) {
+		vertex[BOX_TOP_FACE * 4 + j].Normal = topNormal;
+	}
+
+	D3D11_MAPPED_SUBRESOURCE mapped;
+	if (FAILED(DirectXGetDeviceContext()->Map(g_SlopedBoxVertexBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped))) return;
+	memcpy(mapped.pData, vertex, sizeof(vertex));
+	DirectXGetDeviceContext()->Unmap(g_SlopedBoxVertexBuffer, 0);
+
+	const MESH mesh = { g_SlopedBoxVertexBuffer, g_Box.IndexBuffer, g_Box.IndexCount };
+	DrawMesh(mesh, XMMatrixIdentity(), color);
 }
 
 void ShapeDrawCapsule(const XMFLOAT3& bottom, float radius, float height, const XMFLOAT4& color)

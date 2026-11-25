@@ -6,7 +6,7 @@
 /// @brief 箱・球・カプセルを、位置・大きさ・色を指定して描く部品（仮の形のプレイヤー・ダミー・触腕などに使う）
 /// @details 形ごとに1つだけ頂点バッファを作っておき、描くたびにワールド行列で大きさと位置を変える
 
-/// @brief 箱・球・円柱・くさびの頂点バッファとインデックスバッファを作る
+/// @brief 箱・球・円柱・上面が斜めの箱の頂点バッファとインデックスバッファを作る
 void ShapeInitialize(void);
 
 /// @brief 形のバッファを解放する
@@ -46,14 +46,17 @@ void ShapeDrawCylinder(const XMFLOAT3& start, const XMFLOAT3& end, float radius,
 /// @param color 色（RGBA）
 void ShapeDrawBoxAlong(const XMFLOAT3& start, const XMFLOAT3& end, float width, float depth, const XMFLOAT4& color);
 
-/// @brief 横から見て直角三角形のくさびを描く（底面は水平で、決めた水平の向きへ上る。高い側の端は縦の面）
-/// @details 斜めの面の明るさは、長さと高さが同じときだけ正しい（大きさを変えると法線が斜めの面に直角でなくなる）。
-///          坂の板の下を埋めるなど、斜めの面が隠れる所に使う。
-/// @param center くさびを囲む箱の中心（ワールド座標）
-/// @param length 上る向きの長さ
-/// @param height 高さ（低い側の端は 0、高い側の端がこの高さになる）
-/// @param width 上る向きに直角で水平な向きの幅
-/// @param directionX 上る向きの X 成分（水平の向き。長さは 1 でなくてよい）
-/// @param directionZ 上る向きの Z 成分
+/// @brief 底面が水平で、上面が斜めの平面になった箱を描く（坂の地形に使う。横から見ると台形や三角形になる）
+/// @details 上面の高さは H = centerTopY + slopeX × (x − 範囲の中心の x) + slopeZ × (z − 範囲の中心の z)。
+///          H が底面より低くなる所は底面の高さにそろえる。
+/// @param minX 範囲の X の小さい側
+/// @param maxX 範囲の X の大きい側
+/// @param minZ 範囲の Z の小さい側
+/// @param maxZ 範囲の Z の大きい側
+/// @param bottomY 底面の高さ
+/// @param centerTopY 範囲の中心での上面の高さ
+/// @param slopeX 上面の高さが x 1 あたりに増える量
+/// @param slopeZ 上面の高さが z 1 あたりに増える量
 /// @param color 色（RGBA）
-void ShapeDrawWedge(const XMFLOAT3& center, float length, float height, float width, float directionX, float directionZ, const XMFLOAT4& color);
+void ShapeDrawSlopedBox(float minX, float maxX, float minZ, float maxZ, float bottomY,
+	float centerTopY, float slopeX, float slopeZ, const XMFLOAT4& color);
