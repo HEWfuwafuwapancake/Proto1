@@ -111,7 +111,7 @@ void ArmManager::ChangeType(int hand, int next, int direction)
 #endif
 }
 
-void ArmManager::Initialize(const Stage& stage, FighterManager& fighters, int slot, const Camera& camera)
+void ArmManager::Initialize(Stage& stage, FighterManager& fighters, int slot, const Camera& camera)
 {
 	m_Links = { &fighters, slot, &camera, &stage, this };
 	m_Rule = GAME_RULE_DEBUG;
@@ -662,6 +662,8 @@ int Arm::Explode(const VEC3& center, float radius, float damage, float power, fl
 		if (applied && affected != nullptr) ++*affected;
 		++hits;
 	}
+	// 爆風の中の柱は、爆心から外へ倒れる。
+	StrikePillarsOutward([&](const CAPSULE& body) { return CollisionSphereCapsule({ center, radius }, body).Hit; }, damage, center);
 	return hits;
 }
 

@@ -677,6 +677,11 @@ void Fighter::Boost(const VEC3& velocity)
 	m_Dash.Cancel();
 }
 
+float Fighter::GetBoostGravity()
+{
+	return KNOCKBACK_GRAVITY; // Boost は吹っ飛びと同じ物理で飛ぶ
+}
+
 void Fighter::Hit(const VEC3& direction, float damage, float power)
 {
 	if (!IsActive()) return;

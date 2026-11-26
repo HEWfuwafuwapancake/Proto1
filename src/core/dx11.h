@@ -52,6 +52,10 @@ void SetViewport(float x, float y, float width, float height);
 /// @brief 画面（空の色）と深度バッファを消す（毎フレーム、描く前に呼ぶ）
 void Clear(void);
 
+/// @brief Clear で消す空の色を設定する（マップごとの空。次に Clear したときから使う）
+/// @param color 空の色（RGBA）
+void SetClearColor(const XMFLOAT4& color);
+
 /// @brief 描いた画面を表示する（毎フレーム、描き終わったら呼ぶ）
 /// @details dx11.cpp の VSYNC が true なら、モニターの書き換え（垂直同期）を待ってから表示する
 void Present(void);

@@ -119,10 +119,13 @@ void FlailArm::StrikeFan()
 	int hitTarget = -1; // 音を鳴らす相手（何人に当たっても音は1回）
 	// ロックオン中は、高台の上・下の相手へも扇を傾けて振る。
 	const VEC3 strike = GetStrikeDirection(m_Direction);
+	const auto inside = [&](const CAPSULE& body) {
+		return AreaCalcInAimedSector(GetShoulder(), strike, 0.0f, FAN_RADIUS, FAN_HALF_ANGLE, FAN_HALF_HEIGHT, body);
+	};
+	StrikePillars(inside, FAN_DAMAGE, m_Direction);
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		const TENTACLE_TARGET target = GetFighters().GetMeleeTarget(i, GetSlot());
-		if (!target.Available
-			|| !AreaCalcInAimedSector(GetShoulder(), strike, 0.0f, FAN_RADIUS, FAN_HALF_ANGLE, FAN_HALF_HEIGHT, target.Body)) continue;
+		if (!target.Available || !inside(target.Body)) continue;
 		if (GetFighters().Launch(i, GetSlot(), AreaCalcLaunchDirection(m_Direction, FAN_UP), FAN_DAMAGE, FAN_POWER)) {
 			hit = true;
 			hitTarget = i;
@@ -150,12 +153,15 @@ void FlailArm::StepSpin(float dt)
 	const VEC3 center = GetSpinCenter();
 	bool hit = false;
 	int hitTarget = -1;
+	// 輪の半径（＋鉄球の太さ）の中なら、前後左右どこでも当たる（扇の開きを半周にして全方向）。
+	const auto inside = [&](const CAPSULE& body) {
+		return AreaCalcInSector(center, GetForward(), 0.0f, SPIN_RADIUS + BALL_RADIUS, XM_PI, BALL_RADIUS, body);
+	};
+	StrikePillarsOutward(inside, SPIN_DAMAGE, center);
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		m_SpinCooldowns[i] = fmaxf(0.0f, m_SpinCooldowns[i] - dt);
 		const TENTACLE_TARGET target = GetFighters().GetMeleeTarget(i, GetSlot());
-		// 輪の半径（＋鉄球の太さ）の中なら、前後左右どこでも当たる（扇の開きを半周にして全方向）。
-		if (!target.Available || m_SpinCooldowns[i] > 0.0f
-			|| !AreaCalcInSector(center, GetForward(), 0.0f, SPIN_RADIUS + BALL_RADIUS, XM_PI, BALL_RADIUS, target.Body)) continue;
+		if (!target.Available || m_SpinCooldowns[i] > 0.0f || !inside(target.Body)) continue;
 		m_SpinCooldowns[i] = SPIN_HIT_COOLDOWN;
 		if (GetFighters().Launch(i, GetSlot(), AreaCalcRadialDirection(center, target.Body, SPIN_UP, GetForward()), SPIN_DAMAGE, SPIN_POWER)) {
 			hit = true;
@@ -192,6 +198,7 @@ void FlailArm::StepBall(float dt)
 	const FLAIL_STATE moving = m_Ball.GetState();
 	m_Ball.Step(dt, GetShoulder(), THROW_PARAMS);
 	const CAPSULE sweep{ m_Ball.GetPrevious(), m_Ball.GetPosition(), BALL_RADIUS };
+	StrikePillarsOnLine(sweep, moving == FLAIL_OUT ? OUT_DAMAGE : BACK_DAMAGE, m_Ball.GetMoveDirection());
 	HitRecord& hits = moving == FLAIL_OUT ? m_OutHits : m_BackHits;
 	bool hit = false;
 	int hitTarget = -1;

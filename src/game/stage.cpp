@@ -1,4 +1,8 @@
 ﻿#include "game/stage.h"
+#include "core/dx11.h"
+#include "core/gametime.h"
+#include "core/shader.h"
+#include "render/model.h"
 #include "render/shape.h"
 #include <math.h>
 
@@ -45,24 +49,50 @@ static constexpr float POST_EDGE_WIDTH = 0.20f;			// 郵便局の外周の帯の
 static constexpr float MARKET_LINE_WIDTH = 0.15f;		// 市場の縁の白線の幅
 static constexpr float MARKET_LINE_DASH = 1.2f;			// 欠けた白線の1本の長さ（同じだけ空ける）
 static constexpr float SQRT2 = 1.41421356f;
+// 空の色と、モデルで描くマップの景観（並びは STAGE_MAP と同じ。モデルは頂点の色にライトを焼き込んだ GLB）
+static constexpr XMFLOAT4 DEFAULT_SKY_COLOR = { 0.4f, 0.6f, 0.9f, 1.0f };	// 郵便局・市場・浮島の空（今までの青）
+/// @brief マップごとの見た目（空の色と景観のモデル）
+struct MAP_LOOK
+{
+	XMFLOAT4 Sky;		// 空の色
+	const char* Model;	// 景観のモデル（nullptr なら区画の箱で描く）
+};
+static constexpr MAP_LOOK MAP_LOOKS[STAGE_MAP_COUNT] = {
+	{ DEFAULT_SKY_COLOR, nullptr },										// 郵便局
+	{ DEFAULT_SKY_COLOR, nullptr },										// 市場
+	{ { 0.30f, 0.13f, 0.43f, 1.0f }, "assets/models/maps/neon.glb" },		// ネオンビル群（紫の夕空）
+	{ { 0.63f, 0.43f, 0.31f, 1.0f }, "assets/models/maps/coliseum.glb" },	// コロシアム（砂岩の色）
+	{ { 0.57f, 0.83f, 0.90f, 1.0f }, "assets/models/maps/station.glb" },	// 廃駅（晴天の水色）
+	{ DEFAULT_SKY_COLOR, nullptr },										// 浮島
+};
+static constexpr const char* COLUMN_MODEL = "assets/models/maps/coliseum_column.glb";	// 倒れる柱（根元が原点、+Y が柱の先）
+static constexpr float COLUMN_DAMAGE_SHADE = 0.35f;	// 柱の耐久が尽きたときに暗くする割合（傷みを色で見せる）
 
+
+STAGE Stage::MakeIsland(void)
+{
+	STAGE stage{};
+	stage.CenterX = 0.0f;
+	stage.CenterZ = 0.0f;
+	stage.HalfWidth = STAGE_WIDTH * 0.5f;
+	stage.HalfDepth = STAGE_DEPTH * 0.5f;
+	stage.TopY = STAGE_TOP_Y;
+	stage.Thickness = STAGE_THICKNESS;
+	stage.OutY = OUT_Y;
+	stage.PlatformCount = STAGE_PLATFORM_COUNT;
+	for (int i = 0; i < stage.PlatformCount; ++i) {
+		stage.Platforms[i] = STAGE_PLATFORMS[i];
+	}
+	return stage;
+}
 
 void Stage::Reset(void)
 {
-	m_Stage = STAGE{};
+	m_Stage = MakeIsland();
 	m_Map = STAGE_MAP_ISLAND;
 	m_Scale = 1.0f;
-	m_Stage.CenterX = 0.0f;
-	m_Stage.CenterZ = 0.0f;
-	m_Stage.HalfWidth = STAGE_WIDTH * 0.5f;
-	m_Stage.HalfDepth = STAGE_DEPTH * 0.5f;
-	m_Stage.TopY = STAGE_TOP_Y;
-	m_Stage.Thickness = STAGE_THICKNESS;
-	m_Stage.OutY = OUT_Y;
-	m_Stage.PlatformCount = STAGE_PLATFORM_COUNT;
-	for (int i = 0; i < m_Stage.PlatformCount; ++i) {
-		m_Stage.Platforms[i] = STAGE_PLATFORMS[i];
-	}
+	m_Pillars.Setup(m_Stage);
+	SetClearColor(MAP_LOOKS[m_Map].Sky);
 }
 
 void Stage::SetMap(STAGE_MAP map, float scale)
@@ -73,6 +103,19 @@ void Stage::SetMap(STAGE_MAP map, float scale)
 	}
 	m_Map = map;
 	m_Scale = scale;
+	// 作り直すたびに柱を全部立て直す（試合の始め・もう一度でも元に戻る）。空の色は次の画面を消すときから使う。
+	m_Pillars.Setup(m_Stage);
+	SetClearColor(MAP_LOOKS[m_Map].Sky);
+}
+
+void Stage::HitPillar(int index, int source, int attacker, float damage, const VEC3& direction)
+{
+	m_Pillars.Hit(index, source, attacker, damage, direction);
+}
+
+int Stage::StepPillars(const CAPSULE (&bodies)[FIGHTER_COUNT], const bool (&hittable)[FIGHTER_COUNT], PILLAR_IMPACT impacts[], int maxImpacts)
+{
+	return m_Pillars.Step(GameTimeGetDeltaTime(), bodies, hittable, m_Stage, impacts, maxImpacts);
 }
 
 void Stage::SetSizeScale(float scale)
@@ -99,6 +142,10 @@ void Stage::Update(void)
 
 void Stage::Draw(void) const
 {
+	if (m_MapModels[m_Map] >= 0) {
+		DrawModelMap(m_MapModels[m_Map]);
+		return;
+	}
 	if (m_Stage.HasTerrain) {
 		DrawTerrain();
 		return;
@@ -123,7 +170,28 @@ const STAGE& Stage::GetStage(void) const
 
 void Stage::Initialize(void)
 {
+	// 景観のモデルは起動時に1回だけ読む（マップを選び直しても読み直さない）。
+	for (int i = 0; i < STAGE_MAP_COUNT; ++i) m_MapModels[i] = MAP_LOOKS[i].Model ? ModelLoad(MAP_LOOKS[i].Model) : -1;
+	m_ColumnModel = ModelLoad(COLUMN_MODEL);
 	Reset();
+}
+
+void Stage::DrawModelMap(int model) const
+{
+	// 景観は頂点の色にライトを焼き込んであるので、ライトを切って描く。マップの広さの倍率は XZ だけに掛ける（高さはそのまま）。
+	static constexpr XMFLOAT4 WHITE = { 1.0f, 1.0f, 1.0f, 1.0f };
+	const float s = m_Scale;
+	Shader_SetLightEnable(false);
+	ModelDraw(model, { 0.0f, 0.0f, 0.0f }, { s, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f, s }, WHITE);
+	for (int i = 0; i < m_Pillars.GetCount(); ++i) {
+		// 柱は根元を中心に、倒れる向きへ傾ける（太さだけ広さの倍率にする）。傷むほど暗くする。
+		const PILLAR_POSE pose = m_Pillars.GetPose(i);
+		const float shade = 1.0f - pose.Damage * COLUMN_DAMAGE_SHADE;
+		ModelDraw(m_ColumnModel, { pose.Base.X, pose.Base.Y, pose.Base.Z },
+			{ pose.Side.X * s, pose.Side.Y * s, pose.Side.Z * s }, { pose.Axis.X, pose.Axis.Y, pose.Axis.Z },
+			{ pose.Front.X * s, pose.Front.Y * s, pose.Front.Z * s }, { shade, shade, shade, 1.0f });
+	}
+	Shader_SetLightEnable(true);
 }
 
 void Stage::DrawTerrain(void) const

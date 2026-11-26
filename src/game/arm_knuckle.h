@@ -40,6 +40,8 @@ public:
 
 private:
 	int FindTarget(float reach, float radius) const;
+	VEC3 GetPunchDirection() const; // 突きの線の向き（空中の突進は進む向き、それ以外は狙う相手の高さへ）
+	void StrikePillarsOnPunch(float reach, float radius, float damage) const; // 突きの線にかかる柱に当てる
 	const float* GetSeconds() const;
 	bool IsOffStage() const;
 	float GetAirRushPitch() const;

@@ -190,10 +190,13 @@ void KatanaArm::SlashTargets()
 	int hitTarget = -1; // 音を鳴らす相手（何人に当たっても音は1回）
 	// ロックオン中は、高台の上・下の相手へも扇を傾けて斬る。
 	const VEC3 strike = GetStrikeDirection(m_Direction);
+	const auto inside = [&](const CAPSULE& body) {
+		return AreaCalcInAimedSector(GetShoulder(), strike, 0.0f, TAP_RADIUS, TAP_HALF_ANGLE, IAI_HALF_HEIGHT, body);
+	};
+	StrikePillars(inside, TAP_DAMAGE, m_Direction);
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		const TENTACLE_TARGET target = GetFighters().GetMeleeTarget(i, GetSlot());
-		if (!target.Available || m_Hits.Contains(i)
-			|| !AreaCalcInAimedSector(GetShoulder(), strike, 0.0f, TAP_RADIUS, TAP_HALF_ANGLE, IAI_HALF_HEIGHT, target.Body)) continue;
+		if (!target.Available || m_Hits.Contains(i) || !inside(target.Body)) continue;
 		m_Hits.TryAdd(i);
 		const bool applied = GetFighters().Launch(i, GetSlot(), AreaCalcLaunchDirection(m_Direction, TAP_UP), TAP_DAMAGE, TAP_POWER);
 		if (applied && !m_IaiConsumed) {
@@ -215,10 +218,13 @@ void KatanaArm::SlashTargets()
 void KatanaArm::IaiTargets()
 {
 	bool hit = false;
+	const auto inside = [&](const CAPSULE& body) {
+		return AreaCalcInSector(GetShoulder(), m_IaiDirection, 0.0f, IAI_RADIUS, IAI_HALF_ANGLE, IAI_HALF_HEIGHT, body);
+	};
+	StrikePillars(inside, IAI_DAMAGE, m_IaiDirection);
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		const TENTACLE_TARGET target = GetFighters().GetMeleeTarget(i, GetSlot());
-		if (!target.Available || m_Hits.Contains(i)
-			|| !AreaCalcInSector(GetShoulder(), m_IaiDirection, 0.0f, IAI_RADIUS, IAI_HALF_ANGLE, IAI_HALF_HEIGHT, target.Body)) continue;
+		if (!target.Available || m_Hits.Contains(i) || !inside(target.Body)) continue;
 		m_Hits.TryAdd(i);
 		DELAYED_HIT slash;
 		slash.Target = i;
@@ -244,6 +250,7 @@ void KatanaArm::DashTargets(const VEC3& from, const VEC3& to)
 	const VEC3 height{ 0.0f, GetPlayer().GetHeight() * 0.5f, 0.0f };
 	const CAPSULE path{ Vec3Add(from, height), Vec3Add(to, height), DASH_HIT_RADIUS };
 	const VEC3 flat = ArmCalcPitchDirection(m_Direction, 0.0f);
+	StrikePillarsOnLine(path, DASH_DAMAGE, flat);
 	bool hit = false;
 	int hitTarget = -1;
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
@@ -304,6 +311,7 @@ void KatanaArm::PierceTargets(const VEC3& from, const VEC3& to)
 	const VEC3 height{ 0.0f, GetPlayer().GetHeight() * 0.5f, 0.0f };
 	const CAPSULE path{ Vec3Add(from, height), Vec3Add(to, height), PIERCE_HIT_RADIUS };
 	const VEC3 flat = ArmCalcPitchDirection(m_Direction, 0.0f);
+	StrikePillarsOnLine(path, PIERCE_DAMAGE, flat);
 	bool hit = false;
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		const TENTACLE_TARGET target = GetFighters().GetMeleeTarget(i, GetSlot());

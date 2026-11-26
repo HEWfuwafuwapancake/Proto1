@@ -89,6 +89,11 @@ void Shader_SetMaterial(const MATERIAL& material);
 /// @param light 平行光源（2D描画のときは Enable を FALSE にする）
 void Shader_SetLight(const LIGHT& light);
 
+/// @brief 最後に設定したライトの向き・色のまま、ライトの計算をするかだけを切り替える
+/// @details 頂点の色にライトを焼き込んだモデル（マップの景観）を描くときに、いったん切って、描いたら戻す
+/// @param enable ライトの計算を設定する（true：する、false：しない（頂点の色 × マテリアルの色をそのまま出す））
+void Shader_SetLightEnable(bool enable);
+
 /// @brief ふつうの3D／2D用のシェーダーに切り替える
 void Shader_Begin();
 

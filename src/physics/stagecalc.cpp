@@ -1,5 +1,6 @@
 ﻿#include <math.h>
 #include "physics/stagecalc.h"
+#include <float.h>
 
 // 調整用の値
 static constexpr float GRIP_SPACING = 0.25f;			// ふちを調べる点の間隔
@@ -16,9 +17,27 @@ static constexpr float BRIDGE_THICKNESS = 0.5f;			// 片面の橋を、線をさ
 static constexpr int BODY_SAMPLES = 8;					// 体の側面を調べる、円周上の点の数
 
 
-static bool IsInsideRegion(const STAGE_REGION& region, float x, float z)
+static constexpr float ABOVE_ALL = FLT_MAX;			// 足の高さを決めずに調べるとき（片面の橋も含めて、いちばん上の区画を使う）
+
+
+bool StageCalcIsInsideRegion(const STAGE_REGION& region, float x, float z)
 {
-	if (x < region.MinX || x > region.MaxX || z < region.MinZ || z > region.MaxZ) return false;
+	const float centerX = (region.MinX + region.MaxX) * 0.5f;
+	const float centerZ = (region.MinZ + region.MaxZ) * 0.5f;
+	if (region.Yaw == 0.0f) {
+		if (x < region.MinX || x > region.MaxX || z < region.MinZ || z > region.MaxZ) return false;
+	}
+	else {
+		// 世界の点を区画の向きへ戻してから、回す前の範囲とくらべる。
+		const float dx = x - centerX, dz = z - centerZ;
+		const float c = cosf(region.Yaw), s = sinf(region.Yaw);
+		if (fabsf(dx * c - dz * s) > (region.MaxX - region.MinX) * 0.5f
+			|| fabsf(dx * s + dz * c) > (region.MaxZ - region.MinZ) * 0.5f) return false;
+	}
+	if (region.Radius > 0.0f) {
+		const float dx = x - centerX, dz = z - centerZ;
+		if (dx * dx + dz * dz > region.Radius * region.Radius) return false;
+	}
 	return region.DiagonalLimit <= 0.0f || fabsf(x) + fabsf(z) <= region.DiagonalLimit;
 }
 
@@ -27,23 +46,39 @@ float StageCalcRegionHeight(const STAGE_REGION& region, float x, float z)
 	return region.BaseY + region.SlopeX * x + region.SlopeZ * z;
 }
 
-int StageCalcFindRegion(const STAGE& stage, float x, float z)
+// 足（reference）から見た床の区画を上から順に探す。片面の橋は、足が上面から reach より下にあればくぐるので飛ばす。
+static int FindSurface(const STAGE& stage, float x, float z, float reference, float reach, float& height)
 {
 	if (!stage.HasTerrain) return -1;
 	for (int i = 0; i < stage.RegionCount; ++i) {
-		if (IsInsideRegion(stage.Regions[i], x, z)) return i;
+		const STAGE_REGION& region = stage.Regions[i];
+		if (!StageCalcIsInsideRegion(region, x, z)) continue;
+		const float top = StageCalcRegionHeight(region, x, z);
+		if (!region.Solid && reference < top - reach) continue;
+		height = top;
+		return i;
 	}
 	return -1;
 }
 
-// 地形のマップで、その場所の上面の高さを求める（床がなければ false）。
+int StageCalcFindRegion(const STAGE& stage, float x, float z)
+{
+	float height = 0.0f;
+	return FindSurface(stage, x, z, ABOVE_ALL, 0.0f, height);
+}
+
+int StageCalcFindFloor(const STAGE& stage, float x, float y, float z)
+{
+	float height = 0.0f;
+	return FindSurface(stage, x, z, y, GROUND_STEP, height);
+}
+
+// 地形のマップで、その場所のいちばん上の上面の高さを求める（床がなければ false）。
 static bool TerrainHeight(const STAGE& stage, float x, float z, float& height, int* index = nullptr)
 {
-	const int region = StageCalcFindRegion(stage, x, z);
+	const int region = FindSurface(stage, x, z, ABOVE_ALL, 0.0f, height);
 	if (index) *index = region;
-	if (region < 0) return false;
-	height = StageCalcRegionHeight(stage.Regions[region], x, z);
-	return true;
+	return region >= 0;
 }
 
 // 足の高さが、実体の区画の中（地盤の下面より上で、上面より下）にあるか調べる。
@@ -73,8 +108,8 @@ bool StageCalcFollowGround(const STAGE& stage, float x, float y, float z, float&
 		return StageCalcHasSupport(stage, x, y, z);
 	}
 	float height = 0.0f;
-	int region = -1;
-	if (!TerrainHeight(stage, x, z, height, &region)) return false;
+	const int region = FindSurface(stage, x, z, y, GROUND_STEP, height);
+	if (region < 0) return false;
 	// 段差の上限の中なら坂として合わせる。押し合い・引っぱりなどで実体の区画の中（上面より下）に入っていたら、
 	// すり抜けて落ちないように上面へ押し上げる（歩いては側面で止まるので、ふつうは入らない）。
 	if (fabsf(height - y) > GROUND_STEP && !IsInsideSolid(stage, region, height, y)) return false;
@@ -93,9 +128,10 @@ static bool IsBodyBlocked(const STAGE& stage, float x, float y, float z, float s
 			px += cosf(angle) * STAGE_BODY_RADIUS;
 			pz += sinf(angle) * STAGE_BODY_RADIUS;
 		}
+		// 足より上の片面の橋はくぐるので、その下の区画で調べる（橋そのものは壁にならない）。
 		float height = 0.0f;
-		int region = -1;
-		if (!TerrainHeight(stage, px, pz, height, &region) || !stage.Regions[region].Solid) continue;
+		const int region = FindSurface(stage, px, pz, y, step, height);
+		if (region < 0 || !stage.Regions[region].Solid) continue;
 		if (height > y + step) return true;
 	}
 	return false;
@@ -118,13 +154,29 @@ int StageCalcMoveBody(const STAGE& stage, float x, float y, float z, float dx, f
 	return STAGE_STOP_X | STAGE_STOP_Z;
 }
 
-// 地形の区画のふちを、角から順に並べる（四隅を切り落とした区画は8角）。戻り値は角の数。
-static int RegionOutline(const STAGE_REGION& region, float corners[8][2])
+int StageCalcRegionOutline(const STAGE_REGION& region, float corners[][2])
 {
+	const float centerX = (region.MinX + region.MaxX) * 0.5f;
+	const float centerZ = (region.MinZ + region.MaxZ) * 0.5f;
+	if (region.Radius > 0.0f) {
+		// 円は、上から見て反時計回り（X から Z の向き）の多角形にする。
+		for (int i = 0; i < STAGE_OUTLINE_MAX; ++i) {
+			const float angle = 6.2831853f * i / STAGE_OUTLINE_MAX;
+			corners[i][0] = centerX + cosf(angle) * region.Radius;
+			corners[i][1] = centerZ + sinf(angle) * region.Radius;
+		}
+		return STAGE_OUTLINE_MAX;
+	}
 	if (region.DiagonalLimit <= 0.0f) {
 		const float rect[4][2] = { { region.MinX, region.MinZ }, { region.MaxX, region.MinZ },
 			{ region.MaxX, region.MaxZ }, { region.MinX, region.MaxZ } };
-		for (int i = 0; i < 4; ++i) { corners[i][0] = rect[i][0]; corners[i][1] = rect[i][1]; }
+		const float c = cosf(region.Yaw), s = sinf(region.Yaw);
+		for (int i = 0; i < 4; ++i) {
+			// 回した区画は、範囲の中心のまわりに回す（回しても並びの向きは変わらない）。
+			const float lx = rect[i][0] - centerX, lz = rect[i][1] - centerZ;
+			corners[i][0] = centerX + lx * c + lz * s;
+			corners[i][1] = centerZ - lx * s + lz * c;
+		}
 		return 4;
 	}
 	// 原点を中心にした左右・前後対称の区画を、|x|＋|z| ≤ DiagonalLimit で切り落とした8角形。
@@ -141,8 +193,8 @@ static void SearchTerrainRim(const STAGE& stage, const VEC3& origin, const VEC3&
 {
 	for (int index = 0; index < stage.RegionCount; ++index) {
 		const STAGE_REGION& region = stage.Regions[index];
-		float corners[8][2];
-		const int count = RegionOutline(region, corners);
+		float corners[STAGE_OUTLINE_MAX][2];
+		const int count = StageCalcRegionOutline(region, corners);
 		for (int side = 0; side < count; ++side) {
 			const float* a = corners[side];
 			const float* b = corners[(side + 1) % count];
@@ -230,7 +282,7 @@ bool StageCalcHasSupport(const STAGE& stage, float x, float y, float z)
 {
 	if (stage.HasTerrain) {
 		float height = 0.0f;
-		return TerrainHeight(stage, x, z, height) && fabsf(height - y) <= SUPPORT_TOLERANCE;
+		return FindSurface(stage, x, z, y, GROUND_STEP, height) >= 0 && fabsf(height - y) <= SUPPORT_TOLERANCE;
 	}
 	float landingY = 0.0f;
 	return StageCalcFindLanding(stage, x, z, y, y, landingY);
@@ -240,9 +292,10 @@ bool StageCalcFindLanding(const STAGE& stage, float x, float z, float previousY,
 {
 	if (y > previousY) return false;
 	if (stage.HasTerrain) {
+		// 片面の橋は、上から通った分だけ（移動前に上面より下にいたら、くぐって下の区画へ落ちる）。
 		float height = 0.0f;
-		int region = -1;
-		if (!TerrainHeight(stage, x, z, height, &region)) return false;
+		const int region = FindSurface(stage, x, z, previousY, 0.0f, height);
+		if (region < 0) return false;
 		// 実体の区画は、少し下から斜めに入ったとき（坂へ跳び込んだときなど）も上面に拾う。片面の橋は上から通った分だけ。
 		// 押し合い・引っぱりなどで実体の区画の中に入っていた体も、すり抜けて落ちないように上面に拾う。
 		const float reach = stage.Regions[region].Solid ? AIR_STEP : 0.0f;
@@ -284,7 +337,7 @@ bool StageCalcFindGrip(const STAGE& stage, const VEC3& origin, const VEC3& feet,
 	if (stage.HasTerrain) {
 		// 床の上に立っている（その場所の上面より下にいない）ときは、ふちへ伸ばしても意味がない。
 		float height = 0.0f;
-		if (TerrainHeight(stage, feet.X, feet.Z, height) && feet.Y >= height - STANDING_TOLERANCE) return false;
+		if (FindSurface(stage, feet.X, feet.Z, feet.Y, GROUND_STEP, height) >= 0 && feet.Y >= height - STANDING_TOLERANCE) return false;
 		SearchTerrainRim(stage, origin, unit, cosine, maxDistance, lookingUp, found, best, grip);
 		return found;
 	}
@@ -316,13 +369,17 @@ bool StageCalcIsBlocked(const STAGE& stage, const VEC3& from, const VEC3& to)
 {
 	if (stage.HasTerrain) {
 		// 線の途中の点が、実体の区画の中（地盤の下面から上面）か、片面の橋の板の中にあればさえぎられる。
+		// 片面の橋より下の点は、その下の区画も調べる（橋の下をくぐる線）。
 		for (int i = 1; i < BLOCK_SAMPLES; ++i) {
 			const VEC3 point = Vec3Add(from, Vec3Scale(Vec3Sub(to, from), (float)i / BLOCK_SAMPLES));
-			float height = 0.0f;
-			int region = -1;
-			if (!TerrainHeight(stage, point.X, point.Z, height, &region)) continue;
-			const float bottom = stage.Regions[region].Solid ? stage.GroundBottomY : height - BRIDGE_THICKNESS;
-			if (point.Y < height && point.Y > bottom) return true;
+			for (int r = 0; r < stage.RegionCount; ++r) {
+				const STAGE_REGION& region = stage.Regions[r];
+				if (!StageCalcIsInsideRegion(region, point.X, point.Z)) continue;
+				const float height = StageCalcRegionHeight(region, point.X, point.Z);
+				const float bottom = region.Solid ? stage.GroundBottomY : height - BRIDGE_THICKNESS;
+				if (point.Y < height && point.Y > bottom) return true;
+				if (region.Solid || point.Y >= height) break;
+			}
 		}
 		return false;
 	}

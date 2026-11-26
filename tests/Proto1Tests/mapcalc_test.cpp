@@ -1,5 +1,6 @@
 ﻿// 対戦マップの配置台帳と地形の判定（設計書 第13節の受入例。DirectX なし）
 #include <gtest/gtest.h>
+#include <math.h>
 #include "physics/mapcalc.h"
 #include "physics/playercalc.h"
 
@@ -167,5 +168,102 @@ namespace Proto1Tests
 			EXPECT_FALSE(pieces[i][0] < -4.0f && pieces[i][1] > -16.0f && pieces[i][2] < 4.0f && pieces[i][3] > -4.0f);
 		}
 		EXPECT_NEAR(26.0f * 48.0f - 12.0f * 8.0f, area, 0.01f);
+	}
+
+	// 追加の3面：どの倍率でも、P1〜P4 の開始位置が床の上にあり、障害物に重ならない（少し歩いても壁に止められない）。
+	TEST(MapCalcTest, NewMaps_SpawnsStandOnFloorAtEveryScale)
+	{
+		const STAGE_MAP maps[] = { STAGE_MAP_NEON, STAGE_MAP_COLISEUM, STAGE_MAP_STATION };
+		const float scales[] = { 0.7f, 1.0f, 1.5f };
+		for (STAGE_MAP map : maps) {
+			for (float scale : scales) {
+				const STAGE stage = Build(map, scale);
+				ASSERT_EQ(4, stage.SpawnCount);
+				for (int i = 0; i < stage.SpawnCount; ++i) {
+					const VEC3& spawn = stage.Spawns[i];
+					const int name = static_cast<int>(map);
+					float ground = 0.0f;
+					ASSERT_TRUE(StageCalcFollowGround(stage, spawn.X, spawn.Y, spawn.Z, ground)) << name << " " << i;
+					EXPECT_NEAR(spawn.Y, ground, 0.001f) << name << " " << i;
+					float x = 0.0f, z = 0.0f;
+					EXPECT_EQ(0, StageCalcMoveBody(stage, spawn.X, spawn.Y, spawn.Z, 0.3f, 0.3f, true, x, z)) << name << " " << i;
+				}
+			}
+		}
+	}
+
+	// ネオンビル群：道路・歩道・ビル・車・ジャンプ台の高さ。外周から先は床がない。
+	TEST(MapCalcTest, Neon_HeightsFollowSpec)
+	{
+		const STAGE stage = Build(STAGE_MAP_NEON);
+		ExpectHeight(stage, 0.0f, 0.0f, 0.0f);
+		ExpectHeight(stage, 0.0f, 20.0f, 0.0f);		// 横断歩道（歩道は |X| 5.3 から外）
+		ExpectHeight(stage, 10.0f, 11.0f, 0.18f);	// ビルの前の歩道
+		ExpectHeight(stage, -9.2f, -18.1f, 16.5f);	// NOVA の屋上
+		ExpectHeight(stage, -17.0f, -18.4f, 14.84f);	// VINYL の屋上の設備
+		ExpectHeight(stage, 14.0f, 6.5f, 1.425f);	// 車室
+		ExpectHeight(stage, -15.0f, 9.0f, 0.2f);
+		EXPECT_EQ(STAGE_SURFACE_PAD, stage.Regions[StageCalcFindRegion(stage, -15.0f, 9.0f)].Surface);
+		ExpectNoFloor(stage, 28.1f, 0.0f);
+	}
+
+	// コロシアム：円い床（半径 21）と、斜めに置いた低い石壁。
+	TEST(MapCalcTest, Coliseum_RoundFloorAndRotatedWalls)
+	{
+		const STAGE stage = Build(STAGE_MAP_COLISEUM);
+		ExpectHeight(stage, 20.9f, 0.0f, 0.0f);
+		ExpectNoFloor(stage, 15.0f, 15.0f);	// 四角の角は円の外
+		ExpectHeight(stage, 0.0f, 0.0f, 7.5f);	// 中央の柱
+		// 石壁（中心 (−4.7, −17.1)、向き −0.25）の長い辺の端は、回した位置にある。
+		const float c = cosf(-0.25f), s = sinf(-0.25f);
+		ExpectHeight(stage, -4.7f + 1.8f * c, -17.1f - 1.8f * s, 1.16f);
+		ExpectHeight(stage, -4.7f + 1.85f, -17.1f + 0.55f, 0.0f);	// 回さない箱の角なら入っていた所
+	}
+
+	// 廃駅：線路とホームは坂でつながり、坂のない所のホームのふちは壁になる。
+	TEST(MapCalcTest, Station_AccessRampsConnectTrackAndPlatform)
+	{
+		const STAGE stage = Build(STAGE_MAP_STATION);
+		float y = 0.0f;
+		for (float z = 0.0f; z <= 10.0f; z += 0.1f) {
+			float ground = 0.0f;
+			ASSERT_TRUE(StageCalcFollowGround(stage, -1.8f, y, z, ground)) << z;
+			y = ground;
+		}
+		EXPECT_NEAR(1.5f, y, 0.001f);
+		float x = 0.0f, z = 0.0f;
+		EXPECT_EQ(STAGE_STOP_X | STAGE_STOP_Z, StageCalcMoveBody(stage, -10.0f, 0.0f, 7.0f, 0.0f, 0.6f, true, x, z));
+	}
+
+	// 廃駅の倒壊ビル：片方のホームから歩いて登り、いちばん高い所（6.4）を越えて反対のホームへ渡れる。
+	// 線路の上では、下をくぐる体は線路に立ち、上から落ちてきた体は足場に着地する。
+	TEST(MapCalcTest, Station_CollapsedBuildingIsWalkableAndPassableBelow)
+	{
+		const STAGE stage = Build(STAGE_MAP_STATION);
+		const float s = sinf(0.435f), c = cosf(0.435f);
+		const auto onLine = [&](float along) { return VEC3{ 10.0f + along * s, 0.0f, along * c }; };
+		float y = 1.5f, highest = 0.0f;
+		for (float along = -18.0f; along <= 18.0f; along += 0.1f) {
+			const VEC3 p = onLine(along);
+			float ground = 0.0f;
+			ASSERT_TRUE(StageCalcFollowGround(stage, p.X, y, p.Z, ground)) << along;
+			y = ground;
+			highest = fmaxf(highest, y);
+		}
+		EXPECT_NEAR(6.4f, highest, 0.05f);
+		EXPECT_NEAR(1.5f, y, 0.05f);
+
+		const VEC3 over = onLine(-6.0f);	// 線路の上（足場の高さは約 4）
+		float ground = 0.0f;
+		ASSERT_TRUE(StageCalcFollowGround(stage, over.X, 0.0f, over.Z, ground));
+		EXPECT_NEAR(0.0f, ground, 0.001f);
+		float x = 0.0f, z = 0.0f;
+		EXPECT_EQ(0, StageCalcMoveBody(stage, over.X, 0.0f, over.Z, 0.5f, 0.0f, true, x, z));
+		float landing = 0.0f;
+		ASSERT_TRUE(StageCalcFindLanding(stage, over.X, over.Z, 6.0f, 3.0f, landing));
+		EXPECT_GT(landing, 3.5f);
+		EXPECT_FALSE(StageCalcFindLanding(stage, over.X, over.Z, 3.0f, 2.0f, landing));	// 足場より下を落ちる体は足場に乗らない
+		ASSERT_TRUE(StageCalcFindLanding(stage, over.X, over.Z, 0.2f, -0.1f, landing));
+		EXPECT_NEAR(0.0f, landing, 0.001f);
 	}
 }

@@ -111,19 +111,20 @@ void HammerArm::Impact()
 	m_RangeSeconds = RANGE_SHOW_SECONDS;
 	bool hit = false;
 	bool affected = false;
+	// 衝撃波は地面を這う薄い円柱にし、高台の上など縦に離れた相手には届かない。
+	const auto inside = [&](const CAPSULE& body) {
+		return m_Wave ? AreaCalcInSector(m_RangeCenter, m_Direction, 0.0f, m_RangeRadius, XM_PI, WAVE_HALF_HEIGHT, body)
+			: CollisionSphereCapsule({ m_RangeCenter, m_RangeRadius }, body).Hit;
+	};
+	const float damage = m_Wave ? WAVE_DAMAGE : (m_AirTap ? IMPACT_DAMAGE : TAP_DAMAGE);
+	const float power = m_Wave ? WAVE_POWER : (m_AirTap ? IMPACT_POWER : TAP_POWER);
+	StrikePillars(inside, damage, m_Direction);
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		const TENTACLE_TARGET target = GetFighters().GetMeleeTarget(i, GetSlot());
-		if (!target.Available) continue;
-		// 衝撃波は地面を這う薄い円柱にし、高台の上など縦に離れた相手には届かない。
-		const bool inside = m_Wave
-			? AreaCalcInSector(m_RangeCenter, m_Direction, 0.0f, m_RangeRadius, XM_PI, WAVE_HALF_HEIGHT, target.Body)
-			: CollisionSphereCapsule({ m_RangeCenter, m_RangeRadius }, target.Body).Hit;
-		if (!inside) continue;
+		if (!target.Available || !inside(target.Body)) continue;
 		// 衝撃波はまわりへ押し出し、空中の単押しは叩いた向きへ、地上の単押しは振り抜く斜めの向きへ飛ばす。
 		const VEC3 launch = m_Wave ? AreaCalcRadialDirection(m_RangeCenter, target.Body, WAVE_UP, m_Direction)
 			: (m_AirTap ? AreaCalcLaunchDirection(m_Direction, IMPACT_UP) : AreaCalcLaunchDirection(AreaCalcRotateYaw(m_Direction, GetSwingYaw(true)), TAP_UP));
-		const float damage = m_Wave ? WAVE_DAMAGE : (m_AirTap ? IMPACT_DAMAGE : TAP_DAMAGE);
-		const float power = m_Wave ? WAVE_POWER : (m_AirTap ? IMPACT_POWER : TAP_POWER);
 		if (GetFighters().Launch(i, GetSlot(), launch, damage, power)) affected = true;
 		const float stunSeconds = TuningCalcValue(GetTuning(), TUNING_HAMMER_STUN);
 		if (m_Wave && stunSeconds > 0.0f && GetFighters().ApplyStatus(i, GetSlot(), STATUS_STUN, stunSeconds, 0.0f)) affected = true;

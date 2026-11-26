@@ -142,6 +142,9 @@ public:
 	/// @brief 移動として飛ばす（ダッシュ板）。ダメージ・何もできない時間・やられの姿勢はなく、空中ジャンプ・ダッシュ・腕も使える
 	/// @param velocity 飛ばす速度（1秒あたりの移動量）
 	void Boost(const VEC3& velocity);
+	/// @brief Boost で飛んでいる間の重力を取得する（ジャンプ台で、決めた高さまで上がる速さを求めるのに使う）
+	/// @return 1秒ごとに下向きの速さが増える量
+	static float GetBoostGravity();
 	/// @brief 状態異常をかける（生存中だけ。残り時間は長い方、値は上書き）
 	/// @param type 種類
 	/// @param seconds 続く秒数

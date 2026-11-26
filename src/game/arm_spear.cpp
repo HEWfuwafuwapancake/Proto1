@@ -96,6 +96,7 @@ void SpearArm::Thrust()
 	bool hits[FIGHTER_COUNT];
 	const VEC3 shoulder = GetShoulder();
 	const VEC3 direction = GetStrikeDirection(m_Direction);
+	StrikePillarsOnLine({ shoulder, Vec3Add(shoulder, Vec3Scale(direction, THRUST_REACH)), THRUST_RADIUS }, THRUST.TipDamage, m_Direction);
 	LaserCalcPierce(shoulder, direction, THRUST_REACH, THRUST_RADIUS, targets, FIGHTER_COUNT, hits);
 	bool hit = false;
 	int hitTarget = -1; // 音を鳴らす相手（何人に当たっても音は1回）
@@ -187,7 +188,9 @@ void SpearArm::StepSpear(float dt)
 	if (m_Spear.IsFlying()) {
 		TENTACLE_TARGET targets[FIGHTER_COUNT];
 		for (int i = 0; i < FIGHTER_COUNT; ++i) targets[i] = GetFighters().GetTarget(i, GetSlot());
+		const VEC3 from = m_Spear.GetTip();
 		const SPEAR_THROW_EVENT event = m_Spear.Step(dt, THROW, targets, FIGHTER_COUNT);
+		StrikePillarsOnLine({ from, m_Spear.GetTip(), THROW.Radius }, THROW_DAMAGE, m_Spear.GetDirection());
 		if (event == SPEAR_THROW_STUCK) OnStuck();
 		else if (event == SPEAR_THROW_MISSED) Consume(ARM_COST_HOLD_MISS);
 	}

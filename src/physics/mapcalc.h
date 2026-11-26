@@ -4,14 +4,18 @@
 #include "physics/stagecalc.h"
 
 /// @file mapcalc.h
-/// @brief 対戦マップ（ソラツギ中央郵便局・汐跡市場の三本橋）の配置台帳
-/// @details 座標は docs/plan/08_対戦マップ案/実装基準.md の第08・09節。DirectX と Windows を使わないので単体テストできる
+/// @brief 対戦マップの配置台帳（地形の区画・開始位置・Ｇ・ダッシュ板）
+/// @details 郵便局・市場の座標は docs/plan/08_対戦マップ案/実装基準.md の第08・09節。
+///          ネオンビル群・コロシアム・廃駅は docs/plan/09_追加マップ3面/ の仕様書。DirectX と Windows を使わないので単体テストできる
 
-/// @brief 試合で使うマップ
+/// @brief 試合で使うマップ（マップ選択はこの順に並ぶ）
 enum STAGE_MAP : uint8_t
 {
 	STAGE_MAP_POST_OFFICE,	///< ソラツギ中央郵便局（近未来都市）
 	STAGE_MAP_MARKET,		///< 汐跡市場の三本橋（荒廃都市）
+	STAGE_MAP_NEON,			///< ネオンビル群（交差点とビル。ジャンプ台で屋上へ上がれる）
+	STAGE_MAP_COLISEUM,		///< コロシアム（円い闘技場。攻撃で倒れる柱が5本）
+	STAGE_MAP_STATION,		///< 廃駅（2つのホームと線路。倒壊ビルの斜めの足場）
 	STAGE_MAP_ISLAND,		///< 今までの浮島と高台（デバッグ用の標準）
 	STAGE_MAP_COUNT,		///< マップの数
 };
@@ -25,7 +29,7 @@ static constexpr STAGE_MAP STAGE_MAP_DEFAULT = STAGE_MAP_POST_OFFICE;
 /// @return 次のマップ
 STAGE_MAP MapCalcCycle(STAGE_MAP map, int direction);
 
-/// @brief 地形のマップ（郵便局・市場）の配置台帳を、指定の倍率でステージに書き込む
+/// @brief 地形のマップ（浮島以外）の配置台帳を、指定の倍率でステージに書き込む
 /// @details 区画・開始位置・Ｇ・ダッシュ板の XZ を倍率倍にする（高さはそのまま）。
 ///          浮島（STAGE_MAP_ISLAND）は何もしない（game/stage.cpp の値で作る）
 /// @param map マップ

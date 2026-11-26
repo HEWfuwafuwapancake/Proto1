@@ -61,11 +61,14 @@ void ArmCapsuleCalc::Spawn(const STAGE& stage)
 	}
 }
 
-// 地形のマップで、その点が平らな床の上で、ふちから CAPSULE_EDGE_MARGIN 以上内側か調べる（坂と、ふちのそばには置かない）。
+// 地形のマップで、その点が平らな床の上で、ふちから CAPSULE_EDGE_MARGIN 以上内側か調べる
+// （坂・ふちのそば・障害物（ビル・車・柱など）とジャンプ台の上には置かない）。
 static bool IsFlatFloor(const STAGE& stage, float x, float z, float& height)
 {
 	const int region = StageCalcFindRegion(stage, x, z);
 	if (region < 0 || stage.Regions[region].SlopeX != 0.0f || stage.Regions[region].SlopeZ != 0.0f) return false;
+	const STAGE_SURFACE surface = stage.Regions[region].Surface;
+	if (surface == STAGE_SURFACE_BLOCK || surface == STAGE_SURFACE_PILLAR || surface == STAGE_SURFACE_PAD) return false;
 	height = StageCalcRegionHeight(stage.Regions[region], x, z);
 	const float probes[4][2] = { { CAPSULE_EDGE_MARGIN, 0 }, { -CAPSULE_EDGE_MARGIN, 0 }, { 0, CAPSULE_EDGE_MARGIN }, { 0, -CAPSULE_EDGE_MARGIN } };
 	for (const auto& probe : probes) {

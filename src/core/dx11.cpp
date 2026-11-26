@@ -21,6 +21,7 @@ static LETTERBOX g_Letterbox = { 0.0f, 0.0f, 1.0f };
 static HWND g_PendingWindow = NULL; // 次のフレームで大きさを合わせるウィンドウ
 static UINT g_PendingWidth = 0; // 次のフレームで合わせる大きさ（0 なら変更なし）
 static UINT g_PendingHeight = 0;
+static float g_ClearColor[4] = { 0.4f, 0.6f, 0.9f, 1.0f }; // ゲームの範囲を消す空の色（マップごとに SetClearColor で変える）
 
 static ID3D11RasterizerState* g_RasterizerState = NULL;
 static ID3D11BlendState* g_BlendState = NULL;
@@ -311,17 +312,25 @@ void Clear(void)
 	ApplyPendingResize();
 	// 全体を黒（帯）で消してから、ゲームの範囲だけを空の色で消す。
 	const float black[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	float clearColor[4] = { 0.4f, 0.6f, 0.9f, 1.0f };
 	if (g_DeviceContext1 != NULL) {
 		const D3D11_RECT game = { (LONG)g_Letterbox.OffsetX, (LONG)g_Letterbox.OffsetY,
 			(LONG)(g_Letterbox.OffsetX + SCREEN_WIDTH * g_Letterbox.Scale + 0.5f), (LONG)(g_Letterbox.OffsetY + SCREEN_HEIGHT * g_Letterbox.Scale + 0.5f) };
 		g_DeviceContext->ClearRenderTargetView(g_RenderTargetView, black);
-		g_DeviceContext1->ClearView(g_RenderTargetView, clearColor, &game, 1);
+		g_DeviceContext1->ClearView(g_RenderTargetView, g_ClearColor, &game, 1);
 	}
 	else {
-		g_DeviceContext->ClearRenderTargetView(g_RenderTargetView, clearColor);
+		g_DeviceContext->ClearRenderTargetView(g_RenderTargetView, g_ClearColor);
 	}
 	g_DeviceContext->ClearDepthStencilView(g_DepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
+}
+
+
+void SetClearColor(const XMFLOAT4& color)
+{
+	g_ClearColor[0] = color.x;
+	g_ClearColor[1] = color.y;
+	g_ClearColor[2] = color.z;
+	g_ClearColor[3] = color.w;
 }
 
 

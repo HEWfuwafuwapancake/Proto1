@@ -25,6 +25,7 @@ static ID3D11Buffer* g_pWorldBuffer = nullptr;		// b0
 static ID3D11Buffer* g_pViewBuffer = nullptr;		// b1
 static ID3D11Buffer* g_pProjectionBuffer = nullptr;	// b2
 static ID3D11Buffer* g_pMaterialBuffer = nullptr;	// b3
+static LIGHT g_Light = {};	// 最後に設定したライト（Shader_SetLightEnable で Enable だけを変えて送り直す）
 static ID3D11Buffer* g_pLightBuffer = nullptr;		// b4
 static ID3D11Buffer* g_pSkinnedBoneBuffer = nullptr;	// b5
 
@@ -254,7 +255,14 @@ void Shader_SetMaterial(const MATERIAL& material)
 
 void Shader_SetLight(const LIGHT& light)
 {
+	g_Light = light;
 	g_pContext->UpdateSubresource(g_pLightBuffer, 0, nullptr, &light, 0, 0);
+}
+
+void Shader_SetLightEnable(bool enable)
+{
+	g_Light.Enable = enable ? TRUE : FALSE;
+	g_pContext->UpdateSubresource(g_pLightBuffer, 0, nullptr, &g_Light, 0, 0);
 }
 
 void Shader_Begin()

@@ -101,6 +101,7 @@ void LaserArm::Fire(LASER_FIRE fire)
 		if (target >= 0) distance = Vec3Length(toAim);
 		if (victim >= 0) hit = GetFighters().AddDamage(victim, GetSlot(), SHOT_DAMAGE);
 		m_BeamEnd = Vec3Add(shoulder, Vec3Scale(m_Direction, distance));
+		StrikePillarsOnLine({ shoulder, m_BeamEnd, SHOT_RADIUS }, SHOT_DAMAGE, m_Direction);
 		m_BeamSeconds = SHOT_BEAM_SECONDS;
 		Rumble(SHOT_RUMBLE, 0.0f, SHOT_RUMBLE_SECONDS);
 	}
@@ -113,6 +114,7 @@ void LaserArm::Fire(LASER_FIRE fire)
 			if (hits[i] && GetFighters().Launch(i, GetSlot(), AreaCalcLaunchDirection(m_Direction, CANNON_UP), CANNON_DAMAGE, CANNON_POWER)) hit = true;
 		}
 		m_BeamEnd = Vec3Add(shoulder, Vec3Scale(m_Direction, CANNON_RANGE));
+		StrikePillarsOnLine({ shoulder, m_BeamEnd, CANNON_RADIUS }, CANNON_DAMAGE, m_Direction);
 		m_BeamSeconds = CANNON_BEAM_SECONDS;
 		Rumble(CANNON_RUMBLE, CANNON_RUMBLE, CANNON_RUMBLE_SECONDS);
 	}
