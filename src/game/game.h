@@ -10,6 +10,7 @@
 #include "game/mapgimmick.h"
 #include "game/codex_menu.h"
 #include "physics/scenecalc.h"
+#include "physics/settingscalc.h"
 #include "input/action.h"
 #include "game/netsession.h"
 #include "game/cpu.h"
@@ -56,6 +57,9 @@ private:
 	VERSUS_VIEWPORT GetViewport(int index) const;
 	GAME_RULE GetRule() const;
 	uint32_t GetSeed() const;
+	OPTION_SETTINGS GetOptionSettings() const; // 今のオプションの設定（試合の設定・耐久の表・視点感度・音量）
+	void LoadOptionSettings(); // 起動時に設定のファイルを読んで使う（なければはじめの値のまま）
+	bool WriteOptionSettings(const OPTION_SETTINGS& settings) const; // 設定をファイルに書く（書けなければ false）
 
 	Stage m_Stage;
 	MATCH_TUNING m_Tuning = TuningCalcDefault();
@@ -88,5 +92,7 @@ private:
 	int m_MenuDevice = ACTION_DEVICE_KEYBOARD; // SOLO の決定を押した機器
 	bool m_Fullscreen = false;
 	bool m_TuningResetSe = false; // このフレームに「標準に戻す」を受け付けた（メニューの音を選ぶため）
+	OPTION_SETTINGS m_SavedSettings; // ファイルに保存してある設定（保存していない変更があるかを見るため）
+	bool m_OptionsSaveSe = false; // このフレームにオプションの「保存」でファイルに書けた（メニューの音を選ぶため）
 	bool m_MapDecideHeld = false; // マップ選択に入ってから、1P が決定をまだ離していない（離すまで決定を受け付けない）
 };

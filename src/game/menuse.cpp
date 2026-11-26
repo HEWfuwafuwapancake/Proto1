@@ -12,7 +12,7 @@ namespace
 	}
 }
 
-void MenuSe::Update(const MENU_SE_STATE& before, const MENU_SE_STATE& after, bool back, bool decide, bool tuningReset)
+void MenuSe::Update(const MENU_SE_STATE& before, const MENU_SE_STATE& after, bool back, bool decide, bool tuningReset, bool optionsSaved)
 {
 	if (before.Scene != after.Scene) {
 		// キャラ選択を出たら（マップ選択へ進むときを除く）、マップ選択から先へ進む・戻るときも、案内の声を止める。
@@ -27,6 +27,11 @@ void MenuSe::Update(const MENU_SE_STATE& before, const MENU_SE_STATE& after, boo
 		return;
 	}
 	if (after.Scene == SCENE_MATCH) return;
+	// 「保存」：ファイルに書けたら決定の音。
+	if (optionsSaved) {
+		SePlay(SE_MENU_DECIDE);
+		return;
+	}
 	// 「標準に戻す」：変わった設定があれば変更の音、もう全部はじめの値なら戻るの音（どちらも1回だけ）。
 	if (tuningReset) {
 		SePlay(before.Values != after.Values ? SE_MENU_CURSOR : SE_MENU_BACK);

@@ -37,9 +37,10 @@ public:
 	/// @param characters 各参加者のキャラクター
 	/// @param tuning 次の試合へ適用する設定
 	/// @param costs オフラインで使う腕の耐久の減る量の表
+	/// @param optionsSaved オプションの設定がファイルと同じか（true：保存済み、false：保存していない変更がある）
 	void Draw(const SceneCalc& scene, const VersusCalc& participants, const NetSession& net,
 		const SessionAddressCalc& address, const std::array<CHARACTER_TYPE, FIGHTER_COUNT>& characters,
-		const MATCH_TUNING& tuning, const ARM_COST_TABLE& costs) const;
+		const MATCH_TUNING& tuning, const ARM_COST_TABLE& costs, bool optionsSaved) const;
 	/// @brief 試合中のメニュー（再開・ロビーへ・タイトルへ）を、止まった試合の画面の上に重ねて描く（全画面のビューポート・深度無効で呼ぶ）
 	/// @param scene 現在のメニューとカーソル
 	void DrawPause(const SceneCalc& scene) const;
@@ -56,7 +57,7 @@ private:
 	void DrawTitle(const SceneCalc& scene, const std::array<CHARACTER_TYPE, FIGHTER_COUNT>& characters) const;
 	void DrawModeSelect(const SceneCalc& scene) const;
 	void DrawJoinAddress(const SessionAddressCalc& address) const;
-	void DrawOptions(const SceneCalc& scene, const MATCH_TUNING& tuning) const;
+	void DrawOptions(const SceneCalc& scene, const MATCH_TUNING& tuning, bool saved) const;
 	void DrawSound(const SceneCalc& scene) const;
 	void DrawArmCosts(const SceneCalc& scene, const ARM_COST_TABLE& costs) const;
 	void DrawLobby(const SceneCalc& scene, const VersusCalc& participants, const NetSession& net,

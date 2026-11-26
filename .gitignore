@@ -41,3 +41,6 @@ TestResults/
 # Python のキャッシュ（Maya のスクリプトを実行すると作られる）
 __pycache__/
 *.pyc
+
+# オプションの保存（PC ごとの設定。ゲームが作業フォルダに書く）
+settings.ini

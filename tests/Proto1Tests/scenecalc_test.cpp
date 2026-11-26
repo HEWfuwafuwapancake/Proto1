@@ -201,7 +201,7 @@ namespace Proto1Tests
 		EXPECT_EQ((int)SCENE_GAME_START, (int)scene.GetScene());
 	}
 
-	// オプションから元のメニューへ戻り、値変更と標準への復帰をゲーム側に伝える。
+	// オプションから元のメニューへ戻り、値変更・保存・標準への復帰をゲーム側に伝える。
 	TEST(SceneCalcTest, Options_HomeChangesResetsAndReturnsWithoutStartingMatch)
 	{
 		SceneCalc scene;
@@ -210,10 +210,14 @@ namespace Proto1Tests
 		scene.Step({ true, false, 0 }, false);
 		ASSERT_EQ(SCENE_OPTIONS, scene.GetScene());
 		EXPECT_EQ(SCENE_EVENT_TUNING_CHANGE, scene.Step({ false, false, 0, false, false, 1 }, false));
-		for (int i = 0; i < OPTION_ITEM_RESET; ++i) {
+		for (int i = 0; i < OPTION_ITEM_SAVE; ++i) {
 			scene.Step({ false, false, 0 }, false);
 			scene.Step({ false, false, -1 }, false);
 		}
+		EXPECT_EQ(SCENE_EVENT_OPTIONS_SAVE, scene.Step({ true, false, 0 }, false));
+		EXPECT_EQ(SCENE_OPTIONS, scene.GetScene());
+		scene.Step({ false, false, 0 }, false);
+		scene.Step({ false, false, -1 }, false);
 		EXPECT_EQ(SCENE_EVENT_TUNING_RESET, scene.Step({ true, false, 0 }, false));
 		scene.Step({ false, false, -1 }, false);
 		EXPECT_EQ(SCENE_EVENT_NONE, scene.Step({ true, false, 0 }, false));

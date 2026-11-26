@@ -60,6 +60,7 @@ enum SCENE_EVENT
 	SCENE_EVENT_LOOK_SENSITIVITY_CHANGE, ///< 視点感度を左右の入力方向へ変更する
 	SCENE_EVENT_OPEN_MAP_SELECT, ///< キャラ選択で決まった参加者で体を作り、マップ選択を表示する
 	SCENE_EVENT_SOUND_VOLUME_CHANGE, ///< サウンドの画面で選んだジャンルの音量を左右の入力方向へ変更する
+	SCENE_EVENT_OPTIONS_SAVE, ///< 今のオプションの設定をファイルに保存する
 };
 
 /// @brief モード選択の項目
@@ -80,6 +81,7 @@ enum OPTION_ITEM
 	OPTION_ITEM_LOOK_SENSITIVITY = TUNING_ITEM_COUNT, ///< 視点感度（この PC だけの設定。通信では送らない）
 	OPTION_ITEM_SOUND, ///< ジャンルごとの音量の画面を開く（この PC だけの設定）
 	OPTION_ITEM_ARM_COSTS, ///< 耐久の減る量の表を開く
+	OPTION_ITEM_SAVE, ///< 今の設定をファイルに保存する（次の起動でも残る）
 	OPTION_ITEM_RESET, ///< 全設定と表をはじめの値へ戻す
 	OPTION_ITEM_BACK, ///< 元のメニューへ戻る
 	OPTION_ITEM_COUNT, ///< 項目数
