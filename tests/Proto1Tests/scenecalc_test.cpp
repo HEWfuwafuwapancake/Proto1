@@ -256,6 +256,33 @@ namespace Proto1Tests
 		EXPECT_EQ(OPTION_ITEM_ARM_COSTS, scene.GetCursor());
 	}
 
+	// オプションからサウンドの画面を開き、音量の行の左右で変更を伝え、戻るの行では伝えず、戻るとオプションの同じ行へ戻る。
+	TEST(SceneCalcTest, Options_SoundVolumeChangeAndReturnToOptions)
+	{
+		SceneCalc scene;
+		scene.Start();
+		scene.Step({ false, false, -1 }, false);
+		scene.Step({ true, false, 0 }, false);
+		for (int i = 0; i < OPTION_ITEM_SOUND; ++i) {
+			scene.Step({ false, false, 0 }, false);
+			scene.Step({ false, false, -1 }, false);
+		}
+		scene.Step({ true, false, 0 }, false);
+		ASSERT_EQ(SCENE_SOUND, scene.GetScene());
+		EXPECT_EQ(SOUND_ITEM_MASTER, scene.GetCursor());
+		EXPECT_EQ(SCENE_EVENT_SOUND_VOLUME_CHANGE, scene.Step({ false, false, 0, false, false, -1 }, false));
+		for (int i = 0; i < SOUND_ITEM_BACK; ++i) {
+			scene.Step({ false, false, 0 }, false);
+			scene.Step({ false, false, -1 }, false);
+		}
+		ASSERT_EQ(SOUND_ITEM_BACK, scene.GetCursor());
+		EXPECT_EQ(SCENE_EVENT_NONE, scene.Step({ false, false, 0, false, false, 1 }, false));
+		scene.Step({ true, false, 0 }, false);
+		EXPECT_EQ(SCENE_OPTIONS, scene.GetScene());
+		EXPECT_EQ(OPTION_ITEM_SOUND, scene.GetCursor());
+		EXPECT_TRUE(SceneCalc::IsBackTransition(SCENE_SOUND, SCENE_OPTIONS));
+	}
+
 	// 表の行が見せる数より多いとき、選んでいる行が下の端・上の端を越えたぶんだけスクロールし、見えている間は動かさない。
 	TEST(SceneCalcTest, ScrollTopFollowsSelectedRowOnlyWhenItLeavesView)
 	{

@@ -241,6 +241,13 @@ void Game::UpdateMenu()
 		SetTuning(TuningCalcDefault());
 		m_ArmCosts = ArmCostCalcDefault();
 		ActionSetLookSensitivityLevel(ActionGetLookSensitivityDefaultLevel());
+		for (int i = 0; i < SE_VOLUME_COUNT; ++i) SeSetVolumeLevel(static_cast<SE_VOLUME>(i), SeGetVolumeDefaultLevel());
+	}
+	else if (event == SCENE_EVENT_SOUND_VOLUME_CHANGE) {
+		// サウンドの画面の行は SE_VOLUME と同じ並び。
+		static_assert(SOUND_ITEM_BACK == static_cast<int>(SE_VOLUME_COUNT), "SOUND_ITEM の音量の行と SE_VOLUME をそろえる");
+		const auto volume = static_cast<SE_VOLUME>(m_Scene.GetCursor());
+		SeSetVolumeLevel(volume, SeGetVolumeLevel(volume) + input.CharacterDirection);
 	}
 	else if (event == SCENE_EVENT_LOOK_SENSITIVITY_CHANGE) {
 		ActionSetLookSensitivityLevel(ActionGetLookSensitivityLevel() + input.CharacterDirection);
@@ -354,6 +361,7 @@ MENU_SE_STATE Game::GetMenuSeState() const
 	state.Focus = m_Participants.GetLobbyFocus();
 	// 設定のどれかが変わったと分かればよいので、段と表の値を重みをつけて足す。
 	unsigned values = static_cast<unsigned>(ActionGetLookSensitivityLevel());
+	for (int i = 0; i < SE_VOLUME_COUNT; ++i) values = values * 31u + static_cast<unsigned>(SeGetVolumeLevel(static_cast<SE_VOLUME>(i)));
 	for (uint8_t level : GetTuning().Levels) values = values * 31u + level;
 	for (const auto& row : m_ArmCosts.Values) {
 		for (int value : row) values = values * 31u + static_cast<unsigned>(value);
@@ -383,7 +391,8 @@ void Game::UpdateFrame()
 	// 前のフレームで変わった画面・カーソルを覚え、選んだボタンを弾ませる（1フレーム遅れても見た目は変わらない）。
 	m_CodexMenu.Update(m_Scene);
 	const SCENE oldScene = m_Scene.GetScene();
-	if (oldScene == SCENE_GAME_START || oldScene == SCENE_MODE_SELECT || oldScene == SCENE_JOIN_ADDRESS || oldScene == SCENE_OPTIONS || oldScene == SCENE_ARM_COSTS) {
+	if (oldScene == SCENE_GAME_START || oldScene == SCENE_MODE_SELECT || oldScene == SCENE_JOIN_ADDRESS || oldScene == SCENE_OPTIONS || oldScene == SCENE_ARM_COSTS
+		|| oldScene == SCENE_SOUND) {
 		UpdateMenu();
 		return;
 	}

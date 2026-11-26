@@ -77,8 +77,37 @@ enum SE_ID
 	SE_COUNT ///< 効果音の数（鳴らす名前ではない）
 };
 
+/// @brief オプションで音量を分けて変えるジャンル（physics/scenecalc.h の SOUND_ITEM と同じ並び）
+enum SE_VOLUME
+{
+	SE_VOLUME_MASTER, ///< 全体（ほかのジャンルにも掛かる）
+	SE_VOLUME_MENU, ///< メニューの音（カーソル・決定・戻る）
+	SE_VOLUME_VOICE, ///< キャラの声・案内の声
+	SE_VOLUME_BATTLE, ///< 戦闘の効果音（腕・触手）
+	SE_VOLUME_COUNT ///< ジャンルの数（変える名前ではない）
+};
+
 /// @brief 効果音のファイルを全部読み込む（SoundInitialize のあとに1回呼ぶ。読めなかった音は鳴らないだけ）
 void SeInitialize(void);
+
+/// @brief ジャンルの音量の段を取得する
+/// @param volume ジャンル
+/// @return 段（0〜SeGetVolumeLevelCount() − 1。0 で無音）
+int SeGetVolumeLevel(SE_VOLUME volume);
+/// @brief 音量の段の数を取得する
+/// @return 段の数
+int SeGetVolumeLevelCount(void);
+/// @brief 音量のはじめの段を取得する
+/// @return はじめの段
+int SeGetVolumeDefaultLevel(void);
+/// @brief ジャンルの音量の段を設定する（範囲の外は端にそろえる。全体はすぐに、ほかのジャンルは次に鳴らす音から効く）
+/// @param volume ジャンル
+/// @param level 段
+void SeSetVolumeLevel(SE_VOLUME volume, int level);
+/// @brief ジャンルの音量を百分率で取得する（表示用）
+/// @param volume ジャンル
+/// @return 0〜100
+int SeGetVolumePercent(SE_VOLUME volume);
 
 /// @brief 効果音を1回鳴らす（場所を使わず、真ん中で鳴らす。メニューの音など）
 /// @param id 鳴らす音

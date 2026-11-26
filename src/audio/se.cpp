@@ -17,6 +17,9 @@ namespace
 	static constexpr float TAIL_FADE_SECONDS = 0.25f; // 余韻を切るときに、だんだん小さくする長さ
 
 	// 調整用の値
+	// オプションの音量：0〜VOLUME_STEPS の段で、1段は 100% ÷ VOLUME_STEPS。はじめは 100%。
+	static constexpr int VOLUME_STEPS = 10;
+	static constexpr int VOLUME_DEFAULT_LEVEL = VOLUME_STEPS;
 	// フォルダ名は長いので、まとめておく。
 #define SE_DIR "assets/sounds/se/"
 #define SE_MENU SE_DIR "選択画面/選択・カーソル移動/"
@@ -100,6 +103,33 @@ namespace
 	std::minstd_rand s_Random(12345u);
 	SE_LISTENER s_Listeners[SE_LISTENER_MAX];
 	int s_ListenerCount = 0;
+	// オプションの音量の段（ジャンルごと。SeInitialize では戻さない）
+	int s_VolumeLevels[SE_VOLUME_COUNT] = { VOLUME_DEFAULT_LEVEL, VOLUME_DEFAULT_LEVEL, VOLUME_DEFAULT_LEVEL, VOLUME_DEFAULT_LEVEL };
+
+	// 効果音がどのジャンルの音量で鳴るか。
+	SE_VOLUME GetGenre(SE_ID id)
+	{
+		switch (id) {
+		case SE_MENU_CURSOR:
+		case SE_MENU_DECIDE:
+		case SE_MENU_BACK:
+			return SE_VOLUME_MENU;
+		case SE_CHARACTER_SELECT:
+		case SE_MEKAGIRL_DECIDE:
+		case SE_MEKAGIRL_ATTACK:
+		case SE_MEKAGIRL_DAMAGE:
+		case SE_MEKAGIRL_FALL:
+			return SE_VOLUME_VOICE;
+		default:
+			return SE_VOLUME_BATTLE;
+		}
+	}
+
+	// ジャンルの音量の倍率（全体は XAudio2 の出口で掛けるので、ここでは掛けない）。
+	float GetGenreScale(SE_ID id)
+	{
+		return static_cast<float>(s_VolumeLevels[GetGenre(id)]) / VOLUME_STEPS;
+	}
 
 	// 候補を1つ選んで、決めた大きさ・左右で鳴らす。
 	int PlayLoaded(SE_ID id, float volume, bool panned, float pan)
@@ -107,8 +137,10 @@ namespace
 		if (id < 0 || id >= SE_COUNT) return -1;
 		const SE_LOADED& loaded = s_Loaded[id];
 		if (loaded.Count == 0) return -1;
+		const float scale = GetGenreScale(id);
+		if (scale <= 0.0f) return -1; // 音量 0 のジャンルは鳴らさない
 		const int pick = loaded.Count == 1 ? 0 : static_cast<int>(s_Random() % static_cast<unsigned>(loaded.Count));
-		return SoundPlay(loaded.Sounds[pick], volume, loaded.Pitch, panned, pan);
+		return SoundPlay(loaded.Sounds[pick], volume * scale, loaded.Pitch, panned, pan);
 	}
 }
 
@@ -127,6 +159,37 @@ void SeInitialize(void)
 			loaded.Sounds[loaded.Count++] = sound;
 		}
 	}
+}
+
+int SeGetVolumeLevel(SE_VOLUME volume)
+{
+	if (volume < 0 || volume >= SE_VOLUME_COUNT) return 0;
+	return s_VolumeLevels[volume];
+}
+
+int SeGetVolumeLevelCount(void)
+{
+	return VOLUME_STEPS + 1;
+}
+
+int SeGetVolumeDefaultLevel(void)
+{
+	return VOLUME_DEFAULT_LEVEL;
+}
+
+void SeSetVolumeLevel(SE_VOLUME volume, int level)
+{
+	if (volume < 0 || volume >= SE_VOLUME_COUNT) return;
+	if (level < 0) level = 0;
+	if (level > VOLUME_STEPS) level = VOLUME_STEPS;
+	s_VolumeLevels[volume] = level;
+	// 全体は出口の音量なので、鳴っている音にもすぐ効く。
+	if (volume == SE_VOLUME_MASTER) SoundSetMasterVolume(static_cast<float>(level) / VOLUME_STEPS);
+}
+
+int SeGetVolumePercent(SE_VOLUME volume)
+{
+	return SeGetVolumeLevel(volume) * 100 / VOLUME_STEPS;
 }
 
 int SePlay(SE_ID id, float volume)
@@ -177,7 +240,7 @@ void SeVoice::PlayAt(SE_ID id, const VEC3& position, int slotA, float volume)
 	Stop();
 	if (id < 0 || id >= SE_COUNT) return;
 	m_Spatial = true;
-	m_Volume = s_Loaded[id].Volume * volume;
+	m_Volume = s_Loaded[id].Volume * volume * GetGenreScale(id);
 	m_SlotA = slotA;
 	m_Voice = SePlayAt(id, position, slotA, -1, volume);
 }

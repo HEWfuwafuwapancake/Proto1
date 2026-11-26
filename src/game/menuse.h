@@ -13,7 +13,7 @@ struct MENU_SE_STATE
 	int Map = 0; ///< マップ選択で選んでいるマップ
 	int Rule = 0; ///< キャラ選択で選んでいる試合のルール
 	int Focus = 0; ///< キャラ選択で 1P が選んでいるカード（ルールの行は VERSUS_LOBBY_FOCUS_RULE）
-	unsigned Values = 0; ///< オプションの設定・耐久の表・視点感度をまとめた数（どれかが変わると変わる）
+	unsigned Values = 0; ///< オプションの設定・耐久の表・視点感度・音量をまとめた数（どれかが変わると変わる）
 	std::array<int, FIGHTER_COUNT> Characters{}; ///< スロットごとのキャラ
 	std::array<int, FIGHTER_COUNT> CpuLevels{}; ///< スロットごとの CPU の強さ（ダミーは VERSUS_CPU_NONE）
 	unsigned Joined = 0; ///< 参加している人のスロット（1 << スロット）

@@ -57,6 +57,7 @@ private:
 	void DrawModeSelect(const SceneCalc& scene) const;
 	void DrawJoinAddress(const SessionAddressCalc& address) const;
 	void DrawOptions(const SceneCalc& scene, const MATCH_TUNING& tuning) const;
+	void DrawSound(const SceneCalc& scene) const;
 	void DrawArmCosts(const SceneCalc& scene, const ARM_COST_TABLE& costs) const;
 	void DrawLobby(const SceneCalc& scene, const VersusCalc& participants, const NetSession& net,
 		const std::array<CHARACTER_TYPE, FIGHTER_COUNT>& characters) const;

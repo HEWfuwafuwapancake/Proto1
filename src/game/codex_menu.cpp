@@ -3,6 +3,7 @@
 #include "game/character.h"
 #include "game/fighter.h"
 #include "game/stage.h"
+#include "audio/se.h"
 #include "core/shader.h"
 #include "input/action.h"
 #include "render/backdrop.h"
@@ -45,9 +46,11 @@ static constexpr float FOOTER_Y = 670.0f; // 下の操作説明の帯
 static constexpr float CARD_TURN = -3.0f * PI / 180.0f; // 右の説明のカードの傾き
 static constexpr RECT2D INFO_CARD{ 760, 138, 450, 310 }; // 右の説明のカード
 static constexpr float OPTION_TOP = 118.0f;
-static constexpr float OPTION_GAP = 45.0f; // 11行が下の操作説明に重ならない間隔
+static constexpr float OPTION_GAP = 42.0f; // 12行が下の操作説明に重ならない間隔
 static constexpr float OPTION_HEIGHT = 38.0f;
 static constexpr float OPTION_VALUE_X = 456.0f; // 設定の値を書く位置
+static constexpr float SOUND_TOP = 150.0f; // サウンドの画面の1行目
+static constexpr float SOUND_GAP = 70.0f; // サウンドの画面の行の間隔
 static constexpr float LOBBY_CARD_LEFT = 40.0f; // キャラ選択の 1P〜4P のカード
 static constexpr float LOBBY_CARD_TOP = 118.0f;
 static constexpr float LOBBY_CARD_WIDTH = 282.0f;
@@ -473,16 +476,17 @@ void CodexMenu::DrawOptions(const SceneCalc& scene, const MATCH_TUNING& tuning) 
 	for (int i = 0; i < OPTION_ITEM_COUNT; ++i) {
 		const float y = OPTION_TOP + i * OPTION_GAP;
 		const bool selected = scene.GetCursor() == i;
-		const bool command = i >= OPTION_ITEM_ARM_COSTS; // 表を開く・標準に戻す・戻る
+		const bool command = i >= OPTION_ITEM_SOUND; // サウンド・表を開く・標準に戻す・戻る
 		const float x = -30.0f + (selected ? jut : 0.0f);
 		Bar({ x, y, 620 + (selected ? POP_WIDTH * 0.5f * GetPop() : 0.0f), OPTION_HEIGHT }, SLANT,
 			selected ? LIME : command ? PURPLE : WHITE, 3, selected ? 7.0f : 4.0f);
 		const XMFLOAT4 ink = command && !selected ? WHITE : INK;
 		const char* name = i < TUNING_ITEM_COUNT ? OPTION_NAMES[i] : i == OPTION_ITEM_LOOK_SENSITIVITY ? "視点感度"
-			: i == OPTION_ITEM_ARM_COSTS ? "腕の耐久の減る量" : i == OPTION_ITEM_RESET ? "標準に戻す" : "戻る";
+			: i == OPTION_ITEM_SOUND ? "サウンド" : i == OPTION_ITEM_ARM_COSTS ? "腕の耐久の減る量" : i == OPTION_ITEM_RESET ? "標準に戻す" : "戻る";
 		Word(name, x + 64, y + 8, 17, ink);
 		char value[80] = "";
 		if (i == OPTION_ITEM_ARM_COSTS) sprintf_s(value, "表を開く >");
+		else if (i == OPTION_ITEM_SOUND) sprintf_s(value, "音量を開く >");
 		else if (i == OPTION_ITEM_LOOK_SENSITIVITY) sprintf_s(value, "× %.2f", ActionGetLookSensitivity());
 		else if (i < TUNING_ITEM_COUNT) {
 			const auto item = static_cast<TUNING_ITEM>(i);
@@ -509,6 +513,8 @@ void CodexMenu::DrawOptions(const SceneCalc& scene, const MATCH_TUNING& tuning) 
 		levels = ActionGetLookSensitivityLevelCount();
 		level = ActionGetLookSensitivityLevel();
 	}
+	else if (selected == OPTION_ITEM_SOUND) InfoCard(INFO_CARD, "サウンド",
+		"全体・メニュー・ボイス・戦闘の音量を", "それぞれ変えられます。Enter / ○ で開きます。", "この PC だけの設定で、すぐに効きます。");
 	else if (selected == OPTION_ITEM_ARM_COSTS) InfoCard(INFO_CARD, "腕の耐久の減る量",
 		"攻撃ごとに耐久が減る量の表です。", "Enter / ○ で表を開きます。", "オンラインははじめの値を使います。");
 	else InfoCard(INFO_CARD, selected == OPTION_ITEM_RESET ? "標準設定に戻す" : "設定を閉じる",
@@ -526,6 +532,55 @@ void CodexMenu::DrawOptions(const SceneCalc& scene, const MATCH_TUNING& tuning) 
 	Word("変更は次の試合から適用", INFO_CARD.X + 30, INFO_CARD.Y + INFO_CARD.Height + 37, 18, LIME, TEXT2D_FONT_POP);
 	Word("オンラインはホストの設定を全員に適用します。", INFO_CARD.X + 20, INFO_CARD.Y + INFO_CARD.Height + 86, 15, INK);
 	Footer("↑↓ / W S / 左スティック  選ぶ    ←→ / 十字キー  変える    Enter / ○  決定    Backspace / ×  戻る");
+}
+
+void CodexMenu::DrawSound(const SceneCalc& scene) const
+{
+	Header("サウンド", "OPTIONS / SOUND");
+	static constexpr const char* NAMES[SOUND_ITEM_COUNT] = { "全体", "メニューの音", "ボイス", "戦闘の効果音", "戻る" };
+	static constexpr const char* HELP[SOUND_ITEM_COUNT][3] = {
+		{ "すべての音の大きさです。", "下の3つのジャンルにも掛かります。", "" },
+		{ "カーソル・決定・戻るの音です。", "", "" },
+		{ "キャラの声と案内の声です。", "「キャラクターを選んでね」など。", "" },
+		{ "腕・触手の攻撃や当たった音です。", "", "" },
+		{ "オプションへ戻る", "変更した値は、そのまま保持されます。", "" },
+	};
+	const float jut = JUT_WIDTH * fabsf(sinf(GetSeconds() * JUT_SPEED));
+	const int selected = scene.GetCursor();
+	for (int i = 0; i < SOUND_ITEM_COUNT; ++i) {
+		const float y = SOUND_TOP + i * SOUND_GAP;
+		const bool isSelected = selected == i;
+		const bool command = i == SOUND_ITEM_BACK;
+		const float x = -30.0f + (isSelected ? jut : 0.0f);
+		Bar({ x, y, 620 + (isSelected ? POP_WIDTH * 0.5f * GetPop() : 0.0f), OPTION_HEIGHT + 8 }, SLANT,
+			isSelected ? LIME : command ? PURPLE : WHITE, 3, isSelected ? 7.0f : 4.0f);
+		const XMFLOAT4 ink = command && !isSelected ? WHITE : INK;
+		Word(NAMES[i], x + 64, y + 11, 19, ink);
+		if (command) continue;
+		const auto volume = static_cast<SE_VOLUME>(i);
+		char value[16];
+		sprintf_s(value, "%d %%", SeGetVolumePercent(volume));
+		Word(value, x + OPTION_VALUE_X, y + 10, 20, isSelected ? PURPLE : ink, TEXT2D_FONT_POP);
+		if (isSelected) Word("<", x + OPTION_VALUE_X - 30, y + 10, 20, PURPLE, TEXT2D_FONT_POP);
+	}
+	InfoCard(INFO_CARD, NAMES[selected], HELP[selected][0], HELP[selected][1], HELP[selected][2]);
+	// 段のメーター（オプションの画面と同じ形）。
+	if (selected < SOUND_ITEM_BACK) {
+		const MENU_TURN turn{ INFO_CARD.X + INFO_CARD.Width * 0.5f, INFO_CARD.Y + INFO_CARD.Height * 0.5f, CARD_TURN };
+		// 0% の段はマスにしない（10段なら 80% で10マス中8マス）。
+		const int cells = SeGetVolumeLevelCount() - 1;
+		const int level = SeGetVolumeLevel(static_cast<SE_VOLUME>(selected));
+		const float width = 380.0f / cells;
+		for (int i = 0; i < cells; ++i) {
+			const RECT2D cell{ INFO_CARD.X + 34 + i * width, INFO_CARD.Y + 246, width - 8, 26 };
+			const bool on = i < level;
+			Bar(cell, SLANT, on ? LIME : XMFLOAT4{ 0.85f, 0.80f, 0.92f, 1.0f }, on ? 2.0f : 0.0f, 0, INK, turn);
+		}
+	}
+	Bar({ INFO_CARD.X + 10, INFO_CARD.Y + INFO_CARD.Height + 30, 330, 40 }, SLANT, INK, 0, 0);
+	Word("変えるとすぐに効きます", INFO_CARD.X + 30, INFO_CARD.Y + INFO_CARD.Height + 37, 18, LIME, TEXT2D_FONT_POP);
+	Word("この PC だけの設定です（通信では送りません）。", INFO_CARD.X + 20, INFO_CARD.Y + INFO_CARD.Height + 86, 15, INK);
+	Footer("↑↓ / W S / 左スティック  選ぶ    ←→ / 十字キー  変える（変えた音で聞ける）    Backspace / ×  戻る");
 }
 
 void CodexMenu::DrawArmCosts(const SceneCalc& scene, const ARM_COST_TABLE& costs) const
@@ -835,6 +890,7 @@ void CodexMenu::Draw(const SceneCalc& scene, const VersusCalc& participants, con
 	switch (scene.GetScene()) {
 	case SCENE_OPTIONS: DrawOptions(scene, tuning); break;
 	case SCENE_ARM_COSTS: DrawArmCosts(scene, costs); break;
+	case SCENE_SOUND: DrawSound(scene); break;
 	case SCENE_TITLE: DrawLobby(scene, participants, net, characters); break;
 	case SCENE_RESULT: DrawResult(scene, participants, characters); break;
 	case SCENE_GAME_START: DrawTitle(scene, characters); break;
