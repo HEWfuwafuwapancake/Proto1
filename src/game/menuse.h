@@ -33,7 +33,8 @@ public:
 	/// @param back このフレームにどれかの機器で戻るを押したか（true：押した、false：押していない）
 	/// @param decide このフレームにどれかの機器で決定を押したか（true：押した、false：押していない）
 	/// @param tuningReset このフレームにオプションの「標準に戻す」を受け付けたか（true：受け付けた、false：受け付けていない）
-	void Update(const MENU_SE_STATE& before, const MENU_SE_STATE& after, bool back, bool decide, bool tuningReset);
+	/// @param optionsSaved このフレームにオプションの「保存」でファイルに書けたか（true：書けた、false：書いていない）
+	void Update(const MENU_SE_STATE& before, const MENU_SE_STATE& after, bool back, bool decide, bool tuningReset, bool optionsSaved);
 
 private:
 	SeVoice m_Guide; // 案内の声（前の声を止めてから鳴らす）

@@ -156,6 +156,7 @@
     <ClCompile Include="tentaclecalc_test.cpp" />
     <ClCompile Include="matchcalc_test.cpp" />
     <ClCompile Include="scenecalc_test.cpp" />
+    <ClCompile Include="settingscalc_test.cpp" />
     <ClCompile Include="randomcalc_test.cpp" />
     <ClCompile Include="spawncalc_test.cpp" />
     <ClCompile Include="..\..\src\physics\randomcalc.cpp" />
@@ -169,6 +170,7 @@
     <ClCompile Include="..\..\src\physics\escapecalc.cpp" />
     <ClCompile Include="..\..\src\physics\parrycalc.cpp" />
     <ClCompile Include="..\..\src\physics\scenecalc.cpp" />
+    <ClCompile Include="..\..\src\physics\settingscalc.cpp" />
     <ClCompile Include="..\..\src\physics\matchcalc.cpp" />
     <ClCompile Include="..\..\src\physics\tentaclecalc.cpp" />
     <ClCompile Include="..\..\src\render\glyphcalc.cpp" />

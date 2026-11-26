@@ -45,9 +45,9 @@ static constexpr float PREVIEW_VIEW_HEIGHT = 2.8f; // 上下と回転中の張�
 static constexpr float FOOTER_Y = 670.0f; // 下の操作説明の帯
 static constexpr float CARD_TURN = -3.0f * PI / 180.0f; // 右の説明のカードの傾き
 static constexpr RECT2D INFO_CARD{ 760, 138, 450, 310 }; // 右の説明のカード
-static constexpr float OPTION_TOP = 118.0f;
-static constexpr float OPTION_GAP = 42.0f; // 12行が下の操作説明に重ならない間隔
-static constexpr float OPTION_HEIGHT = 38.0f;
+static constexpr float OPTION_TOP = 116.0f;
+static constexpr float OPTION_GAP = 40.0f; // 13行が下の操作説明に重ならない間隔
+static constexpr float OPTION_HEIGHT = 35.0f;
 static constexpr float OPTION_VALUE_X = 456.0f; // 設定の値を書く位置
 static constexpr float SOUND_TOP = 150.0f; // サウンドの画面の1行目
 static constexpr float SOUND_GAP = 70.0f; // サウンドの画面の行の間隔
@@ -469,7 +469,7 @@ void CodexMenu::DrawJoinAddress(const SessionAddressCalc& address) const
 	Footer("←→ / 左スティック  区切りを選ぶ    十字キー↑↓  数値を変える    Enter / ○  接続    ×  戻る");
 }
 
-void CodexMenu::DrawOptions(const SceneCalc& scene, const MATCH_TUNING& tuning) const
+void CodexMenu::DrawOptions(const SceneCalc& scene, const MATCH_TUNING& tuning, bool saved) const
 {
 	Header("オプション", "OPTIONS / MATCH SETTINGS");
 	const float jut = JUT_WIDTH * fabsf(sinf(GetSeconds() * JUT_SPEED));
@@ -482,11 +482,13 @@ void CodexMenu::DrawOptions(const SceneCalc& scene, const MATCH_TUNING& tuning) 
 			selected ? LIME : command ? PURPLE : WHITE, 3, selected ? 7.0f : 4.0f);
 		const XMFLOAT4 ink = command && !selected ? WHITE : INK;
 		const char* name = i < TUNING_ITEM_COUNT ? OPTION_NAMES[i] : i == OPTION_ITEM_LOOK_SENSITIVITY ? "視点感度"
-			: i == OPTION_ITEM_SOUND ? "サウンド" : i == OPTION_ITEM_ARM_COSTS ? "腕の耐久の減る量" : i == OPTION_ITEM_RESET ? "標準に戻す" : "戻る";
-		Word(name, x + 64, y + 8, 17, ink);
+			: i == OPTION_ITEM_SOUND ? "サウンド" : i == OPTION_ITEM_ARM_COSTS ? "腕の耐久の減る量"
+			: i == OPTION_ITEM_SAVE ? "保存する" : i == OPTION_ITEM_RESET ? "標準に戻す" : "戻る";
+		Word(name, x + 64, y + 7, 17, ink);
 		char value[80] = "";
 		if (i == OPTION_ITEM_ARM_COSTS) sprintf_s(value, "表を開く >");
 		else if (i == OPTION_ITEM_SOUND) sprintf_s(value, "音量を開く >");
+		else if (i == OPTION_ITEM_SAVE) sprintf_s(value, saved ? "保存済み" : "未保存の変更あり");
 		else if (i == OPTION_ITEM_LOOK_SENSITIVITY) sprintf_s(value, "× %.2f", ActionGetLookSensitivity());
 		else if (i < TUNING_ITEM_COUNT) {
 			const auto item = static_cast<TUNING_ITEM>(i);
@@ -495,8 +497,10 @@ void CodexMenu::DrawOptions(const SceneCalc& scene, const MATCH_TUNING& tuning) 
 			else if (item == TUNING_CAPSULES) sprintf_s(value, "%d 個 / %.1f 秒", TuningCalcCapsuleCount(tuning), TuningCalcCapsuleSeconds(tuning));
 			else sprintf_s(value, "× %.2f", TuningCalcValue(tuning, item));
 		}
-		if (value[0]) Word(value, x + OPTION_VALUE_X, y + 7, 18, selected ? PURPLE : ink, TEXT2D_FONT_POP);
-		if (selected && i <= OPTION_ITEM_LOOK_SENSITIVITY) Word("<", x + OPTION_VALUE_X - 30, y + 7, 18, PURPLE, TEXT2D_FONT_POP);
+		// 保存していない変更があれば、保存の行の値を黄緑で目立たせる（選んでいる行は黄緑の帯なので紫のまま）。
+		const XMFLOAT4 valueInk = selected ? PURPLE : (i == OPTION_ITEM_SAVE && !saved) ? LIME : ink;
+		if (value[0]) Word(value, x + OPTION_VALUE_X, y + 6, 18, valueInk, TEXT2D_FONT_POP);
+		if (selected && i <= OPTION_ITEM_LOOK_SENSITIVITY) Word("<", x + OPTION_VALUE_X - 30, y + 6, 18, PURPLE, TEXT2D_FONT_POP);
 	}
 	const int selected = scene.GetCursor();
 	const MENU_TURN turn{ INFO_CARD.X + INFO_CARD.Width * 0.5f, INFO_CARD.Y + INFO_CARD.Height * 0.5f, CARD_TURN };
@@ -515,11 +519,13 @@ void CodexMenu::DrawOptions(const SceneCalc& scene, const MATCH_TUNING& tuning) 
 	}
 	else if (selected == OPTION_ITEM_SOUND) InfoCard(INFO_CARD, "サウンド",
 		"全体・メニュー・ボイス・戦闘の音量を", "それぞれ変えられます。Enter / ○ で開きます。", "この PC だけの設定で、すぐに効きます。");
+	else if (selected == OPTION_ITEM_SAVE) InfoCard(INFO_CARD, "設定を保存する",
+		"今の設定をすべてファイルに保存します。", "次に起動したときも同じ設定で始まります。", "音量はサウンドの画面を出るときにも保存します。");
 	else if (selected == OPTION_ITEM_ARM_COSTS) InfoCard(INFO_CARD, "腕の耐久の減る量",
 		"攻撃ごとに耐久が減る量の表です。", "Enter / ○ で表を開きます。", "オンラインははじめの値を使います。");
 	else InfoCard(INFO_CARD, selected == OPTION_ITEM_RESET ? "標準設定に戻す" : "設定を閉じる",
 		selected == OPTION_ITEM_RESET ? "すべての項目と表を標準へ戻します。" : "変更した値は、そのまま保持されます。",
-		"Enter / ○ で決定します。", "ファイルへの保存は行いません。");
+		"Enter / ○ で決定します。", "次の起動にも残すときは「保存する」を選びます。");
 	// 段のメーター：今の段までを黄緑、残りを薄い紫の斜めの四角で並べる。
 	if (levels > 0) {
 		const float width = 380.0f / levels;
@@ -579,7 +585,7 @@ void CodexMenu::DrawSound(const SceneCalc& scene) const
 	}
 	Bar({ INFO_CARD.X + 10, INFO_CARD.Y + INFO_CARD.Height + 30, 330, 40 }, SLANT, INK, 0, 0);
 	Word("変えるとすぐに効きます", INFO_CARD.X + 30, INFO_CARD.Y + INFO_CARD.Height + 37, 18, LIME, TEXT2D_FONT_POP);
-	Word("この PC だけの設定です（通信では送りません）。", INFO_CARD.X + 20, INFO_CARD.Y + INFO_CARD.Height + 86, 15, INK);
+	Word("この PC だけの設定です。画面を出るときに保存します。", INFO_CARD.X + 20, INFO_CARD.Y + INFO_CARD.Height + 86, 15, INK);
 	Footer("↑↓ / W S / 左スティック  選ぶ    ←→ / 十字キー  変える（変えた音で聞ける）    Backspace / ×  戻る");
 }
 
@@ -884,11 +890,11 @@ void CodexMenu::DrawPause(const SceneCalc& scene) const
 
 void CodexMenu::Draw(const SceneCalc& scene, const VersusCalc& participants, const NetSession& net,
 	const SessionAddressCalc& address, const std::array<CHARACTER_TYPE, FIGHTER_COUNT>& characters,
-	const MATCH_TUNING& tuning, const ARM_COST_TABLE& costs) const
+	const MATCH_TUNING& tuning, const ARM_COST_TABLE& costs, bool optionsSaved) const
 {
 	Background();
 	switch (scene.GetScene()) {
-	case SCENE_OPTIONS: DrawOptions(scene, tuning); break;
+	case SCENE_OPTIONS: DrawOptions(scene, tuning, optionsSaved); break;
 	case SCENE_ARM_COSTS: DrawArmCosts(scene, costs); break;
 	case SCENE_SOUND: DrawSound(scene); break;
 	case SCENE_TITLE: DrawLobby(scene, participants, net, characters); break;

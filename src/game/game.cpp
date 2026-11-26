@@ -7,6 +7,8 @@
 #include "render/text2d.h"
 #include <chrono>
 #include <cmath>
+#include <fstream>
+#include <sstream>
 
 #ifdef _DEBUG
 #include "core/debug_ostream.h"
@@ -20,6 +22,7 @@ static constexpr uint32_t MATCH_SEED_STEP = 0x9e3779b9u;	// やり直すたび�
 static constexpr uint32_t MATCH_ROUND_STEP = 0xc2b2ae35u;	// メニューやロビーから始め直すたびに種へ足す値
 static constexpr uint32_t CAPSULE_SEED_MASK = 0x85ebca6bu;	// 復活先とは別の乱数列にする
 static constexpr int ARM_COST_STEP = 5;	// オプションで耐久の減る量を左右1回で変える量
+static constexpr const char* OPTION_SETTINGS_FILE = "settings.ini";	// オプションを保存するファイル（作業フォルダ。Git には送らない）
 // Ｇで動いている間も残す入力（メニュー・カメラの操作）。ほかの移動・攻撃・ガードなどは使わない。
 static constexpr uint32_t LIFT_KEPT_BUTTONS = (1u << ACTION_RESTART) | (1u << ACTION_RUMBLE_TOGGLE) | (1u << ACTION_DECIDE)
 	| (1u << ACTION_CAMERA_TOGGLE) | (1u << ACTION_TARGET_LEFT) | (1u << ACTION_TARGET_RIGHT);
@@ -54,6 +57,7 @@ bool Game::Initialize(const NET_OPTIONS& options)
 	}
 	ConfigurePlayers();
 	m_CodexMenu.Initialize();
+	LoadOptionSettings(); // ホストを開くときに保存した試合の設定を渡すので、通信より先に読む
 	const bool connected = m_Net.Initialize(options);
 	if (connected && m_Net.IsHost()) m_Net.SetTuning(m_Tuning);
 	m_Scene.Start(m_Net.IsOnline());
@@ -243,6 +247,14 @@ void Game::UpdateMenu()
 		ActionSetLookSensitivityLevel(ActionGetLookSensitivityDefaultLevel());
 		for (int i = 0; i < SE_VOLUME_COUNT; ++i) SeSetVolumeLevel(static_cast<SE_VOLUME>(i), SeGetVolumeDefaultLevel());
 	}
+	else if (event == SCENE_EVENT_OPTIONS_SAVE) {
+		// 書けなかったときは保存済みにしない（「未保存の変更あり」のまま残る）。
+		const OPTION_SETTINGS settings = GetOptionSettings();
+		if (WriteOptionSettings(settings)) {
+			m_SavedSettings = settings;
+			m_OptionsSaveSe = true;
+		}
+	}
 	else if (event == SCENE_EVENT_SOUND_VOLUME_CHANGE) {
 		// サウンドの画面の行は SE_VOLUME と同じ並び。
 		static_assert(SOUND_ITEM_BACK == static_cast<int>(SE_VOLUME_COUNT), "SOUND_ITEM の音量の行と SE_VOLUME をそろえる");
@@ -267,6 +279,13 @@ void Game::UpdateMenu()
 			tuning.Levels[item] = static_cast<uint8_t>(next);
 			SetTuning(tuning);
 		}
+	}
+	// サウンドの画面を出るときは、音量だけを保存してあるファイルへ書き足す（ほかの保存していない変更は書かない）。
+	if (oldScene == SCENE_SOUND && m_Scene.GetScene() != SCENE_SOUND) {
+		OPTION_SETTINGS saved = m_SavedSettings;
+		const OPTION_SETTINGS current = GetOptionSettings();
+		for (int i = 0; i < SETTINGS_VOLUME_COUNT; ++i) saved.VolumeLevels[i] = current.VolumeLevels[i];
+		if (!SettingsCalcEquals(saved, m_SavedSettings) && WriteOptionSettings(saved)) m_SavedSettings = saved;
 	}
 	if (oldScene != SCENE_JOIN_ADDRESS && m_Scene.GetScene() == SCENE_JOIN_ADDRESS) {
 		const std::string addresses = NetSocket::GetLocalAddresses();
@@ -314,9 +333,10 @@ void Game::Update()
 		decide = decide || menu.Decide;
 	}
 	m_TuningResetSe = false;
+	m_OptionsSaveSe = false;
 	UpdateSeListeners();
 	UpdateFrame();
-	m_MenuSe.Update(before, GetMenuSeState(), back, decide, m_TuningResetSe);
+	m_MenuSe.Update(before, GetMenuSeState(), back, decide, m_TuningResetSe, m_OptionsSaveSe);
 }
 
 void Game::UpdateSeListeners() const
@@ -349,6 +369,42 @@ void Game::UpdateSeListeners() const
 		}
 	}
 	SeSetListeners(listeners, count);
+}
+
+OPTION_SETTINGS Game::GetOptionSettings() const
+{
+	OPTION_SETTINGS settings;
+	settings.Tuning = m_Tuning; // オプションはオフラインのメニューからしか開かないので、この PC の設定を保存する
+	settings.ArmCosts = m_ArmCosts;
+	settings.LookSensitivityLevel = ActionGetLookSensitivityLevel();
+	for (int i = 0; i < SETTINGS_VOLUME_COUNT; ++i) settings.VolumeLevels[i] = SeGetVolumeLevel(static_cast<SE_VOLUME>(i));
+	return settings;
+}
+
+void Game::LoadOptionSettings()
+{
+	static_assert(SETTINGS_VOLUME_COUNT == static_cast<int>(SE_VOLUME_COUNT), "保存する音量の数と SE_VOLUME をそろえる");
+	OPTION_SETTINGS settings = GetOptionSettings();
+	std::ifstream file(OPTION_SETTINGS_FILE, std::ios::binary);
+	if (file) {
+		std::stringstream text;
+		text << file.rdbuf();
+		SettingsCalcParse(text.str(), settings);
+		if (TuningCalcIsValid(settings.Tuning)) m_Tuning = settings.Tuning;
+		m_ArmCosts = settings.ArmCosts;
+		ActionSetLookSensitivityLevel(settings.LookSensitivityLevel);
+		for (int i = 0; i < SETTINGS_VOLUME_COUNT; ++i) SeSetVolumeLevel(static_cast<SE_VOLUME>(i), settings.VolumeLevels[i]);
+	}
+	// 範囲にそろえたあとの値を「保存済み」とする（ファイルがなければ、はじめの値が保存済み）。
+	m_SavedSettings = GetOptionSettings();
+}
+
+bool Game::WriteOptionSettings(const OPTION_SETTINGS& settings) const
+{
+	std::ofstream file(OPTION_SETTINGS_FILE, std::ios::binary | std::ios::trunc);
+	if (!file) return false;
+	file << SettingsCalcFormat(settings);
+	return static_cast<bool>(file);
 }
 
 MENU_SE_STATE Game::GetMenuSeState() const
@@ -673,7 +729,8 @@ void Game::Draw() const
 		light.Enable = FALSE;
 		Shader_SetLight(light);
 		m_CodexMenu.Draw(m_Scene, scene == SCENE_RESULT ? m_Fighters.GetVersus() : m_Participants,
-			m_Net, m_JoinAddress, m_LobbyCharacters, GetTuning(), m_ArmCosts);
+			m_Net, m_JoinAddress, m_LobbyCharacters, GetTuning(), m_ArmCosts,
+			SettingsCalcEquals(GetOptionSettings(), m_SavedSettings));
 		// 接続の問題はウィンドウ表示中にも読めるよう、メニューの上へ出す。
 		m_Huds[0].DrawCornerWarning(m_Net);
 		return;
