@@ -46,6 +46,7 @@ public:
 private:
 	void UpdateFrame();
 	MENU_SE_STATE GetMenuSeState() const;
+	void UpdateSeListeners() const;
 	void Restart(bool retry);
 	void ResetParticipants();
 	void UpdateMenu();
@@ -86,5 +87,6 @@ private:
 	uint32_t m_MatchSeed = 0;
 	int m_MenuDevice = ACTION_DEVICE_KEYBOARD; // SOLO の決定を押した機器
 	bool m_Fullscreen = false;
+	bool m_TuningResetSe = false; // このフレームに「標準に戻す」を受け付けた（メニューの音を選ぶため）
 	bool m_MapDecideHeld = false; // マップ選択に入ってから、1P が決定をまだ離していない（離すまで決定を受け付けない）
 };

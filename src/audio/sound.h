@@ -26,8 +26,24 @@ int SoundLoad(const char* path);
 /// @brief 読み込んだ音を最初から1回鳴らす
 /// @param sound SoundLoad で受け取った音の番号（-1 なら何もしない）
 /// @param volume 音量（1.0 で元の大きさ）
+/// @param pitch 再生の速さ（1.0 で元のまま。小さくすると低く・ゆっくりになる）
+/// @param panned 左右を指定するか（true：pan で左右を配る、false：素材のまま鳴らす）
+/// @param pan 左右（-1：左、0：真ん中、+1：右。panned が true のときだけ使う）
 /// @return 鳴らした音の番号（止めるときに使う。鳴らせなかったら -1）
-int SoundPlay(int sound, float volume = 1.0f);
+int SoundPlay(int sound, float volume = 1.0f, float pitch = 1.0f, bool panned = false, float pan = 0.0f);
+
+/// @brief 鳴らしている音の大きさと左右を変える（溜め・回転など、鳴っている間に動く音に使う）
+/// @param voice SoundPlay で受け取った番号（鳴り終わっていれば何もしない）
+/// @param volume 音量
+/// @param pan 左右（-1：左、0：真ん中、+1：右）
+void SoundSetMix(int voice, float volume, float pan);
+
+/// @brief 読み込んだ音の余韻を短くする（読み込んだ波形を切るだけで、ファイルは変えない）
+/// @param sound SoundLoad で受け取った音の番号
+/// @param keepSeconds 残す長さ（秒。元より長ければ何もしない）
+/// @param fadeSeconds 残す部分の終わりで、だんだん小さくして消す長さ（秒）
+/// @return 短くできたら true（16bit でない・番号が違うときは false）
+bool SoundShortenTail(int sound, float keepSeconds, float fadeSeconds);
 
 /// @brief 鳴らしている音を止める（鳴り終わった・-1 なら何もしない）
 /// @param voice SoundPlay で受け取った番号

@@ -57,6 +57,7 @@ static constexpr float HIT_RUMBLE_SECONDS = 0.25f;
 static constexpr float THROW_RUMBLE = 0.4f;
 static constexpr float THROW_RUMBLE_SECONDS = 0.1f;
 static constexpr float THRUST_SE_VOLUME = 0.6f; // 突きで鳴らす「槍投げ」の音の大きさ（投げは 1.0）
+static constexpr SE_ID STAB_SE = SE_KATANA_HIT2; // 刺さった音（No.195 で「刀単押しヒット2」に替えて比べる。元は SE_SPEAR_STAB）
 
 enum SPEAR_PHASE { SPEAR_RAISE, SPEAR_STRIKE, SPEAR_RECOVER, SPEAR_PHASE_COUNT };
 
@@ -97,15 +98,19 @@ void SpearArm::Thrust()
 	const VEC3 direction = GetStrikeDirection(m_Direction);
 	LaserCalcPierce(shoulder, direction, THRUST_REACH, THRUST_RADIUS, targets, FIGHTER_COUNT, hits);
 	bool hit = false;
+	int hitTarget = -1; // 音を鳴らす相手（何人に当たっても音は1回）
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		if (!hits[i]) continue;
 		const SPEAR_THRUST_HIT strike = SpearCalcThrustHit(shoulder, direction, targets[i].Body, THRUST);
-		if (GetFighters().Launch(i, GetSlot(), AreaCalcLaunchDirection(m_Direction, THRUST_UP), strike.Damage, strike.Power)) hit = true;
+		if (GetFighters().Launch(i, GetSlot(), AreaCalcLaunchDirection(m_Direction, THRUST_UP), strike.Damage, strike.Power)) {
+			hit = true;
+			hitTarget = i;
+		}
 	}
 	if (hit) {
 		Consume(ARM_COST_TAP_HIT);
 		Rumble(HIT_RUMBLE, HIT_RUMBLE, HIT_RUMBLE_SECONDS);
-		SePlay(SE_SPEAR_STAB);
+		PlayHitSe(STAB_SE, hitTarget);
 	}
 }
 
@@ -134,14 +139,14 @@ void SpearArm::OnStuck()
 	Consume(ARM_COST_HOLD_HIT);
 	GetFighters().ApplyStatus(target, GetSlot(), STATUS_STUN, STUN_TICK_SECONDS, 0.0f);
 	Rumble(HIT_RUMBLE, HIT_RUMBLE, HIT_RUMBLE_SECONDS);
-	SePlay(SE_SPEAR_STAB);
+	PlayHitSe(STAB_SE, target);
 	m_StuckSeconds = 0.0f;
 	// もう一方の手や触手が体を動かしている間は突っ込まない（吹っ飛ばしとしびれは入る）。
 	if (GetPlayer().IsPulled()) return;
 	m_Rushing = true;
 	m_OwnPull = true;
 	GetPlayer().SetPulled(true);
-	SePlay(SE_SPEAR_PULL);
+	PlaySe(SE_SPEAR_PULL);
 }
 
 // 刺さっている間：吹っ飛んでいる相手をしびれさせ続け、自分は相手の足元へ突っ込む。
@@ -202,7 +207,7 @@ void SpearArm::Update(const ARM_INPUT& input)
 		m_Phase.SetHeld(m_Throw);
 		m_Lunging = !m_Throw;
 		if (input.HoldReleased) m_Phase.Release();
-		else if (m_Throw) SePlay(SE_ARM_HOLD);
+		else if (m_Throw) PlaySe(SE_ARM_HOLD);
 	}
 	else if (input.HoldReleased && m_Throw) m_Phase.Release();
 	// 構えている間にボタンを受け付けなくなった（ガードなど）ときは、投げずにやめる。
@@ -214,7 +219,7 @@ void SpearArm::Update(const ARM_INPUT& input)
 	StepLunge();
 	if (step.Entered == SPEAR_STRIKE) {
 		m_Direction = GetAim(false);
-		SePlay(SE_SPEAR_THROW, m_Throw ? 1.0f : THRUST_SE_VOLUME); // 突きも投げと同じ風を切る音（小さめ）
+		PlaySe(SE_SPEAR_THROW, m_Throw ? 1.0f : THRUST_SE_VOLUME); // 突きも投げと同じ風を切る音（小さめ）
 		if (!m_Throw) Thrust();
 		else {
 			m_Spear.Throw(GetShoulder(), GetStrikeDirection(m_Direction));

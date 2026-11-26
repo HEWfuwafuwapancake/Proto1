@@ -169,6 +169,7 @@
     <ClCompile Include="src\audio\sound.cpp" />
     <ClCompile Include="src\audio\se.cpp" />
     <ClCompile Include="src\audio\wavcalc.cpp" />
+    <ClCompile Include="src\audio\sespatialcalc.cpp" />
     <ClCompile Include="src\physics\playercalc.cpp" />
     <ClCompile Include="src\physics\tentacleropecalc.cpp" />
     <ClCompile Include="src\physics\cameracalc.cpp" />
@@ -265,6 +266,7 @@
     <ClInclude Include="src\audio\sound.h" />
     <ClInclude Include="src\audio\se.h" />
     <ClInclude Include="src\audio\wavcalc.h" />
+    <ClInclude Include="src\audio\sespatialcalc.h" />
     <ClInclude Include="src\physics\playercalc.h" />
     <ClInclude Include="src\physics\tentacleropecalc.h" />
     <ClInclude Include="src\physics\cameracalc.h" />

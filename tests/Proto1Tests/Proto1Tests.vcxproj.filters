@@ -141,8 +141,12 @@
     <ClCompile Include="spawncalc_test.cpp" />
     <ClCompile Include="mapcalc_test.cpp" />
     <ClCompile Include="wavcalc_test.cpp" />
+    <ClCompile Include="sespatialcalc_test.cpp" />
     <ClCompile Include="liftcalc_test.cpp" />
     <ClCompile Include="..\..\src\audio\wavcalc.cpp">
+      <Filter>src\audio</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\audio\sespatialcalc.cpp">
       <Filter>src\audio</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\physics\mapcalc.cpp">

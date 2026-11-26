@@ -25,3 +25,13 @@ struct WAV_INFO
 /// @param info 読み取った形式を書く先
 /// @return 読めたら true（RIFF/WAVE でない・PCM でない・fmt か data がない・波形がファイルからはみ出すときは false）
 bool WavCalcParse(const uint8_t* data, size_t size, WAV_INFO& info);
+
+/// @brief 16bit の波形の余韻を短くする（残す長さの終わりの部分を少しずつ小さくして消す）
+/// @details 素材の余韻が長すぎるときに、読み込んだ波形をこの関数で切る（ファイルは変えない）
+/// @param samples 波形（チャンネルが交互に並んだ 16bit のサンプル。書き換える）
+/// @param frames 波形のフレーム数（1フレーム = 全チャンネル分の1サンプル）
+/// @param channels チャンネル数
+/// @param keepFrames 残すフレーム数（frames 以上なら何もしない）
+/// @param fadeFrames 残す部分の終わりで、0 まで小さくしていくフレーム数（keepFrames より長ければ keepFrames にそろえる）
+/// @return 残したフレーム数
+size_t WavCalcShortenTail(int16_t* samples, size_t frames, int channels, size_t keepFrames, size_t fadeFrames);

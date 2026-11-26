@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <vector>
 #include "audio/wavcalc.h"
+#include "audio/sespatialcalc.h"
 #include "core/debug_ostream.h"
 
 #pragma comment (lib, "xaudio2.lib")
@@ -27,6 +28,7 @@ namespace
 		IXAudio2SourceVoice* Voice = nullptr;
 		uint32_t Generation = 0; // 同じ枠を使い回しても、古い番号で止めないための数
 		uint32_t StartOrder = 0; // 枠が足りないときに、いちばん古い音を探すための数
+		int Channels = 1; // 鳴らしている音のチャンネル数（左右を配るときに使う）
 	};
 
 	IXAudio2* s_XAudio = nullptr;
@@ -34,6 +36,8 @@ namespace
 	std::vector<SOUND_CLIP> s_Clips;
 	SOUND_VOICE s_Voices[SOUND_VOICE_COUNT];
 	uint32_t s_PlayCount = 0;
+	int s_OutputChannels = 2; // 出力先（スピーカー）のチャンネル数
+	float s_MonoDefault = 0.7071f; // 左右を指定しないモノラルの音が、左のスピーカーへ配られる大きさ（XAudio2 の既定）
 
 	// 番号 = 世代 × 枠の数 + 枠。古い番号は世代が合わないので何もしない。
 	int MakeHandle(int slot) { return static_cast<int>(s_Voices[slot].Generation % 0x10000u) * SOUND_VOICE_COUNT + slot; }
@@ -51,6 +55,24 @@ namespace
 		if (slot.Voice == nullptr) return;
 		slot.Voice->DestroyVoice(); // 止めてから消える（再生中でもよい）
 		slot.Voice = nullptr;
+	}
+
+	// 左右を配る。モノラルの音はそのまま、ステレオの音は左右を混ぜてから配る（真ん中では今までと同じ大きさ）。
+	// 出力先が1チャンネル・3チャンネル以上の素材は配らない（音量だけ変える）。
+	void ApplyPan(const SOUND_VOICE& slot, float pan)
+	{
+		if (slot.Voice == nullptr || s_Master == nullptr || s_OutputChannels < 2 || slot.Channels > 2) return;
+		float left = 0.0f, right = 0.0f;
+		SeSpatialCalcPanGains(pan, left, right);
+		const int source = slot.Channels;
+		std::vector<float> matrix(static_cast<size_t>(source * s_OutputChannels), 0.0f);
+		// 行列は「出力のチャンネル × 素材のチャンネル数 + 素材のチャンネル」の並び。
+		const float scale = source == 1 ? s_MonoDefault * 1.41421356f : 0.70710678f;
+		for (int c = 0; c < source; ++c) {
+			matrix[0 * source + c] = left * scale;
+			matrix[1 * source + c] = right * scale;
+		}
+		slot.Voice->SetOutputMatrix(nullptr, source, s_OutputChannels, matrix.data());
 	}
 
 	bool IsFinished(const SOUND_VOICE& slot)
@@ -75,6 +97,24 @@ bool SoundInitialize(void)
 		s_Master = nullptr;
 		hal::dout << "音：出力先の機器がありません（音なしで続けます）" << std::endl;
 		return false;
+	}
+	XAUDIO2_VOICE_DETAILS details{};
+	s_Master->GetVoiceDetails(&details);
+	s_OutputChannels = static_cast<int>(details.InputChannels);
+	// 左右を指定しないときのモノラルの配り方を調べ、左右を配るときも真ん中では同じ大きさにする。
+	WAVEFORMATEX mono{};
+	mono.wFormatTag = WAVE_FORMAT_PCM;
+	mono.nChannels = 1;
+	mono.nSamplesPerSec = 44100;
+	mono.wBitsPerSample = 16;
+	mono.nBlockAlign = 2;
+	mono.nAvgBytesPerSec = 44100 * 2;
+	IXAudio2SourceVoice* probe = nullptr;
+	if (s_OutputChannels >= 2 && SUCCEEDED(s_XAudio->CreateSourceVoice(&probe, &mono))) {
+		std::vector<float> matrix(static_cast<size_t>(s_OutputChannels), 0.0f);
+		probe->GetOutputMatrix(nullptr, 1, s_OutputChannels, matrix.data());
+		if (matrix[0] > 0.0f) s_MonoDefault = matrix[0];
+		probe->DestroyVoice();
 	}
 	return true;
 }
@@ -127,7 +167,7 @@ int SoundLoad(const char* path)
 	return static_cast<int>(s_Clips.size()) - 1;
 }
 
-int SoundPlay(int sound, float volume)
+int SoundPlay(int sound, float volume, float pitch, bool panned, float pan)
 {
 	if (s_XAudio == nullptr || sound < 0 || sound >= static_cast<int>(s_Clips.size())) return -1;
 	// 空いている枠（鳴り終わった枠も空きとみなす）、なければいちばん古い音の枠を使う。
@@ -148,6 +188,9 @@ int SoundPlay(int sound, float volume)
 	buffer.pAudioData = clip.File.data() + clip.DataOffset;
 	buffer.Flags = XAUDIO2_END_OF_STREAM;
 	slot.Voice->SetVolume(volume);
+	slot.Channels = clip.Format.nChannels;
+	if (pitch > 0.0f && pitch != 1.0f) slot.Voice->SetFrequencyRatio(pitch);
+	if (panned) ApplyPan(slot, pan);
 	if (FAILED(slot.Voice->SubmitSourceBuffer(&buffer)) || FAILED(slot.Voice->Start(0))) {
 		DestroySlot(slot);
 		return -1;
@@ -155,6 +198,28 @@ int SoundPlay(int sound, float volume)
 	++slot.Generation;
 	slot.StartOrder = ++s_PlayCount;
 	return MakeHandle(use);
+}
+
+void SoundSetMix(int voice, float volume, float pan)
+{
+	const int slot = FindSlot(voice);
+	if (slot < 0) return;
+	s_Voices[slot].Voice->SetVolume(volume);
+	ApplyPan(s_Voices[slot], pan);
+}
+
+bool SoundShortenTail(int sound, float keepSeconds, float fadeSeconds)
+{
+	if (sound < 0 || sound >= static_cast<int>(s_Clips.size()) || keepSeconds <= 0.0f) return false;
+	SOUND_CLIP& clip = s_Clips[sound];
+	if (clip.Format.wBitsPerSample != 16) return false;
+	const size_t frames = clip.DataSize / clip.Format.nBlockAlign;
+	const size_t keep = static_cast<size_t>(keepSeconds * clip.Format.nSamplesPerSec);
+	const size_t fade = static_cast<size_t>(fadeSeconds * clip.Format.nSamplesPerSec);
+	int16_t* samples = reinterpret_cast<int16_t*>(clip.File.data() + clip.DataOffset);
+	const size_t kept = WavCalcShortenTail(samples, frames, clip.Format.nChannels, keep, fade);
+	clip.DataSize = kept * clip.Format.nBlockAlign;
+	return true;
 }
 
 void SoundStop(int voice)

@@ -55,3 +55,17 @@ TEST(WavCalcTest, RejectsNonPcm)
 	WAV_INFO info;
 	EXPECT_FALSE(WavCalcParse(wav.data(), wav.size(), info));
 }
+
+// 余韻を短くすると、残す長さで切れて、終わりに向かって小さくなり最後は 0 になる
+TEST(WavCalcTest, ShortenTailFadesToSilence)
+{
+	std::vector<int16_t> samples(20, 1000); // ステレオ 10 フレーム
+	EXPECT_EQ(WavCalcShortenTail(samples.data(), 10, 2, 6, 4), 6u);
+	EXPECT_EQ(samples[0], 1000); // フェードより前はそのまま
+	EXPECT_EQ(samples[3], 1000);
+	EXPECT_LT(samples[2 * 2], 1000); // フェードの途中は小さい
+	EXPECT_GT(samples[2 * 2], 0);
+	EXPECT_EQ(samples[5 * 2], 0); // 最後のフレームは無音
+	EXPECT_EQ(samples[5 * 2 + 1], 0);
+	EXPECT_EQ(WavCalcShortenTail(samples.data(), 10, 2, 12, 4), 10u); // 元より長くは伸ばさない
+}

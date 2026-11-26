@@ -3,11 +3,15 @@
 /// @file se.h
 /// @brief 効果音（assets/sounds/se）を名前で鳴らす部品
 /// @details 使い方：
-///          - 1回鳴らすだけ：`SePlay(SE_HAMMER_TAP);`（候補が複数ある音は、鳴らすたびにランダムに1つ選ぶ）
+///          - メニューなど場所のない音を1回鳴らす：`SePlay(SE_MENU_DECIDE);`（候補が複数ある音は、鳴らすたびにランダムに1つ選ぶ）
+///          - 戦闘の音を場所つきで鳴らす：`SePlayAt(SE_HAMMER_TAP, 位置, 攻撃した人, 当てられた人);`
+///            （聞き手（この PC で遊ぶ人）からの距離で小さくなり、カメラの向きで左右が決まる。SeSetListeners で毎フレーム聞き手を渡す）
 ///          - 途中で止めたい音（溜め・振り回しなど）：メンバーに `SeVoice m_ChargeSe;` を持ち、
-///            始めるときに `m_ChargeSe.Play(SE_LASER_CHARGE);`、やめるときに `m_ChargeSe.Stop();`
+///            始めるときに `m_ChargeSe.PlayAt(...)`、動いたら `m_ChargeSe.MoveTo(位置)`、やめるときに `m_ChargeSe.Stop();`
 ///          音とファイルの対応・音量は se.cpp の「調整用の値」の表で変える。
-///          鳴らすだけでゲームの計算は変えないので、オンラインでも全員の PC で同じ場面で鳴る
+///          鳴らすだけでゲームの計算は変えない（大きさ・左右は PC ごとの聞き手で変わってよい）
+
+#include "audio/sespatialcalc.h"
 
 /// @brief 鳴らす効果音の名前
 enum SE_ID
@@ -46,6 +50,7 @@ enum SE_ID
 
 	// 刀
 	SE_KATANA_HIT, ///< 単押しの居合が当たった
+	SE_KATANA_HIT2, ///< 刀のヒット音の2つ目（今は刀では使わず、槍が刺さったときに使う）
 	SE_KATANA_MISS, ///< 単押しの居合が空振りした
 	SE_KATANA_DASH, ///< 長押しで移動した
 
@@ -75,11 +80,30 @@ enum SE_ID
 /// @brief 効果音のファイルを全部読み込む（SoundInitialize のあとに1回呼ぶ。読めなかった音は鳴らないだけ）
 void SeInitialize(void);
 
-/// @brief 効果音を1回鳴らす（候補が複数ある音はランダムに1つ選ぶ）
+/// @brief 効果音を1回鳴らす（場所を使わず、真ん中で鳴らす。メニューの音など）
 /// @param id 鳴らす音
 /// @param volume 表の音量に掛ける倍率（1.0 で表のまま）
 /// @return 鳴らした音の番号（SoundStop で止められる。鳴らせなかったら -1）
 int SePlay(SE_ID id, float volume = 1.0f);
+
+/// @brief 聞き手（この PC で遊ぶ人）を設定する（試合の間、毎フレーム渡す。試合の外では 0 人にする）
+/// @param listeners 聞き手の並び（スロットの小さい順。count が 0 なら nullptr でよい）
+/// @param count 聞き手の数（0〜SE_LISTENER_MAX）
+void SeSetListeners(const SE_LISTENER* listeners, int count);
+
+/// @brief スロットの人がこの PC で遊ぶ人（聞き手）か
+/// @param slot スロット番号
+/// @return 聞き手なら true（CPU・ダミー・ほかの PC の人は false）
+bool SeIsListener(int slot);
+
+/// @brief 戦闘の効果音を、出た場所に合わせた大きさと左右で1回鳴らす
+/// @param id 鳴らす音
+/// @param position 音の出た場所（振り・発射はその腕、着弾・爆発は当たった場所）
+/// @param slotA 音に関わる人（攻撃した人など。いなければ -1）
+/// @param slotB 音に関わるもう1人（当てられた人など。いなければ -1）
+/// @param volume 表の音量に掛ける倍率
+/// @return 鳴らした音の番号（鳴らせなかったら -1）
+int SePlayAt(SE_ID id, const VEC3& position, int slotA, int slotB = -1, float volume = 1.0f);
 
 /// @brief 途中で止めたい効果音を1つ受け持つ（溜め・振り回しなど。腕のメンバーに持つ）
 class SeVoice
@@ -93,6 +117,21 @@ public:
 	/// @param id 鳴らす音
 	/// @param volume 表の音量に掛ける倍率
 	void Keep(SE_ID id, float volume = 1.0f);
+	/// @brief 前の音を止めてから、場所つきで鳴らす（SePlayAt と同じ大きさと左右）
+	/// @param id 鳴らす音
+	/// @param position 音の出た場所
+	/// @param slotA 音に関わる人（いなければ -1）
+	/// @param volume 表の音量に掛ける倍率
+	void PlayAt(SE_ID id, const VEC3& position, int slotA, float volume = 1.0f);
+	/// @brief 鳴っていなければ場所つきで鳴らし、鳴っていれば場所だけ動かす（毎フレーム呼んでよい）
+	/// @param id 鳴らす音
+	/// @param position 音の出た場所
+	/// @param slotA 音に関わる人（いなければ -1）
+	/// @param volume 表の音量に掛ける倍率
+	void KeepAt(SE_ID id, const VEC3& position, int slotA, float volume = 1.0f);
+	/// @brief 鳴らしている音の場所を動かす（大きさと左右を今の聞き手で決め直す。場所なしで鳴らした音は変えない）
+	/// @param position 音の出た場所
+	void MoveTo(const VEC3& position);
 	/// @brief 鳴らしている音を止める（鳴っていなければ何もしない）
 	void Stop(void);
 	/// @brief 鳴らしている音がまだ鳴っているか
@@ -101,4 +140,7 @@ public:
 
 private:
 	int m_Voice = -1; // SoundPlay の番号（鳴らしていなければ -1）
+	bool m_Spatial = false; // 場所つきで鳴らしたか
+	float m_Volume = 1.0f; // 表の音量と倍率を掛けた大きさ（場所で決まる倍率を掛ける前）
+	int m_SlotA = -1; // 音に関わる人
 };

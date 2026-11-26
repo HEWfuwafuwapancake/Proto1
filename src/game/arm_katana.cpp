@@ -35,6 +35,7 @@ static constexpr float TAP_HALF_ANGLE = XMConvertToRadians(60.0f);
 static constexpr float TAP_DAMAGE = 6.0f; // 1段目・2段目の斬撃。
 static constexpr float TAP_POWER = 0.7f;
 static constexpr float TAP_UP = 0.2f;
+static constexpr float TAP_HIT_SE_VOLUME = 0.85f; // 単押しで当てたときのヒット音の大きさ（長押しの一閃・通り抜けは 1.0。No.195）
 static constexpr float PIERCE_DISTANCE = 4.0f; // 狙う相手がいないときに通り抜ける距離。
 static constexpr float PIERCE_PAST = 1.5f; // 狙う相手がいるとき、相手の向こうへ抜ける距離。
 static constexpr float PIERCE_MAX = 6.0f; // 通り抜ける距離の上限。
@@ -186,6 +187,7 @@ void KatanaArm::BeginDraw()
 void KatanaArm::SlashTargets()
 {
 	bool hit = false;
+	int hitTarget = -1; // 音を鳴らす相手（何人に当たっても音は1回）
 	// ロックオン中は、高台の上・下の相手へも扇を傾けて斬る。
 	const VEC3 strike = GetStrikeDirection(m_Direction);
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
@@ -201,10 +203,11 @@ void KatanaArm::SlashTargets()
 		m_SlashDirections[i] = m_Direction;
 		m_SlashSeconds[i] = SLASH_SHOW_SECONDS;
 		hit = true;
+		hitTarget = i;
 	}
 	if (hit) {
 		Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
-		SePlay(SE_KATANA_HIT);
+		PlayHitSe(SE_KATANA_HIT, hitTarget, TAP_HIT_SE_VOLUME);
 	}
 }
 
@@ -231,10 +234,8 @@ void KatanaArm::IaiTargets()
 		m_SlashDirections[i] = m_IaiDirection;
 		hit = true;
 	}
-	if (hit) {
-		Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
-		SePlay(SE_KATANA_HIT);
-	}
+	// 当たった音は、少しあとに斬撃が入るとき（StepDelayedHits）に鳴らす（同じ一閃で2回鳴らさない）。
+	if (hit) Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
 }
 
 // 飛んだ通り道をまとめて調べ、高速移動でも相手を通り抜けて見逃さない。
@@ -244,6 +245,7 @@ void KatanaArm::DashTargets(const VEC3& from, const VEC3& to)
 	const CAPSULE path{ Vec3Add(from, height), Vec3Add(to, height), DASH_HIT_RADIUS };
 	const VEC3 flat = ArmCalcPitchDirection(m_Direction, 0.0f);
 	bool hit = false;
+	int hitTarget = -1;
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		const TENTACLE_TARGET target = GetFighters().GetMeleeTarget(i, GetSlot());
 		if (!target.Available || !CollisionCapsuleCapsule(path, target.Body).Hit || !m_Hits.TryAdd(i)) continue;
@@ -254,10 +256,11 @@ void KatanaArm::DashTargets(const VEC3& from, const VEC3& to)
 		m_SlashDirections[i] = flat;
 		m_SlashSeconds[i] = SLASH_SHOW_SECONDS;
 		hit = true;
+		hitTarget = i;
 	}
 	if (hit) {
 		Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
-		SePlay(SE_KATANA_HIT);
+		PlayHitSe(SE_KATANA_HIT, hitTarget);
 	}
 }
 
@@ -270,7 +273,7 @@ void KatanaArm::StepDelayedHits(float dt)
 		GetFighters().Launch(hits[i].Target, GetSlot(), hits[i].Direction, hits[i].Damage, hits[i].Power);
 		m_SlashSeconds[hits[i].Target] = SLASH_SHOW_SECONDS;
 		Rumble(SLASH_RUMBLE_SMALL, SLASH_RUMBLE_LARGE, SLASH_RUMBLE_SECONDS);
-		SePlay(SE_KATANA_HIT);
+		PlayHitSe(SE_KATANA_HIT, hits[i].Target);
 	}
 	for (float& seconds : m_SlashSeconds) seconds = fmaxf(0.0f, seconds - dt);
 }
@@ -339,7 +342,7 @@ void KatanaArm::StepIai(float dt)
 	const ARM_PHASE_STEP step = m_Phase.Step(dt, IAI_SECONDS[m_TapStep], IAI_PHASE_COUNT);
 	if (step.Entered == IAI_DRAW) {
 		BeginDraw();
-		SePlay(SE_KATANA_MISS); // 振った音（当たったら当たった音を重ねる）
+		PlaySe(SE_KATANA_MISS); // 振った音（当たったら当たった音を重ねる）
 		if (m_TapStep == PIERCE_STEP) StartPierce();
 	}
 	if (m_TapStep == PIERCE_STEP) {
@@ -406,7 +409,7 @@ void KatanaArm::StartDash()
 	ConsumeDurability(GetCost(COST_ROW, ARM_COST_HOLD_MISS));
 	m_DashHitConsumed = false;
 	Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
-	SePlay(SE_KATANA_DASH);
+	PlaySe(SE_KATANA_DASH);
 }
 
 // 自分が止めていた体の計算を、ふつうに戻す。
@@ -472,7 +475,7 @@ void KatanaArm::Update(const ARM_INPUT& input)
 		if (input.Tap) StartIai();
 		else if (input.HoldStarted) {
 			SetBreach(BREACH_AIM);
-			SePlay(SE_ARM_HOLD);
+			PlaySe(SE_ARM_HOLD);
 		}
 	}
 	StepIai(dt);

@@ -62,6 +62,19 @@ CHARACTER_TYPE SceneCalc::CycleCharacter(CHARACTER_TYPE character, int direction
 	return static_cast<CHARACTER_TYPE>((character + direction + CHARACTER_COUNT) % CHARACTER_COUNT);
 }
 
+bool SceneCalc::IsBackTransition(SCENE from, SCENE to)
+{
+	switch (from) {
+	case SCENE_OPTIONS: return to == SCENE_GAME_START || to == SCENE_MODE_SELECT;
+	case SCENE_ARM_COSTS: return to == SCENE_OPTIONS;
+	case SCENE_MODE_SELECT: return to == SCENE_GAME_START;
+	case SCENE_JOIN_ADDRESS: return to == SCENE_MODE_SELECT;
+	case SCENE_TITLE: return to == SCENE_MODE_SELECT;
+	case SCENE_MAP_SELECT: return to == SCENE_TITLE;
+	default: return false;
+	}
+}
+
 void SceneCalc::CycleRule(int direction)
 {
 	m_Rule = static_cast<GAME_RULE>((m_Rule + direction + GAME_RULE_COUNT) % GAME_RULE_COUNT);

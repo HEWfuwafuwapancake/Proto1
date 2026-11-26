@@ -109,6 +109,7 @@
     <ClCompile Include="..\..\src\physics\stagecalc.cpp" />
     <ClCompile Include="..\..\src\physics\mapcalc.cpp" />
     <ClCompile Include="..\..\src\audio\wavcalc.cpp" />
+    <ClCompile Include="..\..\src\audio\sespatialcalc.cpp" />
     <ClCompile Include="..\..\src\physics\liftcalc.cpp" />
     <ClCompile Include="actioncalc_test.cpp" />
     <ClCompile Include="armcalc_test.cpp" />
@@ -149,6 +150,7 @@
     <ClCompile Include="stagecalc_test.cpp" />
     <ClCompile Include="mapcalc_test.cpp" />
     <ClCompile Include="wavcalc_test.cpp" />
+    <ClCompile Include="sespatialcalc_test.cpp" />
     <ClCompile Include="liftcalc_test.cpp" />
     <ClCompile Include="timer_test.cpp" />
     <ClCompile Include="tentaclecalc_test.cpp" />

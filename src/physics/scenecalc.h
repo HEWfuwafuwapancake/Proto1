@@ -156,6 +156,12 @@ public:
 	GAME_RULE GetRule() const { return m_Rule; }
 	/// @brief 左右の入力でキャラを一周させる（左 -1、右 +1、なし 0）
 	static CHARACTER_TYPE CycleCharacter(CHARACTER_TYPE character, int direction);
+	/// @brief 画面の移り方が「前の画面へ戻った」か調べる（戻るの音を、押したボタンでなく結果で選ぶため）
+	/// @details オプションの「戻る」やモード選択の「タイトルに戻る」を決定で選んだときも、戻るボタンと同じく true
+	/// @param from 移る前の画面
+	/// @param to 移ったあとの画面
+	/// @return メニューの階層を上へ戻る移り方なら true
+	static bool IsBackTransition(SCENE from, SCENE to);
 	/// @brief マップ選択で選んでいるマップ（もう一度・試合中は、その試合のマップ）を取得する
 	STAGE_MAP GetMap() const { return m_Map; }
 

@@ -118,7 +118,7 @@ void LaserArm::Fire(LASER_FIRE fire)
 	}
 	m_BeamCannon = fire == LASER_FIRE_CANNON;
 	const bool cannon = fire == LASER_FIRE_CANNON;
-	SePlay(cannon ? SE_LASER_CANNON : SE_LASER_SHOT);
+	PlaySe(cannon ? SE_LASER_CANNON : SE_LASER_SHOT); // 発射音は撃った腕で鳴らす（相手の側へは移さない）
 	ConsumeDurability(GetCost(COST_ROW, cannon ? (hit ? ARM_COST_HOLD_HIT : ARM_COST_HOLD_MISS) : (hit ? ARM_COST_TAP_HIT : ARM_COST_TAP_MISS)));
 }
 
@@ -137,8 +137,9 @@ void LaserArm::Update(const ARM_INPUT& input)
 	m_BeamSeconds = fmaxf(0.0f, m_BeamSeconds - dt);
 	m_GlowTime = m_Calc.IsCharging() ? m_GlowTime + dt : 0.0f;
 	// 溜めの音は溜め始めに1回鳴らし、撃つ・やめたら止める。
-	if (m_Calc.IsCharging() && !m_ChargeSePlaying) m_ChargeSe.Play(SE_LASER_CHARGE);
-	else if (!m_Calc.IsCharging() && m_ChargeSePlaying) m_ChargeSe.Stop();
+	if (m_Calc.IsCharging() && !m_ChargeSePlaying) m_ChargeSe.PlayAt(SE_LASER_CHARGE, GetShoulder(), GetSlot());
+	else if (m_Calc.IsCharging()) m_ChargeSe.MoveTo(GetShoulder()); // 動いても、溜めの音は腕についてくる
+	else if (m_ChargeSePlaying) m_ChargeSe.Stop();
 	m_ChargeSePlaying = m_Calc.IsCharging();
 	const float speed = dt / STRAIGHTEN_SECONDS;
 	m_Straighten = IsActive() ? fminf(1.0f, m_Straighten + speed) : fmaxf(0.0f, m_Straighten - speed);
