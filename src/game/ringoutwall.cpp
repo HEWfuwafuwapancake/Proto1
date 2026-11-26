@@ -20,8 +20,9 @@ static constexpr float BAND_ALPHA = 0.6f;			// 帯全体の濃さ（半透明）
 static constexpr int ROUND_SEGMENTS = 48;			// 円い壁を何枚の板で作るか
 static constexpr int MAX_CORNERS = 64;				// 壁の角の最大数
 static constexpr int VERTICES_PER_PANEL = 6;		// 板1枚の頂点（三角形2枚）
-// 1回に描く板の最大数（一周を場外の組で区切ると、板が組の数だけ増える）
-static constexpr int MAX_PANELS = MAX_CORNERS + RING_OUT_WALL_MARK_MAX * 4;
+static constexpr int MAX_UNITS = 64;				// 一周に並べる組の最大数
+// 1回に描く板の最大数（板は組の境目と角で区切る）
+static constexpr int MAX_PANELS = MAX_CORNERS + MAX_UNITS;
 
 
 void RingOutWall::Initialize(void)
@@ -41,9 +42,11 @@ void RingOutWall::Finalize(void)
 	for (auto& texture : m_Textures) SAFE_RELEASE(texture);
 }
 
-// 一周の長さ from〜to（最初の角からの m）の帯を、角で折りながら板にして書き込む。書いた頂点の数を返す。
-static int AddRange(const float (*corners)[2], int count, float from, float to, float bottom, float top, VERTEX_3D* vertex, int room)
+// 1組（一周の長さ from〜to、最初の角からの m）の帯を、角で折りながら板にして書き込む。書いた頂点の数を返す。
+// 画像は拡大・縮小せず、組の幅に合わせて左右の端を同じだけ切る（文字は画像の真ん中の半分にあるので切れない）。
+static int AddUnit(const float (*corners)[2], int count, float from, float to, float bottom, float top, VERTEX_3D* vertex, int room)
 {
+	const float margin = (1.0f - (to - from) / BAND_WIDTH) * 0.5f;	// 画像の左右それぞれから切る割合
 	static constexpr XMFLOAT4 COLOR = { 1.0f, 1.0f, 1.0f, BAND_ALPHA };
 	int n = 0;
 	float along = 0.0f;
@@ -59,9 +62,9 @@ static int AddRange(const float (*corners)[2], int count, float from, float to, 
 		const float t0 = (start - (along - length)) / length, t1 = (end - (along - length)) / length;
 		const float ax = x0 + dx * t0, az = z0 + dz * t0, bx = x0 + dx * t1, bz = z0 + dz * t1;
 		// 内側（ステージの中心の向き）を表にする。角は上から見て反時計回りなので、左手が内側。
-		// 内側から見ると一周の向きは右から左なので、画像の横を逆に貼って文字を左から読めるようにする（くり返すので負でよい）。
+		// 内側から見ると一周の向きは右から左なので、画像の横を逆に貼って文字を左から読めるようにする。
 		const XMFLOAT3 normal = { -dz / length, 0.0f, dx / length };
-		const float u0 = -start / BAND_WIDTH, u1 = -end / BAND_WIDTH;
+		const float u0 = 1.0f - margin - (start - from) / BAND_WIDTH, u1 = 1.0f - margin - (end - from) / BAND_WIDTH;
 		const VERTEX_3D a{ { ax, top, az }, normal, COLOR, { u0, 0.0f } };
 		const VERTEX_3D b{ { bx, top, bz }, normal, COLOR, { u1, 0.0f } };
 		const VERTEX_3D c{ { ax, bottom, az }, normal, COLOR, { u0, 1.0f } };
@@ -85,19 +88,20 @@ void RingOutWall::Draw(const STAGE& stage, const VEC3* outPositions, int outCoun
 		const int next = (i + 1) % count;
 		total += hypotf(corners[next][0] - corners[i][0], corners[next][1] - corners[i][1]);
 	}
-	// 一周に入る完全な組の数。最後に余る端数の組は切る（最初の角の手前に隙間が1つできる）。
-	int whole = static_cast<int>(floorf(total / BAND_WIDTH));
-	if (whole <= 0) return;
-	if (whole > MAX_PANELS) whole = MAX_PANELS;
+	// 一周がちょうど埋まる組の数（切り上げ）にし、1組の幅を一周 ÷ 組の数にそろえる（画像の幅以下になる。隙間はできない）。
+	int units = static_cast<int>(ceilf(total / BAND_WIDTH));
+	if (units < 1) units = 1;
+	if (units > MAX_UNITS) units = MAX_UNITS;
+	const float unitWidth = total / units;
 
 	// 場外になった人ごとに、壁のいちばん近い所の組を RING OUT! にする（復活するまで）。
-	bool marked[MAX_PANELS] = {};
+	bool marked[MAX_UNITS] = {};
 	for (int i = 0; i < outCount && i < RING_OUT_WALL_MARK_MAX; ++i) {
-		const int unit = static_cast<int>(StageCalcOutlineAlong(corners, count, outPositions[i].X, outPositions[i].Z) / BAND_WIDTH);
-		marked[unit < whole ? unit : whole - 1] = true;
+		const int unit = static_cast<int>(StageCalcOutlineAlong(corners, count, outPositions[i].X, outPositions[i].Z) / unitWidth);
+		marked[unit < units ? unit : units - 1] = true;
 	}
 
-	// ふだんの帯は、続いている組をまとめて描き、RING OUT! の組は別の画像で描く。
+	// ふだんの組と RING OUT! の組を、画像ごとにまとめて書き込む。
 	ID3D11DeviceContext* context = DirectXGetDeviceContext();
 	D3D11_MAPPED_SUBRESOURCE mapped{};
 	if (FAILED(context->Map(m_VertexBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped))) return;
@@ -108,12 +112,9 @@ void RingOutWall::Draw(const STAGE& stage, const VEC3* outPositions, int outCoun
 	for (int look = 0; look < RING_OUT_WALL_LOOK_COUNT; ++look) {
 		const bool wantMarked = look == RING_OUT_WALL_LOOK_RING_OUT;
 		const int first = n;
-		for (int unit = 0; unit < whole; ) {
-			if (marked[unit] != wantMarked) { ++unit; continue; }
-			int end = unit + 1;
-			while (end < whole && marked[end] == wantMarked) ++end;
-			n += AddRange(corners, count, unit * BAND_WIDTH, end * BAND_WIDTH, bottom, top, vertex + n, room - n);
-			unit = end;
+		for (int unit = 0; unit < units; ++unit) {
+			if (marked[unit] != wantMarked) continue;
+			n += AddUnit(corners, count, unit * unitWidth, (unit + 1) * unitWidth, bottom, top, vertex + n, room - n);
 		}
 		counts[look] = n - first;
 	}
