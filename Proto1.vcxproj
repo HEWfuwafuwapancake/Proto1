@@ -161,6 +161,7 @@
     <ClCompile Include="src\game\hud.cpp" />
     <ClCompile Include="src\core\shader.cpp" />
     <ClCompile Include="src\game\stage.cpp" />
+    <ClCompile Include="src\game\ringoutwall.cpp" />
     <ClCompile Include="src\physics\stagecalc.cpp" />
     <ClCompile Include="src\physics\mapcalc.cpp" />
     <ClCompile Include="src\physics\pillarcalc.cpp" />
@@ -260,6 +261,7 @@
     <ClInclude Include="src\game\hud.h" />
     <ClInclude Include="src\core\shader.h" />
     <ClInclude Include="src\game\stage.h" />
+    <ClInclude Include="src\game\ringoutwall.h" />
     <ClInclude Include="src\physics\stagecalc.h" />
     <ClInclude Include="src\physics\mapcalc.h" />
     <ClInclude Include="src\physics\pillarcalc.h" />

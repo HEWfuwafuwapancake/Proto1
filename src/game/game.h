@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "game/stage.h"
+#include "game/ringoutwall.h"
 #include "game/fightermanager.h"
 #include "game/camera.h"
 #include "game/arm.h"
@@ -63,6 +64,7 @@ private:
 	bool WriteOptionSettings(const OPTION_SETTINGS& settings) const; // 設定をファイルに書く（書けなければ false）
 
 	Stage m_Stage;
+	RingOutWall m_RingOutWall;	// 横の場外の壁の DEAD LINE の帯
 	MATCH_TUNING m_Tuning = TuningCalcDefault();
 	ARM_COST_TABLE m_ArmCosts = ArmCostCalcDefault(); // オプションで変える、オフラインの減る量の表（オンラインははじめの表）。
 	VersusCalc m_Participants; // タイトルで決まる参加者。試合の得点はFighterManagerが持つ。

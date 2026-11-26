@@ -42,6 +42,7 @@ bool Game::Initialize(const NET_OPTIONS& options)
 	m_OfflineSeed = static_cast<uint32_t>(std::chrono::steady_clock::now().time_since_epoch().count());
 	// 相手への参照は先に渡せるが、Reset の中では初期化済みの相手だけを使う。
 	m_Stage.Initialize();
+	m_RingOutWall.Initialize();
 	m_Participants.Reset();
 	for (auto& input : m_Inputs) input = {};
 	for (auto& input : m_PreviousInputs) input = {};
@@ -86,6 +87,7 @@ void Game::Finalize()
 	}
 	m_ArmCapsule.Finalize();
 	m_Fighters.Finalize();
+	m_RingOutWall.Finalize();
 	m_Stage.Finalize();
 }
 
@@ -810,6 +812,8 @@ void Game::Draw() const
 		Shader_SetLight(light);
 
 		m_Stage.Draw();
+		// 場外の壁の帯は景観（コロシアムの客席など）より外にあるので、景観の上に重ねて描き、体・腕はそのあとに描いて帯の手前に出す。
+		m_RingOutWall.Draw(m_Stage.GetStage());
 		m_Gimmick.Draw(m_HumanCount > 0 ? slot : -1);
 		if (drawCapsules) m_ArmCapsule.Draw();
 		m_Fighters.Draw(camera.GetTarget());

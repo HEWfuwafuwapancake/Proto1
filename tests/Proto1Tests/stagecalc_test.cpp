@@ -1,5 +1,6 @@
 ﻿// physics/stagecalc.h（浮島の上にいるか・場外に落ちたか）の単体テスト
 #include <gtest/gtest.h>
+#include <math.h>
 #include "physics/stagecalc.h"
 
 namespace Proto1Tests
@@ -41,6 +42,22 @@ namespace Proto1Tests
 		EXPECT_TRUE(StageCalcIsRingOut(stage, { 2.0f + 15.0f, 0.0f, -1.0f + 15.0f }));
 		stage.RoundOutline = false;
 		EXPECT_FALSE(StageCalcIsRingOut(stage, { 2.0f + 15.0f, 0.0f, -1.0f + 15.0f }));
+	}
+
+	// 壁の角：四角は外周から距離だけ外の4隅、円は中心から半径＋距離の点、壁がなければ 0 個。
+	TEST(StageCalcTest, RingOutOutline_SquareAndRound)
+	{
+		STAGE stage = MakeStage();
+		stage.SideOutDistance = 10.0f;
+		float corners[64][2];
+		ASSERT_EQ(4, StageCalcRingOutOutline(stage, corners, 64, 48));
+		EXPECT_FLOAT_EQ(27.0f, corners[0][0]);
+		EXPECT_FLOAT_EQ(24.0f, corners[0][1]);
+		stage.RoundOutline = true;
+		ASSERT_EQ(48, StageCalcRingOutOutline(stage, corners, 64, 48));
+		EXPECT_NEAR(25.0f, sqrtf((corners[7][0] - 2.0f) * (corners[7][0] - 2.0f) + (corners[7][1] + 1.0f) * (corners[7][1] + 1.0f)), 1.0e-4f);
+		stage.SideOutDistance = -1.0f;
+		EXPECT_EQ(0, StageCalcRingOutOutline(stage, corners, 64, 48));
 	}
 
 	// 浮島の真ん中は「浮島がある」

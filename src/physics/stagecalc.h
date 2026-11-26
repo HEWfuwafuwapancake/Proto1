@@ -270,3 +270,17 @@ bool StageCalcIsSideOut(const STAGE& stage, float x, float z);
 /// @param feet 体の足元
 /// @return 場外なら true
 bool StageCalcIsRingOut(const STAGE& stage, const VEC3& feet);
+
+/// @brief 横の壁の角を、上から見て一周の順に並べる（壁を描くため）
+/// @details 四角なら4つの角。円なら円の上に roundSegments 個の点（正多角形）。横の壁がなければ 0 を返す
+/// @param stage ステージ
+/// @param corners 角の X・Z を書き込む先
+/// @param maxCorners 書き込める角の最大数（足りなければ円の点を減らす）
+/// @param roundSegments 円を何角形にするか（3 以上）
+/// @return 角の数
+int StageCalcRingOutOutline(const STAGE& stage, float corners[][2], int maxCorners, int roundSegments);
+
+/// @brief 開始・復活の位置のうち、いちばん低い床の高さを取得する（場外の壁の帯を置く高さの基準）
+/// @param stage ステージ（開始位置がなければ浮島の上の面の高さ）
+/// @return 高さ
+float StageCalcLowestSpawnY(const STAGE& stage);

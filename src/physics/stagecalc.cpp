@@ -411,3 +411,36 @@ bool StageCalcIsRingOut(const STAGE& stage, const VEC3& feet)
 {
 	return StageCalcIsOut(stage, feet.Y) || StageCalcIsSideOut(stage, feet.X, feet.Z);
 }
+
+int StageCalcRingOutOutline(const STAGE& stage, float corners[][2], int maxCorners, int roundSegments)
+{
+	if (stage.SideOutDistance < 0.0f || maxCorners < 3) return 0;
+	if (stage.RoundOutline) {
+		const int count = roundSegments < 3 ? 3 : (roundSegments > maxCorners ? maxCorners : roundSegments);
+		const float radius = stage.HalfWidth + stage.SideOutDistance;
+		for (int i = 0; i < count; ++i) {
+			const float angle = 6.28318531f * i / count;
+			corners[i][0] = stage.CenterX + cosf(angle) * radius;
+			corners[i][1] = stage.CenterZ + sinf(angle) * radius;
+		}
+		return count;
+	}
+	if (maxCorners < 4) return 0;
+	const float halfX = stage.HalfWidth + stage.SideOutDistance, halfZ = stage.HalfDepth + stage.SideOutDistance;
+	const float signs[4][2] = { { 1.0f, 1.0f }, { -1.0f, 1.0f }, { -1.0f, -1.0f }, { 1.0f, -1.0f } };
+	for (int i = 0; i < 4; ++i) {
+		corners[i][0] = stage.CenterX + signs[i][0] * halfX;
+		corners[i][1] = stage.CenterZ + signs[i][1] * halfZ;
+	}
+	return 4;
+}
+
+float StageCalcLowestSpawnY(const STAGE& stage)
+{
+	if (stage.SpawnCount <= 0) return stage.TopY;
+	float lowest = stage.Spawns[0].Y;
+	for (int i = 1; i < stage.SpawnCount; ++i) {
+		if (stage.Spawns[i].Y < lowest) lowest = stage.Spawns[i].Y;
+	}
+	return lowest;
+}
