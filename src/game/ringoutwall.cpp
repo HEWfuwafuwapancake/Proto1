@@ -132,8 +132,7 @@ void RingOutWall::Draw(const STAGE& stage, const VEC3* outPositions, int outCoun
 	ID3D11Buffer* buffer = m_VertexBuffer;
 	context->IASetVertexBuffers(0, 1, &buffer, &stride, &offset);
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	// 景観より奥にあっても見えるよう、深度を見ずに重ねる（深度も書かないので、あとで描く体・腕は帯の手前に出る）。
-	SetDepthEnable(false);
+	// 地形・柱の奥なら隠れるよう、深度を見て描く（景観のモデルの飾りは、呼ぶ前に深度を消してある）。
 	int start = 0;
 	for (int look = 0; look < RING_OUT_WALL_LOOK_COUNT; ++look) {
 		ID3D11ShaderResourceView* texture = m_Textures[look];
@@ -143,7 +142,6 @@ void RingOutWall::Draw(const STAGE& stage, const VEC3* outPositions, int outCoun
 		}
 		start += counts[look];
 	}
-	SetDepthEnable(true);
 	ID3D11ShaderResourceView* empty = nullptr;
 	context->PSSetShaderResources(0, 1, &empty);
 	Shader_SetLightEnable(true);

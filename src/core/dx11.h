@@ -57,6 +57,9 @@ void SetViewport(float x, float y, float width, float height);
 /// @brief 画面（空の色）と深度バッファを消す（毎フレーム、描く前に呼ぶ）
 void Clear(void);
 
+/// @brief 深度バッファだけを消す（画面の色は残す。描いた物を、このあと描く物の前後の判定に使わないとき）
+void ClearDepth(void);
+
 /// @brief Clear で消す空の色を設定する（マップごとの空。次に Clear したときから使う）
 /// @param color 空の色（RGBA）
 void SetClearColor(const XMFLOAT4& color);

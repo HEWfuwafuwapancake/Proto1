@@ -217,6 +217,11 @@ void ShapeDrawBox(const XMFLOAT3& center, const XMFLOAT3& size, const XMFLOAT4& 
 	DrawMesh(g_Box, XMMatrixScaling(size.x, size.y, size.z) * XMMatrixTranslation(center.x, center.y, center.z), color);
 }
 
+void ShapeDrawBoxYaw(const XMFLOAT3& center, const XMFLOAT3& size, float yaw, const XMFLOAT4& color)
+{
+	DrawMesh(g_Box, XMMatrixScaling(size.x, size.y, size.z) * XMMatrixRotationY(yaw) * XMMatrixTranslation(center.x, center.y, center.z), color);
+}
+
 void ShapeDrawSphere(const XMFLOAT3& center, float radius, const XMFLOAT4& color)
 {
 	DrawMesh(g_Sphere, XMMatrixScaling(radius, radius, radius) * XMMatrixTranslation(center.x, center.y, center.z), color);

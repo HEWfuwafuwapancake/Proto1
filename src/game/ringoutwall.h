@@ -29,7 +29,8 @@ public:
 	void Initialize(void);
 	/// @brief 画像と頂点バッファを解放する
 	void Finalize(void);
-	/// @brief 帯を描く（ステージを描いた直後、体・腕より前に呼ぶ。深度を見ずに重ねるので景観の奥でも見える。横の壁がないステージでは何もしない）
+	/// @brief 帯を描く（ステージを描いた直後、体・腕より前に呼ぶ。深度を見るので地形・柱の奥なら隠れる。横の壁がないステージでは何もしない）
+	/// @details 景観のモデルで描くマップでは、呼ぶ前に景観の深度を消して地形の区画の深度だけを書いておく（Stage::DrawTerrainDepth）
 	/// @param stage ステージ
 	/// @param outPositions 復活を待っている人の、場外になった場所（足元）の並び
 	/// @param outCount outPositions の数（RING_OUT_WALL_MARK_MAX まで使う）

@@ -41,6 +41,10 @@ public:
 
 	/// @brief 浮島と高台、または対戦マップの地形を描く（render/shape.h の箱を使う）
 	void Draw(void) const;
+	/// @brief 景観のモデルで描くマップ（ネオンビル群・コロシアム・廃駅）か取得する（true：モデルで描く、false：区画の箱で描く）
+	bool HasSceneryModel(void) const { return m_MapModels[m_Map] >= 0; }
+	/// @brief 地形の区画（柱も含む）を、色を変えずに深度だけ書く（景観のモデルの深度を消したあと、地形の前後の判定を作り直すため）
+	void DrawTerrainDepth(void) const;
 
 	/// @brief 浮島・高台・場外の線を取得する（着地や場外の判定に使う）
 	/// @return ステージ

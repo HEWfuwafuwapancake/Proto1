@@ -212,6 +212,21 @@ void Stage::DrawModelMap(int model) const
 	Shader_SetLightEnable(true);
 }
 
+void Stage::DrawTerrainDepth(void) const
+{
+	// 透明度 0 の箱で描くと、色は変わらず深度だけが残る。区画は地盤の下面から、中心の上面の高さまでの箱にする（坂は中心の高さで近似）。
+	static constexpr XMFLOAT4 INVISIBLE = { 0.0f, 0.0f, 0.0f, 0.0f };
+	for (int i = 0; i < m_Stage.RegionCount; ++i) {
+		const STAGE_REGION& region = m_Stage.Regions[i];
+		const float centerX = (region.MinX + region.MaxX) * 0.5f, centerZ = (region.MinZ + region.MaxZ) * 0.5f;
+		const float top = StageCalcRegionHeight(region, centerX, centerZ);
+		const float bottom = m_Stage.GroundBottomY;
+		if (top <= bottom) continue;
+		ShapeDrawBoxYaw({ centerX, (top + bottom) * 0.5f, centerZ }, { region.MaxX - region.MinX, top - bottom, region.MaxZ - region.MinZ },
+			region.Yaw, INVISIBLE);
+	}
+}
+
 void Stage::DrawTerrain(void) const
 {
 	for (int i = 0; i < m_Stage.RegionCount; ++i) DrawRegion(m_Stage.Regions[i]);
