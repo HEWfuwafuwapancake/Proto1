@@ -280,13 +280,6 @@ void Game::UpdateMenu()
 			SetTuning(tuning);
 		}
 	}
-	// サウンドの画面を出るときは、音量だけを保存してあるファイルへ書き足す（ほかの保存していない変更は書かない）。
-	if (oldScene == SCENE_SOUND && m_Scene.GetScene() != SCENE_SOUND) {
-		OPTION_SETTINGS saved = m_SavedSettings;
-		const OPTION_SETTINGS current = GetOptionSettings();
-		for (int i = 0; i < SETTINGS_VOLUME_COUNT; ++i) saved.VolumeLevels[i] = current.VolumeLevels[i];
-		if (!SettingsCalcEquals(saved, m_SavedSettings) && WriteOptionSettings(saved)) m_SavedSettings = saved;
-	}
 	if (oldScene != SCENE_JOIN_ADDRESS && m_Scene.GetScene() == SCENE_JOIN_ADDRESS) {
 		const std::string addresses = NetSocket::GetLocalAddresses();
 		m_JoinAddress.Initialize(addresses.substr(0, addresses.find(" / ")));
