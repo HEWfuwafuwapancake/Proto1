@@ -520,7 +520,7 @@ void CodexMenu::DrawOptions(const SceneCalc& scene, const MATCH_TUNING& tuning, 
 	else if (selected == OPTION_ITEM_SOUND) InfoCard(INFO_CARD, "サウンド",
 		"全体・メニュー・ボイス・戦闘の音量を", "それぞれ変えられます。Enter / ○ で開きます。", "この PC だけの設定で、すぐに効きます。");
 	else if (selected == OPTION_ITEM_SAVE) InfoCard(INFO_CARD, "設定を保存する",
-		"今の設定をすべてファイルに保存します。", "次に起動したときも同じ設定で始まります。", "音量はサウンドの画面を出るときにも保存します。");
+		"今の設定をすべてファイルに保存します。", "次に起動したときも同じ設定で始まります。", "サウンドの音量も、ここで一緒に保存します。");
 	else if (selected == OPTION_ITEM_ARM_COSTS) InfoCard(INFO_CARD, "腕の耐久の減る量",
 		"攻撃ごとに耐久が減る量の表です。", "Enter / ○ で表を開きます。", "オンラインははじめの値を使います。");
 	else InfoCard(INFO_CARD, selected == OPTION_ITEM_RESET ? "標準設定に戻す" : "設定を閉じる",
@@ -585,7 +585,7 @@ void CodexMenu::DrawSound(const SceneCalc& scene) const
 	}
 	Bar({ INFO_CARD.X + 10, INFO_CARD.Y + INFO_CARD.Height + 30, 330, 40 }, SLANT, INK, 0, 0);
 	Word("変えるとすぐに効きます", INFO_CARD.X + 30, INFO_CARD.Y + INFO_CARD.Height + 37, 18, LIME, TEXT2D_FONT_POP);
-	Word("この PC だけの設定です。画面を出るときに保存します。", INFO_CARD.X + 20, INFO_CARD.Y + INFO_CARD.Height + 86, 15, INK);
+	Word("この PC だけの設定です。オプションの「保存する」で残せます。", INFO_CARD.X + 20, INFO_CARD.Y + INFO_CARD.Height + 86, 15, INK);
 	Footer("↑↓ / W S / 左スティック  選ぶ    ←→ / 十字キー  変える（変えた音で聞ける）    Backspace / ×  戻る");
 }
 
