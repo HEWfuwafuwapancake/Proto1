@@ -234,6 +234,7 @@ static void BuildNeon(STAGE& stage)
 static void BuildColiseum(STAGE& stage)
 {
 	BeginTerrain(stage, COLISEUM_RADIUS, COLISEUM_RADIUS, 0.0f);
+	stage.RoundOutline = true;	// 横の壁は円い床に沿わせる
 	// 柱は倒れると長い箱になり、石壁や床の上に重なるので先に調べる。
 	for (const auto& column : COLISEUM_COLUMNS) {
 		AddRegion(stage, BoxRegion(column[0], column[1], COLUMN_WIDTH, COLUMN_WIDTH, COLUMN_HEIGHT, STAGE_SURFACE_PILLAR));

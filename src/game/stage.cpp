@@ -106,12 +106,14 @@ void Stage::Reset(void)
 	SetClearColor(MAP_LOOKS[m_Map].Sky);
 }
 
-void Stage::SetMap(STAGE_MAP map, float scale)
+void Stage::SetMap(STAGE_MAP map, float scale, float ringOutDistance)
 {
 	if (!MapCalcBuild(map, scale, m_Stage)) {
 		SetSizeScale(scale);
+		m_Stage.SideOutDistance = ringOutDistance;
 		return;
 	}
+	m_Stage.SideOutDistance = ringOutDistance;
 	m_Map = map;
 	m_Scale = scale;
 	// 作り直すたびに柱を全部立て直す（試合の始め・もう一度でも元に戻る）。空の色は次の画面を消すときから使う。

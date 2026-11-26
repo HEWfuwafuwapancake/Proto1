@@ -46,7 +46,7 @@ static constexpr float FOOTER_Y = 670.0f; // 下の操作説明の帯
 static constexpr float CARD_TURN = -3.0f * PI / 180.0f; // 右の説明のカードの傾き
 static constexpr RECT2D INFO_CARD{ 760, 138, 450, 310 }; // 右の説明のカード
 static constexpr float OPTION_TOP = 116.0f;
-static constexpr float OPTION_GAP = 38.0f; // 14行が下の操作説明（FOOTER_Y）に重ならない間隔
+static constexpr float OPTION_GAP = 36.0f; // 15行が下の操作説明（FOOTER_Y）に重ならない間隔（116 ＋ 14 × 36 ＋ 33 ＝ 653）
 static constexpr float OPTION_HEIGHT = 33.0f;
 static constexpr const char* CONTROL_GUIDE_NAMES[CONTROL_GUIDE_COUNT] = { "オフ", "キーボード", "パッド" }; // 操作の表示の値
 static constexpr float OPTION_VALUE_X = 456.0f; // 設定の値を書く位置
@@ -80,7 +80,7 @@ static constexpr float COST_SCROLL_WIDTH = 6.0f; // スクロールの位置の�
 static constexpr const char* MARQUEE_TEXT = "つかむ！ なげる！ ぶっ飛ばす！";
 static constexpr const char* OPTION_NAMES[] = {
 	"突進・移動技の距離", "吹っ飛びの強さ", "ハンマーのしびれ時間", "ダメージの倍率",
-	"マップの広さ", "カプセルの出現量", "腕の耐久の持ち"
+	"マップの広さ", "カプセルの出現量", "腕の耐久の持ち", "場外の壁の距離"
 };
 static constexpr const char* OPTION_HELP[][3] = {
 	{ "長押しで使う移動技の距離を変えます。", "大きくすると、遠くまで踏み込めます。", "場外からの復帰にも影響します。" },
@@ -89,8 +89,11 @@ static constexpr const char* OPTION_HELP[][3] = {
 	{ "攻撃で増えるダメージ％の倍率です。", "大きくすると、短時間で％が上がります。", "腕ごとの基本ダメージに掛かります。" },
 	{ "ステージ全体の広さを変えます。", "広いと移動に余裕が生まれます。", "狭いと相手と出会いやすくなります。" },
 	{ "最初の個数と、追加される間隔です。", "多くすると、腕を拾いやすくなります。", "GAME ルールで使う設定です。" },
-	{ "腕が壊れるまでの持ちを変えます。", "倍率が大きいほど、長く使えます。", "無制限なら、耐久が減りません。" }
+	{ "腕が壊れるまでの持ちを変えます。", "倍率が大きいほど、長く使えます。", "無制限なら、耐久が減りません。" },
+	{ "ステージの外周から横の場外までの距離です。", "越えると、落ちたときと同じ場外です。", "端ぴったりは、端から出るとすぐ場外です。" }
 };
+static_assert(sizeof(OPTION_NAMES) / sizeof(OPTION_NAMES[0]) == TUNING_ITEM_COUNT, "OPTION_NAMES must match TUNING_ITEM");
+static_assert(sizeof(OPTION_HELP) / sizeof(OPTION_HELP[0]) == TUNING_ITEM_COUNT, "OPTION_HELP must match TUNING_ITEM");
 static constexpr const char* COST_COLUMNS[ARM_COST_ITEM_COUNT] = { "弱・当たり", "弱・外れ", "強・当たり", "強・外れ", "そのほか" };
 static constexpr const char* COST_ROWS[ARM_COST_ROW_COUNT] = { "触手", "ハンマー", "ナックル", "レーザー", "刀", "モーニングスター", "槍", "ミサイル", "ガード" };
 static constexpr const char* COST_NOTES[ARM_COST_ROW_COUNT][2] = {
@@ -506,6 +509,11 @@ void CodexMenu::DrawOptions(const SceneCalc& scene, const MATCH_TUNING& tuning, 
 			if (item == TUNING_ARM_USES && TuningCalcIsUnlimitedUses(tuning)) sprintf_s(value, "無制限");
 			else if (item == TUNING_HAMMER_STUN) sprintf_s(value, "%.1f 秒", TuningCalcValue(tuning, item));
 			else if (item == TUNING_CAPSULES) sprintf_s(value, "%d 個 / %.1f 秒", TuningCalcCapsuleCount(tuning), TuningCalcCapsuleSeconds(tuning));
+			else if (item == TUNING_RING_OUT) {
+				const float distance = TuningCalcValue(tuning, item);
+				if (distance <= 0.0f) sprintf_s(value, "端ぴったり");
+				else sprintf_s(value, "%.1f m", distance);
+			}
 			else sprintf_s(value, "× %.2f", TuningCalcValue(tuning, item));
 		}
 		// 保存していない変更があれば、保存の行の値を黄緑で目立たせる（選んでいる行は黄緑の帯なので紫のまま）。

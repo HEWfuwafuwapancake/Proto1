@@ -394,3 +394,20 @@ bool StageCalcIsOut(const STAGE& stage, float y)
 {
 	return y < stage.OutY;
 }
+
+bool StageCalcIsSideOut(const STAGE& stage, float x, float z)
+{
+	if (stage.SideOutDistance < 0.0f) return false;
+	const float dx = x - stage.CenterX;
+	const float dz = z - stage.CenterZ;
+	if (stage.RoundOutline) {
+		const float radius = stage.HalfWidth + stage.SideOutDistance;
+		return dx * dx + dz * dz > radius * radius;
+	}
+	return fabsf(dx) > stage.HalfWidth + stage.SideOutDistance || fabsf(dz) > stage.HalfDepth + stage.SideOutDistance;
+}
+
+bool StageCalcIsRingOut(const STAGE& stage, const VEC3& feet)
+{
+	return StageCalcIsOut(stage, feet.Y) || StageCalcIsSideOut(stage, feet.X, feet.Z);
+}

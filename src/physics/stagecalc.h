@@ -5,7 +5,7 @@
 /// @file stagecalc.h
 /// @brief ステージ（浮島と高台）と場外の計算
 /// @details DirectX と Windows を使わないので、単体テスト（tests/Proto1Tests）からそのまま使える。
-///          場外の線は下だけ（横や上に飛ばされても、落ちて下の線を越えたらアウト）
+///          場外は、下の線より下に落ちたときと、横の壁（外周から SideOutDistance だけ外）を越えたとき。横の壁は上下にどこまでも続く
 
 /// @brief ステージに置ける高台の最大数
 static constexpr int STAGE_PLATFORM_MAX = 8;
@@ -120,6 +120,8 @@ struct STAGE
 	float LiftSideSign = 1.0f;	///< Ｇの着地点が塞がれたとき横へずらす向き（名目着地点の X の符号に掛ける）
 	STAGE_BELT Belts[STAGE_BELT_MAX]{};	///< ダッシュ板（荷送りベルト）
 	int BeltCount = 0;	///< ダッシュ板の数
+	bool RoundOutline = false;	///< 外周の形を設定する（true：中心から HalfWidth の円、false：中心から HalfWidth・HalfDepth の四角）
+	float SideOutDistance = -1.0f;	///< 外周から横の壁までの距離（0 より小さければ横の壁はない）
 };
 
 /// @brief 地形の区画の、その場所の上面の高さを求める（範囲は見ない）
@@ -254,3 +256,17 @@ bool StageCalcIsBlocked(const STAGE& stage, const VEC3& from, const VEC3& to);
 /// @param y 調べる高さ
 /// @return 下の線（OutY）より下なら true（ちょうどの高さはまだ場外でない）
 bool StageCalcIsOut(const STAGE& stage, float y);
+
+/// @brief 横の壁を越えたか調べる（高さは見ない）
+/// @details 外周（RoundOutline なら円、そうでなければ四角）から SideOutDistance だけ外が壁。横の壁がなければ常に false
+/// @param stage ステージ
+/// @param x 調べる場所の X
+/// @param z 調べる場所の Z
+/// @return 壁より外なら true（ちょうど壁の上はまだ場外でない）
+bool StageCalcIsSideOut(const STAGE& stage, float x, float z);
+
+/// @brief 体が場外になったか調べる（下の線か横の壁のどちらかを越えたら場外）
+/// @param stage ステージ
+/// @param feet 体の足元
+/// @return 場外なら true
+bool StageCalcIsRingOut(const STAGE& stage, const VEC3& feet);

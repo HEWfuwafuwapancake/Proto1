@@ -267,8 +267,11 @@ DUMMY_EVENT Fighter::Update(const Camera* camera, const ArmManager* arms)
 		}
 	}
 	else m_Dash.Step(dt, m_Body.GetOnGround(), dashParams);
-	const DUMMY_EVENT event = m_Life.Update(StageCalcIsOut(stage, m_Body.GetY()), RESPAWN_SECONDS, dt);
+	// 下の線より下に落ちても、横の壁を越えても、同じ場外にする。
+	const VEC3 feet{ m_Body.GetX(), m_Body.GetY(), m_Body.GetZ() };
+	const DUMMY_EVENT event = m_Life.Update(StageCalcIsRingOut(stage, feet), RESPAWN_SECONDS, dt);
 	if (event == DUMMY_EVENT_OUT) {
+		m_OutPosition = feet;
 		m_HeldBy = -1;
 		m_Pulled = false;
 		PlayOwnVoice(SE_MEKAGIRL_FALL);

@@ -5,7 +5,7 @@
 // 調整用の値（入力のP1N1と区別するP1S1）
 static constexpr uint32_t SESSION_MAGIC = 0x31533150;
 static constexpr size_t SESSION_HEADER_BYTES = 58;
-static constexpr size_t SESSION_STATE_BYTES = 5 + TUNING_ITEM_COUNT; // ルール1・乱数の種4・設定7バイト（STATEのみ）。
+static constexpr size_t SESSION_STATE_BYTES = 5 + TUNING_ITEM_COUNT; // ルール1・乱数の種4・設定は項目の数のバイト（STATEのみ）。
 
 static uint32_t s_Program = 0; // この実行ファイルの識別番号（main.cpp がソースの中身から作った SOURCE_ID を設定する）。
 

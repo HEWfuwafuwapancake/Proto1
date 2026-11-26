@@ -18,6 +18,31 @@ namespace Proto1Tests
 		return stage;
 	}
 
+	// 四角の外周から 10 の横の壁：中・壁の内側・外側（Z の向き）。高さが高くても横の壁は効き、壁がなければ横では場外にならない。
+	TEST(StageCalcTest, RingOut_SquareSideWall)
+	{
+		STAGE stage = MakeStage();
+		stage.SideOutDistance = 10.0f;	// 中心 (2, -1) から X・Z とも 25 までが中
+		EXPECT_FALSE(StageCalcIsRingOut(stage, { 2.0f, 0.0f, -1.0f }));
+		EXPECT_FALSE(StageCalcIsRingOut(stage, { 26.5f, 0.0f, 23.5f }));
+		EXPECT_TRUE(StageCalcIsRingOut(stage, { 2.0f, 50.0f, 24.5f }));
+		EXPECT_TRUE(StageCalcIsRingOut(stage, { 2.0f, -16.0f, -1.0f }));	// 下の線もそのまま
+		stage.SideOutDistance = -1.0f;
+		EXPECT_FALSE(StageCalcIsRingOut(stage, { 100.0f, 0.0f, -1.0f }));
+	}
+
+	// 円い外周では、四角なら中に入る斜めの点も場外になる。
+	TEST(StageCalcTest, RingOut_RoundSideWall)
+	{
+		STAGE stage = MakeStage();
+		stage.RoundOutline = true;
+		stage.SideOutDistance = 5.0f;	// 中心 (2, -1) から半径 20
+		EXPECT_FALSE(StageCalcIsRingOut(stage, { 21.5f, 0.0f, -1.0f }));
+		EXPECT_TRUE(StageCalcIsRingOut(stage, { 2.0f + 15.0f, 0.0f, -1.0f + 15.0f }));
+		stage.RoundOutline = false;
+		EXPECT_FALSE(StageCalcIsRingOut(stage, { 2.0f + 15.0f, 0.0f, -1.0f + 15.0f }));
+	}
+
 	// 浮島の真ん中は「浮島がある」
 	TEST(StageCalcTest, OnPlatform_Center)
 	{

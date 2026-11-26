@@ -28,7 +28,8 @@ public:
 	/// @brief 試合で使うマップを、指定の広さの倍率で作り直す（浮島は SetSizeScale と同じ）
 	/// @param map マップ
 	/// @param scale マップの広さの倍率
-	void SetMap(STAGE_MAP map, float scale);
+	/// @param ringOutDistance 外周から横の場外の壁までの距離（0 より小さければ横の壁なし）
+	void SetMap(STAGE_MAP map, float scale, float ringOutDistance);
 	/// @brief 今のマップを取得する
 	STAGE_MAP GetMap() const { return m_Map; }
 

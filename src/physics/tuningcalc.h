@@ -13,6 +13,7 @@ enum TUNING_ITEM : uint8_t
 	TUNING_MAP_SIZE, ///< マップの広さの倍率
 	TUNING_CAPSULES, ///< 腕カプセルの出現量の段
 	TUNING_ARM_USES, ///< 腕の耐久の持ちの倍率（最後は無制限）
+	TUNING_RING_OUT, ///< ステージの外周から横の場外の壁までの距離（保存ファイルの番号がずれないよう、新しい項目は最後に足す）
 	TUNING_ITEM_COUNT, ///< 項目数
 };
 
@@ -30,7 +31,7 @@ int TuningCalcLevelCount(TUNING_ITEM item);
 int TuningCalcDefaultLevel(TUNING_ITEM item);
 /// @brief 全項目の段が範囲内ならtrueを返す
 bool TuningCalcIsValid(const MATCH_TUNING& tuning);
-/// @brief 段の倍率・秒を取得する（段が範囲外ならふつう。カプセルと無制限の使用回数は専用関数を使う）
+/// @brief 段の倍率・秒・距離（場外の壁は m）を取得する（段が範囲外ならふつう。カプセルと無制限の使用回数は専用関数を使う）
 float TuningCalcValue(const MATCH_TUNING& tuning, TUNING_ITEM item);
 /// @brief 試合の最初に出すカプセルの数を取得する
 int TuningCalcCapsuleCount(const MATCH_TUNING& tuning);

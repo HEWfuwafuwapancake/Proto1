@@ -261,7 +261,7 @@ namespace Proto1Tests
 		EXPECT_EQ(hostNonce, guest.GetSeed());
 	}
 
-	// ロビーのホストが選んだ7項目はバイト列を通して届き、参加側は上書きできない。
+	// ロビーのホストが選んだ全項目はバイト列を通して届き、参加側は上書きできない。
 	TEST(SessionCalcTest, State_SharesHostTuningAndLobbyChanges)
 	{
 		SessionCalc host, guest;
@@ -324,7 +324,7 @@ namespace Proto1Tests
 		ASSERT_EQ(1, host.Join(101));
 		std::vector<uint8_t> bytes;
 		ASSERT_TRUE(SessionCalc::Encode(host.MakeControl(1), bytes));
-		bytes.back() = static_cast<uint8_t>(TuningCalcLevelCount(TUNING_ARM_USES));
+		bytes.back() = static_cast<uint8_t>(TuningCalcLevelCount(static_cast<TUNING_ITEM>(TUNING_ITEM_COUNT - 1))); // 最後の項目を範囲外にする
 		SESSION_MESSAGE decoded;
 		EXPECT_FALSE(SessionCalc::Decode(bytes.data(), bytes.size(), decoded));
 	}

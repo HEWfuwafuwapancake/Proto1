@@ -18,6 +18,17 @@ namespace Proto1Tests
 		EXPECT_FALSE(TuningCalcIsUnlimitedUses(tuning));
 	}
 
+	// 横の場外の壁は、ふつうが 14 m、いちばん小さい段が端ぴったり（0 m）、いちばん大きい段がふつうの2倍。
+	TEST(TuningCalcTest, RingOutDistanceLevels)
+	{
+		MATCH_TUNING tuning = TuningCalcDefault();
+		EXPECT_FLOAT_EQ(14.0f, TuningCalcValue(tuning, TUNING_RING_OUT));
+		tuning.Levels[TUNING_RING_OUT] = 0;
+		EXPECT_FLOAT_EQ(0.0f, TuningCalcValue(tuning, TUNING_RING_OUT));
+		tuning.Levels[TUNING_RING_OUT] = static_cast<uint8_t>(TuningCalcLevelCount(TUNING_RING_OUT) - 1);
+		EXPECT_FLOAT_EQ(28.0f, TuningCalcValue(tuning, TUNING_RING_OUT));
+	}
+
 	// 耐久の減る量を倍率で割って切り上げ、無制限の段を区別する。
 	TEST(TuningCalcTest, DurabilityCostsRoundUpAndSupportUnlimited)
 	{
@@ -36,7 +47,7 @@ namespace Proto1Tests
 	// 各項目の段を表どおり選べ、範囲外の通信値は拒否する。
 	TEST(TuningCalcTest, LevelsValidateEveryItem)
 	{
-		const int counts[] = { 6, 6, 7, 6, 5, 4, 5 };
+		const int counts[] = { 6, 6, 7, 6, 5, 4, 5, 5 };
 		for (int i = 0; i < TUNING_ITEM_COUNT; ++i) {
 			const auto item = static_cast<TUNING_ITEM>(i);
 			MATCH_TUNING tuning = TuningCalcDefault();

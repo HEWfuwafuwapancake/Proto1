@@ -147,7 +147,7 @@ void Game::Restart(bool retry)
 	m_Match.SetRule(rule);
 	const MATCH_TUNING& tuning = GetTuning();
 	// マップはマップ選択で 1P（オンラインはホスト）が選んだもの。もう一度でも同じマップを使う。
-	m_Stage.SetMap(m_Scene.GetMap(), TuningCalcValue(tuning, TUNING_MAP_SIZE));
+	m_Stage.SetMap(m_Scene.GetMap(), TuningCalcValue(tuning, TUNING_MAP_SIZE), TuningCalcValue(tuning, TUNING_RING_OUT));
 	m_Fighters.SetMatchSettings(rule, m_MatchSeed, tuning);
 	m_ArmCapsule.SetAmount(TuningCalcCapsuleCount(tuning), TuningCalcCapsuleSeconds(tuning));
 
@@ -646,7 +646,7 @@ void Game::UpdateFrame()
 		// キャラ選択で決まった参加者で体を作り、選んでいるマップを背景に映す。
 		ConfigurePlayers();
 		m_MapDecideHeld = true;
-		m_Stage.SetMap(m_Scene.GetMap(), TuningCalcValue(GetTuning(), TUNING_MAP_SIZE));
+		m_Stage.SetMap(m_Scene.GetMap(), TuningCalcValue(GetTuning(), TUNING_MAP_SIZE), TuningCalcValue(GetTuning(), TUNING_RING_OUT));
 	}
 	else if (event == SCENE_EVENT_START_MATCH) {
 		// マップ選択から始めるときは新しい試合、試合中・結果からはもう一度（同じ種の続き）。
@@ -670,7 +670,7 @@ void Game::UpdateFrame()
 	else if (oldScene == SCENE_MATCH) m_Match.Update();
 	// マップ選択では、選んでいるマップを背景のぼかした3Dに映す。
 	if (m_Scene.GetScene() == SCENE_MAP_SELECT && m_Stage.GetMap() != m_Scene.GetMap()) {
-		m_Stage.SetMap(m_Scene.GetMap(), TuningCalcValue(GetTuning(), TUNING_MAP_SIZE));
+		m_Stage.SetMap(m_Scene.GetMap(), TuningCalcValue(GetTuning(), TUNING_MAP_SIZE), TuningCalcValue(GetTuning(), TUNING_RING_OUT));
 	}
 #ifdef _DEBUG
 	if (oldScene != m_Scene.GetScene()) {
