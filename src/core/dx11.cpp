@@ -334,11 +334,6 @@ void Clear(void)
 	g_DeviceContext->ClearDepthStencilView(g_DepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
 }
 
-void ClearDepth(void)
-{
-	g_DeviceContext->ClearDepthStencilView(g_DepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
-}
-
 
 void SetClearColor(const XMFLOAT4& color)
 {

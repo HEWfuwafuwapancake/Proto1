@@ -812,12 +812,7 @@ void Game::Draw() const
 		Shader_SetLight(light);
 
 		m_Stage.Draw();
-		// 場外の壁の帯は景観（コロシアムの客席など）より外にあるので、景観のモデルの深度を消し、地形の区画と柱の深度だけを書き直す。
-		// 帯は地形・柱の奥なら隠れ、客席などの飾りには隠れない（このあと描く体・腕も、深度は地形の区画と柱で判定する）。
-		if (m_Stage.HasSceneryModel()) {
-			ClearDepth();
-			m_Stage.DrawTerrainDepth();
-		}
+		// 場外の壁の帯は、ほかの物と同じく奥行きを比べて描く（景観・地形・柱の奥なら隠れる）。
 		{
 			// 復活を待っている人（場外になった人）の場所の壁を、RING OUT! にする。
 			VEC3 outs[FIGHTER_COUNT];

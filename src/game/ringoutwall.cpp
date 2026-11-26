@@ -132,7 +132,7 @@ void RingOutWall::Draw(const STAGE& stage, const VEC3* outPositions, int outCoun
 	ID3D11Buffer* buffer = m_VertexBuffer;
 	context->IASetVertexBuffers(0, 1, &buffer, &stride, &offset);
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	// 地形・柱の奥なら隠れるよう、深度を見て描く（景観のモデルの飾りは、呼ぶ前に深度を消してある）。
+	// 景観・地形・柱の奥なら隠れるよう、ほかの物と同じく深度を見て描く。
 	int start = 0;
 	for (int look = 0; look < RING_OUT_WALL_LOOK_COUNT; ++look) {
 		ID3D11ShaderResourceView* texture = m_Textures[look];

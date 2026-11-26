@@ -18,13 +18,6 @@ void ShapeFinalize(void);
 /// @param color 色（RGBA）
 void ShapeDrawBox(const XMFLOAT3& center, const XMFLOAT3& size, const XMFLOAT4& color);
 
-/// @brief Y 軸のまわりに回した箱を描く
-/// @param center 箱の中心（ワールド座標）
-/// @param size 回す前の箱の大きさ（X・Y・Z それぞれの長さ）
-/// @param yaw Y 軸のまわりの回転（ラジアン。地形の区画の Yaw と同じ向き）
-/// @param color 色（RGBA。透明度 0 なら色は変えずに深度だけを書く）
-void ShapeDrawBoxYaw(const XMFLOAT3& center, const XMFLOAT3& size, float yaw, const XMFLOAT4& color);
-
 /// @brief 球を描く
 /// @param center 球の中心（ワールド座標）
 /// @param radius 球の半径
