@@ -45,3 +45,19 @@ bool WavCalcParse(const uint8_t* data, size_t size, WAV_INFO& info)
 	}
 	return hasFormat && hasData && info.Channels > 0 && info.BlockAlign > 0;
 }
+
+size_t WavCalcShortenTail(int16_t* samples, size_t frames, int channels, size_t keepFrames, size_t fadeFrames)
+{
+	if (samples == nullptr || channels <= 0 || keepFrames >= frames) return frames;
+	if (fadeFrames > keepFrames) fadeFrames = keepFrames;
+	const size_t fadeStart = keepFrames - fadeFrames;
+	for (size_t frame = fadeStart; frame < keepFrames; ++frame) {
+		// 残す最後のフレームで 0 になるように、直線で小さくする。
+		const float gain = static_cast<float>(keepFrames - 1 - frame) / static_cast<float>(fadeFrames);
+		for (int c = 0; c < channels; ++c) {
+			int16_t& sample = samples[frame * channels + c];
+			sample = static_cast<int16_t>(static_cast<float>(sample) * gain);
+		}
+	}
+	return keepFrames;
+}

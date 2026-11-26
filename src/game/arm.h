@@ -10,6 +10,7 @@
 #include "physics/tuningcalc.h"
 #include "render/animcalc.h"
 #include "physics/vec3.h"
+#include "audio/se.h"
 #include <memory>
 
 class Fighter;
@@ -162,6 +163,21 @@ protected:
 	VEC3 GetAim(bool keepHeight) const;
 	/// @brief ロックオン中の相手のスロット番号を取得する（なし・つかめない相手は -1）
 	int GetAimTarget() const;
+	/// @brief 腕の音（振り・発射・溜めなど）を、この腕の肩の位置で鳴らす
+	/// @param id 鳴らす音
+	/// @param volume 表の音量に掛ける倍率
+	void PlaySe(SE_ID id, float volume = 1.0f) const;
+	/// @brief 当たった音を、当てた相手の体の位置で鳴らす
+	/// @param id 鳴らす音
+	/// @param target 当てた相手のスロット（-1 なら肩の位置で鳴らす）
+	/// @param volume 表の音量に掛ける倍率
+	void PlayHitSe(SE_ID id, int target, float volume = 1.0f) const;
+	/// @brief 音を決めた場所で鳴らす（爆発など）
+	/// @param id 鳴らす音
+	/// @param position 音の出た場所
+	/// @param target 当てた相手のスロット（いなければ -1）
+	/// @param volume 表の音量に掛ける倍率
+	void PlaySeAt(SE_ID id, const VEC3& position, int target = -1, float volume = 1.0f) const;
 	/// @brief 攻撃の当たりを探す向きを取得する（狙う相手がいれば、左右は flat のまま相手への上下の傾きを足す）
 	/// @details 高台の上・下にいる相手をロックオンして攻撃したとき、相手の高さではなく足元の平面へ攻撃しないようにする
 	/// @param flat 攻撃の左右の向き（上下は使わない）
@@ -302,6 +318,7 @@ private:
 	bool CanBreak() const;
 	void UpdateEquip(const Fighter& player);
 	void BreakExhaustedArm(int hand);
+	void PlayOwnSe(SE_ID id) const; // 腕の破壊・ガードの音を、自分の体の位置で鳴らす
 	void UpdateGuards(const Fighter& player, float dt, bool interrupted);
 	ARM_LINKS m_Links = {};
 	GAME_RULE m_Rule = GAME_RULE_DEBUG;

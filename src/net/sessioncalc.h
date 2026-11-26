@@ -162,6 +162,12 @@ public:
 	bool HasCompilerDifference() const { return m_CompilerDiffers; }
 	/// @brief 選択済みにする、または全員選択済みならホストの再決定で開始する
 	void Decide();
+	/// @brief ロビーで自分の準備OK（選択済み）を取り消す（接続と機器はそのまま。試合中・準備前は何もしない）
+	/// @details ホストは自分のビットを消して状態通知で配る。参加側は READY の代わりに JOIN を送り、ホストがビットを消す
+	/// @return 取り消したら true（もともと準備OKでなかった・試合中なら false）
+	bool CancelReady();
+	/// @brief 自分が準備OK（選択済み）か取得する
+	bool IsLocalReady() const { return m_LocalReady; }
 	/// @brief 送信元のスロットとメッセージを受け取る（参加側にとってホストは0）
 	void Receive(int peer, const SESSION_MESSAGE& message);
 	/// @brief 毎回送り直す接続・ロビー・開始状態を作る（ホストは宛先スロットを渡す）

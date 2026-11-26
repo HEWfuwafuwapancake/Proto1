@@ -78,8 +78,6 @@ static constexpr float KNOCKBACK_FRICTION = 20.0f;
 static constexpr float KNOCKBACK_STOP_SPEED = 0.5f;
 static constexpr float KNOCKBACK_GRAVITY = 25.0f; // 吹っ飛び中の重力（移動の重力を上げても、飛ぶ距離・KOのしやすさを変えない）
 static constexpr float KNOCKBACK_MOVE_SPEED = 6.0f; // 吹っ飛び中に動ける速さの上限（移動の速さを上げても、吹っ飛びへの逆らいやすさを変えない）
-static constexpr float VOICE_INTERVAL = 0.8f; // 攻撃・被弾の声を続けて鳴らすときに、最低あける秒数（連打で声が重ならないように）
-static constexpr float VOICE_DAMAGE_MIN = 1.0f; // 被弾の声を鳴らす、1回の更新で増えたダメージ%の下限（しびれなどの小さな増え方では鳴らさない）
 static constexpr float HITSTUN_PER_PERCENT = 0.005f; // 吹っ飛ばされてから何もできない秒数の、ダメージ 1% あたりの長さ（100% で 0.5 秒）
 
 KNOCKBACK_PARAMS Fighter::KnockbackParams() const
@@ -142,16 +140,13 @@ void Fighter::Reset()
 	m_Respawned = false;
 	PlaceAtSpawn();
 	m_KoBy = -1;
-	m_VoiceCooldown = 0.0f;
-	m_VoicePercent = m_Percent;
 }
 
-void Fighter::PlayVoice(SE_ID id, bool force)
+void Fighter::PlayOwnVoice(SE_ID id) const
 {
-	// 声はメカガールだけ（メカは声なし）。
-	if (m_Character != CHARACTER_MEKAGIRL || (!force && m_VoiceCooldown > 0.0f)) return;
+	// 声はメカガールだけ（メカは声なし）。この PC で操作している人の声だけ鳴らす（CPU・ダミー・ほかの PC の人は鳴らさない）。
+	if (m_Character != CHARACTER_MEKAGIRL || !SeIsListener(m_Slot)) return;
 	SePlay(id);
-	m_VoiceCooldown = VOICE_INTERVAL;
 }
 
 ACTION_AXIS Fighter::GetMoveInput() const
@@ -190,10 +185,6 @@ DUMMY_EVENT Fighter::Update(const Camera* camera, const ArmManager* arms)
 {
 	m_Respawned = false;
 	const float dt = GameTimeGetDeltaTime();
-	// 前の更新からダメージ%が増えていたら被弾の声（腕の攻撃は体の更新のあとに当たるので、次の更新で見る）。
-	m_VoiceCooldown = fmaxf(0.0f, m_VoiceCooldown - fmaxf(0.0f, dt));
-	if (m_Percent >= m_VoicePercent + VOICE_DAMAGE_MIN) PlayVoice(SE_MEKAGIRL_DAMAGE, false);
-	m_VoicePercent = m_Percent;
 	if (m_InvincibleTime > 0.0f) m_InvincibleTime = fmaxf(0.0f, m_InvincibleTime - dt);
 	const STAGE& stage = m_Stage->GetStage();
 	if (m_FlinchFrames > 0) --m_FlinchFrames;
@@ -280,7 +271,7 @@ DUMMY_EVENT Fighter::Update(const Camera* camera, const ArmManager* arms)
 	if (event == DUMMY_EVENT_OUT) {
 		m_HeldBy = -1;
 		m_Pulled = false;
-		PlayVoice(SE_MEKAGIRL_FALL, true);
+		PlayOwnVoice(SE_MEKAGIRL_FALL);
 	}
 	else if (event == DUMMY_EVENT_RESPAWN) {
 		PlaceAtSpawn();
@@ -297,7 +288,6 @@ void Fighter::UpdateFacing(const Camera& camera, const ArmManager& arms, const F
 	const int activeHands = arms.GetActiveHands();
 	const bool armStarted = (activeHands & ~m_ArmActiveHands) != 0;
 	m_ArmActiveHands = activeHands;
-	if (armStarted) PlayVoice(SE_MEKAGIRL_ATTACK, false);
 	if (!CanUseArms() || m_Status.IsActive(STATUS_STUN)) return;
 	if (m_Respawned) {
 		m_Yaw = camera.GetYaw();
