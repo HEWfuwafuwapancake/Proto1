@@ -99,6 +99,15 @@ public:
 	int GetKoBy() const { return m_KoBy; }
 	/// @brief 復活待ち以外ならtrueを返す
 	bool IsActive() const { return m_Life.GetState() == DUMMY_STATE_ACTIVE; }
+	/// @brief 最後に場外になった場所（足元）を取得する（復活待ちの間だけ意味がある。IsActive() が false の間に使う）
+	const VEC3& GetOutPosition() const { return m_OutPosition; }
+	/// @brief 体を指定の場所に止めて置く（DEBUG の試し打ち用。速度・吹っ飛び・状態異常は消え、% は 0 になる）
+	/// @param feet 置く足元
+	/// @param yaw 置いたときの左右の向き（ラジアン）
+	void PlaceAt(const VEC3& feet, float yaw);
+	/// @brief ダメージ%をそのまま書き換える（DEBUG の試し打ち用。0 より下は 0）
+	/// @param percent ダメージ%
+	void SetPercent(float percent) { m_Percent = percent > 0.0f ? percent : 0.0f; }
 	/// @brief 保持されているか取得する
 	bool IsHeld() const { return m_HeldBy >= 0; }
 	/// @brief 指定したスロットに保持されているか取得する
@@ -183,6 +192,7 @@ private:
 	PlayerBodyCalc m_Body;
 	StatusCalc m_Status;
 	DummyLifeCalc m_Life;
+	VEC3 m_OutPosition = {};	///< 最後に場外になった場所（足元）
 	VEC3 m_Spawn = {};
 	float m_SpawnYaw = 0.0f; // 開始・復活のときの体の向き
 	bool m_Boosted = false; // ダッシュ板で飛んでいる途中（着地したら吹っ飛びを終わらせる）

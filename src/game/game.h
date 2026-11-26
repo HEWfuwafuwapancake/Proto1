@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "game/stage.h"
+#include "game/ringoutwall.h"
 #include "game/fightermanager.h"
 #include "game/camera.h"
 #include "game/arm.h"
@@ -54,6 +55,7 @@ private:
 	bool IsLobbyBack() const;
 	void ConfigurePlayers();
 	void UpdatePadLights() const;
+	void UpdateDebugDummies();
 	VERSUS_VIEWPORT GetViewport(int index) const;
 	GAME_RULE GetRule() const;
 	uint32_t GetSeed() const;
@@ -62,6 +64,7 @@ private:
 	bool WriteOptionSettings(const OPTION_SETTINGS& settings) const; // 設定をファイルに書く（書けなければ false）
 
 	Stage m_Stage;
+	RingOutWall m_RingOutWall;	// 横の場外の壁の DEAD LINE の帯
 	MATCH_TUNING m_Tuning = TuningCalcDefault();
 	ARM_COST_TABLE m_ArmCosts = ArmCostCalcDefault(); // オプションで変える、オフラインの減る量の表（オンラインははじめの表）。
 	VersusCalc m_Participants; // タイトルで決まる参加者。試合の得点はFighterManagerが持つ。
@@ -93,6 +96,8 @@ private:
 	bool m_Fullscreen = false;
 	bool m_TuningResetSe = false; // このフレームに「標準に戻す」を受け付けた（メニューの音を選ぶため）
 	CONTROL_GUIDE m_ControlGuide = CONTROL_GUIDE_OFF; // 試合中の操作一覧の表示（オプションで変える。この PC だけ）
+	int m_DebugPercentStep = 0; // 試し打ちの F5 で次に相手へ入れる % の段
+	bool m_DebugCpuStopped = false; // 試し打ちの F7 で CPU を止めているか（オフラインだけ）
 	OPTION_SETTINGS m_SavedSettings; // ファイルに保存してある設定（保存していない変更があるかを見るため）
 	bool m_OptionsSaveSe = false; // このフレームにオプションの「保存」でファイルに書けた（メニューの音を選ぶため）
 	bool m_MapDecideHeld = false; // マップ選択に入ってから、1P が決定をまだ離していない（離すまで決定を受け付けない）

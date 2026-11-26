@@ -78,6 +78,9 @@
     <ClCompile Include="src\game\fighter.cpp">
       <Filter>src\game</Filter>
     </ClCompile>
+    <ClCompile Include="src\game\ringoutwall.cpp">
+      <Filter>src\game</Filter>
+    </ClCompile>
     <ClCompile Include="src\game\stage.cpp">
       <Filter>src\game</Filter>
     </ClCompile>
@@ -249,6 +252,9 @@
       <Filter>src\game</Filter>
     </ClInclude>
     <ClInclude Include="src\game\fighter.h">
+      <Filter>src\game</Filter>
+    </ClInclude>
+    <ClInclude Include="src\game\ringoutwall.h">
       <Filter>src\game</Filter>
     </ClInclude>
     <ClInclude Include="src\game\stage.h">

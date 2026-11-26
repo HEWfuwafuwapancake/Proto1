@@ -9,8 +9,14 @@ static constexpr float MAP_VALUES[] = { 0.7f, 0.85f, 1.0f, 1.2f, 1.5f };
 static constexpr float USE_VALUES[] = { 0.5f, 1.0f, 1.5f, 2.0f, 1.0f }; // 最後は無制限として別判定する。
 static constexpr int CAPSULE_COUNTS[] = { 4, 8, 12, 16 };
 static constexpr float CAPSULE_SECONDS[] = { 3.0f, 1.5f, 1.0f, 0.6f };
-static constexpr int LEVEL_COUNTS[] = { 6, 6, 7, 6, 5, 4, 5 };
-static constexpr int DEFAULT_LEVELS[] = { 2, 2, 3, 2, 2, 1, 1 };
+// 横の場外の壁：ふつうは、ダメージ 100% の相手にハンマーの長押しを端で当てると届く距離。
+// （速さ 24 で上へ約 39 度。空気の抵抗・重力で、何もできない 0.5 秒のあとすぐ戻る向きに入れても横に約 14.6 m 飛ぶ）
+static constexpr float RING_OUT_NORMAL = 14.0f;
+static constexpr float RING_OUT_RATES[] = { 0.0f, 0.7f, 1.0f, 1.5f, 2.0f }; // 0 は端ぴったりの極端な段
+static constexpr int LEVEL_COUNTS[] = { 6, 6, 7, 6, 5, 4, 5, 5 };
+static constexpr int DEFAULT_LEVELS[] = { 2, 2, 3, 2, 2, 1, 1, 2 };
+static_assert(sizeof(LEVEL_COUNTS) / sizeof(LEVEL_COUNTS[0]) == TUNING_ITEM_COUNT, "LEVEL_COUNTS must match TUNING_ITEM");
+static_assert(sizeof(DEFAULT_LEVELS) / sizeof(DEFAULT_LEVELS[0]) == TUNING_ITEM_COUNT, "DEFAULT_LEVELS must match TUNING_ITEM");
 static constexpr int UNLIMITED_LEVEL = 4;
 
 int TuningCalcLevelCount(TUNING_ITEM item)
@@ -51,6 +57,7 @@ float TuningCalcValue(const MATCH_TUNING& tuning, TUNING_ITEM item)
 	case TUNING_HAMMER_STUN: return STUN_VALUES[level];
 	case TUNING_MAP_SIZE: return MAP_VALUES[level];
 	case TUNING_ARM_USES: return USE_VALUES[level];
+	case TUNING_RING_OUT: return RING_OUT_NORMAL * RING_OUT_RATES[level];
 	case TUNING_CAPSULES: return static_cast<float>(CAPSULE_COUNTS[level]);
 	default: return SCALE_VALUES[level];
 	}

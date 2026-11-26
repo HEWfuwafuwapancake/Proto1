@@ -98,7 +98,14 @@ void FighterManager::Update()
 		else if (event == DUMMY_EVENT_RESPAWN && m_Rule == GAME_RULE_GAME) RespawnAtSafePoint(i);
 #ifdef _DEBUG
 		if (event == DUMMY_EVENT_OUT || event == DUMMY_EVENT_RESPAWN) {
-			hal::dout << "体" << i + 1 << (event == DUMMY_EVENT_OUT ? "：場外" : "：復活（0%）") << std::endl;
+			hal::dout << "体" << i + 1 << (event == DUMMY_EVENT_OUT ? "：場外" : "：復活（0%）");
+			if (event == DUMMY_EVENT_OUT) {
+				// 下の線と横の壁のどちらで場外になったかと、その場所。
+				const VEC3& out = m_Fighters[i].GetOutPosition();
+				hal::dout << (StageCalcIsOut(m_Stage->GetStage(), out.Y) ? "（下の線）" : "（横の壁）")
+					<< " x " << out.X << " y " << out.Y << " z " << out.Z;
+			}
+			hal::dout << std::endl;
 		}
 #endif
 	}

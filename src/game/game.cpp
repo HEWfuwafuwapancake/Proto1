@@ -1,6 +1,7 @@
 ﻿#include "game/game.h"
 #include "core/shader.h"
 #include "input/action.h"
+#include "input/keyboard.h"
 #include "input/pad.h"
 #include "render/backdrop.h"
 #include "render/number2d.h"
@@ -23,6 +24,10 @@ static constexpr uint32_t MATCH_ROUND_STEP = 0xc2b2ae35u;	// メニューやロ�
 static constexpr uint32_t CAPSULE_SEED_MASK = 0x85ebca6bu;	// 復活先とは別の乱数列にする
 static constexpr int ARM_COST_STEP = 5;	// オプションで耐久の減る量を左右1回で変える量
 static constexpr const char* OPTION_SETTINGS_FILE = "settings.ini";	// オプションを保存するファイル（作業フォルダ。Git には送らない）
+// オフラインの試し打ち：F5 で相手（ダミー・CPU）の % を切り替え、F6 で相手を 1P の目の前に呼び、F7 で CPU を止める・動かす。
+static constexpr float DEBUG_DUMMY_PERCENTS[] = { 100.0f, 150.0f, 50.0f, 0.0f };	// F5 を押すたびにこの順で入れる
+static constexpr float DEBUG_DUMMY_FORWARD = 2.5f;	// 呼んだダミーを置く、1P の足元から前への距離
+static constexpr float DEBUG_DUMMY_SPACING = 1.5f;	// 呼んだダミーどうしの横の間隔
 // Ｇで動いている間も残す入力（メニュー・カメラの操作）。ほかの移動・攻撃・ガードなどは使わない。
 static constexpr uint32_t LIFT_KEPT_BUTTONS = (1u << ACTION_RESTART) | (1u << ACTION_RUMBLE_TOGGLE) | (1u << ACTION_DECIDE)
 	| (1u << ACTION_CAMERA_TOGGLE) | (1u << ACTION_TARGET_LEFT) | (1u << ACTION_TARGET_RIGHT);
@@ -37,6 +42,7 @@ bool Game::Initialize(const NET_OPTIONS& options)
 	m_OfflineSeed = static_cast<uint32_t>(std::chrono::steady_clock::now().time_since_epoch().count());
 	// 相手への参照は先に渡せるが、Reset の中では初期化済みの相手だけを使う。
 	m_Stage.Initialize();
+	m_RingOutWall.Initialize();
 	m_Participants.Reset();
 	for (auto& input : m_Inputs) input = {};
 	for (auto& input : m_PreviousInputs) input = {};
@@ -81,6 +87,7 @@ void Game::Finalize()
 	}
 	m_ArmCapsule.Finalize();
 	m_Fighters.Finalize();
+	m_RingOutWall.Finalize();
 	m_Stage.Finalize();
 }
 
@@ -138,6 +145,57 @@ void Game::UpdatePadLights() const
 	}
 }
 
+// 試し打ちで動かす相手（ダミーと CPU。人は動かさない。復活待ちは飛ばす）。
+static bool IsDebugTarget(const Fighter& fighter)
+{
+	return (!fighter.IsHuman() || fighter.IsCpu()) && fighter.IsActive();
+}
+
+void Game::UpdateDebugDummies()
+{
+	// 全員の PC で同じ入力にならないので、オンラインでは使わない。
+	if (m_Net.IsOnline() || m_HumanCount <= 0) return;
+	if (KeyboardIsTrigger(VK_F7)) {
+		m_DebugCpuStopped = !m_DebugCpuStopped;
+#ifdef _DEBUG
+		hal::dout << (m_DebugCpuStopped ? "試し打ち：CPU を止めた" : "試し打ち：CPU を動かした") << std::endl;
+#endif
+	}
+	const bool setPercent = KeyboardIsTrigger(VK_F5);
+	const bool call = KeyboardIsTrigger(VK_F6);
+	if (!setPercent && !call) return;
+	const Fighter& player = m_Fighters.GetFighter(m_Humans[0]);
+	const XMFLOAT3 feet = player.GetPosition();
+	const float yaw = player.GetYaw();
+	const float forwardX = sinf(yaw), forwardZ = cosf(yaw);
+	const float percent = DEBUG_DUMMY_PERCENTS[m_DebugPercentStep];
+	if (setPercent) m_DebugPercentStep = (m_DebugPercentStep + 1) % static_cast<int>(sizeof(DEBUG_DUMMY_PERCENTS) / sizeof(DEBUG_DUMMY_PERCENTS[0]));
+	int dummyCount = 0;
+	for (int slot = 0; slot < FIGHTER_COUNT; ++slot) {
+		const Fighter& fighter = m_Fighters.GetFighter(slot);
+		if (IsDebugTarget(fighter)) ++dummyCount;
+	}
+	int index = 0;
+	for (int slot = 0; slot < FIGHTER_COUNT; ++slot) {
+		Fighter& dummy = m_Fighters.GetFighter(slot);
+		if (!IsDebugTarget(dummy)) continue;
+		if (call) {
+			// 1P の前に、横一列に並べて 1P の方を向かせる（% は今の値のまま）。
+			const float side = (index - (dummyCount - 1) * 0.5f) * DEBUG_DUMMY_SPACING;
+			const float keep = dummy.GetPercent();
+			dummy.PlaceAt({ feet.x + forwardX * DEBUG_DUMMY_FORWARD + forwardZ * side, feet.y,
+				feet.z + forwardZ * DEBUG_DUMMY_FORWARD - forwardX * side }, yaw + XM_PI);
+			dummy.SetPercent(keep);
+		}
+		if (setPercent) dummy.SetPercent(percent);
+		++index;
+	}
+#ifdef _DEBUG
+	if (setPercent) hal::dout << "試し打ち：相手を " << percent << "% にした" << std::endl;
+	if (call) hal::dout << "試し打ち：相手を 1P の前に呼んだ" << std::endl;
+#endif
+}
+
 void Game::Restart(bool retry)
 {
 	// 試合中に引いた乱数の回数にかかわらず、やり直しでは全員が同じ種を使う。
@@ -147,7 +205,7 @@ void Game::Restart(bool retry)
 	m_Match.SetRule(rule);
 	const MATCH_TUNING& tuning = GetTuning();
 	// マップはマップ選択で 1P（オンラインはホスト）が選んだもの。もう一度でも同じマップを使う。
-	m_Stage.SetMap(m_Scene.GetMap(), TuningCalcValue(tuning, TUNING_MAP_SIZE));
+	m_Stage.SetMap(m_Scene.GetMap(), TuningCalcValue(tuning, TUNING_MAP_SIZE), TuningCalcValue(tuning, TUNING_RING_OUT));
 	m_Fighters.SetMatchSettings(rule, m_MatchSeed, tuning);
 	m_ArmCapsule.SetAmount(TuningCalcCapsuleCount(tuning), TuningCalcCapsuleSeconds(tuning));
 
@@ -562,7 +620,7 @@ void Game::UpdateFrame()
 			m_Inputs[slot].Equip = m_Participants.IsHuman(slot) ? ActionGetEquipKey(slot) : ACTION_EQUIP_KEY{ -1, -1 };
 			if (m_Fighters.GetFighter(slot).IsCpu()) {
 				// CPU は試合中だけ、前のフレームの状況から人と同じ形の入力を作る。
-				m_Inputs[slot] = oldScene == SCENE_MATCH && m_Match.IsPlaying()
+				m_Inputs[slot] = oldScene == SCENE_MATCH && m_Match.IsPlaying() && !(m_DebugCpuStopped && !m_Net.IsOnline())
 					? m_Cpus[slot].Update(m_Stage, m_Fighters, m_Arms[slot], m_Cameras[slot], m_ArmCapsule, GetRule()) : PLAYER_INPUT{};
 			}
 			m_Fighters.GetFighter(slot).SetInput(m_Inputs[slot], m_PreviousInputs[slot]);
@@ -624,6 +682,7 @@ void Game::UpdateFrame()
 				}
 				m_Fighters.GetFighter(slot).SetInput(m_Inputs[slot], m_PreviousInputs[slot]);
 			}
+			UpdateDebugDummies();
 			m_Fighters.Update();
 			m_Gimmick.PostUpdate();
 			if (GetRule() == GAME_RULE_GAME) {
@@ -646,7 +705,7 @@ void Game::UpdateFrame()
 		// キャラ選択で決まった参加者で体を作り、選んでいるマップを背景に映す。
 		ConfigurePlayers();
 		m_MapDecideHeld = true;
-		m_Stage.SetMap(m_Scene.GetMap(), TuningCalcValue(GetTuning(), TUNING_MAP_SIZE));
+		m_Stage.SetMap(m_Scene.GetMap(), TuningCalcValue(GetTuning(), TUNING_MAP_SIZE), TuningCalcValue(GetTuning(), TUNING_RING_OUT));
 	}
 	else if (event == SCENE_EVENT_START_MATCH) {
 		// マップ選択から始めるときは新しい試合、試合中・結果からはもう一度（同じ種の続き）。
@@ -670,7 +729,7 @@ void Game::UpdateFrame()
 	else if (oldScene == SCENE_MATCH) m_Match.Update();
 	// マップ選択では、選んでいるマップを背景のぼかした3Dに映す。
 	if (m_Scene.GetScene() == SCENE_MAP_SELECT && m_Stage.GetMap() != m_Scene.GetMap()) {
-		m_Stage.SetMap(m_Scene.GetMap(), TuningCalcValue(GetTuning(), TUNING_MAP_SIZE));
+		m_Stage.SetMap(m_Scene.GetMap(), TuningCalcValue(GetTuning(), TUNING_MAP_SIZE), TuningCalcValue(GetTuning(), TUNING_RING_OUT));
 	}
 #ifdef _DEBUG
 	if (oldScene != m_Scene.GetScene()) {
@@ -753,6 +812,17 @@ void Game::Draw() const
 		Shader_SetLight(light);
 
 		m_Stage.Draw();
+		// 場外の壁の帯は、ほかの物と同じく奥行きを比べて描く（景観・地形・柱の奥なら隠れる）。
+		{
+			// 復活を待っている人（場外になった人）の場所の壁を、RING OUT! にする。
+			VEC3 outs[FIGHTER_COUNT];
+			int outCount = 0;
+			for (int j = 0; j < m_FightingCount; ++j) {
+				const Fighter& fighter = m_Fighters.GetFighter(m_Fighting[j]);
+				if (!fighter.IsActive()) outs[outCount++] = fighter.GetOutPosition();
+			}
+			m_RingOutWall.Draw(m_Stage.GetStage(), outs, outCount);
+		}
 		m_Gimmick.Draw(m_HumanCount > 0 ? slot : -1);
 		if (drawCapsules) m_ArmCapsule.Draw();
 		m_Fighters.Draw(camera.GetTarget());

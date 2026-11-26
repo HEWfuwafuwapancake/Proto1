@@ -394,3 +394,76 @@ bool StageCalcIsOut(const STAGE& stage, float y)
 {
 	return y < stage.OutY;
 }
+
+bool StageCalcIsSideOut(const STAGE& stage, float x, float z)
+{
+	if (stage.SideOutDistance < 0.0f) return false;
+	const float dx = x - stage.CenterX;
+	const float dz = z - stage.CenterZ;
+	if (stage.RoundOutline) {
+		const float radius = stage.HalfWidth + stage.SideOutDistance;
+		return dx * dx + dz * dz > radius * radius;
+	}
+	return fabsf(dx) > stage.HalfWidth + stage.SideOutDistance || fabsf(dz) > stage.HalfDepth + stage.SideOutDistance;
+}
+
+bool StageCalcIsRingOut(const STAGE& stage, const VEC3& feet)
+{
+	return StageCalcIsOut(stage, feet.Y) || StageCalcIsSideOut(stage, feet.X, feet.Z);
+}
+
+int StageCalcRingOutOutline(const STAGE& stage, float corners[][2], int maxCorners, int roundSegments)
+{
+	if (stage.SideOutDistance < 0.0f || maxCorners < 3) return 0;
+	if (stage.RoundOutline) {
+		const int count = roundSegments < 3 ? 3 : (roundSegments > maxCorners ? maxCorners : roundSegments);
+		const float radius = stage.HalfWidth + stage.SideOutDistance;
+		for (int i = 0; i < count; ++i) {
+			const float angle = 6.28318531f * i / count;
+			corners[i][0] = stage.CenterX + cosf(angle) * radius;
+			corners[i][1] = stage.CenterZ + sinf(angle) * radius;
+		}
+		return count;
+	}
+	if (maxCorners < 4) return 0;
+	const float halfX = stage.HalfWidth + stage.SideOutDistance, halfZ = stage.HalfDepth + stage.SideOutDistance;
+	const float signs[4][2] = { { 1.0f, 1.0f }, { -1.0f, 1.0f }, { -1.0f, -1.0f }, { 1.0f, -1.0f } };
+	for (int i = 0; i < 4; ++i) {
+		corners[i][0] = stage.CenterX + signs[i][0] * halfX;
+		corners[i][1] = stage.CenterZ + signs[i][1] * halfZ;
+	}
+	return 4;
+}
+
+float StageCalcOutlineAlong(const float corners[][2], int count, float x, float z)
+{
+	if (count < 2) return 0.0f;
+	float best = -1.0f, bestAlong = 0.0f, along = 0.0f;
+	for (int i = 0; i < count; ++i) {
+		const int next = (i + 1) % count;
+		const float dx = corners[next][0] - corners[i][0], dz = corners[next][1] - corners[i][1];
+		const float length = sqrtf(dx * dx + dz * dz);
+		if (length <= 0.0f) continue;
+		// 辺の上でいちばん近い点（辺の外へは出さない）。
+		float t = ((x - corners[i][0]) * dx + (z - corners[i][1]) * dz) / (length * length);
+		t = t < 0.0f ? 0.0f : (t > 1.0f ? 1.0f : t);
+		const float px = corners[i][0] + dx * t - x, pz = corners[i][1] + dz * t - z;
+		const float distance = px * px + pz * pz;
+		if (best < 0.0f || distance < best) {
+			best = distance;
+			bestAlong = along + length * t;
+		}
+		along += length;
+	}
+	return bestAlong < along ? bestAlong : 0.0f;
+}
+
+float StageCalcLowestSpawnY(const STAGE& stage)
+{
+	if (stage.SpawnCount <= 0) return stage.TopY;
+	float lowest = stage.Spawns[0].Y;
+	for (int i = 1; i < stage.SpawnCount; ++i) {
+		if (stage.Spawns[i].Y < lowest) lowest = stage.Spawns[i].Y;
+	}
+	return lowest;
+}

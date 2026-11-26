@@ -1,5 +1,6 @@
 ﻿// physics/stagecalc.h（浮島の上にいるか・場外に落ちたか）の単体テスト
 #include <gtest/gtest.h>
+#include <math.h>
 #include "physics/stagecalc.h"
 
 namespace Proto1Tests
@@ -16,6 +17,56 @@ namespace Proto1Tests
 		stage.Thickness = 2.0f;
 		stage.OutY = -15.0f;
 		return stage;
+	}
+
+	// 四角の外周から 10 の横の壁：中・壁の内側・外側（Z の向き）。高さが高くても横の壁は効き、壁がなければ横では場外にならない。
+	TEST(StageCalcTest, RingOut_SquareSideWall)
+	{
+		STAGE stage = MakeStage();
+		stage.SideOutDistance = 10.0f;	// 中心 (2, -1) から X・Z とも 25 までが中
+		EXPECT_FALSE(StageCalcIsRingOut(stage, { 2.0f, 0.0f, -1.0f }));
+		EXPECT_FALSE(StageCalcIsRingOut(stage, { 26.5f, 0.0f, 23.5f }));
+		EXPECT_TRUE(StageCalcIsRingOut(stage, { 2.0f, 50.0f, 24.5f }));
+		EXPECT_TRUE(StageCalcIsRingOut(stage, { 2.0f, -16.0f, -1.0f }));	// 下の線もそのまま
+		stage.SideOutDistance = -1.0f;
+		EXPECT_FALSE(StageCalcIsRingOut(stage, { 100.0f, 0.0f, -1.0f }));
+	}
+
+	// 円い外周では、四角なら中に入る斜めの点も場外になる。
+	TEST(StageCalcTest, RingOut_RoundSideWall)
+	{
+		STAGE stage = MakeStage();
+		stage.RoundOutline = true;
+		stage.SideOutDistance = 5.0f;	// 中心 (2, -1) から半径 20
+		EXPECT_FALSE(StageCalcIsRingOut(stage, { 21.5f, 0.0f, -1.0f }));
+		EXPECT_TRUE(StageCalcIsRingOut(stage, { 2.0f + 15.0f, 0.0f, -1.0f + 15.0f }));
+		stage.RoundOutline = false;
+		EXPECT_FALSE(StageCalcIsRingOut(stage, { 2.0f + 15.0f, 0.0f, -1.0f + 15.0f }));
+	}
+
+	// 壁の角：四角は外周から距離だけ外の4隅、円は中心から半径＋距離の点、壁がなければ 0 個。
+	TEST(StageCalcTest, RingOutOutline_SquareAndRound)
+	{
+		STAGE stage = MakeStage();
+		stage.SideOutDistance = 10.0f;
+		float corners[64][2];
+		ASSERT_EQ(4, StageCalcRingOutOutline(stage, corners, 64, 48));
+		EXPECT_FLOAT_EQ(27.0f, corners[0][0]);
+		EXPECT_FLOAT_EQ(24.0f, corners[0][1]);
+		stage.RoundOutline = true;
+		ASSERT_EQ(48, StageCalcRingOutOutline(stage, corners, 64, 48));
+		EXPECT_NEAR(25.0f, sqrtf((corners[7][0] - 2.0f) * (corners[7][0] - 2.0f) + (corners[7][1] + 1.0f) * (corners[7][1] + 1.0f)), 1.0e-4f);
+		stage.SideOutDistance = -1.0f;
+		EXPECT_EQ(0, StageCalcRingOutOutline(stage, corners, 64, 48));
+	}
+
+	// 壁の外の場所から、いちばん近い壁の点までの、最初の角からの長さ（四角の2辺目の途中）。
+	TEST(StageCalcTest, OutlineAlong_NearestPointOnLoop)
+	{
+		const float corners[4][2] = { { 10.0f, 10.0f }, { -10.0f, 10.0f }, { -10.0f, -10.0f }, { 10.0f, -10.0f } };
+		EXPECT_FLOAT_EQ(5.0f, StageCalcOutlineAlong(corners, 4, 5.0f, 14.0f));		// 1辺目（上の辺）
+		EXPECT_FLOAT_EQ(25.0f, StageCalcOutlineAlong(corners, 4, -13.0f, 5.0f));	// 2辺目（左の辺）
+		EXPECT_FLOAT_EQ(75.0f, StageCalcOutlineAlong(corners, 4, 12.0f, 5.0f));	// 4辺目（右の辺）
 	}
 
 	// 浮島の真ん中は「浮島がある」
