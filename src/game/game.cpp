@@ -245,6 +245,7 @@ void Game::UpdateMenu()
 		SetTuning(TuningCalcDefault());
 		m_ArmCosts = ArmCostCalcDefault();
 		ActionSetLookSensitivityLevel(ActionGetLookSensitivityDefaultLevel());
+		m_ControlGuide = CONTROL_GUIDE_OFF;
 		for (int i = 0; i < SE_VOLUME_COUNT; ++i) SeSetVolumeLevel(static_cast<SE_VOLUME>(i), SeGetVolumeDefaultLevel());
 	}
 	else if (event == SCENE_EVENT_OPTIONS_SAVE) {
@@ -263,6 +264,10 @@ void Game::UpdateMenu()
 	}
 	else if (event == SCENE_EVENT_LOOK_SENSITIVITY_CHANGE) {
 		ActionSetLookSensitivityLevel(ActionGetLookSensitivityLevel() + input.CharacterDirection);
+	}
+	else if (event == SCENE_EVENT_CONTROL_GUIDE_CHANGE) {
+		// オフ・キーボード・パッドを左右で回す（端で止めずに一周する）。
+		m_ControlGuide = static_cast<CONTROL_GUIDE>((m_ControlGuide + input.CharacterDirection + CONTROL_GUIDE_COUNT) % CONTROL_GUIDE_COUNT);
 	}
 	else if (event == SCENE_EVENT_ARM_COST_CHANGE) {
 		// オプションはオフラインのメニューからしか開かないので、表はいつでも書き換えてよい。
@@ -370,6 +375,7 @@ OPTION_SETTINGS Game::GetOptionSettings() const
 	settings.Tuning = m_Tuning; // オプションはオフラインのメニューからしか開かないので、この PC の設定を保存する
 	settings.ArmCosts = m_ArmCosts;
 	settings.LookSensitivityLevel = ActionGetLookSensitivityLevel();
+	settings.ControlGuide = m_ControlGuide;
 	for (int i = 0; i < SETTINGS_VOLUME_COUNT; ++i) settings.VolumeLevels[i] = SeGetVolumeLevel(static_cast<SE_VOLUME>(i));
 	return settings;
 }
@@ -386,6 +392,7 @@ void Game::LoadOptionSettings()
 		if (TuningCalcIsValid(settings.Tuning)) m_Tuning = settings.Tuning;
 		m_ArmCosts = settings.ArmCosts;
 		ActionSetLookSensitivityLevel(settings.LookSensitivityLevel);
+		m_ControlGuide = settings.ControlGuide;
 		for (int i = 0; i < SETTINGS_VOLUME_COUNT; ++i) SeSetVolumeLevel(static_cast<SE_VOLUME>(i), settings.VolumeLevels[i]);
 	}
 	// 範囲にそろえたあとの値を「保存済み」とする（ファイルがなければ、はじめの値が保存済み）。
@@ -410,6 +417,7 @@ MENU_SE_STATE Game::GetMenuSeState() const
 	state.Focus = m_Participants.GetLobbyFocus();
 	// 設定のどれかが変わったと分かればよいので、段と表の値を重みをつけて足す。
 	unsigned values = static_cast<unsigned>(ActionGetLookSensitivityLevel());
+	values = values * 31u + static_cast<unsigned>(m_ControlGuide);
 	for (int i = 0; i < SE_VOLUME_COUNT; ++i) values = values * 31u + static_cast<unsigned>(SeGetVolumeLevel(static_cast<SE_VOLUME>(i)));
 	for (uint8_t level : GetTuning().Levels) values = values * 31u + level;
 	for (const auto& row : m_ArmCosts.Values) {
@@ -723,7 +731,7 @@ void Game::Draw() const
 		Shader_SetLight(light);
 		m_CodexMenu.Draw(m_Scene, scene == SCENE_RESULT ? m_Fighters.GetVersus() : m_Participants,
 			m_Net, m_JoinAddress, m_LobbyCharacters, GetTuning(), m_ArmCosts,
-			SettingsCalcEquals(GetOptionSettings(), m_SavedSettings));
+			SettingsCalcEquals(GetOptionSettings(), m_SavedSettings), m_ControlGuide);
 		// 接続の問題はウィンドウ表示中にも読めるよう、メニューの上へ出す。
 		m_Huds[0].DrawCornerWarning(m_Net);
 		return;
@@ -764,6 +772,8 @@ void Game::Draw() const
 		const VERSUS_VIEWPORT empty = GetViewport(3);
 		Number2DDrawBox({ empty.X, empty.Y, empty.Width, empty.Height }, EMPTY_VIEW_COLOR);
 	}
+	// 操作一覧は分割画面でも画面全体の右に1回だけ出す（試合中だけ。ポーズ・時間切れでは出さない）。
+	if (scene == SCENE_MATCH && m_Match.IsPlaying()) m_Huds[0].DrawControlGuide(m_ControlGuide);
 	m_Huds[0].DrawScene(m_Participants, m_Net, m_JoinAddress, m_LobbyCharacters);
 	// 試合中のメニューは、止まった試合の画面の上に重ねる。
 	if (scene == SCENE_PAUSE) m_CodexMenu.DrawPause(m_Scene);

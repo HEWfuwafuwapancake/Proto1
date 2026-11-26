@@ -46,8 +46,9 @@ static constexpr float FOOTER_Y = 670.0f; // 下の操作説明の帯
 static constexpr float CARD_TURN = -3.0f * PI / 180.0f; // 右の説明のカードの傾き
 static constexpr RECT2D INFO_CARD{ 760, 138, 450, 310 }; // 右の説明のカード
 static constexpr float OPTION_TOP = 116.0f;
-static constexpr float OPTION_GAP = 40.0f; // 13行が下の操作説明に重ならない間隔
-static constexpr float OPTION_HEIGHT = 35.0f;
+static constexpr float OPTION_GAP = 38.0f; // 14行が下の操作説明（FOOTER_Y）に重ならない間隔
+static constexpr float OPTION_HEIGHT = 33.0f;
+static constexpr const char* CONTROL_GUIDE_NAMES[CONTROL_GUIDE_COUNT] = { "オフ", "キーボード", "パッド" }; // 操作の表示の値
 static constexpr float OPTION_VALUE_X = 456.0f; // 設定の値を書く位置
 static constexpr float SOUND_TOP = 150.0f; // サウンドの画面の1行目
 static constexpr float SOUND_GAP = 70.0f; // サウンドの画面の行の間隔
@@ -469,7 +470,7 @@ void CodexMenu::DrawJoinAddress(const SessionAddressCalc& address) const
 	Footer("←→ / 左スティック  区切りを選ぶ    十字キー↑↓  数値を変える    Enter / ○  接続    ×  戻る");
 }
 
-void CodexMenu::DrawOptions(const SceneCalc& scene, const MATCH_TUNING& tuning, bool saved) const
+void CodexMenu::DrawOptions(const SceneCalc& scene, const MATCH_TUNING& tuning, bool saved, CONTROL_GUIDE controlGuide) const
 {
 	Header("オプション", "OPTIONS / MATCH SETTINGS");
 	const float jut = JUT_WIDTH * fabsf(sinf(GetSeconds() * JUT_SPEED));
@@ -482,7 +483,7 @@ void CodexMenu::DrawOptions(const SceneCalc& scene, const MATCH_TUNING& tuning, 
 			selected ? LIME : command ? PURPLE : WHITE, 3, selected ? 7.0f : 4.0f);
 		const XMFLOAT4 ink = command && !selected ? WHITE : INK;
 		const char* name = i < TUNING_ITEM_COUNT ? OPTION_NAMES[i] : i == OPTION_ITEM_LOOK_SENSITIVITY ? "視点感度"
-			: i == OPTION_ITEM_SOUND ? "サウンド" : i == OPTION_ITEM_ARM_COSTS ? "腕の耐久の減る量"
+			: i == OPTION_ITEM_CONTROL_GUIDE ? "操作の表示" : i == OPTION_ITEM_SOUND ? "サウンド" : i == OPTION_ITEM_ARM_COSTS ? "腕の耐久の減る量"
 			: i == OPTION_ITEM_SAVE ? "保存する" : i == OPTION_ITEM_RESET ? "標準に戻す" : "戻る";
 		Word(name, x + 64, y + 7, 17, ink);
 		char value[80] = "";
@@ -490,6 +491,7 @@ void CodexMenu::DrawOptions(const SceneCalc& scene, const MATCH_TUNING& tuning, 
 		else if (i == OPTION_ITEM_SOUND) sprintf_s(value, "音量を開く >");
 		else if (i == OPTION_ITEM_SAVE) sprintf_s(value, saved ? "保存済み" : "未保存の変更あり");
 		else if (i == OPTION_ITEM_LOOK_SENSITIVITY) sprintf_s(value, "× %.2f", ActionGetLookSensitivity());
+		else if (i == OPTION_ITEM_CONTROL_GUIDE) sprintf_s(value, "%s", CONTROL_GUIDE_NAMES[controlGuide]);
 		else if (i < TUNING_ITEM_COUNT) {
 			const auto item = static_cast<TUNING_ITEM>(i);
 			if (item == TUNING_ARM_USES && TuningCalcIsUnlimitedUses(tuning)) sprintf_s(value, "無制限");
@@ -500,7 +502,7 @@ void CodexMenu::DrawOptions(const SceneCalc& scene, const MATCH_TUNING& tuning, 
 		// 保存していない変更があれば、保存の行の値を黄緑で目立たせる（選んでいる行は黄緑の帯なので紫のまま）。
 		const XMFLOAT4 valueInk = selected ? PURPLE : (i == OPTION_ITEM_SAVE && !saved) ? LIME : ink;
 		if (value[0]) Word(value, x + OPTION_VALUE_X, y + 6, 18, valueInk, TEXT2D_FONT_POP);
-		if (selected && i <= OPTION_ITEM_LOOK_SENSITIVITY) Word("<", x + OPTION_VALUE_X - 30, y + 6, 18, PURPLE, TEXT2D_FONT_POP);
+		if (selected && i <= OPTION_ITEM_CONTROL_GUIDE) Word("<", x + OPTION_VALUE_X - 30, y + 6, 18, PURPLE, TEXT2D_FONT_POP);
 	}
 	const int selected = scene.GetCursor();
 	const MENU_TURN turn{ INFO_CARD.X + INFO_CARD.Width * 0.5f, INFO_CARD.Y + INFO_CARD.Height * 0.5f, CARD_TURN };
@@ -517,6 +519,8 @@ void CodexMenu::DrawOptions(const SceneCalc& scene, const MATCH_TUNING& tuning, 
 		levels = ActionGetLookSensitivityLevelCount();
 		level = ActionGetLookSensitivityLevel();
 	}
+	else if (selected == OPTION_ITEM_CONTROL_GUIDE) InfoCard(INFO_CARD, "操作の表示",
+		"試合中、画面の右に操作の一覧を出します。", "キーボードかパッドのボタン名を選べます。", "この PC だけの設定で、すぐに効きます。");
 	else if (selected == OPTION_ITEM_SOUND) InfoCard(INFO_CARD, "サウンド",
 		"全体・メニュー・ボイス・戦闘の音量を", "それぞれ変えられます。Enter / ○ で開きます。", "この PC だけの設定で、すぐに効きます。");
 	else if (selected == OPTION_ITEM_SAVE) InfoCard(INFO_CARD, "設定を保存する",
@@ -890,11 +894,11 @@ void CodexMenu::DrawPause(const SceneCalc& scene) const
 
 void CodexMenu::Draw(const SceneCalc& scene, const VersusCalc& participants, const NetSession& net,
 	const SessionAddressCalc& address, const std::array<CHARACTER_TYPE, FIGHTER_COUNT>& characters,
-	const MATCH_TUNING& tuning, const ARM_COST_TABLE& costs, bool optionsSaved) const
+	const MATCH_TUNING& tuning, const ARM_COST_TABLE& costs, bool optionsSaved, CONTROL_GUIDE controlGuide) const
 {
 	Background();
 	switch (scene.GetScene()) {
-	case SCENE_OPTIONS: DrawOptions(scene, tuning, optionsSaved); break;
+	case SCENE_OPTIONS: DrawOptions(scene, tuning, optionsSaved, controlGuide); break;
 	case SCENE_ARM_COSTS: DrawArmCosts(scene, costs); break;
 	case SCENE_SOUND: DrawSound(scene); break;
 	case SCENE_TITLE: DrawLobby(scene, participants, net, characters); break;

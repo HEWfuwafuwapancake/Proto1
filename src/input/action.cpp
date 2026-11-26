@@ -13,23 +13,26 @@
 //	調整用の値
 //------------------------------------------------------------------------------
 // 行動ごとのキー（ACTION の並びと同じ順番。マウスのボタンも仮想キーコードで読める）
-static constexpr int ACTION_KEYS[ACTION_COUNT] = {
-	VK_SPACE,		// ACTION_JUMP
-	VK_LBUTTON,		// ACTION_ARM_LEFT（左クリック）
-	VK_RBUTTON,		// ACTION_ARM_RIGHT（右クリック）
-	'R',			// ACTION_RESTART
-	'V',			// ACTION_RUMBLE_TOGGLE
-	VK_RETURN,		// ACTION_DECIDE
-	'F',			// ACTION_CAMERA_TOGGLE
-	VK_LEFT,		// ACTION_TARGET_LEFT
-	VK_RIGHT,		// ACTION_TARGET_RIGHT
-	0,				// ACTION_EQUIP_HAND_LEFT（キーボードは Q / E と数字キーで別に処理）
-	0,				// ACTION_EQUIP_HAND_RIGHT（同上）
-	0,				// ACTION_EQUIP_NEXT（同上）
-	0,				// ACTION_EQUIP_PREV（同上）
-	'C',			// ACTION_DASH
-	'Z',			// ACTION_GUARD_LEFT
-	'X',			// ACTION_GUARD_RIGHT
+// 1つの行動に2つまで置ける（どちらを押しても同じ。使わないところは 0）。
+// 操作一覧（hud.cpp の CONTROL_GUIDE_LINES と docs/team/05_操作一覧.md）は手で合わせる。
+static constexpr int ACTION_KEY_SLOTS = 2;
+static constexpr int ACTION_KEYS[ACTION_COUNT][ACTION_KEY_SLOTS] = {
+	{ VK_SPACE,   0 },	// ACTION_JUMP
+	{ VK_LBUTTON, 'J' },	// ACTION_ARM_LEFT（左クリック・J）
+	{ VK_RBUTTON, 'K' },	// ACTION_ARM_RIGHT（右クリック・K）
+	{ 'R',        0 },	// ACTION_RESTART
+	{ 'V',        0 },	// ACTION_RUMBLE_TOGGLE
+	{ VK_RETURN,  0 },	// ACTION_DECIDE
+	{ 'F',        0 },	// ACTION_CAMERA_TOGGLE
+	{ VK_LEFT,    0 },	// ACTION_TARGET_LEFT
+	{ VK_RIGHT,   0 },	// ACTION_TARGET_RIGHT
+	{ 0,          0 },	// ACTION_EQUIP_HAND_LEFT（キーボードは Q / E と数字キーで別に処理）
+	{ 0,          0 },	// ACTION_EQUIP_HAND_RIGHT（同上）
+	{ 0,          0 },	// ACTION_EQUIP_NEXT（同上）
+	{ 0,          0 },	// ACTION_EQUIP_PREV（同上）
+	{ 'C',        0 },	// ACTION_DASH
+	{ 'Z',        0 },	// ACTION_GUARD_LEFT
+	{ 'X',        0 },	// ACTION_GUARD_RIGHT
 };
 
 // 行動ごとのパッドのボタン（ACTION の並びと同じ順番。企画書の「5. 操作方法」のとおり）
@@ -146,8 +149,8 @@ static void SetTargetInput(ACTION_STATE& state, bool left, bool right)
 
 static void UpdateKeyboardTargetInput(ACTION_STATE& state, float dt)
 {
-	bool left = KeyboardIsTrigger(ACTION_KEYS[ACTION_TARGET_LEFT]);
-	bool right = KeyboardIsTrigger(ACTION_KEYS[ACTION_TARGET_RIGHT]);
+	bool left = KeyboardIsTrigger(ACTION_KEYS[ACTION_TARGET_LEFT][0]);
+	bool right = KeyboardIsTrigger(ACTION_KEYS[ACTION_TARGET_RIGHT][0]);
 	g_TargetMouseCooldown = fmaxf(0.0f, g_TargetMouseCooldown - dt);
 	for (TARGET_MOUSE_SAMPLE& sample : g_TargetMouseSamples) sample.Age += dt;
 	while (!g_TargetMouseSamples.empty() && g_TargetMouseSamples.front().Age >= TARGET_MOUSE_WINDOW) {
@@ -228,7 +231,9 @@ static void UpdateKeyboardInput(float dt)
 		// ターゲット切り替えは下の UpdateKeyboardTargetInput で、押した瞬間だけのイベントにする。
 		if (i == ACTION_TARGET_LEFT || i == ACTION_TARGET_RIGHT) continue;
 		state.OldPress[i] = state.Press[i];
-		state.Press[i] = ACTION_KEYS[i] != 0 && KeyboardIsPress(ACTION_KEYS[i]);
+		bool press = false;
+		for (int key : ACTION_KEYS[i]) press = press || (key != 0 && KeyboardIsPress(key));
+		state.Press[i] = press;
 	}
 	UpdateKeyboardTargetInput(state, dt);
 	state.Move = ActionCalcMoveFromKeys(

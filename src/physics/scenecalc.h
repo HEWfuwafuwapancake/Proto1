@@ -61,6 +61,16 @@ enum SCENE_EVENT
 	SCENE_EVENT_OPEN_MAP_SELECT, ///< キャラ選択で決まった参加者で体を作り、マップ選択を表示する
 	SCENE_EVENT_SOUND_VOLUME_CHANGE, ///< サウンドの画面で選んだジャンルの音量を左右の入力方向へ変更する
 	SCENE_EVENT_OPTIONS_SAVE, ///< 今のオプションの設定をファイルに保存する
+	SCENE_EVENT_CONTROL_GUIDE_CHANGE, ///< 試合中の操作一覧の表示（オフ・キーボード・パッド）を左右の入力方向へ変更する
+};
+
+/// @brief 試合中に画面の右へ出す操作一覧の種類（オプションで選ぶ。この PC だけの設定）
+enum CONTROL_GUIDE
+{
+	CONTROL_GUIDE_OFF, ///< 出さない（はじめの値）
+	CONTROL_GUIDE_KEYBOARD, ///< キーボードのキー名で出す
+	CONTROL_GUIDE_PAD, ///< パッドのボタン名で出す
+	CONTROL_GUIDE_COUNT, ///< 種類の数
 };
 
 /// @brief モード選択の項目
@@ -79,6 +89,7 @@ enum MODE_ITEM
 enum OPTION_ITEM
 {
 	OPTION_ITEM_LOOK_SENSITIVITY = TUNING_ITEM_COUNT, ///< 視点感度（この PC だけの設定。通信では送らない）
+	OPTION_ITEM_CONTROL_GUIDE, ///< 試合中の操作一覧の表示（この PC だけの設定。通信では送らない）
 	OPTION_ITEM_SOUND, ///< ジャンルごとの音量の画面を開く（この PC だけの設定）
 	OPTION_ITEM_ARM_COSTS, ///< 耐久の減る量の表を開く
 	OPTION_ITEM_SAVE, ///< 今の設定をファイルに保存する（次の起動でも残る）

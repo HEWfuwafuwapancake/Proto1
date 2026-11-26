@@ -55,6 +55,29 @@ static constexpr float GUARD_TEXT_RISE = 0.8f;
 static constexpr XMFLOAT4 PARRY_TEXT_COLOR{ 1.0f, 0.9f, 0.2f, 1.0f };
 static constexpr XMFLOAT4 GUARD_TEXT_COLOR{ 0.6f, 0.6f, 0.6f, 1.0f };
 
+// 試合中の操作一覧（オプションの「操作の表示」。画面全体の右端の真ん中に1回だけ出す）
+// キーを変えたら input/action.cpp の ACTION_KEYS・ACTION_PAD_BUTTONS と docs/team/05_操作一覧.md も手で合わせる。
+static constexpr int CONTROL_GUIDE_LINE_COUNT = 10;
+static constexpr const char* CONTROL_GUIDE_LINES[CONTROL_GUIDE_LINE_COUNT][3] = {	// { 行動, キーボード, パッド }
+	{ "移動",			"W A S D",							"左スティック" },
+	{ "カメラ",			"↑ ↓ ← →",							"右スティック" },
+	{ "ジャンプ",		"Space",							"×" },
+	{ "ダッシュ",		"C",								"○" },
+	{ "左腕 / 右腕",	"J / K・クリック（長押しでため）",	"L1 / R1（長押しでため）" },
+	{ "ガード",			"Z / X",							"L2 / R2" },
+	{ "ロックオン",		"F で切り替え",						"R3 で切り替え" },
+	{ "相手を替える",	"← →（ハードロック中）",			"右スティックを弾く" },
+	{ "腕を替える",		"Q / E ＋ 数字（DEBUG）",			"十字キー（DEBUG）" },
+	{ "メニュー",		"R",								"OPTIONS" },
+};
+static constexpr float CONTROL_GUIDE_TEXT = 13.0f;		// 文字の高さ
+static constexpr float CONTROL_GUIDE_LINE = 20.0f;		// 行の間隔
+static constexpr float CONTROL_GUIDE_WIDTH = 330.0f;	// 帯の幅
+static constexpr float CONTROL_GUIDE_NAME_WIDTH = 100.0f;	// 行動の名前の列の幅
+static constexpr float CONTROL_GUIDE_PADDING = 10.0f;	// 帯の内側の余白
+static constexpr XMFLOAT4 CONTROL_GUIDE_COLOR{ 1.0f, 1.0f, 1.0f, 0.6f };		// 文字（白の不透明度 0.6）
+static constexpr XMFLOAT4 CONTROL_GUIDE_BACKGROUND{ 0.0f, 0.0f, 0.0f, 0.25f };	// 下の帯（黒の不透明度 0.25）
+
 // レティクル（ロックオン中は相手を囲むかぎ括弧、フリーカメラでは画面の真ん中の十字）
 static constexpr XMFLOAT4 LOCK_RETICLE_COLOR{ 1.0f, 0.78f, 0.2f, 1.0f };	// ロックオンのかぎ括弧・文字の色（黄色）
 static constexpr float LOCK_RETICLE_PADDING = 1.15f;	// 体の上下の幅に対する、かぎ括弧の高さの倍率
@@ -157,6 +180,22 @@ static constexpr float WARNING_LINE = 30.0f;
 static constexpr float WARNING_PADDING = 6.0f;
 static constexpr XMFLOAT4 WARNING_COLOR = { 1.0f, 0.2f, 0.2f, 1.0f };
 static constexpr XMFLOAT4 WARNING_BACKGROUND = { 0.0f, 0.0f, 0.0f, 0.85f };
+
+void Hud::DrawControlGuide(CONTROL_GUIDE guide) const
+{
+	if (guide != CONTROL_GUIDE_KEYBOARD && guide != CONTROL_GUIDE_PAD) return;
+	const int column = guide == CONTROL_GUIDE_KEYBOARD ? 1 : 2;
+	const float height = CONTROL_GUIDE_LINE * CONTROL_GUIDE_LINE_COUNT + CONTROL_GUIDE_PADDING * 2.0f;
+	const float left = (float)SCREEN_WIDTH - CONTROL_GUIDE_WIDTH;
+	const float top = ((float)SCREEN_HEIGHT - height) * 0.5f;
+	Number2DDrawBox({ left, top, CONTROL_GUIDE_WIDTH, height }, CONTROL_GUIDE_BACKGROUND);
+	for (int line = 0; line < CONTROL_GUIDE_LINE_COUNT; ++line) {
+		const float y = top + CONTROL_GUIDE_PADDING + line * CONTROL_GUIDE_LINE + (CONTROL_GUIDE_LINE - CONTROL_GUIDE_TEXT) * 0.5f;
+		const float x = left + CONTROL_GUIDE_PADDING;
+		Text2DDraw(m_GuideTexts[line][0], x, y, CONTROL_GUIDE_TEXT, GLYPH_ALIGN_LEFT, CONTROL_GUIDE_COLOR);
+		Text2DDraw(m_GuideTexts[line][column], x + CONTROL_GUIDE_NAME_WIDTH, y, CONTROL_GUIDE_TEXT, GLYPH_ALIGN_LEFT, CONTROL_GUIDE_COLOR);
+	}
+}
 
 void Hud::DrawCornerWarning(const NetSession& net) const
 {
@@ -593,6 +632,10 @@ void Hud::Initialize(const Camera& camera, const FighterManager& fighters, int s
 	m_AllArms = arms;
 	for (int type = 0; type < ARM_TYPE_COUNT; ++type) {
 		m_ArmNames[type] = Text2DCreate(ArmGetName(static_cast<ARM_TYPE>(type)));
+	}
+	static_assert(sizeof(m_GuideTexts) / sizeof(m_GuideTexts[0]) == CONTROL_GUIDE_LINE_COUNT, "hud.h の m_GuideTexts の行数をそろえる");
+	for (int line = 0; line < CONTROL_GUIDE_LINE_COUNT; ++line) {
+		for (int column = 0; column < 3; ++column) m_GuideTexts[line][column] = Text2DCreate(CONTROL_GUIDE_LINES[line][column]);
 	}
 	Reset();
 }

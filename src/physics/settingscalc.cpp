@@ -37,6 +37,10 @@ namespace
 			settings.LookSensitivityLevel = value;
 			return;
 		}
+		if (key == "guide") {
+			if (value >= 0 && value < CONTROL_GUIDE_COUNT) settings.ControlGuide = static_cast<CONTROL_GUIDE>(value);
+			return;
+		}
 		int index = ReadIndex(key, "tuning.", TUNING_ITEM_COUNT, rest);
 		if (index >= 0 && rest.empty()) {
 			if (value >= 0 && value < TuningCalcLevelCount(static_cast<TUNING_ITEM>(index))) settings.Tuning.Levels[index] = static_cast<uint8_t>(value);
@@ -62,6 +66,8 @@ std::string SettingsCalcFormat(const OPTION_SETTINGS& settings)
 		text += line;
 	}
 	sprintf_s(line, "look=%d\n", settings.LookSensitivityLevel);
+	text += line;
+	sprintf_s(line, "guide=%d\n", static_cast<int>(settings.ControlGuide));
 	text += line;
 	for (int i = 0; i < SETTINGS_VOLUME_COUNT; ++i) {
 		sprintf_s(line, "volume.%d=%d\n", i, settings.VolumeLevels[i]);
@@ -96,7 +102,8 @@ void SettingsCalcParse(const std::string& text, OPTION_SETTINGS& settings)
 
 bool SettingsCalcEquals(const OPTION_SETTINGS& a, const OPTION_SETTINGS& b)
 {
-	if (a.Tuning.Levels != b.Tuning.Levels || a.LookSensitivityLevel != b.LookSensitivityLevel) return false;
+	if (a.Tuning.Levels != b.Tuning.Levels || a.LookSensitivityLevel != b.LookSensitivityLevel
+		|| a.ControlGuide != b.ControlGuide) return false;
 	for (int i = 0; i < SETTINGS_VOLUME_COUNT; ++i) {
 		if (a.VolumeLevels[i] != b.VolumeLevels[i]) return false;
 	}

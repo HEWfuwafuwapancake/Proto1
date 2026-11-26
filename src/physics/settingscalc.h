@@ -19,6 +19,7 @@ struct OPTION_SETTINGS
 	MATCH_TUNING Tuning = TuningCalcDefault(); ///< 試合の設定の段
 	ARM_COST_TABLE ArmCosts = ArmCostCalcDefault(); ///< 腕の耐久の減る量の表
 	int LookSensitivityLevel = 0; ///< 視点感度の段（範囲にそろえるのは input/action）
+	CONTROL_GUIDE ControlGuide = CONTROL_GUIDE_OFF; ///< 試合中の操作一覧の表示（範囲外の値は読み飛ばす）
 	int VolumeLevels[SETTINGS_VOLUME_COUNT] = {}; ///< ジャンルごとの音量の段（SOUND_ITEM の順。範囲にそろえるのは audio/se）
 };
 

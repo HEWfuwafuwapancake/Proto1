@@ -92,6 +92,7 @@ private:
 	int m_MenuDevice = ACTION_DEVICE_KEYBOARD; // SOLO の決定を押した機器
 	bool m_Fullscreen = false;
 	bool m_TuningResetSe = false; // このフレームに「標準に戻す」を受け付けた（メニューの音を選ぶため）
+	CONTROL_GUIDE m_ControlGuide = CONTROL_GUIDE_OFF; // 試合中の操作一覧の表示（オプションで変える。この PC だけ）
 	OPTION_SETTINGS m_SavedSettings; // ファイルに保存してある設定（保存していない変更があるかを見るため）
 	bool m_OptionsSaveSe = false; // このフレームにオプションの「保存」でファイルに書けた（メニューの音を選ぶため）
 	bool m_MapDecideHeld = false; // マップ選択に入ってから、1P が決定をまだ離していない（離すまで決定を受け付けない）
