@@ -28,6 +28,7 @@ static constexpr float SLANT = 0.25f; // 斜めの帯の傾き（高さ1あた�
 static constexpr float TEXT_SCALE = 1.35f; // 文字画像の上下の余白を見込み、文字を大きくする
 static constexpr float POP_SECONDS = 0.22f; // 選んだボタンが弾む時間
 static constexpr float POP_WIDTH = 60.0f; // 選んだボタンが右へ伸びる長さ
+static constexpr float BUTTON_TEXT_PAD = 24.0f; // ボタンの見えている左端から項目名までの間
 static constexpr float JUT_WIDTH = 10.0f; // 選んだボタンが右へ突き出す揺れの幅
 static constexpr float JUT_SPEED = 4.5f; // 突き出す揺れの速さ
 static constexpr float ORBIT_SECONDS = 70.0f; // 背景のカメラがステージを1周する秒数
@@ -346,7 +347,7 @@ void CodexMenu::Footer(const char* help) const
 	Word("Esc  終了  /  F11  全画面", 1240, FOOTER_Y + 16, 13, LIME, TEXT2D_FONT_BOLD, GLYPH_ALIGN_RIGHT);
 }
 
-void CodexMenu::Button(int index, const char* title, const char* subtitle, bool selected, bool dark,
+void CodexMenu::Button(const char* title, const char* subtitle, bool selected, bool dark,
 	float x, float y, float width, float height, float growWidth) const
 {
 	// 選んだボタンは黄緑にして右へ伸ばし、弾んだあとも小さく突き出し続ける。
@@ -355,15 +356,14 @@ void CodexMenu::Button(int index, const char* title, const char* subtitle, bool 
 	const XMFLOAT4 fill = selected ? LIME : dark ? PURPLE : WHITE;
 	const XMFLOAT4 ink = dark && !selected ? WHITE : INK;
 	Bar({ x + jut, y, width + grow, height }, SLANT, fill, 4, selected ? 9.0f : 5.0f);
-	const float textX = x + jut + 46.0f;
+	// 項目名は、帯の高さの真ん中での左端（画面の左へはみ出す帯は画面の端）から少し空けて置き、帯と一緒に揺らす。
+	const float visibleLeft = (std::max)(x + height * SLANT * 0.5f, 0.0f);
+	const float textX = visibleLeft + jut + BUTTON_TEXT_PAD;
 	const float titleHeight = height * (subtitle[0] ? 0.42f : 0.46f);
-	char number[8];
-	sprintf_s(number, "%02d", index + 1);
-	Word(number, textX - 4, y + height * 0.5f - 9, 15, dark && !selected ? LIME : PURPLE, TEXT2D_FONT_POP);
-	Word(title, textX + 34, y + (height - titleHeight * TEXT_SCALE) * 0.5f, titleHeight, ink, TEXT2D_FONT_POP);
+	Word(title, textX, y + (height - titleHeight * TEXT_SCALE) * 0.5f, titleHeight, ink, TEXT2D_FONT_POP);
 	if (subtitle[0]) {
 		const float titleWidth = TextWidth(title, titleHeight, TEXT2D_FONT_POP);
-		Word(subtitle, textX + 34 + titleWidth + 16, y + height * 0.5f - 8, 13, selected ? PURPLE : dark ? WHITE : MUTED);
+		Word(subtitle, textX + titleWidth + 16, y + height * 0.5f - 8, 13, selected ? PURPLE : dark ? WHITE : MUTED);
 	}
 }
 
@@ -420,8 +420,8 @@ void CodexMenu::DrawTitle(const SceneCalc& scene, const std::array<CHARACTER_TYP
 	Bar({ 96, 52, 270, 42 }, 0.0f, WHITE, 4, 6, INK, catchTurn);
 	Word("変な腕でぶっ飛ばせ！", 231, 58, 21, INK, TEXT2D_FONT_POP, GLYPH_ALIGN_CENTER, catchTurn);
 
-	Button(0, "ゲームを始める", "対戦方法 → キャラ", scene.GetCursor() == 0, false, -40, 520, 560, 66, POP_WIDTH);
-	Button(1, "オプション", "遊び心地を調整", scene.GetCursor() == 1, true, -40, 598, 460, 54, POP_WIDTH);
+	Button("ゲームを始める", "対戦方法 → キャラ", scene.GetCursor() == 0, false, -40, 520, 560, 66, POP_WIDTH);
+	Button("オプション", "遊び心地を調整", scene.GetCursor() == 1, true, -40, 598, 460, 54, POP_WIDTH);
 	Footer("↑↓ / W S / 左スティック  選ぶ    Enter / ○  決定");
 }
 
@@ -435,7 +435,7 @@ void CodexMenu::DrawModeSelect(const SceneCalc& scene) const
 	for (int i = 0; i < MODE_ITEM_COUNT; ++i) {
 		const bool settings = i >= MODE_ITEM_OPTIONS; // オプション・戻るは小さな紫のボタン
 		const float height = settings ? 54.0f : 66.0f;
-		Button(i, MODE_NAMES[i], MODE_SUBTITLES[i], scene.GetCursor() == i, settings, -40, y, WIDTHS[i], height, POP_WIDTH);
+		Button(MODE_NAMES[i], MODE_SUBTITLES[i], scene.GetCursor() == i, settings, -40, y, WIDTHS[i], height, POP_WIDTH);
 		y += height + 16.0f;
 	}
 	const int cursor = scene.GetCursor();
@@ -558,7 +558,7 @@ void CodexMenu::DrawArmCosts(const SceneCalc& scene, const ARM_COST_TABLE& costs
 	}
 	ScrollBar(COST_LEFT + COST_ROW_WIDTH + 14, COST_TOP, shown * COST_GAP - 8, top, shown, ARM_COST_ROW_COUNT);
 	const int back = ArmCostCalcUsedCount();
-	Button(ARM_COST_ROW_COUNT, "戻る", "", scene.GetCursor() == back, true, -40, COST_TOP + shown * COST_GAP + 2, 300, 44, POP_WIDTH);
+	Button("戻る", "", scene.GetCursor() == back, true, -40, COST_TOP + shown * COST_GAP + 2, 300, 44, POP_WIDTH);
 	if (selectedRow >= 0) {
 		char line1[64];
 		sprintf_s(line1, "%s：%d（はじめは %d）", COST_COLUMNS[selectedItem], costs.Values[selectedRow][selectedItem],
@@ -702,11 +702,11 @@ void CodexMenu::DrawResult(const SceneCalc& scene, const VersusCalc& participant
 		Word("KO", x + 30, top + height - 48, 17, WHITE, TEXT2D_FONT_POP);
 		Word(text, x + RESULT_PANEL_WIDTH - 30, top + height - 54, 26, LIME, TEXT2D_FONT_POP, GLYPH_ALIGN_RIGHT);
 	}
-	Button(0, "もう一度", "", scene.GetCursor() == RESULT_ITEM_RETRY, false,
+	Button("もう一度", "", scene.GetCursor() == RESULT_ITEM_RETRY, false,
 		RESULT_BUTTON_X, RESULT_BUTTON_TOP, RESULT_BUTTON_WIDTH, 62, RESULT_BUTTON_GROW);
-	Button(1, "キャラ選択へ", "", scene.GetCursor() == RESULT_ITEM_CHARACTER, false,
+	Button("キャラ選択へ", "", scene.GetCursor() == RESULT_ITEM_CHARACTER, false,
 		RESULT_BUTTON_X, RESULT_BUTTON_TOP + RESULT_BUTTON_GAP, RESULT_BUTTON_WIDTH, 62, RESULT_BUTTON_GROW);
-	Button(2, "メニューへ", "", scene.GetCursor() == RESULT_ITEM_TITLE, true,
+	Button("メニューへ", "", scene.GetCursor() == RESULT_ITEM_TITLE, true,
 		RESULT_BUTTON_X, RESULT_BUTTON_TOP + RESULT_BUTTON_GAP * 2, RESULT_BUTTON_WIDTH, 62, RESULT_BUTTON_GROW);
 	Word("同じ参加者・キャラでもう一度", RESULT_BUTTON_X + 10, RESULT_BUTTON_TOP - 30, 14, INK);
 	Footer("1P : ↑↓ / W S / 左スティック  選ぶ    Enter / ○  決定    （オンラインのメニューへは、ロビーへ戻ります）");
@@ -822,7 +822,7 @@ void CodexMenu::DrawPause(const SceneCalc& scene) const
 	static constexpr const char* NAMES[PAUSE_ITEM_COUNT] = { "再開する", "ロビーに戻る", "タイトルに戻る" };
 	static constexpr const char* SUBTITLES[PAUSE_ITEM_COUNT] = { "試合の続きから", "キャラ選択へ", "最初の画面へ" };
 	for (int i = 0; i < PAUSE_ITEM_COUNT; ++i) {
-		Button(i, NAMES[i], SUBTITLES[i], scene.GetCursor() == i, i == PAUSE_ITEM_TITLE, 560, 230 + i * 84.0f, 470, 66, POP_WIDTH);
+		Button(NAMES[i], SUBTITLES[i], scene.GetCursor() == i, i == PAUSE_ITEM_TITLE, 560, 230 + i * 84.0f, 470, 66, POP_WIDTH);
 	}
 	Footer("↑↓ / W S / 左スティック  選ぶ    Enter / ○  決定    R / OPTIONS・Backspace / ×  試合に戻る");
 }
