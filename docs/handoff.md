@@ -13,6 +13,12 @@
 
 ## 2. 次にやること
 
+### 作業中：No.204 追加マップ3面（`feature/add-three-maps`。2026-11-26 Claude が途中で止めた）
+
+- 届いた MAP 一式（ネオンビル群・コロシアム・廃駅）を取り込み中。見た目は `assets/models/maps/*.glb`（頂点色にライトを焼き込んだモデル。ライトを切って描く）、当たりは `mapcalc.cpp` の台帳。地形の区画に回転（`Yaw`）と円（`Radius`）を足し、片面の橋は足より上ならくぐれるようにした（`stagecalc.cpp`）。倒れる柱は `pillarcalc`、ジャンプ台と柱の当たりは `mapgimmick.cpp`、腕から柱へは `Arm::StrikePillars`。通信の版32。
+- 済み：Debug ビルド（警告0）・単体テスト 454 件すべて成功・途中の保存。
+- 残り：①新しいテスト（`pillarcalc_test`・`mapcalc_test` の追加分）をわざと壊して失敗するか確かめる ②Release ビルド ③ゲームで3面の見た目・マップ選択（カードを3枚ずつ送る）を撮って確かめる ④MAP 一式の仕様書と画像を `docs/plan/09_追加マップ3面/` へ写す ⑤`tasks.md`（No.204）・Notion・この欄を直して PR。
+
 ### 管理者の試遊・試聴待ち（新しい順。調整する値の場所）
 
 - **No.203 キーボードの操作と操作一覧**：J / K の腕（単押し・長押しのため）を実際に遊んで確かめる（画面では撮れていない）。試合中の一覧の文字の大きさ・濃さ（`hud.cpp` の `CONTROL_GUIDE_TEXT`・`CONTROL_GUIDE_COLOR`・`CONTROL_GUIDE_BACKGROUND`。明るい地面の上では読みにくい）。パッド版の一覧は撮っていない。
