@@ -24,7 +24,7 @@ static constexpr uint32_t MATCH_ROUND_STEP = 0xc2b2ae35u;	// メニューやロ�
 static constexpr uint32_t CAPSULE_SEED_MASK = 0x85ebca6bu;	// 復活先とは別の乱数列にする
 static constexpr int ARM_COST_STEP = 5;	// オプションで耐久の減る量を左右1回で変える量
 static constexpr const char* OPTION_SETTINGS_FILE = "settings.ini";	// オプションを保存するファイル（作業フォルダ。Git には送らない）
-// DEBUG のルール（オフラインだけ）の試し打ち：F5 でダミーの % を切り替え、F6 でダミーを 1P の目の前に呼ぶ。
+// オフラインの試し打ち：F5 で相手（ダミー・CPU）の % を切り替え、F6 で相手を 1P の目の前に呼び、F7 で CPU を止める・動かす。
 static constexpr float DEBUG_DUMMY_PERCENTS[] = { 100.0f, 150.0f, 50.0f, 0.0f };	// F5 を押すたびにこの順で入れる
 static constexpr float DEBUG_DUMMY_FORWARD = 2.5f;	// 呼んだダミーを置く、1P の足元から前への距離
 static constexpr float DEBUG_DUMMY_SPACING = 1.5f;	// 呼んだダミーどうしの横の間隔
@@ -143,10 +143,22 @@ void Game::UpdatePadLights() const
 	}
 }
 
+// 試し打ちで動かす相手（ダミーと CPU。人は動かさない。復活待ちは飛ばす）。
+static bool IsDebugTarget(const Fighter& fighter)
+{
+	return (!fighter.IsHuman() || fighter.IsCpu()) && fighter.IsActive();
+}
+
 void Game::UpdateDebugDummies()
 {
 	// 全員の PC で同じ入力にならないので、オンラインでは使わない。
-	if (GetRule() != GAME_RULE_DEBUG || m_Net.IsOnline() || m_HumanCount <= 0) return;
+	if (m_Net.IsOnline() || m_HumanCount <= 0) return;
+	if (KeyboardIsTrigger(VK_F7)) {
+		m_DebugCpuStopped = !m_DebugCpuStopped;
+#ifdef _DEBUG
+		hal::dout << (m_DebugCpuStopped ? "試し打ち：CPU を止めた" : "試し打ち：CPU を動かした") << std::endl;
+#endif
+	}
 	const bool setPercent = KeyboardIsTrigger(VK_F5);
 	const bool call = KeyboardIsTrigger(VK_F6);
 	if (!setPercent && !call) return;
@@ -159,12 +171,12 @@ void Game::UpdateDebugDummies()
 	int dummyCount = 0;
 	for (int slot = 0; slot < FIGHTER_COUNT; ++slot) {
 		const Fighter& fighter = m_Fighters.GetFighter(slot);
-		if (!fighter.IsHuman() && fighter.IsActive()) ++dummyCount;
+		if (IsDebugTarget(fighter)) ++dummyCount;
 	}
 	int index = 0;
 	for (int slot = 0; slot < FIGHTER_COUNT; ++slot) {
 		Fighter& dummy = m_Fighters.GetFighter(slot);
-		if (dummy.IsHuman() || !dummy.IsActive()) continue;
+		if (!IsDebugTarget(dummy)) continue;
 		if (call) {
 			// 1P の前に、横一列に並べて 1P の方を向かせる（% は今の値のまま）。
 			const float side = (index - (dummyCount - 1) * 0.5f) * DEBUG_DUMMY_SPACING;
@@ -177,8 +189,8 @@ void Game::UpdateDebugDummies()
 		++index;
 	}
 #ifdef _DEBUG
-	if (setPercent) hal::dout << "DEBUG：ダミーを " << percent << "% にした" << std::endl;
-	if (call) hal::dout << "DEBUG：ダミーを 1P の前に呼んだ" << std::endl;
+	if (setPercent) hal::dout << "試し打ち：相手を " << percent << "% にした" << std::endl;
+	if (call) hal::dout << "試し打ち：相手を 1P の前に呼んだ" << std::endl;
 #endif
 }
 
@@ -606,7 +618,7 @@ void Game::UpdateFrame()
 			m_Inputs[slot].Equip = m_Participants.IsHuman(slot) ? ActionGetEquipKey(slot) : ACTION_EQUIP_KEY{ -1, -1 };
 			if (m_Fighters.GetFighter(slot).IsCpu()) {
 				// CPU は試合中だけ、前のフレームの状況から人と同じ形の入力を作る。
-				m_Inputs[slot] = oldScene == SCENE_MATCH && m_Match.IsPlaying()
+				m_Inputs[slot] = oldScene == SCENE_MATCH && m_Match.IsPlaying() && !(m_DebugCpuStopped && !m_Net.IsOnline())
 					? m_Cpus[slot].Update(m_Stage, m_Fighters, m_Arms[slot], m_Cameras[slot], m_ArmCapsule, GetRule()) : PLAYER_INPUT{};
 			}
 			m_Fighters.GetFighter(slot).SetInput(m_Inputs[slot], m_PreviousInputs[slot]);

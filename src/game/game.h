@@ -94,7 +94,8 @@ private:
 	bool m_Fullscreen = false;
 	bool m_TuningResetSe = false; // このフレームに「標準に戻す」を受け付けた（メニューの音を選ぶため）
 	CONTROL_GUIDE m_ControlGuide = CONTROL_GUIDE_OFF; // 試合中の操作一覧の表示（オプションで変える。この PC だけ）
-	int m_DebugPercentStep = 0; // DEBUG の F5 で次にダミーへ入れる % の段
+	int m_DebugPercentStep = 0; // 試し打ちの F5 で次に相手へ入れる % の段
+	bool m_DebugCpuStopped = false; // 試し打ちの F7 で CPU を止めているか（オフラインだけ）
 	OPTION_SETTINGS m_SavedSettings; // ファイルに保存してある設定（保存していない変更があるかを見るため）
 	bool m_OptionsSaveSe = false; // このフレームにオプションの「保存」でファイルに書けた（メニューの音を選ぶため）
 	bool m_MapDecideHeld = false; // マップ選択に入ってから、1P が決定をまだ離していない（離すまで決定を受け付けない）
