@@ -196,6 +196,8 @@ static bool LoadWithAssimp(const char* path, bool mirrorX, const char* tintMater
 			aiColor4D kd(1, 1, 1, 1);
 			if (!texture && !tinted && matIndex < scene->mNumMaterials)
 				aiGetMaterialColor(scene->mMaterials[matIndex], AI_MATKEY_COLOR_DIFFUSE, &kd);
+			// 頂点の色があるモデル（マップの景観の GLB など）は、材質の色に頂点の色を掛ける。
+			const bool vertexColors = !tinted && mesh->HasVertexColors(0);
 			const UINT start = static_cast<UINT>(vertices.size());
 			for (unsigned int f = 0; f < mesh->mNumFaces; ++f) {
 				const aiFace& face = mesh->mFaces[f];
@@ -205,7 +207,8 @@ static bool LoadWithAssimp(const char* path, bool mirrorX, const char* tintMater
 					const aiVector3D& p = mesh->mVertices[v];
 					const aiVector3D& n = mesh->mNormals[v];
 					const aiVector3D uv = mesh->HasTextureCoords(0) ? mesh->mTextureCoords[0][v] : aiVector3D(0, 0, 0);
-					vertices.push_back({ { p.x, p.y, p.z }, { n.x, n.y, n.z }, { kd.r, kd.g, kd.b, 1 }, { uv.x, uv.y } });
+					const aiColor4D c = vertexColors ? mesh->mColors[0][v] : aiColor4D(1, 1, 1, 1);
+					vertices.push_back({ { p.x, p.y, p.z }, { n.x, n.y, n.z }, { kd.r * c.r, kd.g * c.g, kd.b * c.b, 1 }, { uv.x, uv.y } });
 				}
 			}
 			const UINT count = static_cast<UINT>(vertices.size()) - start;

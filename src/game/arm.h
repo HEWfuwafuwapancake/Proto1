@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "core/dx11.h"
+#include "game/stage.h"
 #include "physics/armcostcalc.h"
 #include "physics/armpresscalc.h"
 #include "physics/armusecalc.h"
@@ -17,7 +18,6 @@ class Fighter;
 class FighterManager;
 class ArmManager;
 class Camera;
-class Stage;
 
 /// @brief 腕の種類（1段目の数字キー 1〜8 の順）
 enum ARM_TYPE
@@ -40,7 +40,7 @@ struct ARM_LINKS
 	FighterManager* Fighters; ///< 自分と相手の体・候補・保持・命中を受け持つ管理
 	int Slot; ///< 自分のスロット番号（0〜3。相手の候補から除く）
 	const Camera* CameraObject; ///< 狙いと投げる向きを読むカメラ
-	const Stage* StageObject; ///< 浮島と場外の線を読むステージ
+	Stage* StageObject; ///< 浮島と場外の線を読み、倒れる柱に攻撃を当てるステージ
 	const ArmManager* Arms; ///< 片手の残り耐久を読む腕の管理
 };
 
@@ -202,6 +202,34 @@ protected:
 	/// @param affected 効果が入った相手の数を書く先（不要なら nullptr）
 	/// @return 範囲に入った相手の数
 	int Explode(const VEC3& center, float radius, float damage, float power, float up, int* affected = nullptr) const;
+	/// @brief 攻撃の範囲に入った柱（コロシアムの倒れる柱）に、耐久を減らす攻撃を当てる（柱のないマップでは何もしない）
+	/// @details 相手の体と同じ範囲の判定（AreaCalcIn〜・CollisionCapsuleCapsule など）に、柱の当たりのカプセルを渡して使う。
+	///          同じ手の攻撃は、同じ柱に続けて当たらない（1振りで1回）
+	/// @param inside 柱の当たりのカプセルを受け取り、攻撃の範囲に入っていれば true を返す関数
+	/// @param damage 柱の耐久を減らす量（相手に入れるダメージ%と同じ値を渡す）
+	/// @param direction 攻撃の進む向き（耐久が尽きたら、水平にしたこの向きへ倒れる）
+	template <typename Inside>
+	void StrikePillars(Inside inside, float damage, const VEC3& direction) const
+	{
+		StrikePillarsBy(inside, damage, [&](const CAPSULE&) { return direction; });
+	}
+	/// @brief 攻撃の範囲に入った柱に、中心から外へ倒れる攻撃を当てる（爆発・回転など、まわり全部に当たる攻撃）
+	/// @param inside 柱の当たりのカプセルを受け取り、攻撃の範囲に入っていれば true を返す関数
+	/// @param damage 柱の耐久を減らす量
+	/// @param center 攻撃の中心（柱はこの点から外の向きへ倒れる）
+	template <typename Inside>
+	void StrikePillarsOutward(Inside inside, float damage, const VEC3& center) const
+	{
+		StrikePillarsBy(inside, damage, [&](const CAPSULE& body) { return Vec3Sub(Vec3Scale(Vec3Add(body.Start, body.End), 0.5f), center); });
+	}
+	/// @brief 線（太さのあるカプセル）にかかる柱に攻撃を当てる（突き・光線・通り道など。柱のないマップでは何もしない）
+	/// @param line 攻撃の線
+	/// @param damage 柱の耐久を減らす量
+	/// @param direction 攻撃の進む向き
+	void StrikePillarsOnLine(const CAPSULE& line, float damage, const VEC3& direction) const
+	{
+		StrikePillars([&](const CAPSULE& body) { return CollisionCapsuleCapsule(line, body).Hit; }, damage, direction);
+	}
 	/// @brief 色の選択を設定する（true：効いている色、false：左右の基本色）
 	/// @return 選んだ色（RGBA）
 	XMFLOAT4 GetColor(bool active) const;
@@ -233,6 +261,16 @@ protected:
 private:
 	friend class ArmManager;
 	VEC3 GetShoulderAt(const VEC3& offset) const;
+	// 範囲に入った立っている柱に、柱ごとの向き（direction(柱の当たり)）で攻撃を当てる。元は「スロット × 2 ＋ 手」。
+	template <typename Inside, typename Direction>
+	void StrikePillarsBy(Inside inside, float damage, Direction direction) const
+	{
+		const PillarCalc& pillars = m_Links.StageObject->GetPillars();
+		for (int i = 0; i < pillars.GetCount(); ++i) {
+			CAPSULE body;
+			if (pillars.GetBody(i, body) && inside(body)) m_Links.StageObject->HitPillar(i, GetSlot() * 2 + m_Hand, GetSlot(), damage, direction(body));
+		}
+	}
 	int m_Hand;
 	ARM_LINKS m_Links;
 	int m_Used = 0;
@@ -243,7 +281,7 @@ class ArmManager
 {
 public:
 	/// @brief 自分のスロットと体の管理を受け取り、左右とも触手を装備する（体の初期化後）
-	void Initialize(const Stage& stage, FighterManager& fighters, int slot, const Camera& camera);
+	void Initialize(Stage& stage, FighterManager& fighters, int slot, const Camera& camera);
 	/// @brief 腕の処理を終了し、保持している敵を離す
 	void Finalize(void);
 	/// @brief 左右の腕を待機に戻す（装備はそのまま。時間切れ・やり直し用）

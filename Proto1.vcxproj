@@ -163,6 +163,7 @@
     <ClCompile Include="src\game\stage.cpp" />
     <ClCompile Include="src\physics\stagecalc.cpp" />
     <ClCompile Include="src\physics\mapcalc.cpp" />
+    <ClCompile Include="src\physics\pillarcalc.cpp" />
     <ClCompile Include="src\physics\liftcalc.cpp" />
     <ClCompile Include="src\game\mapgimmick.cpp" />
     <ClCompile Include="src\game\menuse.cpp" />
@@ -261,6 +262,7 @@
     <ClInclude Include="src\game\stage.h" />
     <ClInclude Include="src\physics\stagecalc.h" />
     <ClInclude Include="src\physics\mapcalc.h" />
+    <ClInclude Include="src\physics\pillarcalc.h" />
     <ClInclude Include="src\physics\liftcalc.h" />
     <ClInclude Include="src\game\mapgimmick.h" />
     <ClInclude Include="src\game\menuse.h" />

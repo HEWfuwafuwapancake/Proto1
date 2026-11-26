@@ -7,7 +7,8 @@ void ModelInitialize(void);
 void ModelFinalize(void);
 /// @brief 作業フォルダからの相対パスでモデル（OBJ・FBX など）を読み込み、頂点バッファを作る
 /// @details .obj は自作の読み込み、それ以外（.fbx など）は Assimp で読む。FBX の材質の色のテクスチャは、
-///          ファイルに埋め込まれたものか、同じフォルダの画像を貼る（テクスチャのない材質は材質の色）
+///          ファイルに埋め込まれたものか、同じフォルダの画像を貼る（テクスチャのない材質は材質の色）。
+///          頂点の色を持つモデル（マップの景観の .glb など）は、材質の色に頂点の色を掛ける
 /// @param path モデルのパス。OBJ は mtllib があれば同じフォルダの MTL を読み、頂点色を材質の Kd にする（MTL がなければ白）
 /// @param mirrorX X について鏡写しにするかを設定する（true：鏡写しにする（片手用のモデルから反対の手用を作る）、false：そのまま）
 /// @param tintMaterial ModelDrawTinted で色替えする材質の名前（nullptr なら色替えなし）。この材質の頂点色は白にする

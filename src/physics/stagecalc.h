@@ -21,14 +21,16 @@ struct STAGE_PLATFORM
 	float Thickness;	///< 高台の描画上の厚さ
 };
 
-/// @brief 地形の区画の最大数
-static constexpr int STAGE_REGION_MAX = 16;
+/// @brief 地形の区画の最大数（廃駅が 35）
+static constexpr int STAGE_REGION_MAX = 40;
 /// @brief 開始・復活の候補（P1〜P4）の数
 static constexpr int STAGE_SPAWN_MAX = 4;
 /// @brief Ｇ（補助触腕で高所へ上がる場所）の最大数
 static constexpr int STAGE_LIFT_MAX = 4;
 /// @brief 荷送りベルトの最大数
 static constexpr int STAGE_BELT_MAX = 2;
+/// @brief 区画のふちの角の最大数（円い区画を多角形にするときの角の数）
+static constexpr int STAGE_OUTLINE_MAX = 32;
 /// @brief 地形を調べるときの体の半径（設計書の「キャラ半径0.5」）
 static constexpr float STAGE_BODY_RADIUS = 0.5f;
 /// @brief 地形を調べるときの体の高さ
@@ -50,22 +52,32 @@ enum STAGE_SURFACE
 	STAGE_SURFACE_TRAM,			///< 市場の北の高い橋（市電の屋根）
 	STAGE_SURFACE_SHUTTER,		///< 市場の南の高い橋（シャッター）
 	STAGE_SURFACE_BASE,			///< 市場の建物の基礎
+	STAGE_SURFACE_ROAD,			///< ネオンビル群の車道と、廃駅の線路（いちばん低い通り道）
+	STAGE_SURFACE_BLOCK,		///< 上に乗れる障害物（ビル・車・電車・柱・瓦礫など。カプセルは出さない）
+	STAGE_SURFACE_PAD,			///< ジャンプ台（立って乗ると真上へ打ち上げる）
+	STAGE_SURFACE_PILLAR,		///< 攻撃で倒れる柱（コロシアム。倒れ方は physics/pillarcalc.h）
+	STAGE_SURFACE_DECK,			///< 片面の足場（廃駅の倒壊ビル・待合所の屋根）
 };
 
 /// @brief 地形の1区画（範囲の中なら上面の高さ H = BaseY + SlopeX × x + SlopeZ × z）
-/// @details 区画は上から順に調べ、最初に入った区画の高さを使う。範囲は両端を含む
+/// @details 区画は上から順に調べ、最初に入った区画の高さを使う。範囲は両端を含む。
+///          ただし片面の橋（Solid が false）は、足がその上面より下にあるときは飛ばし、下の区画を調べる（橋の下をくぐれる）。
+///          回した区画は、範囲の中心のまわりに Yaw だけ回した長方形（範囲は回す前の向きで書く）。
+///          回したローカルの点 (lx, lz) は、世界の (中心X ＋ lx cos Yaw ＋ lz sin Yaw, 中心Z − lx sin Yaw ＋ lz cos Yaw)
 struct STAGE_REGION
 {
 	float MinX;				///< 範囲の X の最小
 	float MaxX;				///< 範囲の X の最大
 	float MinZ;				///< 範囲の Z の最小
 	float MaxZ;				///< 範囲の Z の最大
-	float DiagonalLimit;	///< |x| ＋ |z| がこれ以下の所だけを含む（四隅を切り落とす。0 以下なら使わない）
-	float BaseY;			///< 上面の高さの x = 0・z = 0 での値
+	float DiagonalLimit;	///< |x| ＋ |z| がこれ以下の所だけを含む（四隅を切り落とす。0 以下なら使わない。回した区画では使わない）
+	float BaseY;			///< 上面の高さの x = 0・z = 0 での値（世界の座標で。回した区画も同じ）
 	float SlopeX;			///< 上面の高さが x 1 あたりに増える量（坂でなければ 0）
 	float SlopeZ;			///< 上面の高さが z 1 あたりに増える量（坂でなければ 0）
 	bool Solid;				///< 側面があるかを設定する（true：地盤の下面から上面までが壁、false：上面だけの片面の橋で、下から通り抜けられる）
 	STAGE_SURFACE Surface;	///< 描く色と、効果を付ける区画の目印
+	float Yaw = 0.0f;		///< 範囲の中心のまわりの Y 軸の回転（ラジアン。0 なら回さない）
+	float Radius = 0.0f;	///< 0 より大きければ、範囲の中心からこの半径の円の中だけを含む（コロシアムの円い床）
 };
 
 /// @brief Ｇ（地上の始点の近くで押すと、補助触腕で高所の名目着地点へ移る場所）
@@ -123,6 +135,27 @@ float StageCalcRegionHeight(const STAGE_REGION& region, float x, float z);
 /// @param z 調べる場所の Z
 /// @return 区画の番号（床がなければ -1）
 int StageCalcFindRegion(const STAGE& stage, float x, float z);
+
+/// @brief 足元の高さから見た床の区画を探す（足より上にある片面の橋は飛ばし、その下の区画を返す）
+/// @param stage ステージ（地形のないステージでは見つからない）
+/// @param x 足元の X
+/// @param y 足元の高さ（片面の橋は、上面がこの高さから坂の段差の上限までなら床とみなす）
+/// @param z 足元の Z
+/// @return 区画の番号（床がなければ -1）
+int StageCalcFindFloor(const STAGE& stage, float x, float y, float z);
+
+/// @brief その場所が区画の範囲（回転・円・四隅の切り落としを含む）の中か調べる（高さは見ない）
+/// @param region 区画
+/// @param x 調べる場所の X
+/// @param z 調べる場所の Z
+/// @return 範囲の中（端を含む）なら true
+bool StageCalcIsInsideRegion(const STAGE_REGION& region, float x, float z);
+
+/// @brief 区画のふちの角を、上から見て反時計回りに並べる（回した区画は回した位置、円は多角形にする）
+/// @param region 区画
+/// @param corners 角の X・Z を書き込む先
+/// @return 角の数（STAGE_OUTLINE_MAX 以下）
+int StageCalcRegionOutline(const STAGE_REGION& region, float corners[][2]);
 
 /// @brief その場所の床の上面の高さを求める（地形のマップは区画、それ以外は浮島と高台のいちばん高い面）
 /// @param stage ステージ

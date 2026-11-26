@@ -2,22 +2,27 @@
 
 #include "physics/stagecalc.h"
 #include "physics/mapcalc.h"
+#include "physics/pillarcalc.h"
 
 
 /// @file stage.h
-/// @brief ステージ（浮島と高台）。場外の線は下だけ
-/// @details 浮島の大きさ・高台の配置・場外の下の線は stage.cpp の「調整用の値」にある。計算は physics/stagecalc.h
+/// @brief ステージ（浮島と高台・対戦マップの地形）。場外の線は下だけ
+/// @details 浮島の大きさ・高台の配置・場外の下の線は stage.cpp の「調整用の値」にある。計算は physics/stagecalc.h・mapcalc.h。
+///          ネオンビル群・コロシアム・廃駅は、見た目を assets/models/maps/ のモデル（頂点の色にライトを焼き込んだ GLB）で描く
 
-/// @brief 浮島・高台・場外の線を管理する
+/// @brief 浮島・高台・場外の線と、対戦マップの地形・倒れる柱を管理する
 class Stage
 {
 public:
 
-	/// @brief 浮島・高台・場外の線を「調整用の値」から決める（ShapeInitialize のあと、FighterManager::Initialize の前に呼ぶ）
+	/// @brief 浮島・高台・場外の線を「調整用の値」から決め、マップのモデルを読む（ShapeInitialize・ModelInitialize のあと、FighterManager::Initialize の前に呼ぶ）
 	void Initialize(void);
 
-	/// @brief 状態を最初に戻す（参照はそのまま）
+	/// @brief 状態を最初に戻す（浮島にし、空の色も浮島の色にする）
 	void Reset(void);
+	/// @brief 標準の広さの浮島と高台のステージを作る（マップ選択の上から見た図にも使う）
+	/// @return 浮島のステージ
+	static STAGE MakeIsland(void);
 	/// @brief 浮島の幅・奥行きと高台の配置を元の値から指定倍率にする（高さと高台の大きさはそのまま）
 	void SetSizeScale(float scale);
 	/// @brief 試合で使うマップを、指定の広さの倍率で作り直す（浮島は SetSizeScale と同じ）
@@ -40,7 +45,25 @@ public:
 	/// @return ステージ
 	const STAGE& GetStage(void) const;
 
+	/// @brief 倒れる柱（コロシアム）を取得する（攻撃を当てられる柱の当たりを読む）
+	const PillarCalc& GetPillars() const { return m_Pillars; }
+	/// @brief 柱に攻撃を当てる（耐久が尽きると、攻撃の進む向きへ倒れ始める）
+	/// @param index 柱の番号
+	/// @param source 当てた元（スロット × 2 ＋ 手。同じ元からは続けて当たらない）
+	/// @param attacker 当てた人のスロット番号
+	/// @param damage 減らす耐久
+	/// @param direction 攻撃の進む向き
+	void HitPillar(int index, int source, int attacker, float damage, const VEC3& direction);
+	/// @brief 柱の予兆と倒れる動きを進め、地形の区画を今の柱に合わせる（試合中の体の更新のあとに呼ぶ）
+	/// @param bodies 全員の体
+	/// @param hittable 体ごとに、倒れる柱が当たる状態かを設定する（true：当たる、false：当たらない）
+	/// @param impacts 倒れる柱が体に当たったことを書き込む先
+	/// @param maxImpacts 書き込める数
+	/// @return 書き込んだ数
+	int StepPillars(const CAPSULE (&bodies)[FIGHTER_COUNT], const bool (&hittable)[FIGHTER_COUNT], PILLAR_IMPACT impacts[], int maxImpacts);
+
 private:
+	void DrawModelMap(int model) const;
 	void DrawTerrain(void) const;
 	void DrawRegion(const STAGE_REGION& region) const;
 	float GetSolidDrawBottom(int index) const;	// 実体の区画を描く下端の高さ（下に床があればその上面か穴の底、なければ地盤の下面）
@@ -52,4 +75,7 @@ private:
 	STAGE m_Stage = {};		// 浮島・高台・場外の線
 	STAGE_MAP m_Map = STAGE_MAP_ISLAND;	// 今のマップ
 	float m_Scale = 1.0f;	// 今のマップの広さの倍率
+	PillarCalc m_Pillars;	// 倒れる柱（コロシアム）
+	int m_MapModels[STAGE_MAP_COUNT] = {};	// マップごとの景観のモデル（モデルで描かないマップと読めなかったマップは -1）
+	int m_ColumnModel = -1;	// 倒れる柱のモデル
 };

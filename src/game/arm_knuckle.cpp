@@ -79,14 +79,24 @@ void KnuckleArm::Reset()
 	m_Extend = 0.0f;
 }
 
+// 斜め上への空中の突進は、進む向きの先で当たりを探す（上にいる相手にも当たる）。
+// それ以外は、ロックオン中の相手の高さへ向けて探す（高台の上の相手にも当たる）。
+VEC3 KnuckleArm::GetPunchDirection() const
+{
+	return m_AirRush ? ArmCalcPitchDirection(m_Direction, m_AirRushPitch) : GetStrikeDirection(m_Direction);
+}
+
 int KnuckleArm::FindTarget(float reach, float radius) const
 {
 	TENTACLE_TARGET targets[FIGHTER_COUNT];
 	for (int i = 0; i < FIGHTER_COUNT; ++i) targets[i] = GetFighters().GetMeleeTarget(i, GetSlot());
-	// 斜め上への空中の突進は、進む向きの先で当たりを探す（上にいる相手にも当たる）。
-	// それ以外は、ロックオン中の相手の高さへ向けて探す（高台の上の相手にも当たる）。
-	const VEC3 direction = m_AirRush ? ArmCalcPitchDirection(m_Direction, m_AirRushPitch) : GetStrikeDirection(m_Direction);
-	return AreaCalcFirstOnRay(GetShoulder(), direction, reach, radius, targets, FIGHTER_COUNT, nullptr);
+	return AreaCalcFirstOnRay(GetShoulder(), GetPunchDirection(), reach, radius, targets, FIGHTER_COUNT, nullptr);
+}
+
+void KnuckleArm::StrikePillarsOnPunch(float reach, float radius, float damage) const
+{
+	const VEC3 shoulder = GetShoulder();
+	StrikePillarsOnLine({ shoulder, Vec3Add(shoulder, Vec3Scale(GetPunchDirection(), reach)), radius }, damage, m_Direction);
 }
 
 // 浮島の外にいるか、浮島の上面より下にいるなら場外とみなす。
@@ -154,6 +164,7 @@ void KnuckleArm::Update(const ARM_INPUT& input)
 		m_Direction = GetAim(false);
 		if (m_Rush) PlaySe(SE_KNUCKLE_HOLD);
 		if (!m_Rush) {
+			StrikePillarsOnPunch(PUNCH_REACH, PUNCH_RADIUS, PUNCH_DAMAGE[m_TapStep]);
 			const int target = FindTarget(PUNCH_REACH, PUNCH_RADIUS);
 			if (target >= 0) Strike(target, PUNCH_UP[m_TapStep], PUNCH_DAMAGE[m_TapStep], PUNCH_POWER[m_TapStep]);
 			// 空振りは刀の空振りの音を使う（No.195。ナックル空振り.wav は表に残す）。
@@ -180,6 +191,7 @@ void KnuckleArm::Update(const ARM_INPUT& input)
 		else StopAirRush();
 	}
 	if (m_Rush && m_Phase.GetPhase() == KNUCKLE_STRIKE) {
+		StrikePillarsOnPunch(RUSH_REACH, RUSH_RADIUS, RUSH_DAMAGE);
 		const int target = FindTarget(RUSH_REACH, RUSH_RADIUS);
 		if (target >= 0) {
 			Strike(target, RUSH_UP, RUSH_DAMAGE, RUSH_POWER);

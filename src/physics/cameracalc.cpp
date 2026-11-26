@@ -11,10 +11,10 @@ VEC3 CameraCalcOrbitPosition(const VEC3& target, float yaw, float pitch, float d
 	return { target.X - dirX * distance, target.Y - dirY * distance, target.Z - dirZ * distance };
 }
 
-// 地形のマップで、点が実体の区画の中（地盤の下面から上面の margin 上まで）にあるか調べる。
+// 地形のマップで、点が実体の区画の中（地盤の下面から上面の margin 上まで）にあるか調べる（片面の橋の下の点は、その下の区画で調べる）。
 static bool InsideTerrain(const STAGE& stage, const VEC3& point, float margin)
 {
-	const int region = StageCalcFindRegion(stage, point.X, point.Z);
+	const int region = StageCalcFindFloor(stage, point.X, point.Y, point.Z);
 	if (region < 0 || !stage.Regions[region].Solid) return false;
 	const float top = StageCalcRegionHeight(stage.Regions[region], point.X, point.Z);
 	return point.Y < top + margin && point.Y > stage.GroundBottomY - margin;

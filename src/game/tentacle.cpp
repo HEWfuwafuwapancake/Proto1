@@ -322,10 +322,13 @@ void TentacleArm::StepSpin(const ARM_INPUT& input, float dt)
 	const XMFLOAT3 p = GetPlayer().GetPosition();
 	const VEC3 center{ p.x, GetShoulder().Y, p.z };
 	bool hit = false;
+	const auto inside = [&](const CAPSULE& body) {
+		return AreaCalcInSector(center, middle, 0.0f, SPIN_RADIUS, halfAngle, SPIN_HALF_HEIGHT, body);
+	};
+	StrikePillarsOutward(inside, SPIN_DAMAGE, center);
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		const TENTACLE_TARGET target = GetFighters().GetMeleeTarget(i, GetSlot());
-		if (!target.Available || m_SpinHits.Contains(i)
-			|| !AreaCalcInSector(center, middle, 0.0f, SPIN_RADIUS, halfAngle, SPIN_HALF_HEIGHT, target.Body)) continue;
+		if (!target.Available || m_SpinHits.Contains(i) || !inside(target.Body)) continue;
 		m_SpinHits.TryAdd(i);
 		const bool applied = GetFighters().Launch(i, GetSlot(), AreaCalcRadialDirection(center, target.Body, SPIN_UP, middle), SPIN_DAMAGE, SPIN_POWER);
 		if (applied && !m_SpinConsumed) {

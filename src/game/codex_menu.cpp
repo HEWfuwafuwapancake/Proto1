@@ -107,11 +107,20 @@ static constexpr float MAP_CARD_WIDTH = 388.0f;
 static constexpr float MAP_CARD_HEIGHT = 470.0f;
 static constexpr float MAP_CARD_GAP = 18.0f;
 static constexpr float MAP_PLAN_HEIGHT = 210.0f; // カードの中の上から見た図の高さ
-static constexpr const char* MAP_NAMES[STAGE_MAP_COUNT] = { "ソラツギ中央郵便局", "汐跡市場の三本橋", "浮島（標準）" };
-static constexpr const char* MAP_SUBTITLES[STAGE_MAP_COUNT] = { "近未来都市　52 × 52", "荒廃都市　60 × 48", "デバッグ用　30 × 30" };
+static constexpr int MAP_CARDS_SHOWN = 3; // 一度に並べるマップのカードの数（選んだマップが入るように横へ送る）
+// 並びは STAGE_MAP と同じ。
+static constexpr const char* MAP_NAMES[STAGE_MAP_COUNT] = {
+	"ソラツギ中央郵便局", "汐跡市場の三本橋", "ネオンビル群", "コロシアム", "廃駅", "浮島（標準）"
+};
+static constexpr const char* MAP_SUBTITLES[STAGE_MAP_COUNT] = {
+	"近未来都市　52 × 52", "荒廃都市　60 × 48", "ネオン街の交差点　56 × 48", "古代の闘技場　直径 42", "荒廃した世界　56 × 48", "デバッグ用　30 × 30"
+};
 static constexpr const char* MAP_HELP[STAGE_MAP_COUNT][3] = {
 	{ "中央の仕分け台を奪い合う。", "屋根へはＧの輪で触手を押して上がる。", "ダッシュ板に乗ると中央へ飛ぶ。" },
 	{ "高さの違う3本の橋を奪い合う。", "地割れに落ちると場外。", "高い橋へはＧの輪で触手を押す。" },
+	{ "ビルに囲まれた広い交差点で戦う。", "青いジャンプ台に乗ると屋上まで跳ぶ。", "外周から落ちると場外。" },
+	{ "円い闘技場に石の柱が5本。", "柱は攻撃で倒れ、下にいる全員に当たる。", "倒れた柱は低い壁になって残る。" },
+	{ "ホームと線路の高低差で戦う。", "倒壊ビルの足場を登って反対へ渡れる。", "ホームへは3か所の坂から上がる。" },
 	{ "今までの四角い浮島。", "下から通れる高台が4つ。", "腕を試すのに向いている。" },
 };
 static constexpr const char* CPU_LEVEL_NAMES[VERSUS_CPU_LEVEL_COUNT] = { "ダミー", "CPU よわい", "CPU ふつう", "CPU つよい" };
@@ -795,12 +804,20 @@ void CodexMenu::DrawMiniMap(STAGE_MAP map, const RECT2D& area) const
 	static constexpr XMFLOAT4 SHORE_COLOR{ 1.00f, 0.86f, 0.45f, 1.0f };
 	static constexpr XMFLOAT4 MARKET_RAMP_COLOR{ 1.00f, 0.66f, 0.35f, 1.0f };
 	static constexpr XMFLOAT4 ISLAND_COLOR{ 0.45f, 0.65f, 0.40f, 1.0f };
+	// 追加の3面は、景観のモデルの色に近づける。
+	static constexpr XMFLOAT4 NEW_SURFACE_COLORS[] = {
+		{ 0.30f, 0.27f, 0.45f, 1.0f }, // 車道・線路
+		{ 0.55f, 0.36f, 0.85f, 1.0f }, // 上に乗れる障害物（ビル・車・電車など）
+		{ 0.35f, 1.00f, 1.00f, 1.0f }, // ジャンプ台
+		{ 0.96f, 0.86f, 0.66f, 1.0f }, // 倒れる柱
+		{ 0.70f, 0.82f, 0.76f, 1.0f }, // 片面の足場（倒壊ビル・屋根）
+	};
+	static constexpr XMFLOAT4 NEON_SIDEWALK_COLOR{ 0.62f, 0.55f, 0.75f, 1.0f };
+	static constexpr XMFLOAT4 COLISEUM_FLOOR_COLOR{ 0.80f, 0.64f, 0.46f, 1.0f };
+	static constexpr XMFLOAT4 STATION_PLATFORM_COLOR{ 0.84f, 0.88f, 0.82f, 1.0f };
+	static_assert(sizeof(SURFACE_COLORS) / sizeof(SURFACE_COLORS[0]) == STAGE_SURFACE_ROAD, "SURFACE_COLORS must cover the first surfaces");
 	STAGE stage{};
-	if (!MapCalcBuild(map, 1.0f, stage)) {
-		Stage island;
-		island.Initialize();
-		stage = island.GetStage();
-	}
+	if (!MapCalcBuild(map, 1.0f, stage)) stage = Stage::MakeIsland();
 	Number2DDrawBox(area, VOID_COLOR);
 	const float halfWidth = stage.HalfWidth + (stage.HasTerrain ? 0.0f : 2.0f);
 	const float halfDepth = stage.HalfDepth + (stage.HasTerrain ? 0.0f : 2.0f);
@@ -817,19 +834,32 @@ void CodexMenu::DrawMiniMap(STAGE_MAP map, const RECT2D& area) const
 		}
 		return;
 	}
-	// 区画は上から順に調べるので、下の行（基準の床）から描いて上の行を重ねる。四隅を切った区画は十字の2つの四角で描く。
+	// 区画は上から順に調べるので、下の行（基準の床）から描いて上の行を重ねる。
+	// 区画のふち（回した区画・円・四隅を切った区画も）を多角形にし、1つ目の角からの三角形に分けて描く。
 	for (int i = stage.RegionCount - 1; i >= 0; --i) {
 		const STAGE_REGION& region = stage.Regions[i];
-		XMFLOAT4 color = SURFACE_COLORS[region.Surface];
+		XMFLOAT4 color = region.Surface < STAGE_SURFACE_ROAD ? SURFACE_COLORS[region.Surface] : NEW_SURFACE_COLORS[region.Surface - STAGE_SURFACE_ROAD];
 		if (map == STAGE_MAP_MARKET && region.Surface == STAGE_SURFACE_FLOOR) color = SHORE_COLOR;
 		if (map == STAGE_MAP_MARKET && region.Surface == STAGE_SURFACE_RAMP) color = MARKET_RAMP_COLOR;
-		if (region.DiagonalLimit <= 0.0f) {
-			box(region.MinX, region.MaxX, region.MinZ, region.MaxZ, color);
-			continue;
+		if (map == STAGE_MAP_NEON && region.Surface == STAGE_SURFACE_FLOOR) color = NEON_SIDEWALK_COLOR;
+		if (map == STAGE_MAP_COLISEUM && region.Surface == STAGE_SURFACE_FLOOR) color = COLISEUM_FLOOR_COLOR;
+		if (map == STAGE_MAP_STATION && region.Surface == STAGE_SURFACE_FLOOR) color = STATION_PLATFORM_COLOR;
+		float corners[STAGE_OUTLINE_MAX][2];
+		const int count = StageCalcRegionOutline(region, corners);
+		QUAD2D triangles[STAGE_OUTLINE_MAX];
+		int triangleCount = 0;
+		for (int k = 1; k + 1 < count; ++k) {
+			// 画面は北（+Z）が上。三角形を画面で時計回り（表）にそろえる（裏は描かれない）。
+			float x[3], y[3];
+			const int order[3] = { 0, k, k + 1 };
+			for (int n = 0; n < 3; ++n) {
+				x[n] = centerX + corners[order[n]][0] * scale;
+				y[n] = centerY - corners[order[n]][1] * scale;
+			}
+			if ((x[1] - x[0]) * (y[2] - y[0]) - (y[1] - y[0]) * (x[2] - x[0]) < 0.0f) { std::swap(x[1], x[2]); std::swap(y[1], y[2]); }
+			triangles[triangleCount++] = { { x[0], x[1], x[2], x[2] }, { y[0], y[1], y[2], y[2] } };
 		}
-		const float cut = region.MaxX + region.MaxZ - region.DiagonalLimit;
-		box(region.MinX, region.MaxX, region.MinZ + cut, region.MaxZ - cut, color);
-		box(region.MinX + cut, region.MaxX - cut, region.MinZ, region.MaxZ, color);
+		Number2DDrawQuads(triangles, triangleCount, color);
 	}
 	// Ｇの始点（黄緑）と開始位置（プレイヤーの色）。
 	const float dot = 7.0f;
@@ -849,9 +879,11 @@ void CodexMenu::DrawMapSelect(const SceneCalc& scene, const NetSession& net, flo
 	const bool online = net.IsOnline();
 	const bool owner = !online || net.IsHost();
 	Header("マップをえらぶ", online ? "STAGE SELECT / ONLINE" : "STAGE SELECT");
-	for (int i = 0; i < STAGE_MAP_COUNT; ++i) {
+	// カードは MAP_CARDS_SHOWN 枚ずつ並べ、選んだマップがなるべく真ん中に来るように送る。
+	const int first = (std::max)(0, (std::min)(static_cast<int>(scene.GetMap()) - 1, STAGE_MAP_COUNT - MAP_CARDS_SHOWN));
+	for (int i = first; i < first + MAP_CARDS_SHOWN; ++i) {
 		const bool selected = scene.GetMap() == i;
-		const float x = MAP_CARD_LEFT + i * (MAP_CARD_WIDTH + MAP_CARD_GAP);
+		const float x = MAP_CARD_LEFT + (i - first) * (MAP_CARD_WIDTH + MAP_CARD_GAP);
 		// 選んだカードは黄緑の太いふちで、少し持ち上げる。
 		const float top = MAP_CARD_TOP - (selected ? 10.0f * GetPop() : 0.0f);
 		const RECT2D card{ x, top, MAP_CARD_WIDTH, MAP_CARD_HEIGHT };
@@ -865,6 +897,14 @@ void CodexMenu::DrawMapSelect(const SceneCalc& scene, const NetSession& net, flo
 			Word(MAP_HELP[i][k], x + 22, top + 322 + k * 36.0f, 17, k == 0 ? INK : MUTED);
 		}
 	}
+	// 左右にまだマップがあることを、カードの外の矢印で見せる。
+	if (first > 0) Word("<", MAP_CARD_LEFT - 30, MAP_CARD_TOP + MAP_CARD_HEIGHT * 0.5f - 20, 34, PINK, TEXT2D_FONT_POP);
+	if (first + MAP_CARDS_SHOWN < STAGE_MAP_COUNT) {
+		Word(">", MAP_CARD_LEFT + MAP_CARDS_SHOWN * (MAP_CARD_WIDTH + MAP_CARD_GAP) - 8, MAP_CARD_TOP + MAP_CARD_HEIGHT * 0.5f - 20, 34, PINK, TEXT2D_FONT_POP);
+	}
+	char page[16];
+	sprintf_s(page, "%d / %d", static_cast<int>(scene.GetMap()) + 1, static_cast<int>(STAGE_MAP_COUNT));
+	Word(page, 1240, MAP_CARD_TOP - 34, 16, INK, TEXT2D_FONT_POP, GLYPH_ALIGN_RIGHT);
 	char size[48];
 	sprintf_s(size, "マップの広さ  ×%.2f（オプションで変更）", sizeScale);
 	Word(size, MAP_CARD_LEFT, LOBBY_BANNER_Y + 2, 15, INK);
