@@ -10,6 +10,7 @@
 
 #ifdef _DEBUG
 #include "core/debug_ostream.h"
+#include "audio/se.h"
 #include <iostream>
 #endif
 
@@ -236,6 +237,7 @@ void Game::UpdateMenu()
 	input.AddressValid = m_JoinAddress.IsValid();
 	const SCENE_EVENT event = m_Scene.Step(input, false);
 	if (event == SCENE_EVENT_TUNING_RESET) {
+		m_TuningResetSe = true;
 		SetTuning(TuningCalcDefault());
 		m_ArmCosts = ArmCostCalcDefault();
 		ActionSetLookSensitivityLevel(ActionGetLookSensitivityDefaultLevel());
@@ -304,8 +306,42 @@ void Game::Update()
 		back = back || menu.Back;
 		decide = decide || menu.Decide;
 	}
+	m_TuningResetSe = false;
+	UpdateSeListeners();
 	UpdateFrame();
-	m_MenuSe.Update(before, GetMenuSeState(), back, decide);
+	m_MenuSe.Update(before, GetMenuSeState(), back, decide, m_TuningResetSe);
+}
+
+void Game::UpdateSeListeners() const
+{
+	// 戦闘の音を聞く人（この PC で遊ぶ人）。オンラインは自分だけ、オフラインは同じ PC の全員（CPU・ダミーは聞き手にしない）。
+	// 位置とカメラは前のフレームのもの（1フレーム遅れても聞こえ方は変わらない）。
+	const SCENE scene = m_Scene.GetScene();
+	if (scene != SCENE_MATCH && scene != SCENE_PAUSE) {
+		SeSetListeners(nullptr, 0);
+		return;
+	}
+	SE_LISTENER listeners[SE_LISTENER_MAX];
+	int count = 0;
+	for (int k = 0; k < m_HumanCount && count < SE_LISTENER_MAX; ++k) {
+		const int slot = m_Humans[k];
+		if (m_Net.IsOnline() && slot != m_Net.GetLocalSlot()) continue;
+		const XMFLOAT3 p = m_Fighters.GetFighter(slot).GetPosition();
+		const XMFLOAT3 forward = m_Cameras[slot].GetDirection();
+		SE_LISTENER& listener = listeners[count++];
+		listener.Position = { p.x, p.y, p.z };
+		listener.Right = { forward.z, 0.0f, -forward.x }; // 上向きと正面の外積（左手系）
+		listener.Slot = slot;
+	}
+	// 同じ距離なら枠の小さい人を選ぶので、スロットの順に並べる。
+	for (int i = 1; i < count; ++i) {
+		for (int j = i; j > 0 && listeners[j - 1].Slot > listeners[j].Slot; --j) {
+			const SE_LISTENER swap = listeners[j];
+			listeners[j] = listeners[j - 1];
+			listeners[j - 1] = swap;
+		}
+	}
+	SeSetListeners(listeners, count);
 }
 
 MENU_SE_STATE Game::GetMenuSeState() const
@@ -329,6 +365,13 @@ MENU_SE_STATE Game::GetMenuSeState() const
 		if (m_Participants.GetDevice(slot) != VERSUS_DEVICE_DUMMY) state.Joined |= 1u << slot;
 		if (m_Participants.IsReady(slot)) state.Ready |= 1u << slot;
 	}
+	if (m_Net.IsOnline()) {
+		// オンラインは通信の準備OKを見る。音は自分の準備・取り消しだけで鳴らす（ほかの人の準備では鳴らさない）。
+		const int local = m_Net.GetLocalSlot();
+		const unsigned mine = local >= 0 && m_Net.IsLocalReady() ? 1u << local : 0u;
+		state.Joined = mine;
+		state.Ready = mine;
+	}
 	return state;
 }
 
@@ -344,8 +387,13 @@ void Game::UpdateFrame()
 		UpdateMenu();
 		return;
 	}
-	// オフラインのキャラ選択の戻るは、機器ごとに下で扱う（準備OKの取り消し・参加をやめる・1P は前の画面へ）。
-	if (oldScene == SCENE_TITLE && m_Net.IsOnline() && IsLobbyBack()) {
+	// オンラインのキャラ選択：準備OKなら、選んだ機器の戻るで準備OKだけを取り消してロビーに残る（接続と仲間はそのまま）。
+	// 準備OKでなければ、戻るで接続を閉じて前の画面へ。オフラインの戻るは、機器ごとに下で扱う。
+	if (oldScene == SCENE_TITLE && m_Net.IsOnline() && m_Net.IsLocalReady()) {
+		const int device = m_Net.GetLocalDevice();
+		if (device >= 0 && ActionGetMenuInput(device).Back) m_Net.CancelReady();
+	}
+	else if (oldScene == SCENE_TITLE && m_Net.IsOnline() && IsLobbyBack()) {
 		m_Scene.Step({ false, false, 0.0f, true }, false);
 		m_Net.Finalize();
 		ActionSetOnlineEquip(false);

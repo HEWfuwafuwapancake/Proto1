@@ -19,6 +19,16 @@ namespace Proto1Tests
 		scene.Step({ true, false, 0 }, false);
 	}
 
+	// メニューを上へ戻る移り方だけを「戻る」とし、先へ進む移り方は戻るにしない（戻るの音を結果で選ぶ。No.195）
+	TEST(SceneCalcTest, BackTransition_OnlyWhenReturningUpTheMenu)
+	{
+		EXPECT_TRUE(SceneCalc::IsBackTransition(SCENE_OPTIONS, SCENE_MODE_SELECT));
+		EXPECT_TRUE(SceneCalc::IsBackTransition(SCENE_MODE_SELECT, SCENE_GAME_START));
+		EXPECT_TRUE(SceneCalc::IsBackTransition(SCENE_MAP_SELECT, SCENE_TITLE));
+		EXPECT_FALSE(SceneCalc::IsBackTransition(SCENE_MODE_SELECT, SCENE_OPTIONS));
+		EXPECT_FALSE(SceneCalc::IsBackTransition(SCENE_TITLE, SCENE_MAP_SELECT));
+	}
+
 	TEST(SceneCalcTest, Title_DecideOpensMapSelectThenStartsMatch)
 	{
 		SceneCalc scene;

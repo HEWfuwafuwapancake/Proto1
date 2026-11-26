@@ -25,6 +25,11 @@ public:
 	void RecordChecksum(int32_t frame, const LOCKSTEP_STATE (&states)[FIGHTER_COUNT]);
 	/// @brief 接続を保ってロビーへ戻る
 	void ReturnToLobby() { m_Calc.ReturnToLobby(); }
+	/// @brief ロビーで自分の準備OKを取り消す（接続・選んだ機器はそのまま。もう一度決定すれば準備OKに戻る）
+	/// @return 取り消したら true（準備OKでなかった・試合中なら false）
+	bool CancelReady() { return m_Calc.CancelReady(); }
+	/// @brief 自分が準備OK（機器選択済み）か取得する
+	bool IsLocalReady() const { return m_Calc.IsLocalReady(); }
 	/// @brief オンライン接続を開いているか取得する
 	bool IsOnline() const { return m_Options.Mode != NET_MODE_LOCAL; }
 	/// @brief この PC がホストとして接続中か取得する

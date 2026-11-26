@@ -221,6 +221,14 @@ void SessionCalc::Decide()
 	}
 }
 
+bool SessionCalc::CancelReady()
+{
+	if (m_Running || !m_LocalReady) return false;
+	m_LocalReady = false;
+	if (m_Host) m_Ready &= static_cast<uint8_t>(~1u);
+	return true;
+}
+
 void SessionCalc::BeginRound(uint32_t round)
 {
 	m_Round = round;
@@ -252,7 +260,9 @@ void SessionCalc::Receive(int peer, const SESSION_MESSAGE& message)
 		ReceiveMonitor(peer, message);
 		if (!m_Running && message.Slot == peer && (message.Type == SESSION_JOIN || message.Type == SESSION_READY)) {
 			m_Characters[peer] = message.Characters[peer];
+			// 準備OKを取り消した参加者は JOIN を送り直すので、ビットを消す。
 			if (message.Type == SESSION_READY) m_Ready |= static_cast<uint8_t>(1u << peer);
+			else m_Ready &= static_cast<uint8_t>(~(1u << peer));
 		}
 		if (message.Type != SESSION_INPUTS || !m_HasRound || message.Packet.Mask != (1u << peer)
 			|| message.Packet.Delay != m_Delay) return;

@@ -164,6 +164,42 @@ namespace Proto1Tests
 		EXPECT_EQ(VERSUS_DEVICE_REMOTE, participants.GetDevice(3));
 	}
 
+	// ロビーで準備OKを取り消すと、接続はそのままで開始できなくなり、もう一度決定すれば準備OKに戻って開始できる（No.195）
+	TEST(SessionCalcTest, Lobby_CancelReadyKeepsConnectionAndAllowsReady)
+	{
+		NET_OPTIONS options;
+		options.Mode = NET_MODE_HOST;
+		SessionCalc host, client;
+		host.Initialize(options, 100);
+		options.Mode = NET_MODE_JOIN;
+		client.Initialize(options, 101);
+		EXPECT_EQ(1, host.Join(101));
+		Deliver(client, 0, host.MakeControl(1));
+		client.Decide();
+		Deliver(host, 1, client.MakeControl());
+		host.Decide();
+		EXPECT_EQ(3, static_cast<int>(host.GetReadyMask()));
+		// ホストの取り消し：自分のビットだけ消え、参加者と準備はそのまま。
+		EXPECT_TRUE(host.CancelReady());
+		EXPECT_FALSE(host.CancelReady()); // 2回目は取り消すものがない
+		EXPECT_EQ(2, static_cast<int>(host.GetReadyMask()));
+		EXPECT_EQ(3, static_cast<int>(host.GetMask()));
+		host.Decide(); // 取り消したあとの最初の決定は準備OKに戻すだけ
+		EXPECT_FALSE(host.IsRunning());
+		EXPECT_EQ(3, static_cast<int>(host.GetReadyMask()));
+		// 参加側の取り消し：JOIN を送り直すと、ホストが参加側のビットを消す。
+		EXPECT_TRUE(client.CancelReady());
+		Deliver(host, 1, client.MakeControl());
+		EXPECT_EQ(1, static_cast<int>(host.GetReadyMask()));
+		host.Decide();
+		EXPECT_FALSE(host.IsRunning()); // 全員がそろうまで始まらない
+		client.Decide();
+		Deliver(host, 1, client.MakeControl());
+		host.Decide();
+		EXPECT_TRUE(host.IsRunning());
+		EXPECT_FALSE(host.CancelReady()); // 試合中は取り消せない
+	}
+
 	TEST(SessionCalcTest, Messages_RoundTripAndSeparateControlFromInput)
 	{
 		SessionNetwork network(2, 6);

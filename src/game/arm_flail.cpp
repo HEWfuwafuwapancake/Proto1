@@ -116,17 +116,21 @@ void FlailArm::StrikeFan()
 {
 	m_Direction = GetAim(false);
 	bool hit = false;
+	int hitTarget = -1; // 音を鳴らす相手（何人に当たっても音は1回）
 	// ロックオン中は、高台の上・下の相手へも扇を傾けて振る。
 	const VEC3 strike = GetStrikeDirection(m_Direction);
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		const TENTACLE_TARGET target = GetFighters().GetMeleeTarget(i, GetSlot());
 		if (!target.Available
 			|| !AreaCalcInAimedSector(GetShoulder(), strike, 0.0f, FAN_RADIUS, FAN_HALF_ANGLE, FAN_HALF_HEIGHT, target.Body)) continue;
-		if (GetFighters().Launch(i, GetSlot(), AreaCalcLaunchDirection(m_Direction, FAN_UP), FAN_DAMAGE, FAN_POWER)) hit = true;
+		if (GetFighters().Launch(i, GetSlot(), AreaCalcLaunchDirection(m_Direction, FAN_UP), FAN_DAMAGE, FAN_POWER)) {
+			hit = true;
+			hitTarget = i;
+		}
 	}
 	if (hit) {
 		Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
-		SePlay(SE_FLAIL_HIT);
+		PlayHitSe(SE_FLAIL_HIT, hitTarget);
 		if (!m_FanConsumed) ConsumeDurability(GetCost(COST_ROW, ARM_COST_TAP_HIT));
 		m_FanConsumed = true;
 	}
@@ -145,6 +149,7 @@ void FlailArm::StepSpin(float dt)
 	m_SpinAngle = fmodf(m_SpinAngle + SPIN_SPEED * dt, XM_2PI);
 	const VEC3 center = GetSpinCenter();
 	bool hit = false;
+	int hitTarget = -1;
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		m_SpinCooldowns[i] = fmaxf(0.0f, m_SpinCooldowns[i] - dt);
 		const TENTACLE_TARGET target = GetFighters().GetMeleeTarget(i, GetSlot());
@@ -154,11 +159,12 @@ void FlailArm::StepSpin(float dt)
 		m_SpinCooldowns[i] = SPIN_HIT_COOLDOWN;
 		if (GetFighters().Launch(i, GetSlot(), AreaCalcRadialDirection(center, target.Body, SPIN_UP, GetForward()), SPIN_DAMAGE, SPIN_POWER)) {
 			hit = true;
+			hitTarget = i;
 		}
 	}
 	if (hit) {
 		Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, SPIN_RUMBLE_SECONDS);
-		SePlay(SE_FLAIL_HIT);
+		PlayHitSe(SE_FLAIL_HIT, hitTarget);
 	}
 }
 
@@ -176,7 +182,7 @@ void FlailArm::ThrowBall()
 	m_Spinning = false;
 	m_SpinSeconds = 0.0f;
 	m_SpinSe.Stop();
-	SePlay(SE_FLAIL_CHAIN);
+	PlaySe(SE_FLAIL_CHAIN);
 }
 
 // 投げた鉄球を進め、行きは投げた向きへ、帰りは自分の方へ飛ばす（行きと帰りで同じ相手に1回ずつ当たる）。
@@ -188,6 +194,7 @@ void FlailArm::StepBall(float dt)
 	const CAPSULE sweep{ m_Ball.GetPrevious(), m_Ball.GetPosition(), BALL_RADIUS };
 	HitRecord& hits = moving == FLAIL_OUT ? m_OutHits : m_BackHits;
 	bool hit = false;
+	int hitTarget = -1;
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		const TENTACLE_TARGET target = GetFighters().GetTarget(i, GetSlot());
 		if (!target.Available || hits.Contains(i) || !CollisionCapsuleCapsule(sweep, target.Body).Hit) continue;
@@ -197,12 +204,13 @@ void FlailArm::StepBall(float dt)
 			: GetFighters().Launch(i, GetSlot(), AreaCalcLaunchDirection(m_Ball.GetMoveDirection(), BACK_UP), BACK_DAMAGE, BACK_POWER);
 		if (!applied) continue;
 		hit = true;
+		hitTarget = i;
 		if (!m_ThrowHit) ConsumeDurability(GetCost(COST_ROW, ARM_COST_HOLD_HIT));
 		m_ThrowHit = true;
 	}
 	if (hit) {
 		Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
-		SePlay(SE_FLAIL_HIT);
+		PlayHitSe(SE_FLAIL_HIT, hitTarget);
 	}
 	if (!m_Ball.IsFlying() && !m_ThrowHit) {
 		ConsumeDurability(GetCost(COST_ROW, ARM_COST_HOLD_MISS));
@@ -231,7 +239,7 @@ void FlailArm::Update(const ARM_INPUT& input)
 	if (m_Phase.GetPhase() == FAN_WINDUP) m_Direction = GetAim(false);
 	const ARM_PHASE_STEP step = m_Phase.Step(dt, FAN_SECONDS, FAN_PHASE_COUNT);
 	if (step.Entered == FAN_STRIKE) {
-		SePlay(SE_FLAIL_CHAIN, FAN_SE_VOLUME);
+		PlaySe(SE_FLAIL_CHAIN, FAN_SE_VOLUME);
 		StrikeFan();
 	}
 	if (step.Finished && !m_FanConsumed) {
@@ -242,7 +250,7 @@ void FlailArm::Update(const ARM_INPUT& input)
 		// 離したら、ためた分だけ遠くへ投げる。回している間に耐久が尽きたら、その場で投げる。
 		if (!input.Pressed || !CanUse()) ThrowBall();
 		else {
-			m_SpinSe.Keep(SE_FLAIL_SPIN); // 鳴り終わったら、回している間はもう一度鳴らす
+			m_SpinSe.KeepAt(SE_FLAIL_SPIN, GetSpinCenter(), GetSlot()); // 鳴り終わったらもう一度鳴らす（動いたら音の場所もついてくる）
 			StepSpin(dt);
 		}
 	}

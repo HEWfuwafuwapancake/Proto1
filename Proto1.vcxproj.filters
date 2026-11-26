@@ -132,6 +132,9 @@
     <ClCompile Include="src\audio\wavcalc.cpp">
       <Filter>src\audio</Filter>
     </ClCompile>
+    <ClCompile Include="src\audio\sespatialcalc.cpp">
+      <Filter>src\audio</Filter>
+    </ClCompile>
     <ClCompile Include="src\game\mapgimmick.cpp">
       <Filter>src\game</Filter>
     </ClCompile>
@@ -300,6 +303,9 @@
       <Filter>src\audio</Filter>
     </ClInclude>
     <ClInclude Include="src\audio\wavcalc.h">
+      <Filter>src\audio</Filter>
+    </ClInclude>
+    <ClInclude Include="src\audio\sespatialcalc.h">
       <Filter>src\audio</Filter>
     </ClInclude>
     <ClInclude Include="src\game\mapgimmick.h">

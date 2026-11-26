@@ -214,13 +214,19 @@ bool ArmManager::CanBreak() const
 	return !IsDebug() && !IsDurabilityLocked();
 }
 
+void ArmManager::PlayOwnSe(SE_ID id) const
+{
+	const XMFLOAT3 p = m_Links.Fighters->GetFighter(m_Links.Slot).GetPosition();
+	SePlayAt(id, { p.x, p.y, p.z }, m_Links.Slot);
+}
+
 void ArmManager::BreakExhaustedArm(int hand)
 {
 	if (!CanBreak() || m_Types[hand] == ARM_TYPE_NONE || !m_Uses[hand].IsExhausted()) return;
 	const Arm& arm = *m_Arms[hand][m_Types[hand]];
 	if (!arm.IsActive() && !arm.IsBusy()) {
 		ChangeType(hand, ARM_TYPE_NONE);
-		SePlay(SE_ARM_BREAK);
+		PlayOwnSe(SE_ARM_BREAK);
 	}
 }
 
@@ -233,7 +239,7 @@ void ArmManager::UpdateGuards(const Fighter& player, float dt, bool interrupted)
 		const int hand = m_GuardHand;
 		const PARRY_RESULT result = m_Guards[hand].OnHit(true);
 		Arm& arm = *m_Arms[hand][m_Types[hand]];
-		SePlay(SE_ARM_GUARD);
+		PlayOwnSe(SE_ARM_GUARD);
 		if (result == PARRY_SUCCESS || result == PARRY_BREAK_ARM) {
 			m_GuardFeedbackSeconds = GUARD_FEEDBACK_SECONDS;
 			m_GuardFeedbackParry = result == PARRY_SUCCESS;
@@ -247,7 +253,7 @@ void ArmManager::UpdateGuards(const Fighter& player, float dt, bool interrupted)
 			if (CanBreak() && m_Uses[hand].IsExhausted()) {
 				arm.Rumble(BREAK_RUMBLE, BREAK_RUMBLE, BREAK_RUMBLE_SECONDS);
 				ChangeType(hand, ARM_TYPE_NONE);
-				SePlay(SE_ARM_BREAK);
+				PlayOwnSe(SE_ARM_BREAK);
 			}
 		}
 	}
@@ -527,6 +533,26 @@ VEC3 Arm::GetShoulder() const
 {
 	// 攻撃の起点はキャラによらず従来のメカの肩を使う。
 	return GetShoulderAt(CHARACTER_DATA::Get(CHARACTER_MEKA).Shoulder);
+}
+
+void Arm::PlaySe(SE_ID id, float volume) const
+{
+	SePlayAt(id, GetShoulder(), GetSlot(), -1, volume);
+}
+
+void Arm::PlayHitSe(SE_ID id, int target, float volume) const
+{
+	if (target < 0 || target >= FIGHTER_COUNT) {
+		PlaySe(id, volume);
+		return;
+	}
+	const XMFLOAT3 body = GetFighters().GetFighter(target).GetPosition();
+	SePlayAt(id, { body.x, body.y, body.z }, GetSlot(), target, volume);
+}
+
+void Arm::PlaySeAt(SE_ID id, const VEC3& position, int target, float volume) const
+{
+	SePlayAt(id, position, GetSlot(), target, volume);
 }
 
 VEC3 Arm::GetDrawShoulder() const

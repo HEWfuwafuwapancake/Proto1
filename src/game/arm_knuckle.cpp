@@ -140,7 +140,7 @@ void KnuckleArm::Update(const ARM_INPUT& input)
 		m_Phase.Start(KNUCKLE_CHARGE);
 		m_Phase.SetHeld(m_Rush);
 		if (input.HoldReleased) m_Phase.Release();
-		else if (m_Rush) SePlay(SE_ARM_HOLD);
+		else if (m_Rush) PlaySe(SE_ARM_HOLD);
 	}
 	else if (input.HoldReleased && m_Rush) m_Phase.Release();
 	// ためている間にボタンを受け付けなくなった（ガードなど）ときは、出さずにやめる。
@@ -152,11 +152,13 @@ void KnuckleArm::Update(const ARM_INPUT& input)
 	}
 	if (step.Entered == KNUCKLE_STRIKE) {
 		m_Direction = GetAim(false);
-		if (m_Rush) SePlay(SE_KNUCKLE_HOLD);
+		if (m_Rush) PlaySe(SE_KNUCKLE_HOLD);
 		if (!m_Rush) {
 			const int target = FindTarget(PUNCH_REACH, PUNCH_RADIUS);
 			if (target >= 0) Strike(target, PUNCH_UP[m_TapStep], PUNCH_DAMAGE[m_TapStep], PUNCH_POWER[m_TapStep]);
-			SePlay(target >= 0 ? SE_KNUCKLE_TAP : SE_KNUCKLE_MISS);
+			// 空振りは刀の空振りの音を使う（No.195。ナックル空振り.wav は表に残す）。
+			if (target >= 0) PlayHitSe(SE_KNUCKLE_TAP, target);
+			else PlaySe(SE_KATANA_MISS);
 		}
 		else if (GetAirRushPitch() > 0.0f) {
 			const float pitch = GetAirRushPitch();

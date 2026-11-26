@@ -163,7 +163,7 @@ void MissileArm::FireVolley(bool all)
 	else ConsumeDurability(SHOT_COST);
 	if (all) Rumble(HOLD_RUMBLE, HOLD_RUMBLE, HOLD_RUMBLE_SECONDS);
 	else Rumble(TAP_RUMBLE, TAP_RUMBLE, TAP_RUMBLE_SECONDS);
-	SePlay(SE_MISSILE_FIRE);
+	PlaySe(SE_MISSILE_FIRE);
 }
 
 void MissileArm::AddBlast(const VEC3& position, float radius)
@@ -187,13 +187,13 @@ void MissileArm::StepEffects(float dt)
 	const int count = m_Shots.Step(dt, targets, FIGHTER_COUNT, GetStage().GetStage(), SHOT_PARAMS, events, PROJECTILE_MAX);
 	for (int e = 0; e < count; ++e) {
 		const bool isArm = m_ShotIsArm[events[e].Index];
+		// 同じフレームにいくつ爆発しても、音は1回だけ、最初の爆心で鳴らす（重なって大きくなりすぎないように）。
+		if (e == 0) PlaySeAt(SE_MISSILE_EXPLODE, events[e].Position, events[e].Target);
 		const float radius = isArm ? ARM_BLAST_RADIUS : FINGER_BLAST_RADIUS;
 		Explode(events[e].Position, radius, isArm ? ARM_DAMAGE : FINGER_DAMAGE, isArm ? ARM_POWER : FINGER_POWER, BLAST_UP);
 		AddBlast(events[e].Position, radius);
 		m_ShotIsArm[events[e].Index] = false;
 	}
-	// 同じフレームにいくつ爆発しても、音は1回だけ鳴らす（重なって大きくなりすぎないように）。
-	if (count > 0) SePlay(SE_MISSILE_EXPLODE);
 }
 
 void MissileArm::Update(const ARM_INPUT& input)
@@ -206,8 +206,8 @@ void MissileArm::Update(const ARM_INPUT& input)
 		if (m_Hold) {
 			m_Phase.Start(MISSILE_AIM);
 			m_Phase.SetHeld(true);
+			// ロックオンの音は鳴らさない（No.195）。
 			if (input.HoldReleased) m_Phase.Release();
-			else SePlay(SE_MISSILE_LOCK);
 		}
 		else {
 			m_Phase.Start(MISSILE_FIRE);
