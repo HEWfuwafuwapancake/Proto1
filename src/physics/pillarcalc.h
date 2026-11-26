@@ -6,7 +6,7 @@
 #include "physics/versuscalc.h"
 
 /// @file pillarcalc.h
-/// @brief 攻撃で倒れる柱（コロシアム。仕様書 docs/plan/09_追加マップ3面/02_コロシアム.md の「柱の倒壊」）
+/// @brief 攻撃で倒れる柱（コロシアム。仕様書 docs/plan/09_追加マップ3面/02_コロシアム.txt の「柱の倒壊」）
 /// @details 柱はステージの区画（STAGE_SURFACE_PILLAR）で、倒れ方に合わせて区画を書き換える。
 ///          試合の更新の数で進めるので、通信でも全員同じに倒れる。DirectX を使わないので単体テストできる
 

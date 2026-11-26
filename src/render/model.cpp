@@ -7,6 +7,7 @@
 #include <fstream>
 #include <iterator>
 #include <limits>
+#include <math.h>
 #pragma warning(push, 0)
 #include "assimp/cimport.h"
 #include "assimp/scene.h"
@@ -159,6 +160,15 @@ static ID3D11ShaderResourceView* LoadMaterialTexture(const aiScene* scene, const
 	return view;
 }
 
+// 頂点の色（glTF の COLOR_0 はリニア）を、画面にそのまま出す色（sRGB）に直す。画面のバッファはガンマを掛けないので、直さないと暗くなる。
+static aiColor4D LinearToSrgb(const aiColor4D& linear)
+{
+	const auto convert = [](float value) {
+		return value <= 0.0031308f ? value * 12.92f : 1.055f * powf(value, 1.0f / 2.4f) - 0.055f;
+	};
+	return { convert(linear.r), convert(linear.g), convert(linear.b), linear.a };
+}
+
 // Assimp で FBX などを読む。ノードの移動・回転・拡大は頂点に焼き込み、Z を反転して左手系にする（OBJ と同じ向き）。
 static bool LoadWithAssimp(const char* path, bool mirrorX, const char* tintMaterial, std::vector<VERTEX_3D>& vertices,
 	std::vector<MODEL_PART>& parts, std::vector<ID3D11ShaderResourceView*>& textures)
@@ -207,7 +217,7 @@ static bool LoadWithAssimp(const char* path, bool mirrorX, const char* tintMater
 					const aiVector3D& p = mesh->mVertices[v];
 					const aiVector3D& n = mesh->mNormals[v];
 					const aiVector3D uv = mesh->HasTextureCoords(0) ? mesh->mTextureCoords[0][v] : aiVector3D(0, 0, 0);
-					const aiColor4D c = vertexColors ? mesh->mColors[0][v] : aiColor4D(1, 1, 1, 1);
+					const aiColor4D c = vertexColors ? LinearToSrgb(mesh->mColors[0][v]) : aiColor4D(1, 1, 1, 1);
 					vertices.push_back({ { p.x, p.y, p.z }, { n.x, n.y, n.z }, { kd.r * c.r, kd.g * c.g, kd.b * c.b, 1 }, { uv.x, uv.y } });
 				}
 			}
