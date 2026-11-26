@@ -10,6 +10,7 @@ namespace Proto1Tests
 		OPTION_SETTINGS settings;
 		settings.Tuning.Levels[TUNING_DAMAGE] = 0;
 		settings.LookSensitivityLevel = 6;
+		settings.ControlGuide = CONTROL_GUIDE_PAD;
 		settings.VolumeLevels[SOUND_ITEM_MASTER] = 7;
 		settings.VolumeLevels[SOUND_ITEM_VOICE] = 3;
 		ArmCostCalcSet(settings.ArmCosts, ARM_COST_ROW_HAMMER, ARM_COST_TAP_HIT, 42);
@@ -25,6 +26,7 @@ namespace Proto1Tests
 		EXPECT_TRUE(SettingsCalcEquals(saved, loaded));
 		EXPECT_EQ(42, loaded.ArmCosts.Values[ARM_COST_ROW_HAMMER][ARM_COST_TAP_HIT]);
 		EXPECT_EQ(3, loaded.VolumeLevels[SOUND_ITEM_VOICE]);
+		EXPECT_EQ(CONTROL_GUIDE_PAD, loaded.ControlGuide);
 	}
 
 	// 書いていない項目・知らない名前・範囲外の段・数でない値は読み飛ばし、元の値を残す（Windows の改行でも読める）。

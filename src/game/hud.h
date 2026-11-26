@@ -44,6 +44,10 @@ public:
 	void DrawScene(const VersusCalc& participants, const NetSession& net, const SessionAddressCalc& address,
 		const std::array<CHARACTER_TYPE, FIGHTER_COUNT>& characters) const;
 
+	/// @brief 試合中の操作一覧を画面全体の右端の真ん中に、薄く小さく描く（画面全体のビューポートで呼ぶ）
+	/// @param guide 表示の種類（オフなら何も描かない）
+	void DrawControlGuide(CONTROL_GUIDE guide) const;
+
 	/// @brief オンラインのずれ・VS の版の警告を画面左上に描く（画面全体のビューポートで最後に呼ぶ）
 	void DrawCornerWarning(const NetSession& net) const;
 
@@ -65,6 +69,7 @@ private:
 	const ArmManager* m_Arms = nullptr;
 	const ArmManager* m_AllArms = nullptr; // 全員の結果を各画面のカメラで描くための参照
 	int m_ArmNames[ARM_TYPE_COUNT] = {};
+	int m_GuideTexts[10][3] = {}; // 操作一覧の文字画像（hud.cpp の CONTROL_GUIDE_LINES と同じ並び）
 	struct ARM_FLIP
 	{
 		ARM_TYPE Previous = ARM_TYPE_TENTACLE;
