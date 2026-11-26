@@ -34,6 +34,17 @@ struct LIGHT
 	XMFLOAT4 Ambient;		///< 環境光の色（光が当たらない面の明るさ）
 };
 
+/// @brief 霧（マップの景観を、カメラから遠いほど霧の色に寄せる）
+/// @details カメラの位置は Shader_SetViewMatrix で設定したビュー行列から求める
+struct FOG
+{
+	XMFLOAT4 Color;			///< rgb：霧の色、w：いちばん遠くで霧の色に寄せる割合（0 なら霧なし）
+	float    Distance;		///< 霧がいちばん濃くなる、カメラからの距離
+	float    Gamma;			///< 色を計算するときのガンマ（1：頂点の色のまま、0.55 など：その値で明るく持ち上げて焼き込んだ景観）
+	float    GlowStrength;	///< 原点のまわりに足す赤い光の強さ（0 なら足さない）
+	float    GlowRadius;	///< 赤い光が弱まる距離（0 より大きくする）
+};
+
 /// @brief スキニングの頂点レイアウト
 struct SKINNED_VERTEX
 {
@@ -93,6 +104,10 @@ void Shader_SetLight(const LIGHT& light);
 /// @details 頂点の色にライトを焼き込んだモデル（マップの景観）を描くときに、いったん切って、描いたら戻す
 /// @param enable ライトの計算を設定する（true：する、false：しない（頂点の色 × マテリアルの色をそのまま出す））
 void Shader_SetLightEnable(bool enable);
+
+/// @brief 霧を設定する（マップの景観を描く前に設定し、描いたら Color.w が 0 の霧で切る）
+/// @param fog 霧（Color.w が 0 なら霧を掛けない）
+void Shader_SetFog(const FOG& fog);
 
 /// @brief ふつうの3D／2D用のシェーダーに切り替える
 void Shader_Begin();

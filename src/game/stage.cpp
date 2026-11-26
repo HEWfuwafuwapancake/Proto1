@@ -51,19 +51,30 @@ static constexpr float MARKET_LINE_DASH = 1.2f;			// 欠けた白線の1本の�
 static constexpr float SQRT2 = 1.41421356f;
 // 空の色と、モデルで描くマップの景観（並びは STAGE_MAP と同じ。モデルは頂点の色にライトを焼き込んだ GLB）
 static constexpr XMFLOAT4 DEFAULT_SKY_COLOR = { 0.4f, 0.6f, 0.9f, 1.0f };	// 郵便局・市場・浮島の空（今までの青）
-/// @brief マップごとの見た目（空の色と景観のモデル）
+// 景観の霧（届いた元のゲームのシェーダーと同じ。カメラから FOG_DISTANCE 離れると、霧の色へ FOG_AMOUNT だけ寄せる）
+static constexpr float FOG_DISTANCE = 65.0f;
+static constexpr float FOG_AMOUNT = 0.55f;
+static constexpr float NEON_GAMMA = 0.55f;			// ネオンの景観は色を 0.55 乗で明るく持ち上げて焼き込んである
+static constexpr float NEON_GLOW_STRENGTH = 0.13f;	// ネオンの中央（原点）のまわりに足す赤い光の強さ
+static constexpr float NEON_GLOW_RADIUS = 10.0f;		// その光が弱まる距離
+/// @brief マップごとの見た目（空の色・景観のモデル・霧）
 struct MAP_LOOK
 {
 	XMFLOAT4 Sky;		// 空の色
-	const char* Model;	// 景観のモデル（nullptr なら区画の箱で描く）
+	const char* Model;	// 景観のモデル（nullptr なら区画の箱で描き、霧は掛けない）
+	FOG Fog;			// 景観に掛ける霧
 };
+static constexpr FOG NO_FOG = {};
 static constexpr MAP_LOOK MAP_LOOKS[STAGE_MAP_COUNT] = {
-	{ DEFAULT_SKY_COLOR, nullptr },										// 郵便局
-	{ DEFAULT_SKY_COLOR, nullptr },										// 市場
-	{ { 0.30f, 0.13f, 0.43f, 1.0f }, "assets/models/maps/neon.glb" },		// ネオンビル群（紫の夕空）
-	{ { 0.63f, 0.43f, 0.31f, 1.0f }, "assets/models/maps/coliseum.glb" },	// コロシアム（砂岩の色）
-	{ { 0.57f, 0.83f, 0.90f, 1.0f }, "assets/models/maps/station.glb" },	// 廃駅（晴天の水色）
-	{ DEFAULT_SKY_COLOR, nullptr },										// 浮島
+	{ DEFAULT_SKY_COLOR, nullptr, NO_FOG },	// 郵便局
+	{ DEFAULT_SKY_COLOR, nullptr, NO_FOG },	// 市場
+	{ { 0.30f, 0.13f, 0.43f, 1.0f }, "assets/models/maps/neon.glb",		// ネオンビル群（紫の夕空。中央が赤く光る）
+		{ { 0.22f, 0.09f, 0.32f, FOG_AMOUNT }, FOG_DISTANCE, NEON_GAMMA, NEON_GLOW_STRENGTH, NEON_GLOW_RADIUS } },
+	{ { 0.63f, 0.43f, 0.31f, 1.0f }, "assets/models/maps/coliseum.glb",	// コロシアム（砂岩の色の空と、赤茶の霧）
+		{ { 0.57f, 0.41f, 0.30f, FOG_AMOUNT }, FOG_DISTANCE, 1.0f, 0.0f, 1.0f } },
+	{ { 0.57f, 0.83f, 0.90f, 1.0f }, "assets/models/maps/station.glb",		// 廃駅（晴天の水色の空と、青緑の霧）
+		{ { 0.54f, 0.71f, 0.69f, FOG_AMOUNT }, FOG_DISTANCE, 1.0f, 0.0f, 1.0f } },
+	{ DEFAULT_SKY_COLOR, nullptr, NO_FOG },	// 浮島
 };
 static constexpr const char* COLUMN_MODEL = "assets/models/maps/coliseum_column.glb";	// 倒れる柱（根元が原点、+Y が柱の先）
 static constexpr float COLUMN_DAMAGE_SHADE = 0.35f;	// 柱の耐久が尽きたときに暗くする割合（傷みを色で見せる）
@@ -179,9 +190,12 @@ void Stage::Initialize(void)
 void Stage::DrawModelMap(int model) const
 {
 	// 景観は頂点の色にライトを焼き込んであるので、ライトを切って描く。マップの広さの倍率は XZ だけに掛ける（高さはそのまま）。
+	// 元のゲームは面の向きをそろえずに裏の面も描いていたので、カリングも切る。遠くは霧の色へ寄せる。
 	static constexpr XMFLOAT4 WHITE = { 1.0f, 1.0f, 1.0f, 1.0f };
 	const float s = m_Scale;
 	Shader_SetLightEnable(false);
+	Shader_SetFog(MAP_LOOKS[m_Map].Fog);
+	SetCullEnable(false);
 	ModelDraw(model, { 0.0f, 0.0f, 0.0f }, { s, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f, s }, WHITE);
 	for (int i = 0; i < m_Pillars.GetCount(); ++i) {
 		// 柱は根元を中心に、倒れる向きへ傾ける（太さだけ広さの倍率にする）。傷むほど暗くする。
@@ -191,6 +205,8 @@ void Stage::DrawModelMap(int model) const
 			{ pose.Side.X * s, pose.Side.Y * s, pose.Side.Z * s }, { pose.Axis.X, pose.Axis.Y, pose.Axis.Z },
 			{ pose.Front.X * s, pose.Front.Y * s, pose.Front.Z * s }, { shade, shade, shade, 1.0f });
 	}
+	SetCullEnable(true);
+	Shader_SetFog(NO_FOG);
 	Shader_SetLightEnable(true);
 }
 

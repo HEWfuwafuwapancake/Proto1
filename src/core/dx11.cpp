@@ -24,6 +24,7 @@ static UINT g_PendingHeight = 0;
 static float g_ClearColor[4] = { 0.4f, 0.6f, 0.9f, 1.0f }; // ゲームの範囲を消す空の色（マップごとに SetClearColor で変える）
 
 static ID3D11RasterizerState* g_RasterizerState = NULL;
+static ID3D11RasterizerState* g_RasterizerStateCullNone = NULL;	// 裏の面も描く（向きのそろっていないマップの景観用）
 static ID3D11BlendState* g_BlendState = NULL;
 static ID3D11DepthStencilState* g_DepthStencilStateDepthEnable = NULL;	// 3D用（深度テストあり）
 static ID3D11DepthStencilState* g_DepthStencilStateDepthDisable = NULL;	// 2D用（深度テストなし）
@@ -166,6 +167,8 @@ bool DirectXInitialize(HWND hWnd)
 	rd.DepthClipEnable = TRUE;
 	rd.MultisampleEnable = FALSE;
 	g_Device->CreateRasterizerState(&rd, &g_RasterizerState);
+	rd.CullMode = D3D11_CULL_NONE;
+	g_Device->CreateRasterizerState(&rd, &g_RasterizerStateCullNone);
 
 	// デバイスコンテキストにラスタライザーステートを設定
 	g_DeviceContext->RSSetState(g_RasterizerState);
@@ -216,6 +219,7 @@ void DirectXFinalize(void)
 	SAFE_RELEASE(g_DepthStencilStateDepthEnable);
 	SAFE_RELEASE(g_BlendState);
 	SAFE_RELEASE(g_RasterizerState);
+	SAFE_RELEASE(g_RasterizerStateCullNone);
 
 	SAFE_RELEASE(g_DepthStencilView);
 	SAFE_RELEASE(g_DepthStencilTexture);
@@ -300,6 +304,12 @@ void SetDepthEnable(bool enable)
 	else {
 		g_DeviceContext->OMSetDepthStencilState(g_DepthStencilStateDepthDisable, NULL);
 	}
+}
+
+// 裏の面を描くかの切り替え
+void SetCullEnable(bool enable)
+{
+	g_DeviceContext->RSSetState(enable ? g_RasterizerState : g_RasterizerStateCullNone);
 }
 
 

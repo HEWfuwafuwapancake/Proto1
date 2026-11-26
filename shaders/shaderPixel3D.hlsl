@@ -15,5 +15,8 @@ float4 main(PS_IN input) : SV_TARGET
 		color *= tex.Sample(samplerState, input.TexCoord);
 	}
 
+	// マップの景観を描くときだけ霧を掛ける（霧がなければそのまま）
+	color.rgb = ApplyFog(color.rgb, input.WorldPosition);
+
 	return color;
 }
