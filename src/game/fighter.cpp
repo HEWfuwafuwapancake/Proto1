@@ -113,11 +113,16 @@ void Fighter::SetCharacter(CHARACTER_TYPE character)
 
 void Fighter::PlaceAtSpawn()
 {
+	PlaceAt(m_Spawn, m_SpawnYaw);
+}
+
+void Fighter::PlaceAt(const VEC3& feet, float yaw)
+{
 	m_Body = {};
-	m_Body.SetPosition(m_Spawn);
+	m_Body.SetPosition(feet);
 	m_Body.SetOnGround(true);
 	m_Percent = 0.0f;
-	m_Yaw = m_SpawnYaw;
+	m_Yaw = yaw;
 	m_Launched = false;
 	m_Boosted = false;
 	m_FlinchFrames = 0;

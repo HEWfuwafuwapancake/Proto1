@@ -54,6 +54,7 @@ private:
 	bool IsLobbyBack() const;
 	void ConfigurePlayers();
 	void UpdatePadLights() const;
+	void UpdateDebugDummies();
 	VERSUS_VIEWPORT GetViewport(int index) const;
 	GAME_RULE GetRule() const;
 	uint32_t GetSeed() const;
@@ -93,6 +94,7 @@ private:
 	bool m_Fullscreen = false;
 	bool m_TuningResetSe = false; // このフレームに「標準に戻す」を受け付けた（メニューの音を選ぶため）
 	CONTROL_GUIDE m_ControlGuide = CONTROL_GUIDE_OFF; // 試合中の操作一覧の表示（オプションで変える。この PC だけ）
+	int m_DebugPercentStep = 0; // DEBUG の F5 で次にダミーへ入れる % の段
 	OPTION_SETTINGS m_SavedSettings; // ファイルに保存してある設定（保存していない変更があるかを見るため）
 	bool m_OptionsSaveSe = false; // このフレームにオプションの「保存」でファイルに書けた（メニューの音を選ぶため）
 	bool m_MapDecideHeld = false; // マップ選択に入ってから、1P が決定をまだ離していない（離すまで決定を受け付けない）

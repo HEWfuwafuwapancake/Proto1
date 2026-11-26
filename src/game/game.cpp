@@ -1,6 +1,7 @@
 ﻿#include "game/game.h"
 #include "core/shader.h"
 #include "input/action.h"
+#include "input/keyboard.h"
 #include "input/pad.h"
 #include "render/backdrop.h"
 #include "render/number2d.h"
@@ -23,6 +24,10 @@ static constexpr uint32_t MATCH_ROUND_STEP = 0xc2b2ae35u;	// メニューやロ�
 static constexpr uint32_t CAPSULE_SEED_MASK = 0x85ebca6bu;	// 復活先とは別の乱数列にする
 static constexpr int ARM_COST_STEP = 5;	// オプションで耐久の減る量を左右1回で変える量
 static constexpr const char* OPTION_SETTINGS_FILE = "settings.ini";	// オプションを保存するファイル（作業フォルダ。Git には送らない）
+// DEBUG のルール（オフラインだけ）の試し打ち：F5 でダミーの % を切り替え、F6 でダミーを 1P の目の前に呼ぶ。
+static constexpr float DEBUG_DUMMY_PERCENTS[] = { 100.0f, 150.0f, 50.0f, 0.0f };	// F5 を押すたびにこの順で入れる
+static constexpr float DEBUG_DUMMY_FORWARD = 2.5f;	// 呼んだダミーを置く、1P の足元から前への距離
+static constexpr float DEBUG_DUMMY_SPACING = 1.5f;	// 呼んだダミーどうしの横の間隔
 // Ｇで動いている間も残す入力（メニュー・カメラの操作）。ほかの移動・攻撃・ガードなどは使わない。
 static constexpr uint32_t LIFT_KEPT_BUTTONS = (1u << ACTION_RESTART) | (1u << ACTION_RUMBLE_TOGGLE) | (1u << ACTION_DECIDE)
 	| (1u << ACTION_CAMERA_TOGGLE) | (1u << ACTION_TARGET_LEFT) | (1u << ACTION_TARGET_RIGHT);
@@ -136,6 +141,45 @@ void Game::UpdatePadLights() const
 		}
 		PadSetLightColor(pad, color.x, color.y, color.z);
 	}
+}
+
+void Game::UpdateDebugDummies()
+{
+	// 全員の PC で同じ入力にならないので、オンラインでは使わない。
+	if (GetRule() != GAME_RULE_DEBUG || m_Net.IsOnline() || m_HumanCount <= 0) return;
+	const bool setPercent = KeyboardIsTrigger(VK_F5);
+	const bool call = KeyboardIsTrigger(VK_F6);
+	if (!setPercent && !call) return;
+	const Fighter& player = m_Fighters.GetFighter(m_Humans[0]);
+	const XMFLOAT3 feet = player.GetPosition();
+	const float yaw = player.GetYaw();
+	const float forwardX = sinf(yaw), forwardZ = cosf(yaw);
+	const float percent = DEBUG_DUMMY_PERCENTS[m_DebugPercentStep];
+	if (setPercent) m_DebugPercentStep = (m_DebugPercentStep + 1) % static_cast<int>(sizeof(DEBUG_DUMMY_PERCENTS) / sizeof(DEBUG_DUMMY_PERCENTS[0]));
+	int dummyCount = 0;
+	for (int slot = 0; slot < FIGHTER_COUNT; ++slot) {
+		const Fighter& fighter = m_Fighters.GetFighter(slot);
+		if (!fighter.IsHuman() && fighter.IsActive()) ++dummyCount;
+	}
+	int index = 0;
+	for (int slot = 0; slot < FIGHTER_COUNT; ++slot) {
+		Fighter& dummy = m_Fighters.GetFighter(slot);
+		if (dummy.IsHuman() || !dummy.IsActive()) continue;
+		if (call) {
+			// 1P の前に、横一列に並べて 1P の方を向かせる（% は今の値のまま）。
+			const float side = (index - (dummyCount - 1) * 0.5f) * DEBUG_DUMMY_SPACING;
+			const float keep = dummy.GetPercent();
+			dummy.PlaceAt({ feet.x + forwardX * DEBUG_DUMMY_FORWARD + forwardZ * side, feet.y,
+				feet.z + forwardZ * DEBUG_DUMMY_FORWARD - forwardX * side }, yaw + XM_PI);
+			dummy.SetPercent(keep);
+		}
+		if (setPercent) dummy.SetPercent(percent);
+		++index;
+	}
+#ifdef _DEBUG
+	if (setPercent) hal::dout << "DEBUG：ダミーを " << percent << "% にした" << std::endl;
+	if (call) hal::dout << "DEBUG：ダミーを 1P の前に呼んだ" << std::endl;
+#endif
 }
 
 void Game::Restart(bool retry)
@@ -624,6 +668,7 @@ void Game::UpdateFrame()
 				}
 				m_Fighters.GetFighter(slot).SetInput(m_Inputs[slot], m_PreviousInputs[slot]);
 			}
+			UpdateDebugDummies();
 			m_Fighters.Update();
 			m_Gimmick.PostUpdate();
 			if (GetRule() == GAME_RULE_GAME) {
