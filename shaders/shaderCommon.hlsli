@@ -49,6 +49,14 @@ cbuffer SkinnedBoneBuffer : register(b5)
 	matrix Bones[64];
 }
 
+// 霧（マップの景観だけに掛ける。FogColor.a が 0 なら霧なし）
+cbuffer FogBuffer : register(b6)
+{
+	float4 FogColor;	// rgb：霧の色、a：いちばん遠くで霧の色に寄せる割合
+	float4 FogEye;		// xyz：カメラの位置、w：霧がいちばん濃くなる距離
+	float4 FogTone;	// x：色を計算するときのガンマ、y：原点のまわりの赤い光の強さ、z：その光が弱まる距離、w：使わない
+}
+
 // 頂点シェーダーの入力（VERTEX_3D と同じ並び）
 struct VS_IN
 {
@@ -64,6 +72,7 @@ struct PS_IN
 	float4 Position : SV_POSITION;
 	float4 Diffuse  : COLOR0;
 	float2 TexCoord : TEXCOORD0;
+	float3 WorldPosition : TEXCOORD1;	// 霧の距離を測るワールド座標
 };
 
 // ふつうの頂点と、骨で変形した頂点の両方を同じライティングで描く。
@@ -72,6 +81,7 @@ PS_IN TransformAndLight(VS_IN input)
 	PS_IN output;
 	matrix wvp = mul(mul(World, View), Projection);
 	output.Position = mul(input.Position, wvp);
+	output.WorldPosition = mul(input.Position, World).xyz;
 	output.TexCoord = input.TexCoord;
 
 	if (Light.Enable)
@@ -87,4 +97,20 @@ PS_IN TransformAndLight(VS_IN input)
 		output.Diffuse = input.Diffuse * Material.Diffuse;
 	}
 	return output;
+}
+
+// 霧を掛ける：ガンマを外した色に原点の赤い光を足し、カメラから遠いほど霧の色へ寄せてから、ガンマを戻す。
+float3 ApplyFog(float3 color, float3 world)
+{
+	float3 result = color;
+	if (FogColor.a > 0.0)
+	{
+		float3 base = pow(max(color, 0.0), 1.0 / FogTone.x);
+		float glow = exp(-length(world.xz) / FogTone.z) * FogTone.y;
+		base += float3(glow, 0.0, glow * 0.07);
+		float fog = saturate(length(world - FogEye.xyz) / FogEye.w);
+		base = lerp(base, FogColor.rgb, fog * FogColor.a);
+		result = pow(max(base, 0.0), FogTone.x);
+	}
+	return result;
 }

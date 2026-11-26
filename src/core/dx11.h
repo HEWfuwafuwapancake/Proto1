@@ -42,6 +42,11 @@ void SetRenderTarget(void);
 /// @param enable 3D描画は true、2D（UI）描画は false
 void SetDepthEnable(bool enable);
 
+/// @brief 裏から見た面を描かないか（バックフェースカリング）を設定する
+/// @details 面の向きがそろっていないモデル（マップの景観の .glb）を描くときに切り、描いたら戻す
+/// @param enable カリングを設定する（true：裏の面を描かない（ふつう）、false：裏の面も描く）
+void SetCullEnable(bool enable);
+
 /// @brief 描く範囲（ビューポート）を設定する（ゲームの 1280×720 の座標。左上が原点。黒い帯の内側へ自動で直す）
 /// @param x 左端
 /// @param y 上端

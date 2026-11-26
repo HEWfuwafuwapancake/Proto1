@@ -20,7 +20,7 @@ static ID3D11InputLayout* g_pSkinnedInputLayout = nullptr;
 static ID3D11PixelShader* g_pPixelShader = nullptr;
 static ID3D11SamplerState* g_SamplerState = nullptr;
 
-// 定数バッファ（番号は shaderCommon.hlsli の register(b0)〜(b5) と合わせる）
+// 定数バッファ（番号は shaderCommon.hlsli の register(b0)〜(b6) と合わせる）
 static ID3D11Buffer* g_pWorldBuffer = nullptr;		// b0
 static ID3D11Buffer* g_pViewBuffer = nullptr;		// b1
 static ID3D11Buffer* g_pProjectionBuffer = nullptr;	// b2
@@ -28,6 +28,16 @@ static ID3D11Buffer* g_pMaterialBuffer = nullptr;	// b3
 static LIGHT g_Light = {};	// 最後に設定したライト（Shader_SetLightEnable で Enable だけを変えて送り直す）
 static ID3D11Buffer* g_pLightBuffer = nullptr;		// b4
 static ID3D11Buffer* g_pSkinnedBoneBuffer = nullptr;	// b5
+static ID3D11Buffer* g_pFogBuffer = nullptr;		// b6
+static XMFLOAT3 g_Eye = {};	// 最後に設定したビュー行列のカメラの位置（霧の距離を測る）
+
+// b6 に送る霧（shaderCommon.hlsli の FogBuffer と並びを合わせる）
+struct FOG_BUFFER
+{
+	XMFLOAT4 Color;	// rgb：霧の色、w：いちばん遠くで寄せる割合
+	XMFLOAT4 Eye;	// xyz：カメラの位置、w：霧がいちばん濃くなる距離
+	XMFLOAT4 Tone;	// x：ガンマ、y：赤い光の強さ、z：赤い光が弱まる距離
+};
 
 // 注意！初期化で外部から設定されるもの。Release不要。
 static ID3D11Device* g_pDevice = nullptr;
@@ -164,7 +174,8 @@ bool Shader_Initialize(ID3D11Device* pDevice, ID3D11DeviceContext* pContext)
 	g_pMaterialBuffer = CreateConstantBuffer(sizeof(MATERIAL));
 	g_pLightBuffer = CreateConstantBuffer(sizeof(LIGHT));
 	g_pSkinnedBoneBuffer = CreateConstantBuffer(sizeof(SKINNED_BONES));
-	if (!g_pWorldBuffer || !g_pViewBuffer || !g_pProjectionBuffer || !g_pMaterialBuffer || !g_pLightBuffer || !g_pSkinnedBoneBuffer) {
+	g_pFogBuffer = CreateConstantBuffer(sizeof(FOG_BUFFER));
+	if (!g_pWorldBuffer || !g_pViewBuffer || !g_pProjectionBuffer || !g_pMaterialBuffer || !g_pLightBuffer || !g_pSkinnedBoneBuffer || !g_pFogBuffer) {
 		hal::dout << "Shader_Initialize() : 定数バッファの作成に失敗しました" << std::endl;
 		return false;
 	}
@@ -181,6 +192,7 @@ bool Shader_Initialize(ID3D11Device* pDevice, ID3D11DeviceContext* pContext)
 
 	LIGHT light{};
 	Shader_SetLight(light);
+	Shader_SetFog({});
 
 
 	// サンプラーステート設定
@@ -205,6 +217,7 @@ bool Shader_Initialize(ID3D11Device* pDevice, ID3D11DeviceContext* pContext)
 void Shader_Finalize()
 {
 	SAFE_RELEASE(g_SamplerState);
+	SAFE_RELEASE(g_pFogBuffer);
 	SAFE_RELEASE(g_pSkinnedBoneBuffer);
 	SAFE_RELEASE(g_pSkinnedInputLayout);
 	SAFE_RELEASE(g_pSkinnedVertexShader);
@@ -226,6 +239,8 @@ void Shader_SetWorldMatrix(const DirectX::XMMATRIX& matrix)
 void Shader_SetViewMatrix(const DirectX::XMMATRIX& matrix)
 {
 	SetMatrixBuffer(g_pViewBuffer, matrix);
+	// ビュー行列の逆行列の平行移動が、カメラの位置
+	XMStoreFloat3(&g_Eye, XMMatrixInverse(nullptr, matrix).r[3]);
 }
 
 void Shader_SetProjectionMatrix(const DirectX::XMMATRIX& matrix)
@@ -265,6 +280,17 @@ void Shader_SetLightEnable(bool enable)
 	g_pContext->UpdateSubresource(g_pLightBuffer, 0, nullptr, &g_Light, 0, 0);
 }
 
+void Shader_SetFog(const FOG& fog)
+{
+	// 霧なしのときも、シェーダーで割る値（ガンマ・赤い光の距離）は 0 にしない
+	const FOG_BUFFER buffer = {
+		fog.Color,
+		{ g_Eye.x, g_Eye.y, g_Eye.z, fog.Distance > 0.0f ? fog.Distance : 1.0f },
+		{ fog.Gamma > 0.0f ? fog.Gamma : 1.0f, fog.GlowStrength, fog.GlowRadius > 0.0f ? fog.GlowRadius : 1.0f, 0.0f },
+	};
+	g_pContext->UpdateSubresource(g_pFogBuffer, 0, nullptr, &buffer, 0, 0);
+}
+
 void Shader_Begin()
 {
 	// 頂点シェーダーとピクセルシェーダーを描画パイプラインに設定
@@ -278,6 +304,7 @@ void Shader_Begin()
 	ID3D11Buffer* buffers[] = { g_pWorldBuffer, g_pViewBuffer, g_pProjectionBuffer, g_pMaterialBuffer, g_pLightBuffer };
 	g_pContext->VSSetConstantBuffers(0, ARRAYSIZE(buffers), buffers);
 	g_pContext->PSSetConstantBuffers(0, ARRAYSIZE(buffers), buffers);
+	g_pContext->PSSetConstantBuffers(6, 1, &g_pFogBuffer);	// b6 の霧はピクセルシェーダーだけが使う
 }
 
 void Shader_BeginSkinned()
