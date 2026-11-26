@@ -40,6 +40,7 @@ enum SCENE
 	SCENE_ARM_COSTS, ///< オプションの中の、腕の耐久の減る量の表
 	SCENE_PAUSE, ///< 試合を止めて開くメニュー（再開・ロビーへ・タイトルへ。オフラインだけ）
 	SCENE_MAP_SELECT, ///< キャラ選択のあと、1P（オンラインはホスト）が試合のマップを選ぶ
+	SCENE_SOUND, ///< オプションの中の、ジャンルごとの音量
 };
 
 /// @brief シーンの更新後にゲーム側で行う処理
@@ -58,6 +59,7 @@ enum SCENE_EVENT
 	SCENE_EVENT_ARM_COST_CHANGE, ///< 選択した耐久の減る量を左右の入力方向へ変更する
 	SCENE_EVENT_LOOK_SENSITIVITY_CHANGE, ///< 視点感度を左右の入力方向へ変更する
 	SCENE_EVENT_OPEN_MAP_SELECT, ///< キャラ選択で決まった参加者で体を作り、マップ選択を表示する
+	SCENE_EVENT_SOUND_VOLUME_CHANGE, ///< サウンドの画面で選んだジャンルの音量を左右の入力方向へ変更する
 };
 
 /// @brief モード選択の項目
@@ -76,10 +78,22 @@ enum MODE_ITEM
 enum OPTION_ITEM
 {
 	OPTION_ITEM_LOOK_SENSITIVITY = TUNING_ITEM_COUNT, ///< 視点感度（この PC だけの設定。通信では送らない）
+	OPTION_ITEM_SOUND, ///< ジャンルごとの音量の画面を開く（この PC だけの設定）
 	OPTION_ITEM_ARM_COSTS, ///< 耐久の減る量の表を開く
 	OPTION_ITEM_RESET, ///< 全設定と表をはじめの値へ戻す
 	OPTION_ITEM_BACK, ///< 元のメニューへ戻る
 	OPTION_ITEM_COUNT, ///< 項目数
+};
+
+/// @brief サウンドの画面の項目（音量の行は audio/se.h の SE_VOLUME と同じ並び）
+enum SOUND_ITEM
+{
+	SOUND_ITEM_MASTER, ///< 全体の音量
+	SOUND_ITEM_MENU, ///< メニューの音（カーソル・決定・戻る）の音量
+	SOUND_ITEM_VOICE, ///< キャラの声・案内の声の音量
+	SOUND_ITEM_BATTLE, ///< 戦闘の効果音（腕・触手）の音量
+	SOUND_ITEM_BACK, ///< オプションへ戻る
+	SOUND_ITEM_COUNT, ///< 項目数
 };
 
 /// @brief 結果画面のメニュー項目

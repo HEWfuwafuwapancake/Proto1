@@ -67,6 +67,7 @@ bool SceneCalc::IsBackTransition(SCENE from, SCENE to)
 	switch (from) {
 	case SCENE_OPTIONS: return to == SCENE_GAME_START || to == SCENE_MODE_SELECT;
 	case SCENE_ARM_COSTS: return to == SCENE_OPTIONS;
+	case SCENE_SOUND: return to == SCENE_OPTIONS;
 	case SCENE_MODE_SELECT: return to == SCENE_GAME_START;
 	case SCENE_JOIN_ADDRESS: return to == SCENE_MODE_SELECT;
 	case SCENE_TITLE: return to == SCENE_MODE_SELECT;
@@ -108,6 +109,11 @@ SCENE_EVENT SceneCalc::Step(const SCENE_INPUT& input, bool matchFinished)
 			m_CostScrollTop = 0;
 			m_MenuReady = false;
 		}
+		else if (input.Decide && m_Cursor == OPTION_ITEM_SOUND) {
+			m_Scene = SCENE_SOUND;
+			m_Cursor = SOUND_ITEM_MASTER;
+			m_MenuReady = false;
+		}
 		else if (input.Decide && m_Cursor == OPTION_ITEM_RESET) return SCENE_EVENT_TUNING_RESET;
 		else if (m_Cursor < TUNING_ITEM_COUNT && input.CharacterDirection != 0) return SCENE_EVENT_TUNING_CHANGE;
 		else if (m_Cursor == OPTION_ITEM_LOOK_SENSITIVITY && input.CharacterDirection != 0) return SCENE_EVENT_LOOK_SENSITIVITY_CHANGE;
@@ -127,6 +133,16 @@ SCENE_EVENT SceneCalc::Step(const SCENE_INPUT& input, bool matchFinished)
 			m_MenuReady = false;
 		}
 		else if (m_Cursor < back && input.CharacterDirection != 0) return SCENE_EVENT_ARM_COST_CHANGE;
+		return SCENE_EVENT_NONE;
+	}
+	if (m_Scene == SCENE_SOUND) {
+		MoveCursor(input.MoveY, SOUND_ITEM_COUNT);
+		if (input.Back || (input.Decide && m_Cursor == SOUND_ITEM_BACK)) {
+			m_Scene = SCENE_OPTIONS;
+			m_Cursor = OPTION_ITEM_SOUND;
+			m_MenuReady = false;
+		}
+		else if (m_Cursor < SOUND_ITEM_BACK && input.CharacterDirection != 0) return SCENE_EVENT_SOUND_VOLUME_CHANGE;
 		return SCENE_EVENT_NONE;
 	}
 	if (m_Scene == SCENE_MODE_SELECT) {

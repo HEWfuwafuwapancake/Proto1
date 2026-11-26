@@ -52,6 +52,12 @@ void MenuSe::Update(const MENU_SE_STATE& before, const MENU_SE_STATE& after, boo
 		SePlay(SE_MENU_DECIDE);
 		return;
 	}
+	// サウンドの画面で音量を変えたら、そのジャンルの音で大きさを聞かせる（声は案内の枠で鳴らし、続けて変えても重ねない）。
+	if (after.Scene == SCENE_SOUND && before.Values != after.Values && before.Cursor == after.Cursor) {
+		if (after.Cursor == SOUND_ITEM_VOICE) m_Guide.Play(SE_MEKAGIRL_DECIDE);
+		else SePlay(after.Cursor == SOUND_ITEM_BATTLE ? SE_HAMMER_TAP : SE_MENU_CURSOR);
+		return;
+	}
 	// カーソル・選んでいる値が動いた。
 	if (before.Cursor != after.Cursor || before.Map != after.Map || before.Rule != after.Rule || before.Focus != after.Focus
 		|| before.Values != after.Values || before.Characters != after.Characters || before.CpuLevels != after.CpuLevels) {
