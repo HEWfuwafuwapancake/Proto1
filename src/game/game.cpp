@@ -813,7 +813,16 @@ void Game::Draw() const
 
 		m_Stage.Draw();
 		// 場外の壁の帯は景観（コロシアムの客席など）より外にあるので、景観の上に重ねて描き、体・腕はそのあとに描いて帯の手前に出す。
-		m_RingOutWall.Draw(m_Stage.GetStage());
+		{
+			// 復活を待っている人（場外になった人）の場所の壁を、RING OUT! にする。
+			VEC3 outs[FIGHTER_COUNT];
+			int outCount = 0;
+			for (int j = 0; j < m_FightingCount; ++j) {
+				const Fighter& fighter = m_Fighters.GetFighter(m_Fighting[j]);
+				if (!fighter.IsActive()) outs[outCount++] = fighter.GetOutPosition();
+			}
+			m_RingOutWall.Draw(m_Stage.GetStage(), outs, outCount);
+		}
 		m_Gimmick.Draw(m_HumanCount > 0 ? slot : -1);
 		if (drawCapsules) m_ArmCapsule.Draw();
 		m_Fighters.Draw(camera.GetTarget());

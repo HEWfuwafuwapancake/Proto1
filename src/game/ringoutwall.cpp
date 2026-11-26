@@ -8,7 +8,11 @@
 //------------------------------------------------------------------------------
 //	調整用の値
 //------------------------------------------------------------------------------
-static constexpr const char* TEXTURE_PATH = "assets/textures/deadline.png";	// 帯1組の画像（文字の高さ:上下の帯 = 3:1、横は文字の2倍）
+// 帯1組の画像（文字の高さ:上下の帯 = 3:1、横は文字の2倍。3枚とも同じ大きさ）。赤の DEAD LINE（deadline.png）は使わずに残してある。
+static constexpr const char* TEXTURE_PATHS[RING_OUT_WALL_LOOK_COUNT] = {
+	"assets/textures/deadline_green.png",	// ふだんの帯（緑の DEAD LINE）
+	"assets/textures/ringout.png",			// 場外になった所の帯（赤の RING OUT!）
+};
 static constexpr float CHARACTER_HEIGHT = 1.8f;		// キャラ1体分の高さ（MEKAGIRL）
 static constexpr float BAND_HEIGHT = CHARACTER_HEIGHT * 224.0f / 118.0f;	// 帯の高さ（画像の文字の高さ 118px をキャラ1体分にする）
 static constexpr float BAND_WIDTH = BAND_HEIGHT * 1982.0f / 224.0f;	// 帯1組の横幅（画像の縦横の比のまま）
@@ -16,14 +20,16 @@ static constexpr float BAND_ALPHA = 0.6f;			// 帯全体の濃さ（半透明）
 static constexpr int ROUND_SEGMENTS = 48;			// 円い壁を何枚の板で作るか
 static constexpr int MAX_CORNERS = 64;				// 壁の角の最大数
 static constexpr int VERTICES_PER_PANEL = 6;		// 板1枚の頂点（三角形2枚）
+// 1回に描く板の最大数（一周を場外の組で区切ると、板が組の数だけ増える）
+static constexpr int MAX_PANELS = MAX_CORNERS + RING_OUT_WALL_MARK_MAX * 4;
 
 
 void RingOutWall::Initialize(void)
 {
-	m_Texture = TextureLoadFromFile(TEXTURE_PATH);
+	for (int i = 0; i < RING_OUT_WALL_LOOK_COUNT; ++i) m_Textures[i] = TextureLoadFromFile(TEXTURE_PATHS[i]);
 	D3D11_BUFFER_DESC bd{};
 	bd.Usage = D3D11_USAGE_DYNAMIC;
-	bd.ByteWidth = sizeof(VERTEX_3D) * MAX_CORNERS * VERTICES_PER_PANEL;
+	bd.ByteWidth = sizeof(VERTEX_3D) * MAX_PANELS * VERTICES_PER_PANEL;
 	bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 	bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 	DirectXGetDevice()->CreateBuffer(&bd, nullptr, &m_VertexBuffer);
@@ -32,63 +38,86 @@ void RingOutWall::Initialize(void)
 void RingOutWall::Finalize(void)
 {
 	SAFE_RELEASE(m_VertexBuffer);
-	SAFE_RELEASE(m_Texture);
+	for (auto& texture : m_Textures) SAFE_RELEASE(texture);
 }
 
-void RingOutWall::Draw(const STAGE& stage) const
+// 一周の長さ from〜to（最初の角からの m）の帯を、角で折りながら板にして書き込む。書いた頂点の数を返す。
+static int AddRange(const float (*corners)[2], int count, float from, float to, float bottom, float top, VERTEX_3D* vertex, int room)
 {
-	if (!m_Texture || !m_VertexBuffer) return;
+	static constexpr XMFLOAT4 COLOR = { 1.0f, 1.0f, 1.0f, BAND_ALPHA };
+	int n = 0;
+	float along = 0.0f;
+	for (int i = 0; i < count && n + VERTICES_PER_PANEL <= room; ++i) {
+		const int next = (i + 1) % count;
+		const float x0 = corners[i][0], z0 = corners[i][1];
+		const float dx = corners[next][0] - x0, dz = corners[next][1] - z0;
+		const float length = hypotf(dx, dz);
+		const float start = along > from ? along : from;
+		const float end = along + length < to ? along + length : to;
+		along += length;
+		if (length <= 0.0f || end <= start) continue;
+		const float t0 = (start - (along - length)) / length, t1 = (end - (along - length)) / length;
+		const float ax = x0 + dx * t0, az = z0 + dz * t0, bx = x0 + dx * t1, bz = z0 + dz * t1;
+		// 内側（ステージの中心の向き）を表にする。角は上から見て反時計回りなので、左手が内側。
+		// 内側から見ると一周の向きは右から左なので、画像の横を逆に貼って文字を左から読めるようにする（くり返すので負でよい）。
+		const XMFLOAT3 normal = { -dz / length, 0.0f, dx / length };
+		const float u0 = -start / BAND_WIDTH, u1 = -end / BAND_WIDTH;
+		const VERTEX_3D a{ { ax, top, az }, normal, COLOR, { u0, 0.0f } };
+		const VERTEX_3D b{ { bx, top, bz }, normal, COLOR, { u1, 0.0f } };
+		const VERTEX_3D c{ { ax, bottom, az }, normal, COLOR, { u0, 1.0f } };
+		const VERTEX_3D d{ { bx, bottom, bz }, normal, COLOR, { u1, 1.0f } };
+		vertex[n++] = a; vertex[n++] = c; vertex[n++] = b;
+		vertex[n++] = b; vertex[n++] = c; vertex[n++] = d;
+	}
+	return n;
+}
+
+void RingOutWall::Draw(const STAGE& stage, const VEC3* outPositions, int outCount) const
+{
+	if (!m_VertexBuffer) return;
 	float corners[MAX_CORNERS][2];
 	const int count = StageCalcRingOutOutline(stage, corners, MAX_CORNERS, ROUND_SEGMENTS);
 	if (count < 3) return;
 	const float bottom = StageCalcLowestSpawnY(stage) + CHARACTER_HEIGHT;
 	const float top = bottom + BAND_HEIGHT;
+	float total = 0.0f;
+	for (int i = 0; i < count; ++i) {
+		const int next = (i + 1) % count;
+		total += hypotf(corners[next][0] - corners[i][0], corners[next][1] - corners[i][1]);
+	}
+	// 一周に入る完全な組の数。最後に余る端数の組は切る（最初の角の手前に隙間が1つできる）。
+	int whole = static_cast<int>(floorf(total / BAND_WIDTH));
+	if (whole <= 0) return;
+	if (whole > MAX_PANELS) whole = MAX_PANELS;
 
-	// 一周を1本の帯として、最初の角から測った長さで横の画像の位置を決める（画像は横にくり返すので、角をまたいでも途切れない）。
+	// 場外になった人ごとに、壁のいちばん近い所の組を RING OUT! にする（復活するまで）。
+	bool marked[MAX_PANELS] = {};
+	for (int i = 0; i < outCount && i < RING_OUT_WALL_MARK_MAX; ++i) {
+		const int unit = static_cast<int>(StageCalcOutlineAlong(corners, count, outPositions[i].X, outPositions[i].Z) / BAND_WIDTH);
+		marked[unit < whole ? unit : whole - 1] = true;
+	}
+
+	// ふだんの帯は、続いている組をまとめて描き、RING OUT! の組は別の画像で描く。
 	ID3D11DeviceContext* context = DirectXGetDeviceContext();
 	D3D11_MAPPED_SUBRESOURCE mapped{};
 	if (FAILED(context->Map(m_VertexBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped))) return;
 	VERTEX_3D* vertex = static_cast<VERTEX_3D*>(mapped.pData);
-	const float total = [&] {
-		float length = 0.0f;
-		for (int i = 0; i < count; ++i) {
-			const int next = (i + 1) % count;
-			length += hypotf(corners[next][0] - corners[i][0], corners[next][1] - corners[i][1]);
-		}
-		return length;
-	}();
-	const float whole = floorf(total / BAND_WIDTH);	// 一周に入る完全な組の数（端数の組は切る）
-	const XMFLOAT4 color = { 1.0f, 1.0f, 1.0f, BAND_ALPHA };
-	float along = 0.0f;
+	const int room = MAX_PANELS * VERTICES_PER_PANEL;
+	int counts[RING_OUT_WALL_LOOK_COUNT] = {};
 	int n = 0;
-	for (int i = 0; i < count; ++i) {
-		const int next = (i + 1) % count;
-		const float x0 = corners[i][0], z0 = corners[i][1], x1 = corners[next][0], z1 = corners[next][1];
-		const float length = hypotf(x1 - x0, z1 - z0);
-		const float u0 = along / BAND_WIDTH;
-		const float u1 = (along + length) / BAND_WIDTH;
-		along += length;
-		// 一周の最後に余る端数の組は切る：最後の完全な組の終わりより先は描かない（最初の角の手前に隙間が1つできる）。
-		if (u0 >= whole) continue;
-		float drawU1 = u1, drawX1 = x1, drawZ1 = z1;
-		if (u1 > whole) {
-			const float rate = (whole - u0) / (u1 - u0);
-			drawU1 = whole;
-			drawX1 = x0 + (x1 - x0) * rate;
-			drawZ1 = z0 + (z1 - z0) * rate;
+	for (int look = 0; look < RING_OUT_WALL_LOOK_COUNT; ++look) {
+		const bool wantMarked = look == RING_OUT_WALL_LOOK_RING_OUT;
+		const int first = n;
+		for (int unit = 0; unit < whole; ) {
+			if (marked[unit] != wantMarked) { ++unit; continue; }
+			int end = unit + 1;
+			while (end < whole && marked[end] == wantMarked) ++end;
+			n += AddRange(corners, count, unit * BAND_WIDTH, end * BAND_WIDTH, bottom, top, vertex + n, room - n);
+			unit = end;
 		}
-		// 内側（ステージの中心の向き）を表にする。角は上から見て反時計回りなので、左手が内側。
-		const XMFLOAT3 normal = { -(z1 - z0) / length, 0.0f, (x1 - x0) / length };
-		// 内側から見ると一周の向きは右から左なので、画像の横を逆に貼って文字を左から読めるようにする（くり返すので負でよい）。
-		const VERTEX_3D a{ { x0, top, z0 }, normal, color, { -u0, 0.0f } };
-		const VERTEX_3D b{ { drawX1, top, drawZ1 }, normal, color, { -drawU1, 0.0f } };
-		const VERTEX_3D c{ { x0, bottom, z0 }, normal, color, { -u0, 1.0f } };
-		const VERTEX_3D d{ { drawX1, bottom, drawZ1 }, normal, color, { -drawU1, 1.0f } };
-		vertex[n++] = a; vertex[n++] = c; vertex[n++] = b;
-		vertex[n++] = b; vertex[n++] = c; vertex[n++] = d;
+		counts[look] = n - first;
 	}
 	context->Unmap(m_VertexBuffer, 0);
-	if (n == 0) return;
 
 	Shader_Begin();
 	Shader_SetWorldMatrix(XMMatrixIdentity());
@@ -98,15 +127,21 @@ void RingOutWall::Draw(const STAGE& stage) const
 	material.TextureEnable = TRUE;
 	Shader_SetMaterial(material);
 	Shader_SetLightEnable(false);
-	ID3D11ShaderResourceView* texture = m_Texture;
-	context->PSSetShaderResources(0, 1, &texture);
 	const UINT stride = sizeof(VERTEX_3D), offset = 0;
 	ID3D11Buffer* buffer = m_VertexBuffer;
 	context->IASetVertexBuffers(0, 1, &buffer, &stride, &offset);
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	// 景観より奥にあっても見えるよう、深度を見ずに重ねる（深度も書かないので、あとで描く体・腕は帯の手前に出る）。
 	SetDepthEnable(false);
-	context->Draw(n, 0);
+	int start = 0;
+	for (int look = 0; look < RING_OUT_WALL_LOOK_COUNT; ++look) {
+		ID3D11ShaderResourceView* texture = m_Textures[look];
+		if (texture && counts[look] > 0) {
+			context->PSSetShaderResources(0, 1, &texture);
+			context->Draw(counts[look], start);
+		}
+		start += counts[look];
+	}
 	SetDepthEnable(true);
 	ID3D11ShaderResourceView* empty = nullptr;
 	context->PSSetShaderResources(0, 1, &empty);

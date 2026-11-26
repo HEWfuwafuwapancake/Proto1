@@ -280,6 +280,14 @@ bool StageCalcIsRingOut(const STAGE& stage, const VEC3& feet);
 /// @return 角の数
 int StageCalcRingOutOutline(const STAGE& stage, float corners[][2], int maxCorners, int roundSegments);
 
+/// @brief 壁の一周の上で、その場所にいちばん近い点が、最初の角から一周の向きに何 m の所かを求める（場外になった壁の場所を探すため）
+/// @param corners 壁の角（StageCalcRingOutOutline で作ったもの）
+/// @param count 角の数（2 より少なければ 0 を返す）
+/// @param x 調べる場所の X
+/// @param z 調べる場所の Z
+/// @return 最初の角からの長さ（0 以上、一周の長さ未満）
+float StageCalcOutlineAlong(const float corners[][2], int count, float x, float z);
+
 /// @brief 開始・復活の位置のうち、いちばん低い床の高さを取得する（場外の壁の帯を置く高さの基準）
 /// @param stage ステージ（開始位置がなければ浮島の上の面の高さ）
 /// @return 高さ

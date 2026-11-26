@@ -435,6 +435,29 @@ int StageCalcRingOutOutline(const STAGE& stage, float corners[][2], int maxCorne
 	return 4;
 }
 
+float StageCalcOutlineAlong(const float corners[][2], int count, float x, float z)
+{
+	if (count < 2) return 0.0f;
+	float best = -1.0f, bestAlong = 0.0f, along = 0.0f;
+	for (int i = 0; i < count; ++i) {
+		const int next = (i + 1) % count;
+		const float dx = corners[next][0] - corners[i][0], dz = corners[next][1] - corners[i][1];
+		const float length = sqrtf(dx * dx + dz * dz);
+		if (length <= 0.0f) continue;
+		// 辺の上でいちばん近い点（辺の外へは出さない）。
+		float t = ((x - corners[i][0]) * dx + (z - corners[i][1]) * dz) / (length * length);
+		t = t < 0.0f ? 0.0f : (t > 1.0f ? 1.0f : t);
+		const float px = corners[i][0] + dx * t - x, pz = corners[i][1] + dz * t - z;
+		const float distance = px * px + pz * pz;
+		if (best < 0.0f || distance < best) {
+			best = distance;
+			bestAlong = along + length * t;
+		}
+		along += length;
+	}
+	return bestAlong < along ? bestAlong : 0.0f;
+}
+
 float StageCalcLowestSpawnY(const STAGE& stage)
 {
 	if (stage.SpawnCount <= 0) return stage.TopY;

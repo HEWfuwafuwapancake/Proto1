@@ -60,6 +60,15 @@ namespace Proto1Tests
 		EXPECT_EQ(0, StageCalcRingOutOutline(stage, corners, 64, 48));
 	}
 
+	// 壁の外の場所から、いちばん近い壁の点までの、最初の角からの長さ（四角の2辺目の途中）。
+	TEST(StageCalcTest, OutlineAlong_NearestPointOnLoop)
+	{
+		const float corners[4][2] = { { 10.0f, 10.0f }, { -10.0f, 10.0f }, { -10.0f, -10.0f }, { 10.0f, -10.0f } };
+		EXPECT_FLOAT_EQ(5.0f, StageCalcOutlineAlong(corners, 4, 5.0f, 14.0f));		// 1辺目（上の辺）
+		EXPECT_FLOAT_EQ(25.0f, StageCalcOutlineAlong(corners, 4, -13.0f, 5.0f));	// 2辺目（左の辺）
+		EXPECT_FLOAT_EQ(75.0f, StageCalcOutlineAlong(corners, 4, 12.0f, 5.0f));	// 4辺目（右の辺）
+	}
+
 	// 浮島の真ん中は「浮島がある」
 	TEST(StageCalcTest, OnPlatform_Center)
 	{
