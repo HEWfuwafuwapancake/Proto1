@@ -22,8 +22,7 @@ struct MENU_SE_STATE
 
 /// @brief メニューの状態の変わり方から、カーソル・決定・戻る・キャラ選択の効果音を鳴らす
 /// @details Game が更新の前と後の状態を渡す。メニューの計算（SceneCalc・VersusCalc）には手を入れず、変わったことだけを見る。
-///          戻るの音は「前の画面へ戻った・準備OKを取り消した」という結果で鳴らす（押したボタンでは選ばない）。
-///          案内の声（「キャラクターを選んでね」「よろしくおねがいね」）は1つの枠で鳴らし、次の声・取り消し・画面を出るときに止める
+///          戻るの音は「前の画面へ戻った・準備OKを取り消した」という結果で鳴らす（押したボタンでは選ばない）
 class MenuSe
 {
 public:
@@ -35,7 +34,4 @@ public:
 	/// @param tuningReset このフレームにオプションの「標準に戻す」を受け付けたか（true：受け付けた、false：受け付けていない）
 	/// @param optionsSaved このフレームにオプションの「保存」でファイルに書けたか（true：書けた、false：書いていない）
 	void Update(const MENU_SE_STATE& before, const MENU_SE_STATE& after, bool back, bool decide, bool tuningReset, bool optionsSaved);
-
-private:
-	SeVoice m_Guide; // 案内の声（前の声を止めてから鳴らす）
 };

@@ -147,13 +147,6 @@ void Fighter::Reset()
 	m_KoBy = -1;
 }
 
-void Fighter::PlayOwnVoice(SE_ID id) const
-{
-	// 声はメカガールだけ（メカは声なし）。この PC で操作している人の声だけ鳴らす（CPU・ダミー・ほかの PC の人は鳴らさない）。
-	if (m_Character != CHARACTER_MEKAGIRL || !SeIsListener(m_Slot)) return;
-	SePlay(id);
-}
-
 ACTION_AXIS Fighter::GetMoveInput() const
 {
 	return ActionCalcPlayerMove(m_Input);
@@ -279,7 +272,6 @@ DUMMY_EVENT Fighter::Update(const Camera* camera, const ArmManager* arms)
 		m_OutPosition = feet;
 		m_HeldBy = -1;
 		m_Pulled = false;
-		PlayOwnVoice(SE_MEKAGIRL_FALL);
 	}
 	else if (event == DUMMY_EVENT_RESPAWN) {
 		PlaceAtSpawn();

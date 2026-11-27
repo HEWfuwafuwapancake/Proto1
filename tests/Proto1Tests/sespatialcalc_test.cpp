@@ -47,6 +47,17 @@ TEST(SeSpatialCalcTest, OwnHitIsLouderThanThirdParty)
 	EXPECT_LT(others, attacker);
 }
 
+// ほかの人どうしの音は遠いほど小さく、遠くでは聞こえない。自分の関わる音は遠くても聞こえる
+TEST(SeSpatialCalcTest, FarThirdPartySoundIsSilent)
+{
+	const SE_LISTENER listener = MakeListener(0.0f, 0.0f, 0);
+	const float middle = SeSpatialCalcMix(&listener, 1, { 0.0f, 0.0f, 15.0f }, 2, 3).Volume;
+	EXPECT_GT(middle, 0.0f);
+	EXPECT_LT(middle, SeSpatialCalcMix(&listener, 1, { 0.0f, 0.0f, 8.0f }, 2, 3).Volume);
+	EXPECT_NEAR(SeSpatialCalcMix(&listener, 1, { 0.0f, 0.0f, 35.0f }, 2, 3).Volume, 0.0f, 0.001f);
+	EXPECT_GT(SeSpatialCalcMix(&listener, 1, { 0.0f, 0.0f, 35.0f }, 0, 3).Volume, 0.2f);
+}
+
 // 同じ PC の分割画面では、音にいちばん近い人を基準にし、同じ距離なら前の人（枠の小さい人）を選ぶ
 TEST(SeSpatialCalcTest, PicksNearestListenerAndFirstOnTie)
 {

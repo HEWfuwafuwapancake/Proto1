@@ -13,7 +13,7 @@ namespace Proto1Tests
 		settings.LookSensitivityLevel = 6;
 		settings.ControlGuide = CONTROL_GUIDE_PAD;
 		settings.VolumeLevels[SOUND_ITEM_MASTER] = 7;
-		settings.VolumeLevels[SOUND_ITEM_VOICE] = 3;
+		settings.VolumeLevels[SOUND_ITEM_MENU] = 3;
 		ArmCostCalcSet(settings.ArmCosts, ARM_COST_ROW_HAMMER, ARM_COST_TAP_HIT, 42);
 		return settings;
 	}
@@ -26,7 +26,7 @@ namespace Proto1Tests
 		SettingsCalcParse(SettingsCalcFormat(saved), loaded);
 		EXPECT_TRUE(SettingsCalcEquals(saved, loaded));
 		EXPECT_EQ(42, loaded.ArmCosts.Values[ARM_COST_ROW_HAMMER][ARM_COST_TAP_HIT]);
-		EXPECT_EQ(3, loaded.VolumeLevels[SOUND_ITEM_VOICE]);
+		EXPECT_EQ(3, loaded.VolumeLevels[SOUND_ITEM_MENU]);
 		EXPECT_EQ(CONTROL_GUIDE_PAD, loaded.ControlGuide);
 		EXPECT_EQ(4, loaded.Tuning.Levels[TUNING_RING_OUT]);
 	}
@@ -39,7 +39,7 @@ namespace Proto1Tests
 		EXPECT_EQ(2, settings.VolumeLevels[SOUND_ITEM_MASTER]);
 		EXPECT_EQ(TuningCalcDefault().Levels[0], settings.Tuning.Levels[0]);
 		EXPECT_EQ(6, settings.LookSensitivityLevel);
-		EXPECT_EQ(3, settings.VolumeLevels[SOUND_ITEM_VOICE]);
+		EXPECT_EQ(3, settings.VolumeLevels[SOUND_ITEM_MENU]);
 	}
 
 	// 1つでも違えば「同じではない」（保存していない変更があると分かる）。

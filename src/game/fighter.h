@@ -187,7 +187,6 @@ private:
 	XMFLOAT3 GetStunShake() const;
 	void DrawStunStars() const;
 	void CancelLaunchAnimation(); // 吹っ飛び中に自分で動いたので、やられのクリップ（のけぞり・吹っ飛び）をやめる（描画だけ）
-	void PlayOwnVoice(SE_ID id) const; // キャラの声を、この PC で操作している人のときだけ鳴らす（声のあるキャラだけ。No.195 で落下だけにした）
 	void StartDashAnimation(bool onGround); // ダッシュのクリップを頭から見せる（描画だけ）
 	PlayerBodyCalc m_Body;
 	StatusCalc m_Status;

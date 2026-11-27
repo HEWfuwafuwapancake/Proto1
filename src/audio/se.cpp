@@ -23,26 +23,19 @@ namespace
 	// フォルダ名は長いので、まとめておく。
 #define SE_DIR "assets/sounds/se/"
 #define SE_MENU SE_DIR "選択画面/選択・カーソル移動/"
-#define SE_CHARA SE_DIR "選択画面/キャラクター選択/"
-#define SE_GIRL SE_DIR "戦闘中/メカガール/"
 #define SE_ARM SE_DIR "戦闘中/腕/"
 	// 「(1)」「(2)」のないものが2つある音（刀のヒット・刀の移動・レーザーの溜め・ミサイルのロックオン・爆発）は、
 	// サウンド担当と話し合って決めるまで、1つ目（仮）を使う。入れ替えるときはここのファイル名を変える。
 	// 触手を戻したときの音は、サウンド担当の README で「いらない」となっているので鳴らさない。
 	// No.195 の試聴：呼び出しで音を入れ替えたもの（触手の伸ばす＝振り回したとき、振り回し＝振り回したときのヒット音、
 	// ナックルの空振り＝刀空振り、槍の刺さり＝刀単押しヒット2）は、各腕の .cpp で選んでいる。
-	// 使わなくなった音（メカガールの攻撃・被弾の声、ミサイルのロックオン、触手の伸ばしたとき）も、
+	// メカガールの声（キャラ選択の案内・決定・攻撃・被弾・落下）は No.207 で消した。
+	// 使わなくなった音（ミサイルのロックオン、触手の伸ばしたとき）も、
 	// ほかで使うかもしれないので表には残す。
 	const SE_ENTRY SE_TABLE[] = {
 		{ SE_MENU_CURSOR, 0.6f, { SE_MENU "カーソル移動7.wav" } },
 		{ SE_MENU_DECIDE, 0.8f, { SE_MENU "決定.wav" } },
 		{ SE_MENU_BACK, 0.8f, { SE_MENU "戻る.wav" } },
-		{ SE_CHARACTER_SELECT, 1.0f, { SE_CHARA "キャラクターを選んでね.wav" } },
-		{ SE_MEKAGIRL_DECIDE, 1.0f, { SE_CHARA "メカガール決定時.wav" } },
-
-		{ SE_MEKAGIRL_ATTACK, 0.7f, { SE_GIRL "攻撃時 (1).wav", SE_GIRL "攻撃時 (2).wav", SE_GIRL "攻撃時 (3).wav", SE_GIRL "攻撃時 (4).wav" } },
-		{ SE_MEKAGIRL_DAMAGE, 0.7f, { SE_GIRL "被弾 (1).wav", SE_GIRL "被弾 (2).wav", SE_GIRL "被弾 (3).wav" } },
-		{ SE_MEKAGIRL_FALL, 0.9f, { SE_GIRL "落下時.wav" } },
 
 		{ SE_ARM_BREAK, 1.0f, { SE_ARM "00_共通/腕の破壊音.wav" } },
 		{ SE_ARM_HOLD, 0.6f, { SE_ARM "00_共通/長押し中(ループじゃない).wav" } },
@@ -83,8 +76,6 @@ namespace
 	};
 #undef SE_DIR
 #undef SE_MENU
-#undef SE_CHARA
-#undef SE_GIRL
 #undef SE_ARM
 
 	static_assert(sizeof(SE_TABLE) / sizeof(SE_TABLE[0]) == SE_COUNT, "SE_TABLE に全部の SE_ID を1行ずつ書く");
@@ -104,7 +95,7 @@ namespace
 	SE_LISTENER s_Listeners[SE_LISTENER_MAX];
 	int s_ListenerCount = 0;
 	// オプションの音量の段（ジャンルごと。SeInitialize では戻さない）
-	int s_VolumeLevels[SE_VOLUME_COUNT] = { VOLUME_DEFAULT_LEVEL, VOLUME_DEFAULT_LEVEL, VOLUME_DEFAULT_LEVEL, VOLUME_DEFAULT_LEVEL };
+	int s_VolumeLevels[SE_VOLUME_COUNT] = { VOLUME_DEFAULT_LEVEL, VOLUME_DEFAULT_LEVEL, VOLUME_DEFAULT_LEVEL };
 
 	// 効果音がどのジャンルの音量で鳴るか。
 	SE_VOLUME GetGenre(SE_ID id)
@@ -114,12 +105,6 @@ namespace
 		case SE_MENU_DECIDE:
 		case SE_MENU_BACK:
 			return SE_VOLUME_MENU;
-		case SE_CHARACTER_SELECT:
-		case SE_MEKAGIRL_DECIDE:
-		case SE_MEKAGIRL_ATTACK:
-		case SE_MEKAGIRL_DAMAGE:
-		case SE_MEKAGIRL_FALL:
-			return SE_VOLUME_VOICE;
 		default:
 			return SE_VOLUME_BATTLE;
 		}

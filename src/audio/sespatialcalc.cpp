@@ -9,6 +9,7 @@ namespace
 	static constexpr float FAR_DISTANCE = 40.0f; // この距離（m）でいちばん小さくなる
 	static constexpr float FAR_VOLUME = 0.3f; // いちばん遠いときの大きさ
 	static constexpr float THIRD_PARTY_VOLUME = 0.7f; // この PC で遊ぶ人が関わらない音の大きさ
+	static constexpr float THIRD_PARTY_SILENT_DISTANCE = 30.0f; // この PC で遊ぶ人が関わらない音は、この距離（m）で聞こえなくなる
 	static constexpr float PAN_MAX = 0.7f; // 左右の寄せ方の最大（1.0 で片方だけから鳴る）
 	static constexpr float PAN_FULL_DISTANCE = 2.0f; // この距離（m）より近い音は、近いほど真ん中に寄せる（自分の体の音が左右に跳ねない）
 
@@ -33,18 +34,25 @@ SE_MIX SeSpatialCalcMix(const SE_LISTENER* listeners, int count, const VEC3& sou
 	}
 	const SE_LISTENER& listener = listeners[mix.Listener];
 
-	// 距離で小さくする（近くはそのまま、遠くへ行くほど FAR_VOLUME へ近づける）。
-	float t = (best - NEAR_DISTANCE) / (FAR_DISTANCE - NEAR_DISTANCE);
-	t = fminf(1.0f, fmaxf(0.0f, t));
-	mix.Volume = 1.0f + (FAR_VOLUME - 1.0f) * t;
-
-	// この PC で遊ぶ人が当てた・当てられた音は大きいまま、ほかの人どうしの音は少し小さくする。
+	// この PC で遊ぶ人が当てた・当てられた音か。
 	bool involved = false;
 	for (int i = 0; i < count && i < SE_LISTENER_MAX; ++i) {
 		const int slot = listeners[i].Slot;
 		if (slot >= 0 && (slot == slotA || slot == slotB)) involved = true;
 	}
-	if (!involved) mix.Volume *= THIRD_PARTY_VOLUME;
+
+	if (involved) {
+		// 自分の関わる音：近くはそのまま、遠くへ行くほど FAR_VOLUME へ近づける（遠くで当てても聞こえる）。
+		float t = (best - NEAR_DISTANCE) / (FAR_DISTANCE - NEAR_DISTANCE);
+		t = fminf(1.0f, fmaxf(0.0f, t));
+		mix.Volume = 1.0f + (FAR_VOLUME - 1.0f) * t;
+	}
+	else {
+		// ほかの人どうしの音：少し小さくし、遠いほど小さく、THIRD_PARTY_SILENT_DISTANCE で聞こえなくする。
+		float t = (best - NEAR_DISTANCE) / (THIRD_PARTY_SILENT_DISTANCE - NEAR_DISTANCE);
+		t = fminf(1.0f, fmaxf(0.0f, t));
+		mix.Volume = THIRD_PARTY_VOLUME * (1.0f - t);
+	}
 
 	// 左右：聞き手から音への水平の向きと、カメラの右向きの内積。
 	const float dx = source.X - listener.Position.X;

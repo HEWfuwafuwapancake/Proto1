@@ -103,7 +103,6 @@ enum SOUND_ITEM
 {
 	SOUND_ITEM_MASTER, ///< 全体の音量
 	SOUND_ITEM_MENU, ///< メニューの音（カーソル・決定・戻る）の音量
-	SOUND_ITEM_VOICE, ///< キャラの声・案内の声の音量
 	SOUND_ITEM_BATTLE, ///< 戦闘の効果音（腕・触手）の音量
 	SOUND_ITEM_BACK, ///< オプションへ戻る
 	SOUND_ITEM_COUNT, ///< 項目数
