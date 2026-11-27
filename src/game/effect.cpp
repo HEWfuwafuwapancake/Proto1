@@ -11,6 +11,7 @@ namespace
 		EFFECT_SPREAD_CONE, ///< 向きのまわりの円すいの中へ飛ばす（180° 以上で全方向）
 		EFFECT_SPREAD_RING, ///< 向きに垂直な面の中で、等しい間隔で外へ広げる
 		EFFECT_SPREAD_STAY, ///< その場にとどまる（広がって消える光）
+		EFFECT_SPREAD_COLUMN, ///< 向きに沿った柱の中に並べ、向きへ飛ばす（光の柱）
 	};
 
 	/// @brief 1つの型の出し方
@@ -30,6 +31,8 @@ namespace
 		PARTICLE_COLOR StartColor; ///< 出たときの色
 		PARTICLE_COLOR EndColor; ///< 消えるときの色
 		PARTICLE_SHAPE Shape; ///< 形
+		float Height; ///< 柱の長さ（EFFECT_SPREAD_COLUMN だけ）
+		float Jitter; ///< 柱の太さ（中心からずらす最大の距離。EFFECT_SPREAD_COLUMN だけ）
 	};
 
 	// 調整用の値（plan/11_エフェクトと手ごたえ の 2-1・2-5）
@@ -38,6 +41,8 @@ namespace
 	constexpr PARTICLE_COLOR SPARK_END_COLOR{ 1.0f, 0.65f, 0.2f, 0.0f };
 	constexpr PARTICLE_COLOR RING_COLOR{ 1.0f, 1.0f, 1.0f, 0.85f };
 	constexpr PARTICLE_COLOR RING_END_COLOR{ 1.0f, 1.0f, 1.0f, 0.0f };
+	constexpr PARTICLE_COLOR DEBRIS_COLOR{ 0.62f, 0.64f, 0.7f, 1.0f };
+	constexpr PARTICLE_COLOR PILLAR_COLOR{ 1.0f, 1.0f, 1.0f, 0.9f }; // 色は出すときにその人の色に変える
 	constexpr EFFECT_DESC EFFECT_TABLE[EFFECT_COUNT] = {
 		// 数, 飛ばし方, 角度, 速さ, 重力, 減り, 寿命, 大きさ, 色, 形
 		{ 6, EFFECT_SPREAD_CONE, PI * 0.45f, 4.0f, 8.0f, 12.0f, 4.0f, 0.12f, 0.22f, 0.07f, 0.0f, SPARK_COLOR, SPARK_END_COLOR, PARTICLE_SHAPE_SPHERE }, // 弱い火花
@@ -48,6 +53,18 @@ namespace
 		{ 14, EFFECT_SPREAD_CONE, PI * 0.06f, 16.0f, 30.0f, 0.0f, 2.0f, 0.3f, 0.45f, 0.1f, 0.02f, SPARK_COLOR, { 1.0f, 0.9f, 0.5f, 0.0f }, PARTICLE_SHAPE_SPHERE }, // 決め手の筋
 		{ 1, EFFECT_SPREAD_STAY, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.3f, 0.3f, 0.3f, 0.8f, { 0.6f, 0.6f, 0.6f, 1.0f }, { 0.6f, 0.6f, 0.6f, 0.0f }, PARTICLE_SHAPE_SPHERE }, // ガードの光（No.132 から）
 		{ 1, EFFECT_SPREAD_STAY, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.3f, 0.3f, 0.3f, 1.2f, { 1.0f, 0.9f, 0.2f, 1.0f }, { 1.0f, 0.9f, 0.2f, 0.0f }, PARTICLE_SHAPE_SPHERE }, // パリィの光（No.132 から）
+		// ここから No.227（plan/11 の 2-1b・2-2・2-3）。柱は最後の2つ（長さ・太さ）も使う
+		{ 12, EFFECT_SPREAD_CONE, PI * 0.6f, 3.0f, 7.0f, 18.0f, 0.5f, 0.6f, 0.9f, 0.14f, 0.07f, DEBRIS_COLOR, { 0.45f, 0.45f, 0.5f, 0.0f }, PARTICLE_SHAPE_BOX }, // 腕の破片
+		{ 1, EFFECT_SPREAD_STAY, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.22f, 0.22f, 0.2f, 0.75f, { 1.0f, 1.0f, 1.0f, 0.95f }, { 1.0f, 1.0f, 1.0f, 0.0f }, PARTICLE_SHAPE_SPHERE }, // 白い光
+		{ 1, EFFECT_SPREAD_CONE, PI * 0.15f, 0.6f, 1.2f, -1.0f, 1.0f, 0.5f, 0.8f, 0.05f, 0.15f, { 0.55f, 0.55f, 0.55f, 0.5f }, { 0.45f, 0.45f, 0.45f, 0.0f }, PARTICLE_SHAPE_SPHERE }, // 腕の煙
+		{ 2, EFFECT_SPREAD_CONE, PI * 0.35f, 2.0f, 4.0f, 10.0f, 2.0f, 0.1f, 0.2f, 0.035f, 0.0f, SPARK_COLOR, SPARK_END_COLOR, PARTICLE_SHAPE_SPHERE }, // 小さな火花
+		{ 44, EFFECT_SPREAD_COLUMN, 0.0f, 4.0f, 9.0f, 0.0f, 1.0f, 0.5f, 0.9f, 0.22f, 0.05f, PILLAR_COLOR, { 1.0f, 1.0f, 1.0f, 0.0f }, PARTICLE_SHAPE_SPHERE, 7.0f, 0.6f }, // 壁の光の柱
+		{ 32, EFFECT_SPREAD_COLUMN, 0.0f, 6.0f, 12.0f, 0.0f, 1.0f, 0.5f, 0.8f, 0.2f, 0.05f, PILLAR_COLOR, { 1.0f, 1.0f, 1.0f, 0.0f }, PARTICLE_SHAPE_SPHERE, 5.0f, 0.5f }, // 下の光の柱
+		{ 28, EFFECT_SPREAD_COLUMN, 0.0f, 7.0f, 11.0f, 0.0f, 2.0f, 0.3f, 0.45f, 0.16f, 0.04f, PILLAR_COLOR, { 1.0f, 1.0f, 1.0f, 0.0f }, PARTICLE_SHAPE_SPHERE, 4.0f, 0.45f }, // 復活の光の柱
+		{ 20, EFFECT_SPREAD_RING, 0.0f, 5.0f, 5.0f, 0.0f, 6.0f, 0.35f, 0.35f, 0.1f, 0.03f, RING_COLOR, RING_END_COLOR, PARTICLE_SHAPE_SPHERE }, // 足元の輪
+		{ 10, EFFECT_SPREAD_CONE, PI, 1.5f, 3.0f, -1.0f, 1.5f, 0.3f, 0.5f, 0.06f, 0.0f, { 1.0f, 1.0f, 0.85f, 1.0f }, { 1.0f, 1.0f, 1.0f, 0.0f }, PARTICLE_SHAPE_SPHERE }, // 光の粒
+		{ 1, EFFECT_SPREAD_CONE, PI * 0.2f, 0.8f, 1.5f, -1.5f, 1.0f, 0.6f, 1.0f, 0.12f, 0.3f, { 0.62f, 0.62f, 0.62f, 0.45f }, { 0.55f, 0.55f, 0.55f, 0.0f }, PARTICLE_SHAPE_SPHERE }, // 灰色の煙
+		{ 1, EFFECT_SPREAD_CONE, PI * 0.2f, 0.9f, 1.7f, -1.5f, 1.0f, 0.7f, 1.1f, 0.15f, 0.4f, { 0.12f, 0.12f, 0.12f, 0.6f }, { 0.08f, 0.08f, 0.08f, 0.0f }, PARTICLE_SHAPE_SPHERE }, // 黒い煙
 	};
 	constexpr uint32_t EFFECT_SEED = 20261127u; // 粒のばらつき専用の乱数の種
 
@@ -102,7 +119,7 @@ VEC3 EffectManager::RandomInCone(const VEC3& axis, float halfAngle)
 	return Vec3Add(Vec3Scale(axis, cosf(tilt)), Vec3Scale(spread, sinf(tilt)));
 }
 
-void EffectManager::Spawn(EFFECT_ID id, const VEC3& position, const VEC3& direction)
+void EffectManager::Spawn(EFFECT_ID id, const VEC3& position, const VEC3& direction, const PARTICLE_COLOR* tint)
 {
 	if (id < 0 || id >= EFFECT_COUNT) return;
 	const EFFECT_DESC& desc = EFFECT_TABLE[id];
@@ -114,6 +131,14 @@ void EffectManager::Spawn(EFFECT_ID id, const VEC3& position, const VEC3& direct
 		particle.Position = position;
 		VEC3 heading{};
 		if (desc.Spread == EFFECT_SPREAD_CONE) heading = RandomInCone(axis, desc.SpreadAngle);
+		else if (desc.Spread == EFFECT_SPREAD_COLUMN) {
+			// 柱の中のどこか（向きに沿った長さと、まわりへのずれ）に置き、向きへ飛ばす。
+			const float around = m_Random.NextFloat(0.0f, 2.0f * PI);
+			const float offset = m_Random.NextFloat(0.0f, desc.Jitter);
+			particle.Position = Vec3Add(Vec3Add(position, Vec3Scale(axis, m_Random.NextFloat(0.0f, desc.Height))),
+				Vec3Add(Vec3Scale(side, cosf(around) * offset), Vec3Scale(up, sinf(around) * offset)));
+			heading = axis;
+		}
 		else if (desc.Spread == EFFECT_SPREAD_RING) {
 			const float angle = 2.0f * PI * (float)i / (float)desc.Count;
 			heading = Vec3Add(Vec3Scale(side, cosf(angle)), Vec3Scale(up, sinf(angle)));
@@ -126,6 +151,10 @@ void EffectManager::Spawn(EFFECT_ID id, const VEC3& position, const VEC3& direct
 		particle.EndSize = desc.EndSize;
 		particle.StartColor = desc.StartColor;
 		particle.EndColor = desc.EndColor;
+		if (tint != nullptr) {
+			particle.StartColor = { tint->R, tint->G, tint->B, desc.StartColor.A };
+			particle.EndColor = { tint->R, tint->G, tint->B, desc.EndColor.A };
+		}
 		particle.Shape = desc.Shape;
 		m_Particles.Spawn(particle);
 	}

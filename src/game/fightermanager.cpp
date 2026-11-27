@@ -3,6 +3,7 @@
 #include "game/stage.h"
 #include "game/camera.h"
 #include "game/arm.h"
+#include "render/damagecolorcalc.h"
 #include <math.h>
 
 #ifdef _DEBUG
@@ -39,6 +40,12 @@ static constexpr float SHAKE_RING_OUT_FALL = 0.4f;	// 下へ落ちて場外に�
 // 当たりの火花を出す場所
 static constexpr float HIT_EFFECT_HEIGHT = 0.55f;	// 当てられた人の背の高さに対する割合（胸のあたり）
 static constexpr float HIT_EFFECT_FORWARD = 0.45f;	// 胸から当てた人の側へずらす距離（体の表面のあたり）
+// % が高い人の煙（plan/11 の 2-1b）
+static constexpr float SMOKE_GRAY_SECONDS = 0.3f;	// 100% 以上で灰色の煙を出す間隔
+static constexpr float SMOKE_BLACK_SECONDS = 0.12f;	// 150% 以上で黒い煙を出す間隔
+static constexpr int SMOKE_SPARK_EVERY = 4;		// 黒い煙の何回に1回、小さな火花も出すか
+static constexpr float SMOKE_HEIGHT = 0.8f;		// 煙を出す高さ（背の高さに対する割合）
+static constexpr float RESPAWN_PILLAR_HEIGHT = 4.0f;	// 復活の光の柱が降り始める高さ
 
 void FighterManager::LoadModels()
 {
@@ -108,7 +115,9 @@ void FighterManager::Reset()
 
 void FighterManager::Update()
 {
+	const float dt = GameTimeGetDeltaTime();
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
+		const bool wasInvincible = m_Fighters[i].IsInvincible();
 		const DUMMY_EVENT event = m_Fighters[i].Update(m_Cameras[i], m_Arms[i]);
 		if (event == DUMMY_EVENT_OUT) {
 			// 得点を数えると最後の攻撃者が消えるので、その前に場外にした相手を覚える（復活待ちのカメラが映す）。
@@ -116,9 +125,23 @@ void FighterManager::Update()
 			const float shake = StageCalcIsOut(m_Stage->GetStage(), m_Fighters[i].GetOutPosition().Y) ? SHAKE_RING_OUT_FALL : SHAKE_RING_OUT_WALL;
 			AddShake(i, shake);
 			AddShake(m_Versus.GetLastAttacker(i), shake);
+			// 場外になった所に、その人の色の光の柱を立てる（下へ落ちたときは下から上へ）。
+			const PARTICLE_COLOR color = GetEffectColor(i);
+			SpawnEffect(shake == SHAKE_RING_OUT_FALL ? EFFECT_PILLAR_FALL : EFFECT_PILLAR_WALL, m_Fighters[i].GetOutPosition(), { 0.0f, 1.0f, 0.0f }, &color);
 			m_Versus.RecordOut(i);
 		}
 		else if (event == DUMMY_EVENT_RESPAWN && m_Rule == GAME_RULE_GAME) RespawnAtSafePoint(i);
+		if (event == DUMMY_EVENT_RESPAWN) {
+			// 復活した所へ、上から光の柱を降ろし、足元に輪を広げる。
+			const PARTICLE_COLOR color = GetEffectColor(i);
+			const VEC3 feet = GetBodyPoint(i, 0.0f);
+			SpawnEffect(EFFECT_PILLAR_RESPAWN, { feet.X, feet.Y + RESPAWN_PILLAR_HEIGHT, feet.Z }, { 0.0f, -1.0f, 0.0f }, &color);
+			SpawnEffect(EFFECT_FEET_RING, feet, { 0.0f, 1.0f, 0.0f }, &color);
+		}
+		else if (wasInvincible && !m_Fighters[i].IsInvincible() && m_Fighters[i].IsActive()) {
+			SpawnEffect(EFFECT_SPARKLE, GetBodyPoint(i, HIT_EFFECT_HEIGHT), { 0.0f, 1.0f, 0.0f });
+		}
+		UpdateDamageEffects(i, dt);
 #ifdef _DEBUG
 		if (event == DUMMY_EVENT_OUT || event == DUMMY_EVENT_RESPAWN) {
 			hal::dout << "体" << i + 1 << (event == DUMMY_EVENT_OUT ? "：場外" : "：復活（0%）");
@@ -296,9 +319,37 @@ void FighterManager::AddShake(int index, float strength)
 	m_PendingShake[index] = fminf(1.0f, m_PendingShake[index] + strength); // カメラの揺れも上限 1
 }
 
-void FighterManager::SpawnEffect(EFFECT_ID id, const VEC3& position, const VEC3& direction)
+void FighterManager::SpawnEffect(EFFECT_ID id, const VEC3& position, const VEC3& direction, const PARTICLE_COLOR* tint)
 {
-	if (m_Effects != nullptr) m_Effects->Spawn(id, position, direction);
+	if (m_Effects != nullptr) m_Effects->Spawn(id, position, direction, tint);
+}
+
+VEC3 FighterManager::GetBodyPoint(int index, float heightRate) const
+{
+	const XMFLOAT3 feet = m_Fighters[index].GetPosition();
+	return { feet.x, feet.y + m_Fighters[index].GetHeight() * heightRate, feet.z };
+}
+
+PARTICLE_COLOR FighterManager::GetEffectColor(int index) const
+{
+	const XMFLOAT4 color = Fighter::GetPlayerColor(index);
+	return { color.x, color.y, color.z, color.w };
+}
+
+void FighterManager::UpdateDamageEffects(int index, float dt)
+{
+	const DAMAGE_SMOKE smoke = DamageColorCalcSmoke(m_Fighters[index].GetPercent());
+	if (smoke == DAMAGE_SMOKE_NONE || !m_Fighters[index].IsActive()) {
+		m_SmokeSeconds[index] = 0.0f;
+		return;
+	}
+	m_SmokeSeconds[index] -= dt;
+	if (m_SmokeSeconds[index] > 0.0f) return;
+	const bool black = smoke == DAMAGE_SMOKE_BLACK;
+	m_SmokeSeconds[index] = black ? SMOKE_BLACK_SECONDS : SMOKE_GRAY_SECONDS;
+	const VEC3 point = GetBodyPoint(index, SMOKE_HEIGHT);
+	SpawnEffect(black ? EFFECT_SMOKE_BLACK : EFFECT_SMOKE_GRAY, point, { 0.0f, 1.0f, 0.0f });
+	if (black && ++m_SmokeCount[index] % SMOKE_SPARK_EVERY == 0) SpawnEffect(EFFECT_SPARK_TINY, point, { 0.0f, 1.0f, 0.0f });
 }
 
 // 当たった所（当てられた人の胸の、当てた人の側）に、強さに合わせた火花・輪・光の筋を出す。

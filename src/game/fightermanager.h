@@ -112,7 +112,8 @@ public:
 	/// @param id 出し方の型
 	/// @param position 出す位置
 	/// @param direction 向き（火花の飛ぶ向きなど）
-	void SpawnEffect(EFFECT_ID id, const VEC3& position, const VEC3& direction);
+	/// @param tint 粒の色を変えるとき、その色（nullptr なら表の色）
+	void SpawnEffect(EFFECT_ID id, const VEC3& position, const VEC3& direction, const PARTICLE_COLOR* tint = nullptr);
 	/// @brief ガードを無視してしびれとダメージ%を与え、攻撃者を記録する（しびれで腕が戻り、ガードが解ける。アックス）
 	/// @return 与えられたら true
 	bool BreakGuard(int index, int attacker, float seconds, float damage);
@@ -126,11 +127,16 @@ private:
 	bool m_GuardedHit[FIGHTER_COUNT] = {}; // ガードで攻撃を防いだか（ConsumeGuardedHit で読むまで残す）
 	int m_GuardedBy[FIGHTER_COUNT] = { -1, -1, -1, -1 }; // 最後にガードで防いだ攻撃をした人（なしは -1）
 	EffectManager* m_Effects = nullptr; // 当たりの火花などを出すエフェクトの管理（Game が持つ）
+	float m_SmokeSeconds[FIGHTER_COUNT] = {}; // % の煙を次に出すまでの秒数（見た目だけ）
+	int m_SmokeCount[FIGHTER_COUNT] = {}; // % の煙を出した回数（何回かに1回火花も出す）
 	float m_PendingShake[FIGHTER_COUNT] = {}; // カメラへ渡す前の画面の揺れ（描画だけ。通信の確かめに入れない）
 	void PushBodies();
 	void RespawnAtSafePoint(int slot);
 	void UpdateEscape();
 	void SpawnHitEffects(int index, int attacker, const VEC3& direction, int frames);
+	void UpdateDamageEffects(int index, float dt); // % が高い人から煙と火花を出す（見た目だけ）
+	VEC3 GetBodyPoint(int index, float heightRate) const; // 足元から背の高さの割合だけ上の点
+	PARTICLE_COLOR GetEffectColor(int index) const; // その人の色（光の柱などに使う）
 	EscapeCalc m_Escapes[FIGHTER_COUNT];
 	SkinnedModel m_Models[CHARACTER_COUNT];
 	Fighter m_Fighters[FIGHTER_COUNT];

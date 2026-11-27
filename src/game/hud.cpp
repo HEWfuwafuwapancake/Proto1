@@ -3,6 +3,7 @@
 #include "core/gametime.h"
 #include "core/shader.h"
 #include "game/camera.h"
+#include "render/damagecolorcalc.h"
 #include "game/fightermanager.h"
 #include "game/match.h"
 #include "game/netsession.h"
@@ -24,6 +25,14 @@ static constexpr XMFLOAT4 COVER_COLOR = { 0.0f, 0.0f, 0.0f, 0.6f };		// シー�
 static constexpr float SECONDS_DIGIT_WIDTH = 40.0f;	// 残り秒数の桁の幅（高さはこの2倍）
 static constexpr float SECONDS_Y = 20.0f;			// 残り秒数の上端（横は画面の真ん中）
 
+// % と KO 数の弾み（plan/11 の 2-1b・2-3。描画だけ）
+static constexpr float POP_SECONDS = 0.3f;		// 弾みが消えるまでの秒数
+static constexpr float POP_BASE = 0.35f;		// % が少しでも増えたときの弾み
+static constexpr float POP_PER_PERCENT = 1.0f / 15.0f;	// 増えた % 1 あたりに足す弾み（上限 1）
+static constexpr float PERCENT_POP_SCALE = 0.45f;	// 弾み 1 で数字を大きくする割合
+static constexpr float PERCENT_POP_JITTER = 4.0f;	// 弾み 1 で数字を左右に震わせる幅
+static constexpr float SCORE_POP_SCALE = 0.8f;		// 弾み 1 で KO 数を大きくする割合
+static constexpr XMFLOAT4 SCORE_POP_COLOR{ 1.0f, 0.9f, 0.25f, 1.0f };	// 弾んでいる間の KO 数の色
 static constexpr float SCORE_DIGIT_WIDTH = 28.0f;	// 左上のスコアの桁の幅
 static constexpr float SCORE_X = 30.0f;				// 左上のスコアの左端
 static constexpr float SCORE_Y = 56.0f;				// KOの文字の下に置く
@@ -228,8 +237,15 @@ void Hud::DrawPlayerTag(int slot, float centerX, float y, float digitWidth) cons
 	Number2DDrawText("P", left + numberWidth + PLAYER_TAG_GAP, y, dot, GLYPH_ALIGN_LEFT, color);
 }
 
-void Hud::DrawPercent(float percent, float centerX, float y, float digitWidth, const XMFLOAT4& color) const
+void Hud::DrawPercent(float percent, float centerX, float y, float digitWidth, float pop) const
 {
+	// % に合わせて白 → 黄 → オレンジ → 赤 → 暗い赤にし、増えた瞬間は大きくして震わせる。
+	const DAMAGE_COLOR damage = DamageColorCalcText(percent);
+	const XMFLOAT4 color{ damage.R, damage.G, damage.B, 1.0f };
+	const float grow = digitWidth * PERCENT_POP_SCALE * pop;
+	digitWidth += grow;
+	centerX += sinf(GameTimeGetElapsed() * 80.0f) * PERCENT_POP_JITTER * pop;
+	y -= grow;
 	const int value = GlyphCalcDisplayPercent(percent);
 	const float dot = digitWidth * 2.0f / 7.0f;
 	const float numberWidth = GlyphCalcNumberWidth(value, 1, digitWidth);
@@ -254,7 +270,7 @@ void Hud::DrawFighterPercent(int index) const
 	screen.y /= m_Scale;
 
 	const float y = screen.y - PERCENT_DIGIT_WIDTH * 2.0f;
-	DrawPercent(m_Fighters->GetPercent(index), screen.x, y, PERCENT_DIGIT_WIDTH, TEXT_COLOR);
+	DrawPercent(m_Fighters->GetPercent(index), screen.x, y, PERCENT_DIGIT_WIDTH, m_PercentPops[index]);
 	if (m_Fighters->GetFighter(index).IsHuman()) {
 		DrawPlayerTag(index, screen.x, y - PLAYER_TAG_LINE, PLAYER_TAG_WIDTH);
 	}
@@ -272,6 +288,16 @@ void Hud::Reset(void)
 void Hud::Update(void)
 {
 	const float dt = GameTimeGetDeltaTime();
+	for (int i = 0; i < FIGHTER_COUNT; ++i) {
+		const float percent = m_Fighters->GetPercent(i);
+		if (percent > m_LastPercents[i] + 0.01f) m_PercentPops[i] = fminf(1.0f, POP_BASE + (percent - m_LastPercents[i]) * POP_PER_PERCENT);
+		else m_PercentPops[i] = fmaxf(0.0f, m_PercentPops[i] - dt / POP_SECONDS);
+		m_LastPercents[i] = percent;
+	}
+	const int score = m_Fighters->GetScore(m_Slot);
+	if (score > m_LastScore) m_ScorePop = 1.0f;
+	else m_ScorePop = fmaxf(0.0f, m_ScorePop - dt / POP_SECONDS);
+	m_LastScore = score;
 	for (int hand = 0; hand < 2; ++hand) {
 		ARM_FLIP& flip = m_ArmFlips[hand];
 		const ARM_TYPE type = m_Arms->GetType(hand);
@@ -607,11 +633,13 @@ void Hud::Draw(void) const
 	}
 	else {
 		Number2DDrawText("KO", SCORE_X, HUD_LABEL_Y, MENU_HELP_DOT, GLYPH_ALIGN_LEFT, TEXT_COLOR);
-		Number2DDrawNumber(score, 1, SCORE_X, SCORE_Y, SCORE_DIGIT_WIDTH, GLYPH_ALIGN_LEFT, TEXT_COLOR);
+		// 相手を場外にした（KO 数が増えた）瞬間は、数字を大きくして黄色く光らせる。
+		const XMFLOAT4 scoreColor = m_ScorePop > 0.0f ? SCORE_POP_COLOR : TEXT_COLOR;
+		Number2DDrawNumber(score, 1, SCORE_X, SCORE_Y, SCORE_DIGIT_WIDTH * (1.0f + SCORE_POP_SCALE * m_ScorePop), GLYPH_ALIGN_LEFT, scoreColor);
 	}
 	DrawPlayerTag(m_Slot, m_Width - SELF_TAG_RIGHT, HUD_LABEL_Y, SELF_PERCENT_WIDTH);
 	DrawPercent(m_Fighters->GetPercent(m_Slot), SELF_PERCENT_X, m_Height - SELF_PERCENT_BOTTOM,
-		SELF_PERCENT_WIDTH, Fighter::GetPlayerColor(m_Slot));
+		SELF_PERCENT_WIDTH, m_PercentPops[m_Slot]);
 
 	DrawArmName(0);
 	DrawArmName(1);

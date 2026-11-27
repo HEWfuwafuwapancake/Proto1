@@ -168,12 +168,14 @@
     <ClCompile Include="escapecalc_test.cpp" />
     <ClCompile Include="hitstopcalc_test.cpp" />
     <ClCompile Include="particlecalc_test.cpp" />
+    <ClCompile Include="damagecolorcalc_test.cpp" />
     <ClCompile Include="parrycalc_test.cpp" />
     <ClCompile Include="..\..\src\physics\dashcalc.cpp" />
     <ClCompile Include="..\..\src\physics\risecalc.cpp" />
     <ClCompile Include="..\..\src\physics\escapecalc.cpp" />
     <ClCompile Include="..\..\src\physics\hitstopcalc.cpp" />
     <ClCompile Include="..\..\src\physics\particlecalc.cpp" />
+    <ClCompile Include="..\..\src\render\damagecolorcalc.cpp" />
     <ClCompile Include="..\..\src\physics\parrycalc.cpp" />
     <ClCompile Include="..\..\src\physics\scenecalc.cpp" />
     <ClCompile Include="..\..\src\physics\settingscalc.cpp" />

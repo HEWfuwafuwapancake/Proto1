@@ -53,7 +53,7 @@ public:
 
 private:
 	void DrawPlayerTag(int slot, float centerX, float y, float digitWidth) const;
-	void DrawPercent(float percent, float centerX, float y, float digitWidth, const XMFLOAT4& color) const;
+	void DrawPercent(float percent, float centerX, float y, float digitWidth, float pop) const;
 	void DrawFighterPercent(int index) const;
 	void DrawArmName(int hand) const;
 	void DrawGuardFeedback(int slot) const;
@@ -78,6 +78,10 @@ private:
 		int Direction = 1;
 	};
 	ARM_FLIP m_ArmFlips[2];
+	float m_LastPercents[FIGHTER_COUNT] = {}; // 前のフレームの % （増えたら数字を弾ませる）
+	float m_PercentPops[FIGHTER_COUNT] = {}; // % の数字の弾みの残り（0〜1）
+	int m_LastScore = 0; // 前のフレームの自分の KO 数（増えたら数字を弾ませる）
+	float m_ScorePop = 0.0f; // KO 数の弾みの残り（0〜1）
 	int m_Slot = 0;
 	float m_Width = 1280.0f;	// HUD の座標での画面の幅
 	float m_Height = 720.0f;	// HUD の座標での画面の高さ

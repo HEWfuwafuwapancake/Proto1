@@ -6,6 +6,7 @@
 #include "core/gametime.h"
 #include "physics/cameracalc.h"
 #include "render/shape.h"
+#include "render/damagecolorcalc.h"
 #include <limits>
 
 // 調整用の値（従来のPlayer・DummyManagerと同じ）
@@ -66,6 +67,9 @@ static constexpr float STUN_SHAKE_WIDTH = 0.08f; // 体が左右に震える幅
 static constexpr float STUN_SHAKE_SPEED = 70.0f; // 震える速さ（ラジアン／秒。約 11 回／秒）
 static constexpr float HITSTOP_SHAKE_WIDTH = 0.12f; // ヒットストップ中に当てられた人が震える幅（描画だけ）
 static constexpr float HITSTOP_SHAKE_SPEED = 110.0f; // その速さ（ラジアン／秒）
+static constexpr XMFLOAT4 DAMAGE_TINT_COLOR{ 1.0f, 0.08f, 0.05f, 1.0f }; // % が高いほど体に混ぜる赤（描画だけ）
+static constexpr float DAMAGE_BLINK_AMOUNT = 0.2f; // 150% 以上で、赤みを点滅させて足す量
+static constexpr float DAMAGE_BLINK_SPEED = 10.0f; // その点滅の速さ（ラジアン／秒）
 static constexpr int STUN_STAR_COUNT = 3; // 頭の上を回る星の数
 static constexpr float STUN_STAR_RADIUS = 0.09f; // 星の球の半径
 static constexpr float STUN_STAR_ORBIT = 0.4f; // 星が回る輪の半径
@@ -434,8 +438,15 @@ void Fighter::Draw(bool highlighted) const
 {
 	if (!IsActive() || IsBlinkHidden()) return;
 	// 人の体は吹っ飛び中・ターゲット中も本人の色を保つ。
-	const XMFLOAT4 color = IsHuman() ? GetPlayerColor(m_Slot)
+	const XMFLOAT4 base = IsHuman() ? GetPlayerColor(m_Slot)
 		: (m_Launched ? LAUNCHED_COLOR : (highlighted ? TARGET_COLOR : DUMMY_COLOR));
+	// % が高いほど体を赤くし、150% 以上ではうっすら点滅させる（plan/11 の 2-1b）。
+	float tint = DamageColorCalcBodyTint(m_Percent);
+	if (DamageColorCalcSmoke(m_Percent) == DAMAGE_SMOKE_BLACK) {
+		tint = fminf(1.0f, tint + DAMAGE_BLINK_AMOUNT * (0.5f + 0.5f * sinf(GameTimeGetElapsed() * DAMAGE_BLINK_SPEED)));
+	}
+	const XMFLOAT4 color{ base.x + (DAMAGE_TINT_COLOR.x - base.x) * tint, base.y + (DAMAGE_TINT_COLOR.y - base.y) * tint,
+		base.z + (DAMAGE_TINT_COLOR.z - base.z) * tint, base.w };
 	if (m_Models[m_Character].IsLoaded()) {
 		m_Models[m_Character].Draw(m_Pose, GetModelWorld(), color);
 	} else {

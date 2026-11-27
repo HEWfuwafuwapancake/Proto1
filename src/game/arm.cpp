@@ -53,6 +53,9 @@ static constexpr float PARRY_RUMBLE_SECONDS = 0.25f;
 static constexpr float BREAK_RUMBLE = 1.0f;
 static constexpr float BREAK_RUMBLE_SECONDS = 0.5f;
 static constexpr float GUARD_FEEDBACK_SECONDS = 0.6f;
+static constexpr int WEAR_DURABILITY = 25; // 耐久がこれ以下になったら、腕から煙と火花を出す
+static constexpr float WEAR_SMOKE_SECONDS = 0.25f; // その煙を出す間隔
+static constexpr int WEAR_SPARK_EVERY = 3; // 煙の何回に1回、小さな火花も出すか
 static constexpr int GUARD_HITSTOP_FRAMES = 4; // ガードで防いだとき、防いだ人と攻撃した人を止めるフレーム数
 static constexpr int PARRY_HITSTOP_FRAMES = 6; // パリィしたとき、パリィした人を止めるフレーム数
 static constexpr int PARRIED_HITSTOP_FRAMES = 12; // パリィされたとき、攻撃した人を止めるフレーム数（返されたことを見せる）
@@ -220,11 +223,36 @@ void ArmManager::PlayOwnSe(SE_ID id) const
 	SePlayAt(id, { p.x, p.y, p.z }, m_Links.Slot);
 }
 
+void ArmManager::SpawnBreakEffects(int hand, const VEC3& direction)
+{
+	const VEC3 shoulder = m_Arms[hand][m_Types[hand]]->GetDrawShoulder();
+	m_Links.Fighters->SpawnEffect(EFFECT_ARM_DEBRIS, shoulder, direction);
+	m_Links.Fighters->SpawnEffect(EFFECT_FLASH_WHITE, shoulder, { 0.0f, 1.0f, 0.0f });
+}
+
+void ArmManager::UpdateWearEffects(float dt)
+{
+	for (int hand = 0; hand < 2; ++hand) {
+		const int durability = GetDurability(hand);
+		if (m_Types[hand] == ARM_TYPE_NONE || durability < 0 || durability > WEAR_DURABILITY) {
+			m_WearSeconds[hand] = 0.0f;
+			continue;
+		}
+		m_WearSeconds[hand] -= dt;
+		if (m_WearSeconds[hand] > 0.0f) continue;
+		m_WearSeconds[hand] = WEAR_SMOKE_SECONDS;
+		const VEC3 shoulder = m_Arms[hand][m_Types[hand]]->GetDrawShoulder();
+		m_Links.Fighters->SpawnEffect(EFFECT_ARM_SMOKE, shoulder, { 0.0f, 1.0f, 0.0f });
+		if (++m_WearCount[hand] % WEAR_SPARK_EVERY == 0) m_Links.Fighters->SpawnEffect(EFFECT_SPARK_TINY, shoulder, { 0.0f, 1.0f, 0.0f });
+	}
+}
+
 void ArmManager::BreakExhaustedArm(int hand)
 {
 	if (!CanBreak() || m_Types[hand] == ARM_TYPE_NONE || !m_Uses[hand].IsExhausted()) return;
 	const Arm& arm = *m_Arms[hand][m_Types[hand]];
 	if (!arm.IsActive() && !arm.IsBusy()) {
+		SpawnBreakEffects(hand, { 0.0f, 1.0f, 0.0f });
 		ChangeType(hand, ARM_TYPE_NONE);
 		PlayOwnSe(SE_ARM_BREAK);
 	}
@@ -259,6 +287,8 @@ void ArmManager::UpdateGuards(const Fighter& player, float dt, bool interrupted)
 			m_Uses[hand].Consume(TuningCalcDurabilityCost(m_Costs.Values[ARM_COST_ROW_GUARD][ARM_COST_EXTRA], m_Tuning));
 			if (CanBreak() && m_Uses[hand].IsExhausted()) {
 				arm.Rumble(BREAK_RUMBLE, BREAK_RUMBLE, BREAK_RUMBLE_SECONDS);
+				// ガードした向き（体の前）へ破片を飛ばす。
+				SpawnBreakEffects(hand, { sinf(player.GetYaw()), 0.6f, cosf(player.GetYaw()) });
 				ChangeType(hand, ARM_TYPE_NONE);
 				PlayOwnSe(SE_ARM_BREAK);
 			}
@@ -300,6 +330,7 @@ void ArmManager::Update(bool playing)
 	}
 	const float dt = GameTimeGetDeltaTime();
 	UpdateGuards(player, dt, interrupted);
+	UpdateWearEffects(dt);
 	for (int hand = 0; hand < 2; ++hand) {
 		Arm& arm = *m_Arms[hand][m_Types[hand]];
 		const bool pressed = player.IsPress(ARM_ACTIONS[hand]);
