@@ -3,12 +3,12 @@
 作業を始めるときに読みます。ここには**今の状態と次にやることだけ**を書きます。
 タスクの一覧は [tasks.md](tasks.md)（Notion の「[Proto1（腕ダフルアームズ）](https://app.notion.com/p/e5e9f1983bbe4758b06b4adba135a491)」と同じ）、決まりは [decisions.md](decisions.md)。
 
-- 最終更新：2026-11-26（Claude。Shota の PC、`Proto1`。人が読む文書を読みやすく整理した）
+- 最終更新：2026-11-27（Claude。Shota の PC、`Proto1`。タスクの一覧を整理した）
 
 ## 1. 今の状態
 
 - No.206（横の場外の壁・DEAD LINE の帯）まで develop に入っている。対戦マップは6つ（郵便局・市場・ネオンビル群・コロシアム・廃駅・浮島）。
-- 文書の整理（`feature/docs-readability`）：README を足し、`tasks.md` は終わっていないタスクだけ、`decisions.md` はテーマごとに、`dev/01` は手引きと細かい記録（`dev/05_仕組みの詳細.md`）に分けた。終わったタスクと古い決まりは `archive/` へ移した。
+- **`tasks.md` に残っているタスクは0件。** No.158〜164 は 11/16 にマージ済みだったので完了にした。No.19・23・27・28・40・53 はやらないことにして消した（decisions.md の「1. 作業の進め方」）。新しいタスクは No.207 から。
 - 実装は済んでいて、管理者の試遊・試聴を待っているものが下に残っている。終わったタスクの細かい記録は [archive/handoff_2026-11.md](archive/handoff_2026-11.md)。
 
 ## 2. 次にやること
@@ -31,7 +31,6 @@
 | 179 視点感度 | オプションの行の見た目と効き方 | `action.cpp` の `LOOK_SENSITIVITY_SCALES` |
 | 178 槍 | 踏み込み・穂先の強さ、CPU の間合い | `arm_spear.cpp` の `LUNGE_SPEED`・`THRUST`、`cpu.cpp` の `ARM_STYLES` |
 | 176・177 CPU と吹っ飛び | CPU がガタガタしないか、動けない長さ、吹っ飛び中のダッシュ | `HITSTUN_PER_PERCENT`、CPU の強さは `cpucalc.cpp` の `LEVEL_PARAMS` |
-| 53 ほか | パッド全般・別 PC 間のオンラインを実機で（管理者・メンバー） | — |
 
 効果音の素材の担当と決めること：腕の破壊音、長押しの攻撃ボイス・撃墜ボイス・共通の被弾音、レーザーの着弾音、モーニングスターの重い衝撃。
 
