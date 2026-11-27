@@ -36,6 +36,9 @@ static constexpr float SHAKE_HEAVY = 0.6f;		// 「強」の当たり
 static constexpr float SHAKE_FINISH = 1.0f;		// 「決め手」の当たり
 static constexpr float SHAKE_RING_OUT_WALL = 0.6f;	// 横の壁（DEAD LINE）を越えて場外になった（場外にした人・された人）
 static constexpr float SHAKE_RING_OUT_FALL = 0.4f;	// 下へ落ちて場外になった
+// 当たりの火花を出す場所
+static constexpr float HIT_EFFECT_HEIGHT = 0.55f;	// 当てられた人の背の高さに対する割合（胸のあたり）
+static constexpr float HIT_EFFECT_FORWARD = 0.45f;	// 胸から当てた人の側へずらす距離（体の表面のあたり）
 
 void FighterManager::LoadModels()
 {
@@ -50,9 +53,10 @@ void FighterManager::Finalize()
 	for (SkinnedModel& model : m_Models) model.Finalize();
 }
 
-void FighterManager::Initialize(const Stage& stage, const VersusCalc& participants)
+void FighterManager::Initialize(const Stage& stage, const VersusCalc& participants, EffectManager& effects)
 {
 	m_Stage = &stage;
+	m_Effects = &effects;
 	m_Versus = participants;
 	m_Versus.ResetMatch();
 	const STAGE& platform = stage.GetStage();
@@ -292,6 +296,32 @@ void FighterManager::AddShake(int index, float strength)
 	m_PendingShake[index] = fminf(1.0f, m_PendingShake[index] + strength); // カメラの揺れも上限 1
 }
 
+void FighterManager::SpawnEffect(EFFECT_ID id, const VEC3& position, const VEC3& direction)
+{
+	if (m_Effects != nullptr) m_Effects->Spawn(id, position, direction);
+}
+
+// 当たった所（当てられた人の胸の、当てた人の側）に、強さに合わせた火花・輪・光の筋を出す。
+void FighterManager::SpawnHitEffects(int index, int attacker, const VEC3& direction, int frames)
+{
+	const XMFLOAT3 feet = m_Fighters[index].GetPosition();
+	VEC3 point{ feet.x, feet.y + m_Fighters[index].GetHeight() * HIT_EFFECT_HEIGHT, feet.z };
+	const XMFLOAT3 from = m_Fighters[attacker].GetPosition();
+	const VEC3 toward{ from.x - feet.x, 0.0f, from.z - feet.z };
+	const float length = Vec3Length(toward);
+	if (length > 1.0e-4f) point = Vec3Add(point, Vec3Scale(toward, HIT_EFFECT_FORWARD / length));
+	if (frames >= HITSTOP.HeavyFrames) {
+		SpawnEffect(EFFECT_HIT_SPARK_HEAVY, point, direction);
+		SpawnEffect(EFFECT_HIT_RING_LARGE, point, direction);
+		if (frames >= HITSTOP.FinishFrames) SpawnEffect(EFFECT_FINISH_STREAK, point, direction);
+	}
+	else if (frames >= HITSTOP.MediumFrames) {
+		SpawnEffect(EFFECT_HIT_SPARK_MEDIUM, point, direction);
+		SpawnEffect(EFFECT_HIT_RING, point, direction);
+	}
+	else SpawnEffect(EFFECT_HIT_SPARK_LIGHT, point, direction);
+}
+
 float FighterManager::TakeShake(int index)
 {
 	if (index < 0 || index >= FIGHTER_COUNT) return 0.0f;
@@ -416,6 +446,7 @@ bool FighterManager::Launch(int index, int attacker, const VEC3& direction, floa
 		: frames >= HITSTOP.MediumFrames ? SHAKE_MEDIUM : 0.0f;
 	AddShake(index, shake);
 	AddShake(attacker, shake);
+	SpawnHitEffects(index, attacker, direction, frames);
 	m_Versus.RecordAttack(attacker, index);
 	return true;
 }

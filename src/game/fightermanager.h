@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "game/fighter.h"
+#include "game/effect.h"
 #include "physics/scenecalc.h"
 #include "physics/spawncalc.h"
 #include "physics/escapecalc.h"
@@ -15,7 +16,10 @@ public:
 	/// @brief キャラごとの描画モデルを解放する
 	void Finalize();
 	/// @brief 参加した機器を各スロットに割り当て、空きはダミーとして初期化する
-	void Initialize(const Stage& stage, const VersusCalc& participants);
+	/// @param stage 浮島と場外の線を読むステージ
+	/// @param participants 参加者
+	/// @param effects 当たりの火花などを出すエフェクトの管理（腕からも SpawnEffect で使う）
+	void Initialize(const Stage& stage, const VersusCalc& participants, EffectManager& effects);
 	/// @brief 参加者・KO数・順位の計算結果を読み取る
 	const VersusCalc& GetVersus() const { return m_Versus; }
 	/// @brief 人のスロットにカメラと腕をつなぐ（どちらのResetより前でもよい）
@@ -104,6 +108,11 @@ public:
 	/// @param index スロット番号（0〜3）
 	/// @return 取り出した強さ（なし・無効な番号は 0）
 	float TakeShake(int index);
+	/// @brief エフェクトを出す（見た目だけ。EffectManager::Spawn と同じ）
+	/// @param id 出し方の型
+	/// @param position 出す位置
+	/// @param direction 向き（火花の飛ぶ向きなど）
+	void SpawnEffect(EFFECT_ID id, const VEC3& position, const VEC3& direction);
 	/// @brief ガードを無視してしびれとダメージ%を与え、攻撃者を記録する（しびれで腕が戻り、ガードが解ける。アックス）
 	/// @return 与えられたら true
 	bool BreakGuard(int index, int attacker, float seconds, float damage);
@@ -116,10 +125,12 @@ private:
 	bool CanAttack(int index, int attacker);
 	bool m_GuardedHit[FIGHTER_COUNT] = {}; // ガードで攻撃を防いだか（ConsumeGuardedHit で読むまで残す）
 	int m_GuardedBy[FIGHTER_COUNT] = { -1, -1, -1, -1 }; // 最後にガードで防いだ攻撃をした人（なしは -1）
+	EffectManager* m_Effects = nullptr; // 当たりの火花などを出すエフェクトの管理（Game が持つ）
 	float m_PendingShake[FIGHTER_COUNT] = {}; // カメラへ渡す前の画面の揺れ（描画だけ。通信の確かめに入れない）
 	void PushBodies();
 	void RespawnAtSafePoint(int slot);
 	void UpdateEscape();
+	void SpawnHitEffects(int index, int attacker, const VEC3& direction, int frames);
 	EscapeCalc m_Escapes[FIGHTER_COUNT];
 	SkinnedModel m_Models[CHARACTER_COUNT];
 	Fighter m_Fighters[FIGHTER_COUNT];

@@ -61,12 +61,7 @@ static constexpr float PARRY_SHAKE = 0.4f; // パリィしたときの画面の�
 static constexpr float GUARD_RAISE_CLIP_SECONDS = 4.0f / 24.0f;
 static constexpr float GUARD_HIT_CLIP_SECONDS = 8.0f / 24.0f;
 static constexpr float PARRY_CLIP_SECONDS = 12.0f / 24.0f;
-static constexpr float GUARD_FLASH_SECONDS = 0.3f;
-static constexpr float GUARD_FLASH_START_RADIUS = 0.3f;
-static constexpr float PARRY_FLASH_END_RADIUS = 1.2f;
-static constexpr float GUARD_FLASH_END_RADIUS = 0.8f;
-static constexpr XMFLOAT4 PARRY_FLASH_COLOR{ 1.0f, 0.9f, 0.2f, 1.0f };
-static constexpr XMFLOAT4 GUARD_FLASH_COLOR{ 0.6f, 0.6f, 0.6f, 1.0f };
+// 防いだ瞬間の光（広がって消える球）の色・大きさ・秒は effect.cpp の EFFECT_GUARD_FLASH・EFFECT_PARRY_FLASH（No.226 で移した）。
 // 装備時の耐久は全腕共通。素手は0。
 static constexpr int ARM_MAX_DURABILITY = 100;
 // 攻撃・ガードで減る量は physics/armcostcalc の表（デバッグ用ウィンドウで変えられる）。
@@ -257,6 +252,7 @@ void ArmManager::UpdateGuards(const Fighter& player, float dt, bool interrupted)
 			m_GuardFeedbackHand = hand;
 			m_GuardFeedbackPosition = Vec3Add(arm.GetDrawShoulder(),
 				{ sinf(player.GetYaw()) * GUARD_MARKER_FORWARD, 0.0f, cosf(player.GetYaw()) * GUARD_MARKER_FORWARD });
+			m_Links.Fighters->SpawnEffect(m_GuardFeedbackParry ? EFFECT_PARRY_FLASH : EFFECT_GUARD_FLASH, m_GuardFeedbackPosition, { 0.0f, 1.0f, 0.0f });
 		}
 		if (result == PARRY_SUCCESS) arm.Rumble(PARRY_RUMBLE, PARRY_RUMBLE, PARRY_RUMBLE_SECONDS);
 		else if (result == PARRY_BREAK_ARM && !IsDurabilityLocked()) {
@@ -350,15 +346,6 @@ void ArmManager::Draw(void) const
 	if (m_Links.Fighters->GetFighter(m_Links.Slot).IsBlinkHidden()) return;
 	for (int hand = 0; hand < 2; ++hand) m_Arms[hand][m_Types[hand]]->Draw();
 	const Fighter& player = m_Links.Fighters->GetFighter(m_Links.Slot);
-	const GUARD_FEEDBACK feedback = GetGuardFeedback();
-	if (feedback.Active && feedback.Elapsed < GUARD_FLASH_SECONDS) {
-		const float progress = feedback.Elapsed / GUARD_FLASH_SECONDS;
-		const float endRadius = feedback.Parry ? PARRY_FLASH_END_RADIUS : GUARD_FLASH_END_RADIUS;
-		XMFLOAT4 color = feedback.Parry ? PARRY_FLASH_COLOR : GUARD_FLASH_COLOR;
-		color.w *= 1.0f - progress;
-		ShapeDrawSphere({ m_GuardFeedbackPosition.X, m_GuardFeedbackPosition.Y, m_GuardFeedbackPosition.Z },
-			GUARD_FLASH_START_RADIUS + (endRadius - GUARD_FLASH_START_RADIUS) * progress, color);
-	}
 	for (int hand = 0; hand < 2; ++hand) {
 		if (!m_Guards[hand].IsGuarding()) continue;
 		const VEC3 shoulder = m_Arms[hand][m_Types[hand]]->GetDrawShoulder();
