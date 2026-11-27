@@ -14,6 +14,17 @@ enum EFFECT_ID
 	EFFECT_FINISH_STREAK, ///< 決め手で、吹っ飛ぶ向きへ伸びる光の筋
 	EFFECT_GUARD_FLASH, ///< ガードで防いだときに広がって消える灰色の光
 	EFFECT_PARRY_FLASH, ///< パリィしたときに広がって消える黄色い光
+	EFFECT_ARM_DEBRIS, ///< 腕が壊れたときに飛び散って落ちる破片（箱）
+	EFFECT_FLASH_WHITE, ///< 一瞬の白い光（腕が壊れたときなど）
+	EFFECT_ARM_SMOKE, ///< 耐久が残りわずかな腕から出る細い煙
+	EFFECT_SPARK_TINY, ///< ときどき出る小さな火花（耐久わずか・% が高い）
+	EFFECT_PILLAR_WALL, ///< 横の壁（DEAD LINE）を越えた所に立つ光の柱（色はその人）
+	EFFECT_PILLAR_FALL, ///< 下へ落ちて場外になった所から上へ伸びる光の柱（色はその人）
+	EFFECT_PILLAR_RESPAWN, ///< 復活した所へ上から降りる光の柱（向きは下。色はその人）
+	EFFECT_FEET_RING, ///< 足元に広がる輪（復活など）
+	EFFECT_SPARKLE, ///< 体から散る小さな光の粒（無敵が切れた）
+	EFFECT_SMOKE_GRAY, ///< 体から上がる灰色の煙（% が高い）
+	EFFECT_SMOKE_BLACK, ///< 体から上がる黒い煙（% がとても高い）
 	EFFECT_COUNT, ///< 型の数
 };
 
@@ -34,8 +45,9 @@ public:
 	/// @brief エフェクトを出す
 	/// @param id 出し方の型
 	/// @param position 出す位置
-	/// @param direction 向き（火花の飛ぶ向き・輪の面の向き・筋の向き。長さは問わない。0 なら上向き）
-	void Spawn(EFFECT_ID id, const VEC3& position, const VEC3& direction);
+	/// @param direction 向き（火花の飛ぶ向き・輪の面の向き・筋や柱の向き。長さは問わない。0 なら上向き）
+	/// @param tint 粒の色を変えるとき、その色（RGB だけ使い、不透明さは表のまま。nullptr なら表の色）
+	void Spawn(EFFECT_ID id, const VEC3& position, const VEC3& direction, const PARTICLE_COLOR* tint = nullptr);
 
 private:
 	VEC3 RandomInCone(const VEC3& axis, float halfAngle);

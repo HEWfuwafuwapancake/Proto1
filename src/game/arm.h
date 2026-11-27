@@ -356,6 +356,8 @@ private:
 	bool CanBreak() const;
 	void UpdateEquip(const Fighter& player);
 	void BreakExhaustedArm(int hand);
+	void SpawnBreakEffects(int hand, const VEC3& direction); // 腕が壊れた所に破片と白い光を出す（見た目だけ）
+	void UpdateWearEffects(float dt); // 耐久が残りわずかな腕から、ときどき煙と火花を出す（見た目だけ）
 	void PlayOwnSe(SE_ID id) const; // 腕の破壊・ガードの音を、自分の体の位置で鳴らす
 	void UpdateGuards(const Fighter& player, float dt, bool interrupted);
 	ARM_LINKS m_Links = {};
@@ -375,6 +377,8 @@ private:
 	float m_GuardFeedbackSeconds = 0.0f; // 描画だけの残り秒数
 	bool m_GuardFeedbackParry = false;
 	int m_GuardFeedbackHand = -1; // 最後に防いだ手（構えを解いたあとも描画する）
+	float m_WearSeconds[2] = {}; // 耐久わずかの煙を次に出すまでの秒数（見た目だけ）
+	int m_WearCount[2] = {}; // 耐久わずかの煙を出した回数（何回かに1回火花も出す）
 	VEC3 m_GuardFeedbackPosition = {}; // 防いだ瞬間の肩の前の座標
 	int m_GuardHand = -1; // 両手なら後から構えた手で受ける
 };
