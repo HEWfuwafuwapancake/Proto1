@@ -96,6 +96,14 @@ public:
 	/// @param frames 止めるフレーム数
 	/// @param shake 止まっている間、体を震わせるか（true：当てられた人、false：当てた人・ガード）
 	void StartHitstop(int index, int frames, bool shake);
+	/// @brief その人の画面の揺れ（画ぶれ）を足す（Game が TakeShake でカメラへ渡す。描画だけ）
+	/// @param index スロット番号（0〜3。無効な番号は無視）
+	/// @param strength 足す強さ（0〜1）
+	void AddShake(int index, float strength);
+	/// @brief 足された画面の揺れを取り出し、記録を消す
+	/// @param index スロット番号（0〜3）
+	/// @return 取り出した強さ（なし・無効な番号は 0）
+	float TakeShake(int index);
 	/// @brief ガードを無視してしびれとダメージ%を与え、攻撃者を記録する（しびれで腕が戻り、ガードが解ける。アックス）
 	/// @return 与えられたら true
 	bool BreakGuard(int index, int attacker, float seconds, float damage);
@@ -108,6 +116,7 @@ private:
 	bool CanAttack(int index, int attacker);
 	bool m_GuardedHit[FIGHTER_COUNT] = {}; // ガードで攻撃を防いだか（ConsumeGuardedHit で読むまで残す）
 	int m_GuardedBy[FIGHTER_COUNT] = { -1, -1, -1, -1 }; // 最後にガードで防いだ攻撃をした人（なしは -1）
+	float m_PendingShake[FIGHTER_COUNT] = {}; // カメラへ渡す前の画面の揺れ（描画だけ。通信の確かめに入れない）
 	void PushBodies();
 	void RespawnAtSafePoint(int slot);
 	void UpdateEscape();

@@ -174,3 +174,33 @@ CAMERA_MODE CameraCalcNextMode(CAMERA_MODE mode);
 /// @return 選んだ候補の添字（映っている相手がいなければ -1）
 int CameraCalcPickVisible(const VEC3& eye, float yaw, float pitch, float fov, float aspect, float margin,
 	float maxDistance, const CAMERA_FOCUS_TARGET* targets, int count, int current, float bonus);
+
+/// @brief 画面の揺れ（画ぶれ）の強さを持ち、時間で減らす計算（描画だけで使う。試合の動きは変えない）
+class CameraShakeCalc
+{
+public:
+	/// @brief 揺れていない状態へ戻す
+	void Reset();
+	/// @brief 揺れを足す（強さは足し算で重ね、上限 1）
+	/// @param strength 足す強さ（0〜1。0 以下は何もしない）
+	void Add(float strength);
+	/// @brief 時間を進め、強さを減らす
+	/// @param dt 進める秒数
+	/// @param decayPerSecond 1秒あたりに減らす強さ
+	void Step(float dt, float decayPerSecond);
+	/// @brief 今の強さ（0〜1）を取得する
+	float GetStrength() const { return m_Strength; }
+	/// @brief 揺れ始めてからの秒数を取得する（揺れの形を決める）
+	float GetTime() const { return m_Time; }
+
+private:
+	float m_Strength = 0.0f; ///< 今の強さ（0〜1）
+	float m_Time = 0.0f; ///< 揺れ始めてからの秒数
+};
+
+/// @brief 画面の揺れでカメラをずらす量を求める（乱数を使わず、決まった波を重ねる）
+/// @param strength 揺れの強さ（0〜1）
+/// @param time 揺れ始めてからの秒数
+/// @param amplitude 強さ 1 のときの、いちばん大きいずれ（ワールドの長さ）
+/// @return カメラの位置と見ている点に足すずれ
+VEC3 CameraCalcShakeOffset(float strength, float time, float amplitude);

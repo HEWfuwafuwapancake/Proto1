@@ -698,6 +698,8 @@ void Game::UpdateFrame()
 		if (m_Match.IsPlaying()) m_Fighters.UpdateFacing();
 		// DEBUG の装備切り替えは時間切れのあとも受け付ける。
 		for (int k = 0; k < m_FightingCount; ++k) m_Arms[m_Fighting[k]].Update(m_Match.IsPlaying());
+		// 当てた人・当てられた人の画面だけを揺らす（描画だけ）。
+		for (int k = 0; k < m_FightingCount; ++k) m_Cameras[m_Fighting[k]].AddShake(m_Fighters.TakeShake(m_Fighting[k]));
 		if (m_Match.IsPlaying()) m_Fighters.UpdateAnimation();
 	}
 	const SCENE_EVENT event = m_Scene.Step(input, m_Match.GetState() == MATCH_STATE_FINISHED);
