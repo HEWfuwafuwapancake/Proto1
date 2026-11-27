@@ -15,6 +15,9 @@
 //	調整用の値
 //------------------------------------------------------------------------------
 // マウス感度・矢印キー・右スティックで回る速さは action.cpp の「調整用の値」にある
+// 画面の揺れ（画ぶれ。plan/11_エフェクトと手ごたえ の 1-3）
+static constexpr float SHAKE_DECAY = 2.5f;		// 1秒あたりに減らす揺れの強さ（強さ 1 で 0.4 秒）
+static constexpr float SHAKE_AMPLITUDE = 0.35f;	// 強さ 1 のときのいちばん大きいずれ（ワールドの長さ）
 static constexpr float FOLLOW_DISTANCE = 4.5f;					// 見ている点からカメラまでの距離
 static constexpr float TARGET_HEIGHT_RATE = 0.8f;					// 見ている点の高さ（プレイヤーの高さに対する割合。0.8 で頭のあたり）
 static constexpr float YAW_SMOOTH_TIME = 0.12f;						// 左右の角度が目標へ追いつくまでのおよその秒数
@@ -255,6 +258,7 @@ void Camera::Reset(void)
 	// 対戦マップでは開始位置から原点を向いて始まるので、カメラも体の向きの後ろから始める。
 	m_YawGoal = m_Player->GetYaw();
 	m_PitchGoal = START_PITCH;
+	m_Shake.Reset();
 	SnapToPlayer();
 }
 
@@ -265,6 +269,7 @@ void Camera::Finalize(void)
 
 void Camera::Update(void)
 {
+	m_Shake.Step(GameTimeGetDeltaTime(), SHAKE_DECAY);
 	if (m_Player->DidRespawn()) {
 		SnapToPlayer();
 		return;
@@ -350,7 +355,10 @@ void Camera::MakeMatrices(XMMATRIX* view, XMMATRIX* projection) const
 	// ビュー行列（カメラの位置と、見ている向き）
 	// カメラは見ている点から向きの反対に置いてあるので、この向きで見れば見ている点が画面の真ん中に来る
 	// （浮島に近づけてカメラが見ている点にほぼ重なっても、向きは決まる）
-	XMVECTOR eye = XMLoadFloat3(&m_Position);
+	// 画面の揺れは、追いかけ終わった最後の位置に上乗せする（追従のバネの計算には入れない）。
+	const VEC3 shake = CameraCalcShakeOffset(m_Shake.GetStrength(), m_Shake.GetTime(), SHAKE_AMPLITUDE);
+	const XMFLOAT3 shaken{ m_Position.x + shake.X, m_Position.y + shake.Y, m_Position.z + shake.Z };
+	XMVECTOR eye = XMLoadFloat3(&shaken);
 	const XMFLOAT3 direction = GetDirection();
 	XMVECTOR dir = XMLoadFloat3(&direction);
 	XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);

@@ -257,3 +257,34 @@ int CameraCalcPickVisible(const VEC3& eye, float yaw, float pitch, float fov, fl
 	}
 	return best;
 }
+
+void CameraShakeCalc::Reset()
+{
+	m_Strength = 0.0f;
+	m_Time = 0.0f;
+}
+
+void CameraShakeCalc::Add(float strength)
+{
+	if (strength <= 0.0f) return;
+	if (m_Strength <= 0.0f) m_Time = 0.0f;
+	m_Strength = fminf(1.0f, m_Strength + strength);
+}
+
+void CameraShakeCalc::Step(float dt, float decayPerSecond)
+{
+	if (m_Strength <= 0.0f || dt <= 0.0f) return;
+	m_Time += dt;
+	m_Strength = fmaxf(0.0f, m_Strength - decayPerSecond * dt);
+}
+
+VEC3 CameraCalcShakeOffset(float strength, float time, float amplitude)
+{
+	// 軸ごとに少し違う速さのサインを2本ずつ重ね、同じ形のくり返しに見えないようにする。
+	const float scale = amplitude * strength;
+	return {
+		scale * (sinf(time * 61.0f) * 0.7f + sinf(time * 97.0f + 1.3f) * 0.3f),
+		scale * (sinf(time * 73.0f + 0.7f) * 0.7f + sinf(time * 113.0f + 2.1f) * 0.3f),
+		scale * (sinf(time * 67.0f + 2.5f) * 0.7f + sinf(time * 89.0f + 0.4f) * 0.3f),
+	};
+}

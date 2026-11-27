@@ -63,6 +63,10 @@ public:
 	/// @details 毎フレーム、FighterManager::Update のあとに呼ぶ（動いたあとの自分の体を追いかける）。浮島にめり込むときは手前まで近づける
 	void Update(void);
 
+	/// @brief 画面の揺れ（画ぶれ）を足す（描画だけ。向き・入力の向きは変えない）
+	/// @param strength 足す強さ（0〜1。重ねても上限 1）
+	void AddShake(float strength) { m_Shake.Add(strength); }
+
 	/// @brief ビュー行列とプロジェクション行列をシェーダーに設定する
 	/// @details 3D描画の前に呼ぶ
 	void Draw(void) const;
@@ -109,6 +113,7 @@ private:
 	void SnapToPlayer(void);
 	void MakeMatrices(XMMATRIX* view, XMMATRIX* projection) const;
 	XMFLOAT3 m_Position = {};		// カメラの位置
+	CameraShakeCalc m_Shake;		// 画面の揺れ（最後のカメラの位置に上乗せする。描画だけ）
 	VEC3 m_Target = {};			// 今の見ている点
 	VEC3 m_TargetGoal = {};		// 遊び・接地した高さを反映した、見ている点の目標
 	VEC3 m_TargetVelocity = {};	// 見ている点のバネの速度（軸ごとに持つ）

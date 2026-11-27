@@ -30,6 +30,12 @@ static constexpr HITSTOP_PARAMS HITSTOP = {
 	24.0f,	// 吹っ飛ぶ速さがこれ以上なら「決め手」（100% でハンマー・砲を受けたくらい）
 	3, 6, 10, 14,	// 弱・中・強・決め手で止めるフレーム数
 };
+// 画面の揺れ（当てた人・当てられた人の画面だけ。強さ 0〜1）
+static constexpr float SHAKE_MEDIUM = 0.3f;		// 「中」の当たり
+static constexpr float SHAKE_HEAVY = 0.6f;		// 「強」の当たり
+static constexpr float SHAKE_FINISH = 1.0f;		// 「決め手」の当たり
+static constexpr float SHAKE_RING_OUT_WALL = 0.6f;	// 横の壁（DEAD LINE）を越えて場外になった（場外にした人・された人）
+static constexpr float SHAKE_RING_OUT_FALL = 0.4f;	// 下へ落ちて場外になった
 
 void FighterManager::LoadModels()
 {
@@ -91,6 +97,7 @@ void FighterManager::Reset()
 		m_Fighters[i].Reset();
 		m_GuardedHit[i] = false;
 		m_GuardedBy[i] = -1;
+		m_PendingShake[i] = 0.0f;
 		m_Escapes[i].Reset();
 	}
 }
@@ -102,6 +109,9 @@ void FighterManager::Update()
 		if (event == DUMMY_EVENT_OUT) {
 			// 得点を数えると最後の攻撃者が消えるので、その前に場外にした相手を覚える（復活待ちのカメラが映す）。
 			m_Fighters[i].SetKoBy(m_Versus.GetLastAttacker(i));
+			const float shake = StageCalcIsOut(m_Stage->GetStage(), m_Fighters[i].GetOutPosition().Y) ? SHAKE_RING_OUT_FALL : SHAKE_RING_OUT_WALL;
+			AddShake(i, shake);
+			AddShake(m_Versus.GetLastAttacker(i), shake);
 			m_Versus.RecordOut(i);
 		}
 		else if (event == DUMMY_EVENT_RESPAWN && m_Rule == GAME_RULE_GAME) RespawnAtSafePoint(i);
@@ -276,6 +286,20 @@ void FighterManager::StartHitstop(int index, int frames, bool shake)
 	m_Fighters[index].StartHitstop(frames, shake);
 }
 
+void FighterManager::AddShake(int index, float strength)
+{
+	if (index < 0 || index >= FIGHTER_COUNT || strength <= 0.0f) return;
+	m_PendingShake[index] = fminf(1.0f, m_PendingShake[index] + strength); // カメラの揺れも上限 1
+}
+
+float FighterManager::TakeShake(int index)
+{
+	if (index < 0 || index >= FIGHTER_COUNT) return 0.0f;
+	const float shake = m_PendingShake[index];
+	m_PendingShake[index] = 0.0f;
+	return shake;
+}
+
 bool FighterManager::ConsumeGuardedHit(int index)
 {
 	if (index < 0 || index >= FIGHTER_COUNT) return false;
@@ -388,6 +412,10 @@ bool FighterManager::Launch(int index, int attacker, const VEC3& direction, floa
 	const int frames = HitstopCalcFrames(damage, speed, HITSTOP);
 	StartHitstop(index, frames, true);
 	StartHitstop(attacker, frames, false);
+	const float shake = frames >= HITSTOP.FinishFrames ? SHAKE_FINISH : frames >= HITSTOP.HeavyFrames ? SHAKE_HEAVY
+		: frames >= HITSTOP.MediumFrames ? SHAKE_MEDIUM : 0.0f;
+	AddShake(index, shake);
+	AddShake(attacker, shake);
 	m_Versus.RecordAttack(attacker, index);
 	return true;
 }

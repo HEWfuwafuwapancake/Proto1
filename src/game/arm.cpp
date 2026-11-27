@@ -56,6 +56,8 @@ static constexpr float GUARD_FEEDBACK_SECONDS = 0.6f;
 static constexpr int GUARD_HITSTOP_FRAMES = 4; // ガードで防いだとき、防いだ人と攻撃した人を止めるフレーム数
 static constexpr int PARRY_HITSTOP_FRAMES = 6; // パリィしたとき、パリィした人を止めるフレーム数
 static constexpr int PARRIED_HITSTOP_FRAMES = 12; // パリィされたとき、攻撃した人を止めるフレーム数（返されたことを見せる）
+static constexpr float GUARD_SHAKE = 0.2f; // ガードで防いだときの画面の揺れ（防いだ人と攻撃した人）
+static constexpr float PARRY_SHAKE = 0.4f; // パリィしたときの画面の揺れ（パリィした人とされた人）
 static constexpr float GUARD_RAISE_CLIP_SECONDS = 4.0f / 24.0f;
 static constexpr float GUARD_HIT_CLIP_SECONDS = 8.0f / 24.0f;
 static constexpr float PARRY_CLIP_SECONDS = 12.0f / 24.0f;
@@ -243,8 +245,10 @@ void ArmManager::UpdateGuards(const Fighter& player, float dt, bool interrupted)
 		const PARRY_RESULT result = m_Guards[hand].OnHit(true);
 		const bool parried = result == PARRY_SUCCESS;
 		m_Links.Fighters->StartHitstop(m_Links.Slot, parried ? PARRY_HITSTOP_FRAMES : GUARD_HITSTOP_FRAMES, false);
-		m_Links.Fighters->StartHitstop(m_Links.Fighters->GetGuardedAttacker(m_Links.Slot),
-			parried ? PARRIED_HITSTOP_FRAMES : GUARD_HITSTOP_FRAMES, false);
+		const int attacker = m_Links.Fighters->GetGuardedAttacker(m_Links.Slot);
+		m_Links.Fighters->StartHitstop(attacker, parried ? PARRIED_HITSTOP_FRAMES : GUARD_HITSTOP_FRAMES, false);
+		m_Links.Fighters->AddShake(m_Links.Slot, parried ? PARRY_SHAKE : GUARD_SHAKE);
+		m_Links.Fighters->AddShake(attacker, parried ? PARRY_SHAKE : GUARD_SHAKE);
 		Arm& arm = *m_Arms[hand][m_Types[hand]];
 		PlayOwnSe(SE_ARM_GUARD);
 		if (result == PARRY_SUCCESS || result == PARRY_BREAK_ARM) {

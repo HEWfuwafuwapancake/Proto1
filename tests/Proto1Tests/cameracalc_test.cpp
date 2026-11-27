@@ -348,4 +348,30 @@ namespace Proto1Tests
 		EXPECT_LT(clear, TERRAIN_DISTANCE);
 		EXPECT_LT(CameraCalcOrbitPosition(head, TERRAIN_YAW, pitch, clear).Z, 2.0f);
 	}
+
+	// 画面の揺れは時間で 0 に戻り、揺れが止まるとずれも 0 になる
+	TEST(CameraCalcTest, Shake_DecaysToZero)
+	{
+		CameraShakeCalc shake;
+		shake.Add(0.5f);
+		shake.Step(0.1f, 2.5f);
+		EXPECT_NEAR(0.25f, shake.GetStrength(), CAMERA_EPSILON);
+		shake.Step(1.0f, 2.5f);
+		EXPECT_NEAR(0.0f, shake.GetStrength(), CAMERA_EPSILON);
+		const VEC3 offset = CameraCalcShakeOffset(shake.GetStrength(), 0.37f, 0.4f);
+		EXPECT_NEAR(0.0f, offset.X + offset.Y + offset.Z, CAMERA_EPSILON);
+	}
+
+	// 揺れを重ねても強さは 1 を超えず、ずれも振れ幅の中に収まる
+	TEST(CameraCalcTest, Shake_StackingIsCapped)
+	{
+		CameraShakeCalc shake;
+		shake.Add(0.6f);
+		shake.Add(0.6f);
+		EXPECT_NEAR(1.0f, shake.GetStrength(), CAMERA_EPSILON);
+		const VEC3 offset = CameraCalcShakeOffset(shake.GetStrength(), 0.21f, 0.4f);
+		EXPECT_LE(fabsf(offset.X), 0.4f + CAMERA_EPSILON);
+		EXPECT_LE(fabsf(offset.Y), 0.4f + CAMERA_EPSILON);
+		EXPECT_GT(fabsf(offset.X) + fabsf(offset.Y) + fabsf(offset.Z), 0.0f);
+	}
 }
