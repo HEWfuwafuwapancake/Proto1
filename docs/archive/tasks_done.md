@@ -9,6 +9,12 @@ No.206 のあとに終わったタスクは、ここ（この見出しのすぐ�
 
 | No | タスク | 前提 | 理由（1行） | 状態 |
 |---|---|---|---|---|
+| 164 | レーザーの腕を足し、トゲとガンランスを消す（`game/arm_laser`・`physics/lasercalc`。通信の版18。実装 Claude） | 162, 163 | 管理者の依頼（2026-11-16。[PR #218](https://github.com/HEWfuwafuwapancake/Proto1/pull/218)）。 | ✅ |
+| 163 | 刀の長押しのワープ先を高台の手前・崖のふちへ。ハンマーの長押しの衝撃波を薄い円柱に（`physics/breachcalc`・`arm_hammer.cpp`。通信の版17。実装 Claude） | 116, 162 | 管理者の依頼（2026-11-16。[PR #217](https://github.com/HEWfuwafuwapancake/Proto1/pull/217)）。 | ✅ |
+| 162 | カメラをハードロック・ソフトロック・フリーの3つにする。ロックオン中の攻撃を相手の高さへ傾ける（`physics/cameracalc`・`areacalc`。通信の版16。実装 Claude） | 102, 158 | 管理者の依頼（2026-11-16。[PR #216](https://github.com/HEWfuwafuwapancake/Proto1/pull/216)）。 | ✅ |
+| 160 | 長押しは押している間ため、離した瞬間に出す（`physics/armphasecalc`。通信の版15。実装 Claude） | 156 | 管理者の依頼（2026-11-16。[PR #214](https://github.com/HEWfuwafuwapancake/Proto1/pull/214)）。 | ✅ |
+| 159 | 肩越しカメラ（ロックオン中はキャラを画面の左に置く。`camera.cpp`・`physics/cameracalc`。実装 Claude） | 158 | 管理者の依頼（2026-11-16。[PR #213](https://github.com/HEWfuwafuwapancake/Proto1/pull/213)）。 | ✅ |
+| 158 | レティクル（ロックオン中は黄色いかぎ括弧と「LOCK / 距離M」、フリーは水色の十字。`hud.cpp`。実装 Claude） | 102 | 管理者の依頼（2026-11-16。[PR #211](https://github.com/HEWfuwafuwapancake/Proto1/pull/211)）。 | ✅ |
 | 206 | 横の場外の壁：ステージの外周（コロシアムは円、ほかは全体を囲む四角）から決まった距離より外へ出たら、下に落ちたときと同じ場外にする（上下にどこまでも続く。stagecalc の `StageCalcIsRingOut`）。距離は試合の設定「場外の壁の距離」（端ぴったり / ふつうの 0.7・1・1.5・2 倍。ふつうは 14 m＝100% の相手に端で長押しハンマーを当てると届く距離）。場外になった場所を復活まで覚える。確かめるための試し打ち（オフライン：F5 相手の %・F6 相手を目の前に呼ぶ・F7 CPU を止める）。通信の版33。壁の位置に半透明の DEAD LINE の帯（緑）を一周描き、場外になった人が復活するまで、いちばん近い1組を赤の RING OUT! にする（`ringoutwall`、仮の画像）。実装 Claude | 205 | 依頼（2026-11-26。[PR #263](https://github.com/HEWfuwafuwapancake/Proto1/pull/263)）。 | ✅ |
 
 ## No.206 より前（tasks.md にあったときの区分のまま）
