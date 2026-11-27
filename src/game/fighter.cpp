@@ -64,6 +64,8 @@ static constexpr XMFLOAT4 STATUS_COLORS[STATUS_COUNT] = {
 // しびれ中の見た目（描画だけ。当たり判定・攻撃の起点は動かさない）
 static constexpr float STUN_SHAKE_WIDTH = 0.08f; // 体が左右に震える幅
 static constexpr float STUN_SHAKE_SPEED = 70.0f; // 震える速さ（ラジアン／秒。約 11 回／秒）
+static constexpr float HITSTOP_SHAKE_WIDTH = 0.12f; // ヒットストップ中に当てられた人が震える幅（描画だけ）
+static constexpr float HITSTOP_SHAKE_SPEED = 110.0f; // その速さ（ラジアン／秒）
 static constexpr int STUN_STAR_COUNT = 3; // 頭の上を回る星の数
 static constexpr float STUN_STAR_RADIUS = 0.09f; // 星の球の半径
 static constexpr float STUN_STAR_ORBIT = 0.4f; // 星が回る輪の半径
@@ -137,6 +139,9 @@ void Fighter::PlaceAt(const VEC3& feet, float yaw)
 	m_LaunchAnimElapsed = (std::numeric_limits<float>::max)(); // 復活時はのけぞらせない。
 	m_InvincibleTime = 0.0f;
 	m_DashAnimElapsed = -1.0f;
+	m_Hitstop.Reset();
+	m_Frozen = false;
+	m_HitstopShake = false;
 }
 
 void Fighter::Reset()
@@ -170,18 +175,24 @@ bool Fighter::IsPress(ACTION action) const
 
 bool Fighter::IsTrigger(ACTION action) const
 {
+	if (m_Frozen) return false; // 止まっている間は押した瞬間を使わず、動き出したフレームに回す
 	return ActionCalcPlayerTrigger(m_Input, m_PreviousInput, action);
 }
 
 void Fighter::SetInput(const PLAYER_INPUT& current, const PLAYER_INPUT& previous)
 {
 	m_Input = IsHuman() ? current : PLAYER_INPUT{};
+	// ヒットストップ中は前の入力を止まる前のままにし、止まっている間に押したボタンを動き出したフレームで押した瞬間にする。
+	if (m_Frozen) return;
 	m_PreviousInput = IsHuman() ? previous : PLAYER_INPUT{};
 }
 
 DUMMY_EVENT Fighter::Update(const Camera* camera, const ArmManager* arms)
 {
 	m_Respawned = false;
+	m_Frozen = m_Hitstop.Step();
+	if (m_Frozen) return DUMMY_EVENT_NONE;
+	m_HitstopShake = false;
 	const float dt = GameTimeGetDeltaTime();
 	if (m_InvincibleTime > 0.0f) m_InvincibleTime = fmaxf(0.0f, m_InvincibleTime - dt);
 	const STAGE& stage = m_Stage->GetStage();
@@ -460,9 +471,13 @@ XMMATRIX Fighter::GetModelWorld() const
 		* XMMatrixRotationY(m_Motion.GetLegYaw()) * XMMatrixTranslation(p.x + shake.x, p.y, p.z + shake.z);
 }
 
-// しびれ中だけ、体を左右（体の向きに対して横）に細かく震わせるずれ。描画だけで使う。
+// ヒットストップで当てられた人と、しびれ中だけ、体を左右（体の向きに対して横）に細かく震わせるずれ。描画だけで使う。
 XMFLOAT3 Fighter::GetStunShake() const
 {
+	if (m_HitstopShake && (m_Frozen || m_Hitstop.GetFrames() > 0)) {
+		const float side = sinf(GameTimeGetElapsed() * HITSTOP_SHAKE_SPEED) * HITSTOP_SHAKE_WIDTH;
+		return { cosf(m_Yaw) * side, 0.0f, -sinf(m_Yaw) * side };
+	}
 	if (!m_Status.IsActive(STATUS_STUN)) return { 0.0f, 0.0f, 0.0f };
 	const float side = sinf(GameTimeGetElapsed() * STUN_SHAKE_SPEED) * STUN_SHAKE_WIDTH;
 	return { cosf(m_Yaw) * side, 0.0f, -sinf(m_Yaw) * side };
@@ -691,13 +706,21 @@ void Fighter::Hit(const VEC3& direction, float damage, float power)
 	SetLaunchVelocity(KnockbackCalcVelocity(direction, speed, params), KnockbackCalcHitstun(m_Percent, params));
 }
 
-void Fighter::Launch(const VEC3& direction, float damage, float power)
+void Fighter::StartHitstop(int frames, bool shake)
 {
-	if (!IsActive()) return;
+	if (!IsActive() || frames <= 0) return;
+	m_Hitstop.Start(frames);
+	if (shake) m_HitstopShake = true;
+}
+
+float Fighter::Launch(const VEC3& direction, float damage, float power)
+{
+	if (!IsActive()) return 0.0f;
 	AddDamage(damage);
 	const KNOCKBACK_PARAMS params = KnockbackParams();
 	const float speed = KnockbackCalcSpeed(m_Percent, power, params) * m_KnockbackScale;
 	SetLaunchVelocity(KnockbackCalcDirectedVelocity(direction, speed), KnockbackCalcHitstun(m_Percent, params));
+	return speed;
 }
 
 void Fighter::Push(const VEC3& velocity)

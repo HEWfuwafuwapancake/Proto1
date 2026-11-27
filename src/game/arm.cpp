@@ -53,6 +53,9 @@ static constexpr float PARRY_RUMBLE_SECONDS = 0.25f;
 static constexpr float BREAK_RUMBLE = 1.0f;
 static constexpr float BREAK_RUMBLE_SECONDS = 0.5f;
 static constexpr float GUARD_FEEDBACK_SECONDS = 0.6f;
+static constexpr int GUARD_HITSTOP_FRAMES = 4; // ガードで防いだとき、防いだ人と攻撃した人を止めるフレーム数
+static constexpr int PARRY_HITSTOP_FRAMES = 6; // パリィしたとき、パリィした人を止めるフレーム数
+static constexpr int PARRIED_HITSTOP_FRAMES = 12; // パリィされたとき、攻撃した人を止めるフレーム数（返されたことを見せる）
 static constexpr float GUARD_RAISE_CLIP_SECONDS = 4.0f / 24.0f;
 static constexpr float GUARD_HIT_CLIP_SECONDS = 8.0f / 24.0f;
 static constexpr float PARRY_CLIP_SECONDS = 12.0f / 24.0f;
@@ -238,6 +241,10 @@ void ArmManager::UpdateGuards(const Fighter& player, float dt, bool interrupted)
 	if (hadGuard && m_Links.Fighters->ConsumeGuardedHit(m_Links.Slot)) {
 		const int hand = m_GuardHand;
 		const PARRY_RESULT result = m_Guards[hand].OnHit(true);
+		const bool parried = result == PARRY_SUCCESS;
+		m_Links.Fighters->StartHitstop(m_Links.Slot, parried ? PARRY_HITSTOP_FRAMES : GUARD_HITSTOP_FRAMES, false);
+		m_Links.Fighters->StartHitstop(m_Links.Fighters->GetGuardedAttacker(m_Links.Slot),
+			parried ? PARRIED_HITSTOP_FRAMES : GUARD_HITSTOP_FRAMES, false);
 		Arm& arm = *m_Arms[hand][m_Types[hand]];
 		PlayOwnSe(SE_ARM_GUARD);
 		if (result == PARRY_SUCCESS || result == PARRY_BREAK_ARM) {
@@ -281,6 +288,8 @@ void ArmManager::Update(bool playing)
 	const Fighter& player = m_Links.Fighters->GetFighter(m_Links.Slot);
 	if (m_Rule == GAME_RULE_DEBUG) UpdateEquip(player);
 	if (!playing) return;
+	// ヒットストップで止まっている間は、腕も止める（出している攻撃・ため・ガードをそのまま待たせる）。
+	if (player.IsInHitstop()) return;
 	// GAME の復活時の装備リセットは、カプセルの取得前に Game が済ませる。
 	if (m_Rule == GAME_RULE_GAME && player.DidRespawn()) return;
 	// 中断中に押していた入力は、使えるようになっても一度離すまで引き継がない。

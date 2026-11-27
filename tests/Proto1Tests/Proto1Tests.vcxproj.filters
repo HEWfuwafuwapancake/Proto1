@@ -169,6 +169,7 @@
     <ClCompile Include="dashcalc_test.cpp" />
     <ClCompile Include="risecalc_test.cpp" />
     <ClCompile Include="escapecalc_test.cpp" />
+    <ClCompile Include="hitstopcalc_test.cpp" />
     <ClCompile Include="parrycalc_test.cpp" />
     <ClCompile Include="..\..\src\physics\dashcalc.cpp">
       <Filter>src\physics</Filter>
@@ -177,6 +178,9 @@
       <Filter>src\physics</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\physics\escapecalc.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\physics\hitstopcalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\physics\parrycalc.cpp">

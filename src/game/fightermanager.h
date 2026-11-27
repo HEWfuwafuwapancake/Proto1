@@ -87,6 +87,15 @@ public:
 	/// @param index スロット番号（0〜3）
 	/// @return 防いでいたら true
 	bool ConsumeGuardedHit(int index);
+	/// @brief 最後にガードで防いだ攻撃をした人のスロット番号を取得する（ガードのヒットストップに使う）
+	/// @param index 防いだ人のスロット番号（0〜3）
+	/// @return 攻撃した人のスロット番号（なし・無効な番号は -1）
+	int GetGuardedAttacker(int index) const;
+	/// @brief ヒットストップを始める（無効な番号・復活待ちは無視）
+	/// @param index スロット番号（0〜3）
+	/// @param frames 止めるフレーム数
+	/// @param shake 止まっている間、体を震わせるか（true：当てられた人、false：当てた人・ガード）
+	void StartHitstop(int index, int frames, bool shake);
 	/// @brief ガードを無視してしびれとダメージ%を与え、攻撃者を記録する（しびれで腕が戻り、ガードが解ける。アックス）
 	/// @return 与えられたら true
 	bool BreakGuard(int index, int attacker, float seconds, float damage);
@@ -98,6 +107,7 @@ public:
 private:
 	bool CanAttack(int index, int attacker);
 	bool m_GuardedHit[FIGHTER_COUNT] = {}; // ガードで攻撃を防いだか（ConsumeGuardedHit で読むまで残す）
+	int m_GuardedBy[FIGHTER_COUNT] = { -1, -1, -1, -1 }; // 最後にガードで防いだ攻撃をした人（なしは -1）
 	void PushBodies();
 	void RespawnAtSafePoint(int slot);
 	void UpdateEscape();

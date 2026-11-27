@@ -63,6 +63,7 @@ struct LOCKSTEP_STATE
 	int32_t Score = 0; ///< KO数
 	int32_t ArmTypes[2] = {}; ///< 左右の腕の種類（ゲーム側の装備番号）
 	int32_t ArmUses[2] = {}; ///< 左右の残り耐久（無制限は -1）
+	int32_t Hitstop = 0; ///< ヒットストップの残りのフレーム数
 };
 
 /// @brief 入力の保管・遅延・再送・パケット変換を行う計算（Windows・DirectX・gameに依存しない）
