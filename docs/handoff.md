@@ -9,28 +9,11 @@
 
 - No.206（横の場外の壁・DEAD LINE の帯）まで develop に入っている。対戦マップは6つ（郵便局・市場・ネオンビル群・コロシアム・廃駅・浮島）。
 - **`tasks.md` に残っているタスクは0件。** No.158〜164 は 11/16 にマージ済みだったので完了にした。No.19・23・27・28・40・53 はやらないことにして消した（decisions.md の「1. 作業の進め方」）。新しいタスクは No.207 から。
-- 実装は済んでいて、管理者の試遊・試聴を待っているものが下に残っている。終わったタスクの細かい記録は [archive/handoff_2026-11.md](archive/handoff_2026-11.md)。
+- 試遊・試聴待ちだった No.176〜206 は、管理者が遊んで問題なしとした（2026-11-27）。終わったタスクの細かい記録は [archive/handoff_2026-11.md](archive/handoff_2026-11.md)。
 
 ## 2. 次にやること
 
-### 管理者の試遊・試聴待ち（新しい順）
-
-| No | 確かめること | 調整する値 |
-|---|---|---|
-| 206 横の場外の壁 | 100% の相手に端で長押しハンマーを当てて場外になるか。「端ぴったり」の段で、立っているだけで場外にならないか。帯の見え方（分割画面・ネオン・廃駅・市場はまだ撮っていない）。試し打ちは F5（相手の %）・F6（相手を呼ぶ）・F7（CPU を止める） | `tuningcalc.cpp` の `RING_OUT_NORMAL`・`RING_OUT_RATES`、帯の濃さは `ringoutwall.cpp` の `BAND_ALPHA` |
-| 204・205 追加マップ3面 | 広さ・見た目・霧。廃駅の倒壊ビルを渡る・下をくぐる、コロシアムの外周から落ちる。ジャンプ台で跳ぶところはまだ撮っていない。CPU は柱・ジャンプ台・倒壊ビルを考えずに動く | 霧は `stage.cpp` の `FOG_DISTANCE`・`FOG_AMOUNT`、ジャンプ台は `mapgimmick.cpp` の `PAD_RISE_HEIGHT`、柱は `pillarcalc.cpp` の `DURABILITY` と `mapgimmick.cpp` の `PILLAR_DAMAGE`・`PILLAR_POWER` |
-| 203 キーボードの操作 | J / K の腕（単押し・長押し）を遊んで確かめる。試合中の操作一覧は、明るい地面の上で読みにくい。パッド版の一覧はまだ撮っていない | `hud.cpp` の `CONTROL_GUIDE_TEXT`・`CONTROL_GUIDE_COLOR`・`CONTROL_GUIDE_BACKGROUND` |
-| 200・201 音量と保存 | ジャンルごとの音量を耳で確かめる。保存はオプションの「保存する」でだけ（作業フォルダの `settings.ini`） | ジャンルの分け方は `se.cpp` の `GetGenre` |
-| 195 効果音 | 戻る音のタイミング、オンラインの準備OKの取り消し（2つ起動）、戦闘の音の距離と左右、腕8種の音 | `sespatialcalc.cpp` の `NEAR_DISTANCE`・`FAR_VOLUME`・`THIRD_PARTY_VOLUME`・`PAN_MAX`、`se.cpp` の `SE_TABLE` |
-| 193・194 地形とカメラ | 坂の隙間・下から見たちらつき、地形を背にしたカメラ。高い壁を背にしてハードロックすると、自分が画面から外れることがある | `camera.cpp` の `CLIMB_SMOOTH_TIME`・`NEAR_CHECK_RADIUS` |
-| 189〜191 対戦マップ２面 | 広さ・高さ・色、触手のＧ、ダッシュ板、カプセルの散らばり、オンラインでホストがマップを選べるか、仕分け台のすり抜け。刀のワープ先・触手の箱の当たりは浮島の形のまま、CPU は地形の壁とＧを考えない | `mapgimmick.cpp` の `BOOST_SPEED`・`BOOST_UP_SPEED` |
-| 187・188 パッドのメニュー操作 | 左スティックはカーソル、十字キーは中身。パッドの実機でまだ確かめていない | — |
-| 186・180 モーニングスター | 後ろ・横にも当たるか、耐久の減り方 | `arm_flail.cpp` の `SPIN_DRAIN_COST` |
-| 184・185 メニューとポーズ | 色・文字・背景のぼけ、ポーズからロビー・タイトルへ戻れるか | `codex_menu.cpp`、ぼけは `backdrop.cpp` の `DRAW_LEVEL` |
-| 182 ミサイル腕 | 避けやすさ、場外になる %、耐久の持ち ×0.5 で2本ずつ撃つか | `arm_missile.cpp` の `SHOT_SPEED`・`SHOT_PARAMS`・`FINGER_POWER`・`ARM_POWER` |
-| 179 視点感度 | オプションの行の見た目と効き方 | `action.cpp` の `LOOK_SENSITIVITY_SCALES` |
-| 178 槍 | 踏み込み・穂先の強さ、CPU の間合い | `arm_spear.cpp` の `LUNGE_SPEED`・`THRUST`、`cpu.cpp` の `ARM_STYLES` |
-| 176・177 CPU と吹っ飛び | CPU がガタガタしないか、動けない長さ、吹っ飛び中のダッシュ | `HITSTUN_PER_PERCENT`、CPU の強さは `cpucalc.cpp` の `LEVEL_PARAMS` |
+### 効果音の素材
 
 効果音の素材の担当と決めること：腕の破壊音、長押しの攻撃ボイス・撃墜ボイス・共通の被弾音、レーザーの着弾音、モーニングスターの重い衝撃。
 
