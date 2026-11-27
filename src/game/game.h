@@ -68,6 +68,7 @@ private:
 	MATCH_TUNING m_Tuning = TuningCalcDefault();
 	ARM_COST_TABLE m_ArmCosts = ArmCostCalcDefault(); // オプションで変える、オフラインの減る量の表（オンラインははじめの表）。
 	VersusCalc m_Participants; // タイトルで決まる参加者。試合の得点はFighterManagerが持つ。
+	EffectManager m_Effects;	// 当たりの火花・ガードの光などのパーティクル（見た目だけ）
 	FighterManager m_Fighters;
 	ArmCapsule m_ArmCapsule;
 	MapGimmick m_Gimmick; // 対戦マップのＧ・ダッシュ板

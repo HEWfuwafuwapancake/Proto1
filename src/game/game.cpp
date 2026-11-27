@@ -49,7 +49,8 @@ bool Game::Initialize(const NET_OPTIONS& options)
 	for (auto& input : m_DeviceInputs) input = {};
 	m_LobbyCharacters.fill(CHARACTER_DEFAULT);
 	m_Fighters.LoadModels();
-	m_Fighters.Initialize(m_Stage, m_Participants);
+	m_Effects.Initialize();
+	m_Fighters.Initialize(m_Stage, m_Participants, m_Effects);
 	m_ArmCapsule.Initialize(m_Stage);
 	// 腕のモデルは起動時に4枠分だけ読む。参加やTITLE・RETRYでは作り直さない。
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
@@ -87,6 +88,7 @@ void Game::Finalize()
 	}
 	m_ArmCapsule.Finalize();
 	m_Fighters.Finalize();
+	m_Effects.Finalize();
 	m_RingOutWall.Finalize();
 	m_Stage.Finalize();
 }
@@ -102,7 +104,7 @@ void Game::ConfigurePlayers()
 			if (m_Participants.IsCpu(slot)) roster.SetSlotDevice(slot, VERSUS_DEVICE_CPU);
 		}
 	}
-	m_Fighters.Initialize(m_Stage, roster);
+	m_Fighters.Initialize(m_Stage, roster, m_Effects);
 	m_HumanCount = 0;
 	m_FightingCount = 0;
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
@@ -212,6 +214,7 @@ void Game::Restart(bool retry)
 	// 敵を戻す前に腕を離し、プレイヤー・敵のあとにカメラを戻す。
 	for (int k = 0; k < m_FightingCount; ++k) m_Arms[m_Fighting[k]].ResetForMatch(rule, tuning);
 	m_Fighters.Reset();
+	m_Effects.Reset();
 	m_Gimmick.Reset();
 	if (rule == GAME_RULE_GAME) m_ArmCapsule.Reset(m_MatchSeed ^ CAPSULE_SEED_MASK);
 	for (int k = 0; k < m_FightingCount; ++k) m_Cameras[m_Fighting[k]].Reset();
@@ -700,6 +703,7 @@ void Game::UpdateFrame()
 		for (int k = 0; k < m_FightingCount; ++k) m_Arms[m_Fighting[k]].Update(m_Match.IsPlaying());
 		// 当てた人・当てられた人の画面だけを揺らす（描画だけ）。
 		for (int k = 0; k < m_FightingCount; ++k) m_Cameras[m_Fighting[k]].AddShake(m_Fighters.TakeShake(m_Fighting[k]));
+		m_Effects.Update();
 		if (m_Match.IsPlaying()) m_Fighters.UpdateAnimation();
 	}
 	const SCENE_EVENT event = m_Scene.Step(input, m_Match.GetState() == MATCH_STATE_FINISHED);
@@ -829,6 +833,7 @@ void Game::Draw() const
 		if (drawCapsules) m_ArmCapsule.Draw();
 		m_Fighters.Draw(camera.GetTarget());
 		for (int j = 0; j < m_FightingCount; ++j) m_Arms[m_Fighting[j]].Draw();
+		m_Effects.Draw(); // 半透明の粒は、不透明な物のあとに描く
 
 		// ---- 2D描画（UI）：3Dの上に重ねるので最後に描く ----
 		SetDepthEnable(false);
