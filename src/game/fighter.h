@@ -6,6 +6,7 @@
 #include "physics/playercalc.h"
 #include "physics/dashcalc.h"
 #include "physics/dummycalc.h"
+#include "physics/hitstopcalc.h"
 #include "physics/knockbackcalc.h"
 #include "physics/statuscalc.h"
 #include "physics/tentaclecalc.h"
@@ -118,6 +119,14 @@ public:
 	bool CanUseArms() const { return IsActive() && !IsHeld() && m_FlinchFrames <= 0 && m_HitstunTime <= 0.0f; }
 	/// @brief 体当たりで押し合える状態か取得する（吹っ飛び中・保持中・復活待ちは押し合わない）
 	bool CanPushBodies() const { return IsActive() && !IsHeld() && !m_Launched; }
+	/// @brief ヒットストップで、このフレームの動き・腕・アニメを止めているか取得する
+	bool IsInHitstop() const { return m_Frozen; }
+	/// @brief ヒットストップの残りのフレーム数を取得する（オンラインのずれの見張りに使う）
+	int GetHitstopFrames() const { return m_Hitstop.GetFrames(); }
+	/// @brief ヒットストップを始める（止まっている間に押したボタンは、動き出したフレームで押した瞬間として扱う）
+	/// @param frames 止めるフレーム数（すでに止まっていれば長い方）
+	/// @param shake 止まっている間、体を震わせるか（true：当てられた人、false：当てた人・ガード）
+	void StartHitstop(int frames, bool shake);
 	/// @brief 吹っ飛ばされている途中か取得する
 	bool IsLaunched() const { return m_Launched; }
 	/// @brief 浮島に立っているか取得する
@@ -145,7 +154,8 @@ public:
 	/// @brief ダメージを足し、固定の上向き角度で吹っ飛ばす
 	void Hit(const VEC3& direction, float damage, float power);
 	/// @brief ダメージを足し、上下を含む指定方向へ吹っ飛ばす
-	void Launch(const VEC3& direction, float damage, float power);
+	/// @return 吹っ飛ぶ速さ（1秒あたりの移動量。動けない状態なら 0）
+	float Launch(const VEC3& direction, float damage, float power);
 	/// @brief %を変えず、指定速度で吹っ飛ばす
 	void Push(const VEC3& velocity);
 	/// @brief 移動として飛ばす（ダッシュ板）。ダメージ・何もできない時間・やられの姿勢はなく、空中ジャンプ・ダッシュ・腕も使える
@@ -208,6 +218,9 @@ private:
 	int m_HeldBy = -1;
 	bool m_Pulled = false;
 	bool m_Respawned = false;
+	HitstopCalc m_Hitstop; // ヒットストップの残り（オンラインでも全員同じに数える）
+	bool m_Frozen = false; // このフレームをヒットストップで止めたか
+	bool m_HitstopShake = false; // 止まっている間に体を震わせるか（当てられた人）
 	int m_ArmActiveHands = 0;	// 前のフレームで使っていた手（左 1・右 2 のビット。使い始めを見つける）
 	int m_Device = VERSUS_DEVICE_DUMMY;
 	int m_Slot = 0;

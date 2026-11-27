@@ -22,6 +22,14 @@ static constexpr VEC3 ISLAND_RESPAWN_OFFSETS[] = {
 };
 static constexpr int ISLAND_RESPAWN_COUNT = sizeof(ISLAND_RESPAWN_OFFSETS) / sizeof(ISLAND_RESPAWN_OFFSETS[0]);
 static constexpr float SPAWN_SAFE_DISTANCE = 10.0f;
+// ヒットストップ（当てた人と当てられた人だけ止める。plan/11_エフェクトと手ごたえ の 1-2）
+static constexpr HITSTOP_PARAMS HITSTOP = {
+	3.0f,	// これより小さいダメージ%は止めない（モーニングスターの回転の連続ヒットなど）
+	6.0f,	// 「中」になるダメージ%（刀・ハンマーの単押し・ナックルの3段目など）
+	11.0f,	// 「強」になるダメージ%（刀の突き・居合、ハンマーの空中・衝撃波、レーザーの砲）
+	24.0f,	// 吹っ飛ぶ速さがこれ以上なら「決め手」（100% でハンマー・砲を受けたくらい）
+	3, 6, 10, 14,	// 弱・中・強・決め手で止めるフレーム数
+};
 
 void FighterManager::LoadModels()
 {
@@ -82,6 +90,7 @@ void FighterManager::Reset()
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		m_Fighters[i].Reset();
 		m_GuardedHit[i] = false;
+		m_GuardedBy[i] = -1;
 		m_Escapes[i].Reset();
 	}
 }
@@ -125,6 +134,7 @@ void FighterManager::UpdateEscape()
 {
 	for (int i = 0; i < FIGHTER_COUNT; ++i) {
 		Fighter& fighter = m_Fighters[i];
+		if (fighter.IsInHitstop()) continue; // ヒットストップで止まっている間は連打を数えない
 		if (!fighter.IsHeld()) {
 			m_Escapes[i].Reset();
 			continue;
@@ -208,7 +218,9 @@ void FighterManager::UpdateFacing()
 void FighterManager::UpdateAnimation()
 {
 	const float dt = GameTimeGetDeltaTime();
-	for (int i = 0; i < FIGHTER_COUNT; ++i) m_Fighters[i].UpdateAnimation(m_Arms[i], dt);
+	for (int i = 0; i < FIGHTER_COUNT; ++i) {
+		if (!m_Fighters[i].IsInHitstop()) m_Fighters[i].UpdateAnimation(m_Arms[i], dt);
+	}
 }
 
 void FighterManager::Draw(int target) const
@@ -247,9 +259,21 @@ bool FighterManager::CanAttack(int index, int attacker)
 	// ガードされた攻撃は効かない（No.80）。燃える % と投げ（Release）はここを通らない。
 	if (IsGuarded(index, attacker)) {
 		m_GuardedHit[index] = true;
+		m_GuardedBy[index] = attacker;
 		return false;
 	}
 	return true;
+}
+
+int FighterManager::GetGuardedAttacker(int index) const
+{
+	return index >= 0 && index < FIGHTER_COUNT ? m_GuardedBy[index] : -1;
+}
+
+void FighterManager::StartHitstop(int index, int frames, bool shake)
+{
+	if (index < 0 || index >= FIGHTER_COUNT) return;
+	m_Fighters[index].StartHitstop(frames, shake);
 }
 
 bool FighterManager::ConsumeGuardedHit(int index)
@@ -358,8 +382,12 @@ bool FighterManager::Launch(int index, int attacker, const VEC3& direction, floa
 {
 	if (!CanAttack(index, attacker)) return false;
 	// つかまれている相手は飛ばさず、ダメージだけ足す（つかんでいる側が殴り続けて投げられる）。
+	float speed = 0.0f;
 	if (m_Fighters[index].IsHeld()) m_Fighters[index].AddDamage(damage);
-	else m_Fighters[index].Launch(direction, damage, power);
+	else speed = m_Fighters[index].Launch(direction, damage, power);
+	const int frames = HitstopCalcFrames(damage, speed, HITSTOP);
+	StartHitstop(index, frames, true);
+	StartHitstop(attacker, frames, false);
 	m_Versus.RecordAttack(attacker, index);
 	return true;
 }

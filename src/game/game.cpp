@@ -747,7 +747,7 @@ void Game::UpdateFrame()
 			const XMFLOAT3 position = fighter.GetPosition();
 			const ArmManager& arms = m_Arms[slot];
 			states[slot] = { { position.x, position.y, position.z }, fighter.GetPercent(), m_Fighters.GetScore(slot),
-				{ ARM_TYPE_NONE, ARM_TYPE_NONE }, { 0, 0 } };
+				{ ARM_TYPE_NONE, ARM_TYPE_NONE }, { 0, 0 }, fighter.GetHitstopFrames() };
 			if (fighter.IsHuman()) {
 				for (int hand = 0; hand < 2; ++hand) {
 					states[slot].ArmTypes[hand] = arms.GetType(hand);

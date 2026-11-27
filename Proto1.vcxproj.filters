@@ -521,6 +521,9 @@
     <ClCompile Include="src\physics\escapecalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
+    <ClCompile Include="src\physics\hitstopcalc.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
     <ClCompile Include="src\physics\parrycalc.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
@@ -633,6 +636,9 @@
       <Filter>src\physics</Filter>
     </ClInclude>
     <ClInclude Include="src\physics\escapecalc.h">
+      <Filter>src\physics</Filter>
+    </ClInclude>
+    <ClInclude Include="src\physics\hitstopcalc.h">
       <Filter>src\physics</Filter>
     </ClInclude>
     <ClInclude Include="src\physics\parrycalc.h">
