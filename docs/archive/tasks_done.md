@@ -9,6 +9,7 @@ No.206 のあとに終わったタスクは、ここ（この見出しのすぐ�
 
 | No | タスク | 前提 | 理由（1行） | 状態 |
 |---|---|---|---|---|
+| 207 | 効果音：ほかの人どうしの音は遠いほど小さくし、遠くでは聞こえなくする（`sespatialcalc` の `THIRD_PARTY_SILENT_DISTANCE`）。メカガールの声（キャラ選択の案内・決定・攻撃・被弾・落下）を全部消し、サウンドの画面の「ボイス」の行もなくす。実装 Claude | 195 | 管理者の依頼（2026-11-27）。 | ✅ |
 | 164 | レーザーの腕を足し、トゲとガンランスを消す（`game/arm_laser`・`physics/lasercalc`。通信の版18。実装 Claude） | 162, 163 | 管理者の依頼（2026-11-16。[PR #218](https://github.com/HEWfuwafuwapancake/Proto1/pull/218)）。 | ✅ |
 | 163 | 刀の長押しのワープ先を高台の手前・崖のふちへ。ハンマーの長押しの衝撃波を薄い円柱に（`physics/breachcalc`・`arm_hammer.cpp`。通信の版17。実装 Claude） | 116, 162 | 管理者の依頼（2026-11-16。[PR #217](https://github.com/HEWfuwafuwapancake/Proto1/pull/217)）。 | ✅ |
 | 162 | カメラをハードロック・ソフトロック・フリーの3つにする。ロックオン中の攻撃を相手の高さへ傾ける（`physics/cameracalc`・`areacalc`。通信の版16。実装 Claude） | 102, 158 | 管理者の依頼（2026-11-16。[PR #216](https://github.com/HEWfuwafuwapancake/Proto1/pull/216)）。 | ✅ |

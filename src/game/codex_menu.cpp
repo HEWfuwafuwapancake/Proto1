@@ -539,7 +539,7 @@ void CodexMenu::DrawOptions(const SceneCalc& scene, const MATCH_TUNING& tuning, 
 	else if (selected == OPTION_ITEM_CONTROL_GUIDE) InfoCard(INFO_CARD, "操作の表示",
 		"試合中、画面の右に操作の一覧を出します。", "キーボードかパッドのボタン名を選べます。", "この PC だけの設定で、すぐに効きます。");
 	else if (selected == OPTION_ITEM_SOUND) InfoCard(INFO_CARD, "サウンド",
-		"全体・メニュー・ボイス・戦闘の音量を", "それぞれ変えられます。Enter / ○ で開きます。", "この PC だけの設定で、すぐに効きます。");
+		"全体・メニュー・戦闘の音量を", "それぞれ変えられます。Enter / ○ で開きます。", "この PC だけの設定で、すぐに効きます。");
 	else if (selected == OPTION_ITEM_SAVE) InfoCard(INFO_CARD, "設定を保存する",
 		"今の設定をすべてファイルに保存します。", "次に起動したときも同じ設定で始まります。", "サウンドの音量も、ここで一緒に保存します。");
 	else if (selected == OPTION_ITEM_ARM_COSTS) InfoCard(INFO_CARD, "腕の耐久の減る量",
@@ -564,11 +564,10 @@ void CodexMenu::DrawOptions(const SceneCalc& scene, const MATCH_TUNING& tuning, 
 void CodexMenu::DrawSound(const SceneCalc& scene) const
 {
 	Header("サウンド", "OPTIONS / SOUND");
-	static constexpr const char* NAMES[SOUND_ITEM_COUNT] = { "全体", "メニューの音", "ボイス", "戦闘の効果音", "戻る" };
+	static constexpr const char* NAMES[SOUND_ITEM_COUNT] = { "全体", "メニューの音", "戦闘の効果音", "戻る" };
 	static constexpr const char* HELP[SOUND_ITEM_COUNT][3] = {
-		{ "すべての音の大きさです。", "下の3つのジャンルにも掛かります。", "" },
+		{ "すべての音の大きさです。", "下の2つのジャンルにも掛かります。", "" },
 		{ "カーソル・決定・戻るの音です。", "", "" },
-		{ "キャラの声と案内の声です。", "「キャラクターを選んでね」など。", "" },
 		{ "腕・触手の攻撃や当たった音です。", "", "" },
 		{ "オプションへ戻る", "変更した値は、そのまま保持されます。", "" },
 	};

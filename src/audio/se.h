@@ -20,13 +20,6 @@ enum SE_ID
 	SE_MENU_CURSOR, ///< カーソル・選んでいる値が動いた
 	SE_MENU_DECIDE, ///< 決定して次の画面へ進んだ・準備OKにした
 	SE_MENU_BACK, ///< 戻った・準備OKを取り消した
-	SE_CHARACTER_SELECT, ///< キャラ選択の画面に入った（「キャラクターを選んでね」）
-	SE_MEKAGIRL_DECIDE, ///< メカガールで準備OKにした
-
-	// メカガールの声
-	SE_MEKAGIRL_ATTACK, ///< 腕を使い始めた（4つからランダム）
-	SE_MEKAGIRL_DAMAGE, ///< ダメージを受けた（3つからランダム）
-	SE_MEKAGIRL_FALL, ///< 場外へ落ちた
 
 	// 腕の共通
 	SE_ARM_BREAK, ///< 腕が壊れた（耐久が尽きた）
@@ -82,7 +75,6 @@ enum SE_VOLUME
 {
 	SE_VOLUME_MASTER, ///< 全体（ほかのジャンルにも掛かる）
 	SE_VOLUME_MENU, ///< メニューの音（カーソル・決定・戻る）
-	SE_VOLUME_VOICE, ///< キャラの声・案内の声
 	SE_VOLUME_BATTLE, ///< 戦闘の効果音（腕・触手）
 	SE_VOLUME_COUNT ///< ジャンルの数（変える名前ではない）
 };
