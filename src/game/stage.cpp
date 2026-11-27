@@ -54,6 +54,8 @@ static constexpr XMFLOAT4 DEFAULT_SKY_COLOR = { 0.4f, 0.6f, 0.9f, 1.0f };	// 郵
 // 景観の霧（届いた元のゲームのシェーダーと同じ。カメラから FOG_DISTANCE 離れると、霧の色へ FOG_AMOUNT だけ寄せる）
 static constexpr float FOG_DISTANCE = 65.0f;
 static constexpr float FOG_AMOUNT = 0.55f;
+static constexpr float STATION_FOG_DISTANCE = 40.0f;	// 廃駅だけ霧を濃くする（元より近くで霧が一番濃くなり）
+static constexpr float STATION_FOG_AMOUNT = 0.8f;		// （霧の色へ強く寄せる）
 static constexpr float NEON_GAMMA = 0.55f;			// ネオンの景観は色を 0.55 乗で明るく持ち上げて焼き込んである
 static constexpr float NEON_GLOW_STRENGTH = 0.13f;	// ネオンの中央（原点）のまわりに足す赤い光の強さ
 static constexpr float NEON_GLOW_RADIUS = 10.0f;		// その光が弱まる距離
@@ -73,7 +75,7 @@ static constexpr MAP_LOOK MAP_LOOKS[STAGE_MAP_COUNT] = {
 	{ { 0.63f, 0.43f, 0.31f, 1.0f }, "assets/models/maps/coliseum.glb",	// コロシアム（砂岩の色の空と、赤茶の霧）
 		{ { 0.57f, 0.41f, 0.30f, FOG_AMOUNT }, FOG_DISTANCE, 1.0f, 0.0f, 1.0f } },
 	{ { 0.57f, 0.83f, 0.90f, 1.0f }, "assets/models/maps/station.glb",		// 廃駅（晴天の水色の空と、青緑の霧）
-		{ { 0.54f, 0.71f, 0.69f, FOG_AMOUNT }, FOG_DISTANCE, 1.0f, 0.0f, 1.0f } },
+		{ { 0.54f, 0.71f, 0.69f, STATION_FOG_AMOUNT }, STATION_FOG_DISTANCE, 1.0f, 0.0f, 1.0f } },
 	{ DEFAULT_SKY_COLOR, nullptr, NO_FOG },	// 浮島
 };
 static constexpr const char* COLUMN_MODEL = "assets/models/maps/coliseum_column.glb";	// 倒れる柱（根元が原点、+Y が柱の先）
