@@ -137,6 +137,8 @@ public:
 	int GetMoveEvents() const { return m_MoveEvents; }
 	/// @brief ダッシュを始めた向きを取得する（GetMoveEvents にダッシュがあるフレームだけ意味がある）
 	const VEC3& GetDashDirection() const { return m_DashDirection; }
+	/// @brief 次の残像の更新で、ダッシュと同じ体の残像を置くよう頼む（ナックルの突進・槍で飛ぶ間に、腕から毎フレーム呼ぶ。見た目だけ）
+	void RequestGhosts() { m_GhostRequested = true; }
 	/// @brief 今の速さ（1秒あたりの移動量）を取得する（吹っ飛び中の煙の尾に使う）
 	float GetSpeed() const;
 	/// @brief ヒットストップの残りのフレーム数を取得する（オンラインのずれの見張りに使う）
@@ -246,6 +248,7 @@ private:
 	int m_GhostNext = 0; // 次に使う残像の枠
 	int m_GhostFrame = 0; // 残像を置く間隔を数える
 	VEC3 m_GhostPositions[3] = {}; // 残像を置いた場所（足元）
+	bool m_GhostRequested = false; // 腕から残像を頼まれたか（RequestGhosts。見た目だけ）
 	void UpdateGhosts(float dt); // ダッシュ中は数フレームごとに残像を置き、古い残像を薄くする
 	int m_ArmActiveHands = 0;	// 前のフレームで使っていた手（左 1・右 2 のビット。使い始めを見つける）
 	int m_Device = VERSUS_DEVICE_DUMMY;

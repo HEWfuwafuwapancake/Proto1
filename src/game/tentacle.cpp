@@ -315,6 +315,8 @@ void TentacleArm::StepSpin(const ARM_INPUT& input, float dt)
 		ConsumeDurability(GetCost(COST_ROW, ARM_COST_HOLD_MISS));
 		m_SpinConsumed = true;
 	}
+	// 振り回す先端に軌跡（薄い球を毎フレーム置く。見た目だけ）。
+	if (m_Spin.GetPhase() == SPIN_SWING) GetFighters().SpawnEffect(EFFECT_TRAIL, GetSpinTip(), { 0.0f, 1.0f, 0.0f });
 	if (m_Spin.GetPhase() != SPIN_SWING && step.Entered != SPIN_RECOVER) return;
 	// 前のフレームから今までに回った扇だけを調べる（段階の終わりは必ず一周まで）。
 	const float angle = step.Entered == SPIN_RECOVER ? SPIN_FULL_TURN

@@ -90,6 +90,9 @@ namespace
 		{ 22, EFFECT_SPREAD_CONE, PI * 0.4f, 9.0f, 16.0f, 0.0f, 7.0f, 0.15f, 0.22f, 0.11f, 0.02f, { 1.0f, 1.0f, 1.0f, 0.95f }, { 0.8f, 0.9f, 1.0f, 0.0f }, PARTICLE_SHAPE_SPHERE }, // 刀の大きな筋
 		{ 3, EFFECT_SPREAD_INWARD, 0.0f, 2.5f, 3.5f, 0.0f, 0.0f, 0.2f, 0.25f, 0.03f, 0.07f, { 0.5f, 0.95f, 1.0f, 0.0f }, { 0.6f, 1.0f, 1.0f, 0.9f }, PARTICLE_SHAPE_SPHERE, 0.0f, 0.7f }, // 溜めの粒
 		{ 18, EFFECT_SPREAD_COLUMN, 0.0f, 8.0f, 13.0f, 0.0f, 2.0f, 0.3f, 0.45f, 0.12f, 0.03f, { 0.6f, 1.0f, 0.9f, 0.9f }, { 0.6f, 1.0f, 0.9f, 0.0f }, PARTICLE_SHAPE_SPHERE, 0.6f, 0.45f }, // ジャンプ台の光
+		// ★ の仕上げ（plan/11 の 2-6）
+		{ 10, EFFECT_SPREAD_RING, 0.0f, 3.0f, 3.0f, 0.0f, 8.0f, 0.15f, 0.15f, 0.05f, 0.02f, RING_COLOR, RING_END_COLOR, PARTICLE_SHAPE_SPHERE }, // 拳の先の輪
+		{ 6, EFFECT_SPREAD_CONE, PI * 0.3f, 1.5f, 3.5f, -1.0f, 3.0f, 0.3f, 0.5f, 0.1f, 0.3f, { 0.7f, 0.7f, 0.7f, 0.5f }, { 0.6f, 0.6f, 0.6f, 0.0f }, PARTICLE_SHAPE_SPHERE }, // 撃った煙
 	};
 	constexpr uint32_t EFFECT_SEED = 20261127u; // 粒のばらつき専用の乱数の種
 
