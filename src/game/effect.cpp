@@ -65,6 +65,8 @@ namespace
 		{ 10, EFFECT_SPREAD_CONE, PI, 1.5f, 3.0f, -1.0f, 1.5f, 0.3f, 0.5f, 0.06f, 0.0f, { 1.0f, 1.0f, 0.85f, 1.0f }, { 1.0f, 1.0f, 1.0f, 0.0f }, PARTICLE_SHAPE_SPHERE }, // 光の粒
 		{ 1, EFFECT_SPREAD_CONE, PI * 0.2f, 0.8f, 1.5f, -1.5f, 1.0f, 0.6f, 1.0f, 0.12f, 0.3f, { 0.62f, 0.62f, 0.62f, 0.45f }, { 0.55f, 0.55f, 0.55f, 0.0f }, PARTICLE_SHAPE_SPHERE }, // 灰色の煙
 		{ 1, EFFECT_SPREAD_CONE, PI * 0.2f, 0.9f, 1.7f, -1.5f, 1.0f, 0.7f, 1.1f, 0.15f, 0.4f, { 0.12f, 0.12f, 0.12f, 0.6f }, { 0.08f, 0.08f, 0.08f, 0.0f }, PARTICLE_SHAPE_SPHERE }, // 黒い煙
+		// No.228（plan/11 の 2-5）
+		{ 22, EFFECT_SPREAD_CONE, PI, 6.0f, 13.0f, 6.0f, 3.0f, 0.25f, 0.4f, 0.1f, 0.0f, { 1.0f, 0.95f, 0.35f, 1.0f }, { 1.0f, 0.75f, 0.1f, 0.0f }, PARTICLE_SHAPE_SPHERE }, // パリィの火花
 	};
 	constexpr uint32_t EFFECT_SEED = 20261127u; // 粒のばらつき専用の乱数の種
 

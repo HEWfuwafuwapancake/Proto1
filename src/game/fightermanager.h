@@ -108,6 +108,18 @@ public:
 	/// @param index スロット番号（0〜3）
 	/// @return 取り出した強さ（なし・無効な番号は 0）
 	float TakeShake(int index);
+	/// @brief その人の画面に重ねる白い光を足す（Game が TakeScreenFlash で HUD へ渡す。描画だけ）
+	/// @param index スロット番号（0〜3。無効な番号は無視）
+	/// @param flash 足す強さ（ふち・全体。それぞれ上限 1）
+	void AddScreenFlash(int index, const SCREEN_FLASH& flash);
+	/// @brief 足された画面の光を取り出し、記録を消す
+	/// @param index スロット番号（0〜3）
+	/// @return 取り出した強さ（なし・無効な番号は 0）
+	SCREEN_FLASH TakeScreenFlash(int index);
+	/// @brief 足元から、背の高さの割合だけ上の点を取得する（エフェクトを出す場所に使う）
+	/// @param index スロット番号（0〜3）
+	/// @param heightRate 背の高さに対する割合（0：足元、1：頭のてっぺん）
+	VEC3 GetBodyPoint(int index, float heightRate) const;
 	/// @brief エフェクトを出す（見た目だけ。EffectManager::Spawn と同じ）
 	/// @param id 出し方の型
 	/// @param position 出す位置
@@ -129,13 +141,13 @@ private:
 	EffectManager* m_Effects = nullptr; // 当たりの火花などを出すエフェクトの管理（Game が持つ）
 	float m_SmokeSeconds[FIGHTER_COUNT] = {}; // % の煙を次に出すまでの秒数（見た目だけ）
 	int m_SmokeCount[FIGHTER_COUNT] = {}; // % の煙を出した回数（何回かに1回火花も出す）
+	SCREEN_FLASH m_PendingFlash[FIGHTER_COUNT] = {}; // HUD へ渡す前の画面の光（描画だけ）
 	float m_PendingShake[FIGHTER_COUNT] = {}; // カメラへ渡す前の画面の揺れ（描画だけ。通信の確かめに入れない）
 	void PushBodies();
 	void RespawnAtSafePoint(int slot);
 	void UpdateEscape();
 	void SpawnHitEffects(int index, int attacker, const VEC3& direction, int frames);
 	void UpdateDamageEffects(int index, float dt); // % が高い人から煙と火花を出す（見た目だけ）
-	VEC3 GetBodyPoint(int index, float heightRate) const; // 足元から背の高さの割合だけ上の点
 	PARTICLE_COLOR GetEffectColor(int index) const; // その人の色（光の柱などに使う）
 	EscapeCalc m_Escapes[FIGHTER_COUNT];
 	SkinnedModel m_Models[CHARACTER_COUNT];

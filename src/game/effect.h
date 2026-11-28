@@ -25,7 +25,15 @@ enum EFFECT_ID
 	EFFECT_SPARKLE, ///< 体から散る小さな光の粒（無敵が切れた）
 	EFFECT_SMOKE_GRAY, ///< 体から上がる灰色の煙（% が高い）
 	EFFECT_SMOKE_BLACK, ///< 体から上がる黒い煙（% がとても高い）
+	EFFECT_PARRY_SPARK, ///< パリィした所から大きく放射する黄色い火花
 	EFFECT_COUNT, ///< 型の数
+};
+
+/// @brief 画面に重ねる白い光の強さ（HUD が描く。見た目だけ）
+struct SCREEN_FLASH
+{
+	float Edge = 0.0f; ///< 画面のふちを一瞬白く光らせる強さ（0〜1。強い当たり）
+	float Full = 0.0f; ///< 画面全体を一瞬明るくする強さ（0〜1。パリィ）
 };
 
 /// @brief 火花・輪・光などのパーティクルを出して動かし、描く（見た目だけ。試合の乱数・通信の確かめには関わらない）
