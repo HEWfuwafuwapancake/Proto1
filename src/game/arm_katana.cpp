@@ -22,6 +22,8 @@ static constexpr ARM_COST_ROW COST_ROW = ARM_COST_ROW_KATANA;
 // 3段目は相手を通り抜けて、少しあとから斬撃のダメージが入る。
 static constexpr int COMBO_STEPS = 3;
 static constexpr int PIERCE_STEP = 2; // 通り抜ける段。
+static constexpr float SLASH_EFFECT_FORWARD = 0.6f; // 振りの白い筋を出す、肩から前への距離（見た目だけ）
+static constexpr float WARP_EFFECT_HEIGHT = 0.9f; // ワープの光を出す、足元からの高さ（見た目だけ）
 static constexpr float COMBO_COOLDOWN = 0.5f; // 最後の段を出し終えてから、この腕で攻撃できない秒数。
 static constexpr float COMBO_WINDOW = 0.35f; // 休みが終わってから、次の段の単押しを受け付ける秒数（休みの間も受け付ける）。
 static constexpr float IAI_SECONDS[COMBO_STEPS][3] = { // 段ごと：振りかぶり・斬る（3段目は通り抜ける）・休み
@@ -351,6 +353,9 @@ void KatanaArm::StepIai(float dt)
 	if (step.Entered == IAI_DRAW) {
 		BeginDraw();
 		PlaySe(SE_KATANA_MISS); // 振った音（当たったら当たった音を重ねる）
+		// 振った向きへ白い筋を広げる（3振り目は大きく。見た目だけ）。
+		const VEC3 slashFrom = Vec3Add(GetShoulder(), Vec3Scale(GetStrikeDirection(m_Direction), SLASH_EFFECT_FORWARD));
+		GetFighters().SpawnEffect(m_TapStep == PIERCE_STEP ? EFFECT_SLASH_LARGE : EFFECT_SLASH, slashFrom, GetStrikeDirection(m_Direction));
 		if (m_TapStep == PIERCE_STEP) StartPierce();
 	}
 	if (m_TapStep == PIERCE_STEP) {
@@ -418,6 +423,10 @@ void KatanaArm::StartDash()
 	m_DashHitConsumed = false;
 	Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
 	PlaySe(SE_KATANA_DASH);
+	// 消えた所に白い光と粒（着いた所は ReleasePull で出す）。
+	const XMFLOAT3 from = GetPlayer().GetPosition();
+	GetFighters().SpawnEffect(EFFECT_FLASH_WHITE, { from.x, from.y + WARP_EFFECT_HEIGHT, from.z }, { 0.0f, 1.0f, 0.0f });
+	GetFighters().SpawnEffect(EFFECT_SPARKLE, { from.x, from.y + WARP_EFFECT_HEIGHT, from.z }, { 0.0f, 1.0f, 0.0f });
 }
 
 // 自分が止めていた体の計算を、ふつうに戻す。
@@ -426,6 +435,8 @@ void KatanaArm::ReleasePull()
 	if (!m_OwnPull) return;
 	m_OwnPull = false;
 	GetPlayer().SetPulled(false);
+	const XMFLOAT3 at = GetPlayer().GetPosition();
+	GetFighters().SpawnEffect(EFFECT_SPARKLE, { at.x, at.y + WARP_EFFECT_HEIGHT, at.z }, { 0.0f, 1.0f, 0.0f });
 }
 
 void KatanaArm::StepBreach(const ARM_INPUT& input, float dt)

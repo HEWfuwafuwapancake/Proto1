@@ -37,6 +37,12 @@ enum EFFECT_ID
 	EFFECT_LASER_FLASH, ///< レーザーの溜めが満ちた・砲を撃ったときの砲口の水色の光
 	EFFECT_EXPLOSION_FIRE, ///< ミサイルの爆発のオレンジの火の玉
 	EFFECT_EXPLOSION_SMOKE, ///< ミサイルの爆発のあとに上がる黒い煙
+	EFFECT_TRAIL, ///< その場に残って消える白い粒（鉄球・刀などの軌跡）
+	EFFECT_TRAIL_SMOKE, ///< その場に残って広がる灰色の煙（吹っ飛び中の尾・ミサイルの尾）
+	EFFECT_SLASH, ///< 刀を振った向きへ広がる白い筋
+	EFFECT_SLASH_LARGE, ///< 刀の3振り目の大きな白い筋
+	EFFECT_CHARGE_IN, ///< まわりから吸い込まれる水色の粒（レーザーの溜め）
+	EFFECT_PAD_BURST, ///< ジャンプ台で足元から上へ吹き上がる光
 	EFFECT_COUNT, ///< 型の数
 };
 

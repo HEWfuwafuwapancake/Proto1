@@ -28,6 +28,7 @@ enum FIGHTER_MOVE_EVENT
 	FIGHTER_MOVE_LAND_HEAVY = 1 << 3, ///< 長く落ちてから重く着地した
 	FIGHTER_MOVE_DASH = 1 << 4, ///< 地上でダッシュを始めた
 	FIGHTER_MOVE_AIR_DASH = 1 << 5, ///< 空中でダッシュを始めた
+	FIGHTER_MOVE_WALL_HIT = 1 << 6, ///< 吹っ飛び中に壁・地形にぶつかって横の速さが落ちた
 };
 
 /// @brief 人とダミー共通の1体（移動・%・吹っ飛び・保持・場外からの復活）
@@ -136,6 +137,8 @@ public:
 	int GetMoveEvents() const { return m_MoveEvents; }
 	/// @brief ダッシュを始めた向きを取得する（GetMoveEvents にダッシュがあるフレームだけ意味がある）
 	const VEC3& GetDashDirection() const { return m_DashDirection; }
+	/// @brief 今の速さ（1秒あたりの移動量）を取得する（吹っ飛び中の煙の尾に使う）
+	float GetSpeed() const;
 	/// @brief ヒットストップの残りのフレーム数を取得する（オンラインのずれの見張りに使う）
 	int GetHitstopFrames() const { return m_Hitstop.GetFrames(); }
 	/// @brief ヒットストップを始める（止まっている間に押したボタンは、動き出したフレームで押した瞬間として扱う）

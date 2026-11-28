@@ -15,6 +15,8 @@ static constexpr float BOOST_UP_SPEED = 9.0f;		// ダッシュ板が飛ばす上
 static constexpr float PAD_RISE_HEIGHT = 21.0f;		// ジャンプ台で、乗った高さから上がる高さ（屋上へ届く）
 static constexpr float PAD_REACH = 0.3f;			// ジャンプ台の上面から、足がこれ以内なら乗っている
 static constexpr int PAD_COOLDOWN_FRAMES = 48;		// 同じ人がまたジャンプ台で打ち上げられるまでの更新の数（0.8秒）
+static constexpr float PILLAR_SHAKE = 0.5f;			// 柱が倒れ終わったとき、すぐ近くの人の画面を揺らす強さ
+static constexpr float PILLAR_SHAKE_RANGE = 14.0f;	// 揺れが届く距離（遠いほど弱く）
 static constexpr float PILLAR_DAMAGE = 18.0f;		// 倒れる柱が当たったときのダメージ%
 static constexpr float PILLAR_POWER = 2.5f;			// 倒れる柱が当たったときの吹っ飛ばす強さ
 static constexpr float PILLAR_UP = 0.42f;			// 倒れる柱が吹っ飛ばす向き（倒れる向きに足す上向きの量）
@@ -176,6 +178,7 @@ void MapGimmick::UpdatePads()
 		fighter.Boost({ 0.0f, upSpeed, 0.0f });
 		m_PadReadyFrame[slot] = m_Frame + PAD_COOLDOWN_FRAMES;
 		SePlayAt(SE_KATANA_DASH, { p.x, p.y, p.z }, slot);
+		m_Fighters->SpawnEffect(EFFECT_PAD_BURST, { p.x, p.y, p.z }, { 0.0f, 1.0f, 0.0f });
 	}
 }
 
@@ -209,7 +212,17 @@ void MapGimmick::UpdatePillars()
 		if (state == m_PillarStates[i]) continue;
 		const PILLAR_POSE pose = pillars.GetPose(i);
 		if (state == PILLAR_WARNING) SePlayAt(SE_ARM_BREAK, pose.Base, -1);
-		if (state == PILLAR_FALLEN) SePlayAt(SE_HAMMER_HOLD, pose.Base, -1);
+		if (state == PILLAR_FALLEN) {
+			SePlayAt(SE_HAMMER_HOLD, pose.Base, -1);
+			// 倒れた所に大きな土ぼこりを出し、近くの人ほど画面を強く揺らす（見た目だけ）。
+			m_Fighters->SpawnEffect(EFFECT_DUST_RING_LARGE, pose.Base, { 0.0f, 1.0f, 0.0f });
+			for (int slot = 0; slot < FIGHTER_COUNT; ++slot) {
+				if (!m_Fighters->IsActive(slot)) continue;
+				const XMFLOAT3 p = m_Fighters->GetFighter(slot).GetPosition();
+				const float distance = Vec3Length(Vec3Sub({ p.x, p.y, p.z }, pose.Base));
+				if (distance < PILLAR_SHAKE_RANGE) m_Fighters->AddShake(slot, PILLAR_SHAKE * (1.0f - distance / PILLAR_SHAKE_RANGE));
+			}
+		}
 		m_PillarStates[i] = state;
 	}
 }

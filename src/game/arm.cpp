@@ -53,6 +53,7 @@ static constexpr float PARRY_RUMBLE_SECONDS = 0.25f;
 static constexpr float BREAK_RUMBLE = 1.0f;
 static constexpr float BREAK_RUMBLE_SECONDS = 0.5f;
 static constexpr float GUARD_FEEDBACK_SECONDS = 0.6f;
+static constexpr PARTICLE_COLOR PICKUP_RING_COLOR{ 0.5f, 1.0f, 0.7f, 1.0f }; // 腕カプセルを拾ったときの足元の輪の色
 static constexpr int WEAR_DURABILITY = 25; // 耐久がこれ以下になったら、腕から煙と火花を出す
 static constexpr float WEAR_SMOKE_SECONDS = 0.25f; // その煙を出す間隔
 static constexpr int WEAR_SPARK_EVERY = 3; // 煙の何回に1回、小さな火花も出すか
@@ -184,6 +185,8 @@ bool ArmManager::TryEquipPickup(ARM_TYPE type)
 	for (int hand = 0; hand < 2; ++hand) {
 		if (m_Types[hand] != ARM_TYPE_NONE) continue;
 		ChangeType(hand, type);
+		m_Links.Fighters->SpawnEffect(EFFECT_SPARKLE, m_Links.Fighters->GetBodyPoint(m_Links.Slot, 0.6f), { 0.0f, 1.0f, 0.0f });
+		m_Links.Fighters->SpawnEffect(EFFECT_FEET_RING, m_Links.Fighters->GetBodyPoint(m_Links.Slot, 0.05f), { 0.0f, 1.0f, 0.0f }, &PICKUP_RING_COLOR);
 		return true;
 	}
 	return false;

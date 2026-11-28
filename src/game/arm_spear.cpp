@@ -139,6 +139,7 @@ void SpearArm::OnStuck()
 	}
 	Consume(ARM_COST_HOLD_HIT);
 	GetFighters().ApplyStatus(target, GetSlot(), STATUS_STUN, STUN_TICK_SECONDS, 0.0f);
+	GetFighters().SpawnEffect(EFFECT_DUST_KICK, GetFighters().GetBodyPoint(target, 0.5f), Vec3Scale(m_Spear.GetDirection(), -1.0f));
 	Rumble(HIT_RUMBLE, HIT_RUMBLE, HIT_RUMBLE_SECONDS);
 	PlayHitSe(STAB_SE, target);
 	m_StuckSeconds = 0.0f;

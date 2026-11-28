@@ -106,6 +106,7 @@ void LaserArm::Fire(LASER_FIRE fire)
 		m_BeamEnd = Vec3Add(shoulder, Vec3Scale(m_Direction, distance));
 		StrikePillarsOnLine({ shoulder, m_BeamEnd, SHOT_RADIUS }, SHOT_DAMAGE, m_Direction);
 		m_BeamSeconds = SHOT_BEAM_SECONDS;
+		GetFighters().SpawnEffect(EFFECT_LASER_SPARK, GetMuzzle(), m_Direction);
 		Rumble(SHOT_RUMBLE, 0.0f, SHOT_RUMBLE_SECONDS);
 	}
 	else {
@@ -154,6 +155,7 @@ void LaserArm::Update(const ARM_INPUT& input)
 	// 溜めが満ちた瞬間に、砲口を一瞬強く光らせる（見た目だけ）。
 	const bool full = m_Calc.IsCharging() && m_Calc.GetCharge(PARAMS) >= 1.0f;
 	if (full && !m_WasFull) GetFighters().SpawnEffect(EFFECT_LASER_FLASH, GetMuzzle(), m_Direction);
+	else if (m_Calc.IsCharging() && !full) GetFighters().SpawnEffect(EFFECT_CHARGE_IN, GetMuzzle(), m_Direction);
 	m_WasFull = full;
 	// 溜めの音は溜め始めに1回鳴らし、撃つ・やめたら止める。
 	if (m_Calc.IsCharging() && !m_ChargeSePlaying) m_ChargeSe.PlayAt(SE_LASER_CHARGE, GetShoulder(), GetSlot());
