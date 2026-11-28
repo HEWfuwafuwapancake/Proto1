@@ -15,6 +15,7 @@ static constexpr float FAN_CLIP_SECONDS[] = { 4.0f / 24.0f, 3.0f / 24.0f, 5.0f /
 static constexpr float FAN_RADIUS = 3.0f; // 扇の半径（肩から）
 static constexpr float FAN_HALF_ANGLE = XMConvertToRadians(45.0f); // 扇の左右それぞれの開き
 static constexpr float FAN_HALF_HEIGHT = 1.2f;
+static constexpr float HEAVY_SHAKE = 0.5f; // 鉄球が重く当たったときの画面の揺れ（当てた人・当てられた人）
 static constexpr float FAN_DAMAGE = 5.0f;
 static constexpr float FAN_POWER = 2.6f;
 static constexpr float FAN_UP = 0.5f;
@@ -68,6 +69,16 @@ FlailArm::FlailArm(int hand, const ARM_LINKS& links) : Arm(hand, links)
 {
 	m_ArmModel = LoadModel("assets/models/arm_shield_base.obj");
 	Reset();
+}
+
+// 鉄球の重い衝撃：火花（大）・重い土ぼこり・画ぶれ（plan/11 の 2-6。見た目だけ）
+void FlailArm::SpawnHeavyEffects(int target)
+{
+	FighterManager& fighters = GetFighters();
+	fighters.SpawnEffect(EFFECT_HIT_SPARK_HEAVY, fighters.GetBodyPoint(target, 0.55f), { 0.0f, 1.0f, 0.0f });
+	fighters.SpawnEffect(EFFECT_DUST_RING_LARGE, fighters.GetBodyPoint(target, 0.05f), { 0.0f, 1.0f, 0.0f });
+	fighters.AddShake(target, HEAVY_SHAKE);
+	fighters.AddShake(GetSlot(), HEAVY_SHAKE);
 }
 
 void FlailArm::Reset()
@@ -128,6 +139,7 @@ void FlailArm::StrikeFan()
 		if (!target.Available || !inside(target.Body)) continue;
 		if (GetFighters().Launch(i, GetSlot(), AreaCalcLaunchDirection(m_Direction, FAN_UP), FAN_DAMAGE, FAN_POWER)) {
 			hit = true;
+			SpawnHeavyEffects(i);
 			hitTarget = i;
 		}
 	}
@@ -211,6 +223,7 @@ void FlailArm::StepBall(float dt)
 			: GetFighters().Launch(i, GetSlot(), AreaCalcLaunchDirection(m_Ball.GetMoveDirection(), BACK_UP), BACK_DAMAGE, BACK_POWER);
 		if (!applied) continue;
 		hit = true;
+		if (moving == FLAIL_OUT) SpawnHeavyEffects(i);
 		hitTarget = i;
 		if (!m_ThrowHit) ConsumeDurability(GetCost(COST_ROW, ARM_COST_HOLD_HIT));
 		m_ThrowHit = true;

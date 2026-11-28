@@ -120,7 +120,9 @@ float KnuckleArm::GetAirRushPitch() const
 void KnuckleArm::Strike(int target, float up, float damage, float power)
 {
 	// 1動作で1回だけ減らす（同じ動作でもう減らしていたら重ねない）。
-	if (GetFighters().Launch(target, GetSlot(), AreaCalcLaunchDirection(m_Direction, up), damage, power) && !m_UseConsumed) {
+	const bool applied = GetFighters().Launch(target, GetSlot(), AreaCalcLaunchDirection(m_Direction, up), damage, power);
+	if (applied && m_Rush) GetFighters().SpawnEffect(EFFECT_RUSH_STREAK, GetFighters().GetBodyPoint(target, 0.55f), m_Direction);
+	if (applied && !m_UseConsumed) {
 		ConsumeDurability(GetCost(COST_ROW, m_Rush ? ARM_COST_HOLD_HIT : ARM_COST_TAP_HIT));
 		m_UseConsumed = true;
 	}

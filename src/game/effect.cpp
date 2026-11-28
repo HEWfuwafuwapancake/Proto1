@@ -74,6 +74,14 @@ namespace
 		{ 22, EFFECT_SPREAD_RING, 0.0f, 5.5f, 5.5f, -0.5f, 2.5f, 0.5f, 0.5f, 0.2f, 0.42f, DUST_COLOR, DUST_END_COLOR, PARTICLE_SHAPE_SPHERE }, // 大きな土ぼこりの輪
 		{ 16, EFFECT_SPREAD_RING, 0.0f, 4.5f, 4.5f, 0.0f, 7.0f, 0.22f, 0.22f, 0.07f, 0.02f, RING_COLOR, RING_END_COLOR, PARTICLE_SHAPE_SPHERE }, // 空気の輪
 		{ 7, EFFECT_SPREAD_CONE, PI * 0.25f, 2.0f, 4.0f, -0.5f, 3.0f, 0.3f, 0.45f, 0.12f, 0.26f, DUST_COLOR, DUST_END_COLOR, PARTICLE_SHAPE_SPHERE }, // 蹴った土ぼこり
+		// No.230（plan/11 の 2-6 の ★★★）
+		{ 12, EFFECT_SPREAD_CONE, PI, 3.0f, 6.0f, 2.0f, 3.0f, 0.25f, 0.35f, 0.08f, 0.0f, { 0.8f, 0.4f, 1.0f, 1.0f }, { 0.6f, 0.2f, 0.9f, 0.0f }, PARTICLE_SHAPE_SPHERE }, // つかんだ紫の粒
+		{ 32, EFFECT_SPREAD_RING, 0.0f, 14.0f, 14.0f, 0.0f, 2.5f, 0.4f, 0.4f, 0.15f, 0.05f, { 1.0f, 0.95f, 0.75f, 0.8f }, { 1.0f, 0.9f, 0.6f, 0.0f }, PARTICLE_SHAPE_SPHERE }, // 衝撃波の輪
+		{ 10, EFFECT_SPREAD_CONE, PI * 0.08f, 14.0f, 24.0f, 0.0f, 3.0f, 0.2f, 0.3f, 0.09f, 0.02f, SPARK_COLOR, { 1.0f, 1.0f, 1.0f, 0.0f }, PARTICLE_SHAPE_SPHERE }, // 突進の筋
+		{ 10, EFFECT_SPREAD_CONE, PI * 0.5f, 5.0f, 10.0f, 4.0f, 3.0f, 0.15f, 0.3f, 0.08f, 0.0f, { 0.55f, 0.95f, 1.0f, 1.0f }, { 0.3f, 0.7f, 1.0f, 0.0f }, PARTICLE_SHAPE_SPHERE }, // レーザーの粒
+		{ 1, EFFECT_SPREAD_STAY, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.2f, 0.2f, 0.2f, 1.0f, { 0.6f, 0.95f, 1.0f, 0.9f }, { 0.6f, 0.95f, 1.0f, 0.0f }, PARTICLE_SHAPE_SPHERE }, // 砲口の光
+		{ 16, EFFECT_SPREAD_CONE, PI, 3.0f, 7.0f, 0.0f, 4.0f, 0.2f, 0.35f, 0.28f, 0.06f, { 1.0f, 0.7f, 0.2f, 1.0f }, { 1.0f, 0.25f, 0.05f, 0.0f }, PARTICLE_SHAPE_SPHERE }, // 爆発の火の玉
+		{ 10, EFFECT_SPREAD_CONE, PI, 1.5f, 4.0f, -1.5f, 2.0f, 0.6f, 1.0f, 0.3f, 0.6f, { 0.2f, 0.2f, 0.2f, 0.6f }, { 0.15f, 0.15f, 0.15f, 0.0f }, PARTICLE_SHAPE_SPHERE }, // 爆発の煙
 	};
 	constexpr uint32_t EFFECT_SEED = 20261127u; // 粒のばらつき専用の乱数の種
 

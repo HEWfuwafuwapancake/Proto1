@@ -30,6 +30,13 @@ enum EFFECT_ID
 	EFFECT_DUST_RING_LARGE, ///< 大きな土ぼこりの輪（重い着地・叩きつけ・衝撃）
 	EFFECT_AIR_RING, ///< 空気を蹴った白い輪（空中ジャンプ・空中ダッシュ。向きは輪の面の向き）
 	EFFECT_DUST_KICK, ///< 足元から向きへ飛ぶ土ぼこり（地上のダッシュの始まりなど）
+	EFFECT_GRAB_SPARK, ///< 触手でつかんだ所に散る紫の粒
+	EFFECT_SHOCK_RING, ///< ハンマーの衝撃波で地面を広がる輪
+	EFFECT_RUSH_STREAK, ///< ナックルの突進が当たった向きへ伸びる光の筋
+	EFFECT_LASER_SPARK, ///< レーザーが当たった所に散る水色の粒
+	EFFECT_LASER_FLASH, ///< レーザーの溜めが満ちた・砲を撃ったときの砲口の水色の光
+	EFFECT_EXPLOSION_FIRE, ///< ミサイルの爆発のオレンジの火の玉
+	EFFECT_EXPLOSION_SMOKE, ///< ミサイルの爆発のあとに上がる黒い煙
 	EFFECT_COUNT, ///< 型の数
 };
 

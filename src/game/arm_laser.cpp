@@ -17,6 +17,8 @@ static constexpr float AIM_RANGE = 60.0f; // フリーカメラの視線で相�
 static constexpr float AIM_RADIUS = 0.3f; // フリーカメラの視線の太さ（レティクルに少しかかれば狙える）。
 static constexpr float SHOT_RANGE = 60.0f; // 単発の届く距離。
 static constexpr float SHOT_RADIUS = 0.3f; // フリーカメラの単発の太さ（ロックオン中は必ず当たる）。
+static constexpr float MUZZLE_DISTANCE = 1.1f; // 肩から砲口までのおよその距離（エフェクトを出す所）
+static constexpr float CANNON_SHAKE = 0.3f; // 砲を撃った人の画面の揺れ
 static constexpr float SHOT_DAMAGE = 3.0f; // 単発は % だけ増やし、吹っ飛ばさない（連射されても歩ける）。
 static constexpr float CANNON_RANGE = 60.0f; // 砲の届く距離。
 static constexpr float CANNON_RADIUS = 0.6f; // 砲の太さ（当たり）。
@@ -100,6 +102,7 @@ void LaserArm::Fire(LASER_FIRE fire)
 			: AreaCalcFirstOnRay(shoulder, m_Direction, SHOT_RANGE, SHOT_RADIUS, targets, FIGHTER_COUNT, &distance);
 		if (target >= 0) distance = Vec3Length(toAim);
 		if (victim >= 0) hit = GetFighters().AddDamage(victim, GetSlot(), SHOT_DAMAGE);
+		if (hit) GetFighters().SpawnEffect(EFFECT_LASER_SPARK, GetFighters().GetBodyPoint(victim, 0.6f), Vec3Scale(m_Direction, -1.0f));
 		m_BeamEnd = Vec3Add(shoulder, Vec3Scale(m_Direction, distance));
 		StrikePillarsOnLine({ shoulder, m_BeamEnd, SHOT_RADIUS }, SHOT_DAMAGE, m_Direction);
 		m_BeamSeconds = SHOT_BEAM_SECONDS;
@@ -111,17 +114,27 @@ void LaserArm::Fire(LASER_FIRE fire)
 		LaserCalcPierce(shoulder, m_Direction, CANNON_RANGE, CANNON_RADIUS, targets, FIGHTER_COUNT, hits);
 		if (target >= 0) hits[target] = true;
 		for (int i = 0; i < FIGHTER_COUNT; ++i) {
-			if (hits[i] && GetFighters().Launch(i, GetSlot(), AreaCalcLaunchDirection(m_Direction, CANNON_UP), CANNON_DAMAGE, CANNON_POWER)) hit = true;
+			if (hits[i] && GetFighters().Launch(i, GetSlot(), AreaCalcLaunchDirection(m_Direction, CANNON_UP), CANNON_DAMAGE, CANNON_POWER)) {
+				hit = true;
+				GetFighters().SpawnEffect(EFFECT_LASER_SPARK, GetFighters().GetBodyPoint(i, 0.6f), m_Direction);
+			}
 		}
 		m_BeamEnd = Vec3Add(shoulder, Vec3Scale(m_Direction, CANNON_RANGE));
 		StrikePillarsOnLine({ shoulder, m_BeamEnd, CANNON_RADIUS }, CANNON_DAMAGE, m_Direction);
 		m_BeamSeconds = CANNON_BEAM_SECONDS;
 		Rumble(CANNON_RUMBLE, CANNON_RUMBLE, CANNON_RUMBLE_SECONDS);
+		GetFighters().SpawnEffect(EFFECT_LASER_FLASH, GetMuzzle(), m_Direction);
+		GetFighters().AddShake(GetSlot(), CANNON_SHAKE);
 	}
 	m_BeamCannon = fire == LASER_FIRE_CANNON;
 	const bool cannon = fire == LASER_FIRE_CANNON;
 	PlaySe(cannon ? SE_LASER_CANNON : SE_LASER_SHOT); // 発射音は撃った腕で鳴らす（相手の側へは移さない）
 	ConsumeDurability(GetCost(COST_ROW, cannon ? (hit ? ARM_COST_HOLD_HIT : ARM_COST_HOLD_MISS) : (hit ? ARM_COST_TAP_HIT : ARM_COST_TAP_MISS)));
+}
+
+VEC3 LaserArm::GetMuzzle() const
+{
+	return Vec3Add(GetShoulder(), Vec3Scale(m_Direction, MUZZLE_DISTANCE));
 }
 
 void LaserArm::Update(const ARM_INPUT& input)
@@ -138,6 +151,10 @@ void LaserArm::Update(const ARM_INPUT& input)
 	}
 	m_BeamSeconds = fmaxf(0.0f, m_BeamSeconds - dt);
 	m_GlowTime = m_Calc.IsCharging() ? m_GlowTime + dt : 0.0f;
+	// 溜めが満ちた瞬間に、砲口を一瞬強く光らせる（見た目だけ）。
+	const bool full = m_Calc.IsCharging() && m_Calc.GetCharge(PARAMS) >= 1.0f;
+	if (full && !m_WasFull) GetFighters().SpawnEffect(EFFECT_LASER_FLASH, GetMuzzle(), m_Direction);
+	m_WasFull = full;
 	// 溜めの音は溜め始めに1回鳴らし、撃つ・やめたら止める。
 	if (m_Calc.IsCharging() && !m_ChargeSePlaying) m_ChargeSe.PlayAt(SE_LASER_CHARGE, GetShoulder(), GetSlot());
 	else if (m_Calc.IsCharging()) m_ChargeSe.MoveTo(GetShoulder()); // 動いても、溜めの音は腕についてくる

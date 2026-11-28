@@ -40,6 +40,9 @@ static constexpr float SWING_TIP_SPEED = 80.0f; // 振り回す間に、つか�
 static constexpr float THROW_UP = 1.2f; // 投げる向きの水平の単位方向に足す上向きの量（ナックルのアッパーのように斜め上へ）。
 static constexpr float SLAM_LIFT = 1.3f; // 持ち上げる、肩からの高さ。
 static constexpr float SLAM_FORWARD = 1.6f; // たたきつける所の、体からの前への距離。
+// 叩きつけのエフェクト（plan/11 の 2-6。ダメージ%だけの当たりなので、ヒットストップと画ぶれもここで足す）
+static constexpr int SLAM_HITSTOP_FRAMES = 6;
+static constexpr float SLAM_SHAKE = 0.4f;
 static constexpr float SLAM_DAMAGE = 8.0f;
 static constexpr float SLAM_HOLD_SECONDS = 10.0f; // 段階攻撃の間は計算の自動の解放を使わない（この秒数は届かない長さ）。
 static constexpr float FINISH_THROW_DAMAGE = 6.0f; // たたきつけたあとの投げ。
@@ -381,6 +384,14 @@ void TentacleArm::Update(const ARM_INPUT& input)
 			if (!m_SlamHit && m_ComboTime >= SLAM_IMPACT_SECONDS) {
 				m_SlamHit = true;
 				GetFighters().AddDamage(arm.GetTarget(), GetSlot(), SLAM_DAMAGE);
+				FighterManager& fighters = GetFighters();
+				const int victim = arm.GetTarget();
+				fighters.SpawnEffect(EFFECT_DUST_RING_LARGE, fighters.GetBodyPoint(victim, 0.05f), { 0.0f, 1.0f, 0.0f });
+				fighters.SpawnEffect(EFFECT_HIT_SPARK_MEDIUM, fighters.GetBodyPoint(victim, 0.5f), { 0.0f, 1.0f, 0.0f });
+				fighters.StartHitstop(victim, SLAM_HITSTOP_FRAMES, true);
+				fighters.StartHitstop(GetSlot(), SLAM_HITSTOP_FRAMES, false);
+				fighters.AddShake(victim, SLAM_SHAKE);
+				fighters.AddShake(GetSlot(), SLAM_SHAKE);
 				Rumble(SLAM_RUMBLE_SMALL, SLAM_RUMBLE_LARGE, SLAM_RUMBLE_SECONDS);
 				PlayHitSe(SE_TENTACLE_SLAM, arm.GetTarget());
 			}
@@ -419,6 +430,7 @@ void TentacleArm::Update(const ARM_INPUT& input)
 			ConsumeDurability(GetCost(COST_ROW, ARM_COST_TAP_HIT));
 			m_ReachPending = false;
 			GetFighters().AddDamage(event.Grabbed, GetSlot(), GRAB_DAMAGE);
+			GetFighters().SpawnEffect(EFFECT_GRAB_SPARK, GetFighters().GetBodyPoint(event.Grabbed, 0.6f), { 0.0f, 1.0f, 0.0f });
 			Rumble(GRAB_RUMBLE_SMALL, GRAB_RUMBLE_LARGE, GRAB_RUMBLE_SECONDS);
 		}
 		else arm.Reset();
