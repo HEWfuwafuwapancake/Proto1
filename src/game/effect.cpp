@@ -41,6 +41,8 @@ namespace
 	constexpr PARTICLE_COLOR SPARK_END_COLOR{ 1.0f, 0.65f, 0.2f, 0.0f };
 	constexpr PARTICLE_COLOR RING_COLOR{ 1.0f, 1.0f, 1.0f, 0.85f };
 	constexpr PARTICLE_COLOR RING_END_COLOR{ 1.0f, 1.0f, 1.0f, 0.0f };
+	constexpr PARTICLE_COLOR DUST_COLOR{ 0.72f, 0.66f, 0.56f, 0.55f }; // 土ぼこり
+	constexpr PARTICLE_COLOR DUST_END_COLOR{ 0.72f, 0.66f, 0.56f, 0.0f };
 	constexpr PARTICLE_COLOR DEBRIS_COLOR{ 0.62f, 0.64f, 0.7f, 1.0f };
 	constexpr PARTICLE_COLOR PILLAR_COLOR{ 1.0f, 1.0f, 1.0f, 0.9f }; // 色は出すときにその人の色に変える
 	constexpr EFFECT_DESC EFFECT_TABLE[EFFECT_COUNT] = {
@@ -67,6 +69,11 @@ namespace
 		{ 1, EFFECT_SPREAD_CONE, PI * 0.2f, 0.9f, 1.7f, -1.5f, 1.0f, 0.7f, 1.1f, 0.15f, 0.4f, { 0.12f, 0.12f, 0.12f, 0.6f }, { 0.08f, 0.08f, 0.08f, 0.0f }, PARTICLE_SHAPE_SPHERE }, // 黒い煙
 		// No.228（plan/11 の 2-5）
 		{ 22, EFFECT_SPREAD_CONE, PI, 6.0f, 13.0f, 6.0f, 3.0f, 0.25f, 0.4f, 0.1f, 0.0f, { 1.0f, 0.95f, 0.35f, 1.0f }, { 1.0f, 0.75f, 0.1f, 0.0f }, PARTICLE_SHAPE_SPHERE }, // パリィの火花
+		// No.229（plan/11 の 2-4）
+		{ 12, EFFECT_SPREAD_RING, 0.0f, 3.0f, 3.0f, -0.5f, 3.0f, 0.35f, 0.35f, 0.12f, 0.24f, DUST_COLOR, DUST_END_COLOR, PARTICLE_SHAPE_SPHERE }, // 土ぼこりの輪
+		{ 22, EFFECT_SPREAD_RING, 0.0f, 5.5f, 5.5f, -0.5f, 2.5f, 0.5f, 0.5f, 0.2f, 0.42f, DUST_COLOR, DUST_END_COLOR, PARTICLE_SHAPE_SPHERE }, // 大きな土ぼこりの輪
+		{ 16, EFFECT_SPREAD_RING, 0.0f, 4.5f, 4.5f, 0.0f, 7.0f, 0.22f, 0.22f, 0.07f, 0.02f, RING_COLOR, RING_END_COLOR, PARTICLE_SHAPE_SPHERE }, // 空気の輪
+		{ 7, EFFECT_SPREAD_CONE, PI * 0.25f, 2.0f, 4.0f, -0.5f, 3.0f, 0.3f, 0.45f, 0.12f, 0.26f, DUST_COLOR, DUST_END_COLOR, PARTICLE_SHAPE_SPHERE }, // 蹴った土ぼこり
 	};
 	constexpr uint32_t EFFECT_SEED = 20261127u; // 粒のばらつき専用の乱数の種
 

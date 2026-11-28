@@ -49,6 +49,10 @@ static constexpr float SMOKE_BLACK_SECONDS = 0.12f;	// 150% 以上で黒い煙�
 static constexpr int SMOKE_SPARK_EVERY = 4;		// 黒い煙の何回に1回、小さな火花も出すか
 static constexpr float SMOKE_HEIGHT = 0.8f;		// 煙を出す高さ（背の高さに対する割合）
 static constexpr float RESPAWN_PILLAR_HEIGHT = 4.0f;	// 復活の光の柱が降り始める高さ
+static constexpr float SHAKE_HEAVY_LAND = 0.2f;	// 重い着地の画面の揺れ（その人だけ）
+static constexpr float DUST_HEIGHT = 0.05f;		// 足元の土ぼこりを出す高さ（背の高さに対する割合）
+static constexpr float AIR_RING_HEIGHT = 0.1f;		// 空中ジャンプの輪を出す高さ
+static constexpr float AIR_DASH_HEIGHT = 0.5f;		// 空中ダッシュの輪を出す高さ
 
 void FighterManager::LoadModels()
 {
@@ -146,6 +150,7 @@ void FighterManager::Update()
 			SpawnEffect(EFFECT_SPARKLE, GetBodyPoint(i, HIT_EFFECT_HEIGHT), { 0.0f, 1.0f, 0.0f });
 		}
 		UpdateDamageEffects(i, dt);
+		SpawnMoveEffects(i);
 #ifdef _DEBUG
 		if (event == DUMMY_EVENT_OUT || event == DUMMY_EVENT_RESPAWN) {
 			hal::dout << "体" << i + 1 << (event == DUMMY_EVENT_OUT ? "：場外" : "：復活（0%）");
@@ -338,6 +343,23 @@ PARTICLE_COLOR FighterManager::GetEffectColor(int index) const
 {
 	const XMFLOAT4 color = Fighter::GetPlayerColor(index);
 	return { color.x, color.y, color.z, color.w };
+}
+
+void FighterManager::SpawnMoveEffects(int index)
+{
+	const int events = m_Fighters[index].GetMoveEvents();
+	if (events == 0 || !m_Fighters[index].IsActive()) return;
+	const VEC3 feet = GetBodyPoint(index, DUST_HEIGHT);
+	if (events & (FIGHTER_MOVE_JUMP | FIGHTER_MOVE_LAND)) SpawnEffect(EFFECT_DUST_RING, feet, { 0.0f, 1.0f, 0.0f });
+	if (events & FIGHTER_MOVE_LAND_HEAVY) {
+		SpawnEffect(EFFECT_DUST_RING_LARGE, feet, { 0.0f, 1.0f, 0.0f });
+		AddShake(index, SHAKE_HEAVY_LAND);
+	}
+	if (events & FIGHTER_MOVE_AIR_JUMP) SpawnEffect(EFFECT_AIR_RING, GetBodyPoint(index, AIR_RING_HEIGHT), { 0.0f, 1.0f, 0.0f });
+	const VEC3& dash = m_Fighters[index].GetDashDirection();
+	// 地上のダッシュは足元から後ろへ土ぼこり、空中のダッシュは後ろに空気の輪。
+	if (events & FIGHTER_MOVE_DASH) SpawnEffect(EFFECT_DUST_KICK, feet, { -dash.X, 0.35f, -dash.Z });
+	if (events & FIGHTER_MOVE_AIR_DASH) SpawnEffect(EFFECT_AIR_RING, GetBodyPoint(index, AIR_DASH_HEIGHT), dash);
 }
 
 void FighterManager::UpdateDamageEffects(int index, float dt)
