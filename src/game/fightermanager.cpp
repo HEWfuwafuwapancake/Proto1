@@ -37,6 +37,9 @@ static constexpr float SHAKE_HEAVY = 0.6f;		// 「強」の当たり
 static constexpr float SHAKE_FINISH = 1.0f;		// 「決め手」の当たり
 static constexpr float SHAKE_RING_OUT_WALL = 0.6f;	// 横の壁（DEAD LINE）を越えて場外になった（場外にした人・された人）
 static constexpr float SHAKE_RING_OUT_FALL = 0.4f;	// 下へ落ちて場外になった
+// 強い当たりで、当てた人・当てられた人の画面のふちを一瞬白く光らせる強さ（0〜1）
+static constexpr float EDGE_FLASH_HEAVY = 0.6f;	// 「強」の当たり
+static constexpr float EDGE_FLASH_FINISH = 1.0f;	// 「決め手」の当たり
 // 当たりの火花を出す場所
 static constexpr float HIT_EFFECT_HEIGHT = 0.55f;	// 当てられた人の背の高さに対する割合（胸のあたり）
 static constexpr float HIT_EFFECT_FORWARD = 0.45f;	// 胸から当てた人の側へずらす距離（体の表面のあたり）
@@ -109,6 +112,7 @@ void FighterManager::Reset()
 		m_GuardedHit[i] = false;
 		m_GuardedBy[i] = -1;
 		m_PendingShake[i] = 0.0f;
+		m_PendingFlash[i] = {};
 		m_Escapes[i].Reset();
 	}
 }
@@ -373,6 +377,21 @@ void FighterManager::SpawnHitEffects(int index, int attacker, const VEC3& direct
 	else SpawnEffect(EFFECT_HIT_SPARK_LIGHT, point, direction);
 }
 
+void FighterManager::AddScreenFlash(int index, const SCREEN_FLASH& flash)
+{
+	if (index < 0 || index >= FIGHTER_COUNT) return;
+	m_PendingFlash[index].Edge = fminf(1.0f, m_PendingFlash[index].Edge + flash.Edge);
+	m_PendingFlash[index].Full = fminf(1.0f, m_PendingFlash[index].Full + flash.Full);
+}
+
+SCREEN_FLASH FighterManager::TakeScreenFlash(int index)
+{
+	if (index < 0 || index >= FIGHTER_COUNT) return {};
+	const SCREEN_FLASH flash = m_PendingFlash[index];
+	m_PendingFlash[index] = {};
+	return flash;
+}
+
 float FighterManager::TakeShake(int index)
 {
 	if (index < 0 || index >= FIGHTER_COUNT) return 0.0f;
@@ -497,6 +516,11 @@ bool FighterManager::Launch(int index, int attacker, const VEC3& direction, floa
 		: frames >= HITSTOP.MediumFrames ? SHAKE_MEDIUM : 0.0f;
 	AddShake(index, shake);
 	AddShake(attacker, shake);
+	if (frames >= HITSTOP.HeavyFrames) {
+		const SCREEN_FLASH edge{ frames >= HITSTOP.FinishFrames ? EDGE_FLASH_FINISH : EDGE_FLASH_HEAVY, 0.0f };
+		AddScreenFlash(index, edge);
+		AddScreenFlash(attacker, edge);
+	}
 	SpawnHitEffects(index, attacker, direction, frames);
 	m_Versus.RecordAttack(attacker, index);
 	return true;

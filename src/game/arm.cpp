@@ -61,6 +61,10 @@ static constexpr int PARRY_HITSTOP_FRAMES = 6; // パリィしたとき、パリ
 static constexpr int PARRIED_HITSTOP_FRAMES = 12; // パリィされたとき、攻撃した人を止めるフレーム数（返されたことを見せる）
 static constexpr float GUARD_SHAKE = 0.2f; // ガードで防いだときの画面の揺れ（防いだ人と攻撃した人）
 static constexpr float PARRY_SHAKE = 0.4f; // パリィしたときの画面の揺れ（パリィした人とされた人）
+static constexpr float PARRY_SCREEN_FLASH = 0.8f; // パリィした人の画面を一瞬明るくする強さ（0〜1）
+static constexpr float GUARD_EFFECT_HEIGHT = 0.6f; // 攻撃した人の火花・輪を出す高さ（背の高さに対する割合）
+static constexpr float GUARD_EFFECT_FORWARD = 0.45f; // 攻撃した人の胸から、防いだ人の側へずらす距離
+static constexpr PARTICLE_COLOR PARRIED_RING_COLOR{ 1.0f, 0.9f, 0.2f, 1.0f }; // パリィされた人の体に出す輪の色
 static constexpr float GUARD_RAISE_CLIP_SECONDS = 4.0f / 24.0f;
 static constexpr float GUARD_HIT_CLIP_SECONDS = 8.0f / 24.0f;
 static constexpr float PARRY_CLIP_SECONDS = 12.0f / 24.0f;
@@ -247,6 +251,25 @@ void ArmManager::UpdateWearEffects(float dt)
 	}
 }
 
+// 防いだ所に火花（ガードは攻撃が来た向きへ小さく、パリィは黄色く大きく放射）、攻撃した人の体に火花（弾かれた）。
+// パリィでは、攻撃した人の体に黄色い輪を出し、パリィした人の画面を一瞬明るくする（plan/11 の 2-5）。
+void ArmManager::SpawnGuardEffects(int attacker, bool parried)
+{
+	FighterManager& fighters = *m_Links.Fighters;
+	if (parried) fighters.AddScreenFlash(m_Links.Slot, { 0.0f, PARRY_SCREEN_FLASH });
+	if (attacker < 0 || attacker >= FIGHTER_COUNT) {
+		fighters.SpawnEffect(parried ? EFFECT_PARRY_SPARK : EFFECT_HIT_SPARK_LIGHT, m_GuardFeedbackPosition, { 0.0f, 1.0f, 0.0f });
+		return;
+	}
+	const VEC3 chest = fighters.GetBodyPoint(attacker, GUARD_EFFECT_HEIGHT);
+	const VEC3 toward = Vec3Sub(chest, m_GuardFeedbackPosition);
+	fighters.SpawnEffect(parried ? EFFECT_PARRY_SPARK : EFFECT_HIT_SPARK_LIGHT, m_GuardFeedbackPosition, toward);
+	const float length = Vec3Length(toward);
+	const VEC3 back = length > 1.0e-4f ? Vec3Scale(toward, -1.0f / length) : VEC3{ 0.0f, 1.0f, 0.0f };
+	fighters.SpawnEffect(EFFECT_HIT_SPARK_LIGHT, Vec3Add(chest, Vec3Scale(back, GUARD_EFFECT_FORWARD)), Vec3Scale(back, -1.0f));
+	if (parried) fighters.SpawnEffect(EFFECT_FEET_RING, chest, { 0.0f, 1.0f, 0.0f }, &PARRIED_RING_COLOR);
+}
+
 void ArmManager::BreakExhaustedArm(int hand)
 {
 	if (!CanBreak() || m_Types[hand] == ARM_TYPE_NONE || !m_Uses[hand].IsExhausted()) return;
@@ -281,6 +304,7 @@ void ArmManager::UpdateGuards(const Fighter& player, float dt, bool interrupted)
 			m_GuardFeedbackPosition = Vec3Add(arm.GetDrawShoulder(),
 				{ sinf(player.GetYaw()) * GUARD_MARKER_FORWARD, 0.0f, cosf(player.GetYaw()) * GUARD_MARKER_FORWARD });
 			m_Links.Fighters->SpawnEffect(m_GuardFeedbackParry ? EFFECT_PARRY_FLASH : EFFECT_GUARD_FLASH, m_GuardFeedbackPosition, { 0.0f, 1.0f, 0.0f });
+			SpawnGuardEffects(attacker, m_GuardFeedbackParry);
 		}
 		if (result == PARRY_SUCCESS) arm.Rumble(PARRY_RUMBLE, PARRY_RUMBLE, PARRY_RUMBLE_SECONDS);
 		else if (result == PARRY_BREAK_ARM && !IsDurabilityLocked()) {

@@ -357,6 +357,7 @@ private:
 	void UpdateEquip(const Fighter& player);
 	void BreakExhaustedArm(int hand);
 	void SpawnBreakEffects(int hand, const VEC3& direction); // 腕が壊れた所に破片と白い光を出す（見た目だけ）
+	void SpawnGuardEffects(int attacker, bool parried); // 防いだ・パリィしたときの火花・輪・画面の光（見た目だけ）
 	void UpdateWearEffects(float dt); // 耐久が残りわずかな腕から、ときどき煙と火花を出す（見た目だけ）
 	void PlayOwnSe(SE_ID id) const; // 腕の破壊・ガードの音を、自分の体の位置で鳴らす
 	void UpdateGuards(const Fighter& player, float dt, bool interrupted);

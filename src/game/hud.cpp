@@ -33,6 +33,12 @@ static constexpr float PERCENT_POP_SCALE = 0.45f;	// 弾み 1 で数字を大き
 static constexpr float PERCENT_POP_JITTER = 4.0f;	// 弾み 1 で数字を左右に震わせる幅
 static constexpr float SCORE_POP_SCALE = 0.8f;		// 弾み 1 で KO 数を大きくする割合
 static constexpr XMFLOAT4 SCORE_POP_COLOR{ 1.0f, 0.9f, 0.25f, 1.0f };	// 弾んでいる間の KO 数の色
+// 画面に重ねる白い光（plan/11 の 2-1・2-5。描画だけ）
+static constexpr float EDGE_FLASH_SECONDS = 0.2f;	// 強い当たりの、ふちの光が消えるまでの秒数
+static constexpr float FULL_FLASH_SECONDS = 0.15f;	// パリィの、全体の光が消えるまでの秒数
+static constexpr float EDGE_FLASH_THICKNESS = 36.0f;	// ふちの光の太さ（外側の帯。内側にその半分の帯を重ねて、外ほど濃くする）
+static constexpr float EDGE_FLASH_ALPHA = 0.55f;	// 強さ 1 のときの、ふちの光の濃さ
+static constexpr float FULL_FLASH_ALPHA = 0.45f;	// 強さ 1 のときの、全体の光の濃さ
 static constexpr float SCORE_DIGIT_WIDTH = 28.0f;	// 左上のスコアの桁の幅
 static constexpr float SCORE_X = 30.0f;				// 左上のスコアの左端
 static constexpr float SCORE_Y = 56.0f;				// KOの文字の下に置く
@@ -237,6 +243,27 @@ void Hud::DrawPlayerTag(int slot, float centerX, float y, float digitWidth) cons
 	Number2DDrawText("P", left + numberWidth + PLAYER_TAG_GAP, y, dot, GLYPH_ALIGN_LEFT, color);
 }
 
+void Hud::AddScreenFlash(const SCREEN_FLASH& flash)
+{
+	m_Flash.Edge = fminf(1.0f, m_Flash.Edge + flash.Edge);
+	m_Flash.Full = fminf(1.0f, m_Flash.Full + flash.Full);
+}
+
+void Hud::DrawScreenFlash(void) const
+{
+	if (m_Flash.Full > 0.0f) Number2DDrawBox({ 0.0f, 0.0f, m_Width, m_Height }, { 1.0f, 1.0f, 1.0f, FULL_FLASH_ALPHA * m_Flash.Full });
+	if (m_Flash.Edge <= 0.0f) return;
+	// 外側の太い帯と内側の細い帯を重ね、ふちほど濃く見せる。
+	for (int layer = 0; layer < 2; ++layer) {
+		const float t = EDGE_FLASH_THICKNESS * (layer == 0 ? 1.0f : 0.5f);
+		const XMFLOAT4 color{ 1.0f, 1.0f, 1.0f, EDGE_FLASH_ALPHA * 0.5f * m_Flash.Edge };
+		Number2DDrawBox({ 0.0f, 0.0f, m_Width, t }, color);
+		Number2DDrawBox({ 0.0f, m_Height - t, m_Width, t }, color);
+		Number2DDrawBox({ 0.0f, t, t, m_Height - t * 2.0f }, color);
+		Number2DDrawBox({ m_Width - t, t, t, m_Height - t * 2.0f }, color);
+	}
+}
+
 void Hud::DrawPercent(float percent, float centerX, float y, float digitWidth, float pop) const
 {
 	// % に合わせて白 → 黄 → オレンジ → 赤 → 暗い赤にし、増えた瞬間は大きくして震わせる。
@@ -283,6 +310,7 @@ void Hud::Reset(void)
 		const ARM_TYPE type = m_Arms->GetType(hand);
 		m_ArmFlips[hand] = { type, type, ARM_FLIP_SECONDS, 1 };
 	}
+	m_Flash = {};
 }
 
 void Hud::Update(void)
@@ -298,6 +326,8 @@ void Hud::Update(void)
 	if (score > m_LastScore) m_ScorePop = 1.0f;
 	else m_ScorePop = fmaxf(0.0f, m_ScorePop - dt / POP_SECONDS);
 	m_LastScore = score;
+	m_Flash.Edge = fmaxf(0.0f, m_Flash.Edge - dt / EDGE_FLASH_SECONDS);
+	m_Flash.Full = fmaxf(0.0f, m_Flash.Full - dt / FULL_FLASH_SECONDS);
 	for (int hand = 0; hand < 2; ++hand) {
 		ARM_FLIP& flip = m_ArmFlips[hand];
 		const ARM_TYPE type = m_Arms->GetType(hand);
@@ -611,6 +641,7 @@ void Hud::Draw(void) const
 	if (m_Scene->GetScene() != SCENE_MATCH && m_Scene->GetScene() != SCENE_PAUSE) return;
 	// 自分の画面に 1280×720 の座標を縦横同じ倍率で当てはめ、描き終わったら画面全体に戻す。
 	Shader_Set2DSize(m_Width, m_Height);
+	DrawScreenFlash();
 	const float centerX = m_Width * 0.5f;
 	const int score = m_Fighters->GetScore(m_Slot);
 

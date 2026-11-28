@@ -3,6 +3,7 @@
 
 #include "core/dx11.h"
 #include "game/arm.h"
+#include "game/effect.h"
 #include "physics/scenecalc.h"
 #include "physics/versuscalc.h"
 #include <array>
@@ -39,6 +40,10 @@ public:
 
 	/// @brief 試合中の自分の画面の HUD を描く（自分のビューポートで、深度テストを切りライトを消してから呼ぶ）
 	void Draw(void) const;
+
+	/// @brief 画面に重ねる白い光を足す（強い当たりのふち・パリィの全体。描画だけ）
+	/// @param flash 足す強さ
+	void AddScreenFlash(const SCREEN_FLASH& flash);
 
 	/// @brief 起動・キャラ・モード・IP・ロビー・結果を画面全体に描く（全画面のビューポートに戻してから呼ぶ）
 	void DrawScene(const VersusCalc& participants, const NetSession& net, const SessionAddressCalc& address,
@@ -82,6 +87,8 @@ private:
 	float m_PercentPops[FIGHTER_COUNT] = {}; // % の数字の弾みの残り（0〜1）
 	int m_LastScore = 0; // 前のフレームの自分の KO 数（増えたら数字を弾ませる）
 	float m_ScorePop = 0.0f; // KO 数の弾みの残り（0〜1）
+	SCREEN_FLASH m_Flash; // 画面に重ねている白い光の残り（0〜1）
+	void DrawScreenFlash(void) const; // 画面のふち・全体に白い光を重ねる
 	int m_Slot = 0;
 	float m_Width = 1280.0f;	// HUD の座標での画面の幅
 	float m_Height = 720.0f;	// HUD の座標での画面の高さ
