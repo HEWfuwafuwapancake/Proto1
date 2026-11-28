@@ -45,6 +45,7 @@ public:
 	ARM_BODY_CLIP GetBodyClip() const override;
 
 private:
+	void SpawnHeavyEffects(int target); // 鉄球の重い衝撃の火花・土ぼこり・画ぶれ（見た目だけ）
 	void StrikeFan();
 	void StepSpin(float dt);
 	void ThrowBall();

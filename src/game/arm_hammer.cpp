@@ -35,6 +35,7 @@ static constexpr float IMPACT_DAMAGE = 18.0f;
 static constexpr float IMPACT_POWER = 2.8f;
 static constexpr float IMPACT_UP = 1.25f; // 外への水平の単位方向に足す上向きの量。
 static constexpr float WAVE_HEIGHT = 0.3f; // 衝撃波の中心の足元からの高さ。
+static constexpr float WAVE_SHAKE = 0.5f; // 衝撃波を出した人の画面の揺れ（当たった人は当たりの揺れ）
 static constexpr float WAVE_RADIUS = 4.5f;
 static constexpr float WAVE_HALF_HEIGHT = 1.0f; // 衝撃波の中心から上下それぞれに届く幅（横は広く、縦は薄い）。
 static constexpr float WAVE_DAMAGE = 18.0f;
@@ -135,6 +136,14 @@ void HammerArm::Impact()
 		m_UseConsumed = true;
 	}
 	if (hit) Rumble(HIT_RUMBLE_SMALL, HIT_RUMBLE_LARGE, HIT_RUMBLE_SECONDS);
+	// 衝撃波は地面に輪と土ぼこりを広げて画面を揺らし、地上の単押しは叩いた所に土ぼこり（見た目だけ）。
+	const VEC3 ground{ m_RangeCenter.X, feet.y + 0.05f, m_RangeCenter.Z };
+	if (m_Wave) {
+		GetFighters().SpawnEffect(EFFECT_SHOCK_RING, ground, { 0.0f, 1.0f, 0.0f });
+		GetFighters().SpawnEffect(EFFECT_DUST_RING_LARGE, ground, { 0.0f, 1.0f, 0.0f });
+		GetFighters().AddShake(GetSlot(), WAVE_SHAKE);
+	}
+	else if (!m_AirTap) GetFighters().SpawnEffect(EFFECT_DUST_RING, ground, { 0.0f, 1.0f, 0.0f });
 }
 
 void HammerArm::Update(const ARM_INPUT& input)

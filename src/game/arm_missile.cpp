@@ -25,6 +25,7 @@ static constexpr float FIRE_OUT_ANGLE = XMConvertToRadians(30.0f); // 撃つ向�
 static constexpr float FIRE_SPREAD_ANGLE = XMConvertToRadians(8.0f); // 何発かまとめて撃つときの、1発ごとの左右のずらし
 // 爆発：指は小さく、腕は中くらい。吹っ飛ばす強さは、浮島の中央から指は150%・腕は100%で場外まで飛ぶ値。
 static constexpr float FINGER_BLAST_RADIUS = 0.5f;
+static constexpr float BLAST_SHAKE = 0.4f; // 爆発で、撃った人の画面を揺らす強さ（当たった人は当たりの揺れ）
 static constexpr float FINGER_DAMAGE = 6.0f;
 static constexpr float FINGER_POWER = 1.6f;
 static constexpr float ARM_BLAST_RADIUS = 1.5f;
@@ -174,6 +175,11 @@ void MissileArm::AddBlast(const VEC3& position, float radius)
 		if (m_Blasts[i].Seconds < m_Blasts[slot].Seconds) slot = i;
 	}
 	m_Blasts[slot] = { position, radius, BLAST_SECONDS };
+	// 今の爆発の球に、火の玉・黒い煙・破片を足し、撃った人の画面を揺らす（見た目だけ）。
+	GetFighters().SpawnEffect(EFFECT_EXPLOSION_FIRE, position, { 0.0f, 1.0f, 0.0f });
+	GetFighters().SpawnEffect(EFFECT_EXPLOSION_SMOKE, position, { 0.0f, 1.0f, 0.0f });
+	GetFighters().SpawnEffect(EFFECT_ARM_DEBRIS, position, { 0.0f, 1.0f, 0.0f });
+	GetFighters().AddShake(GetSlot(), BLAST_SHAKE);
 }
 
 // 弾を進め、敵・浮島・高台に当たった弾と寿命が来た弾をその場で爆発させる。
