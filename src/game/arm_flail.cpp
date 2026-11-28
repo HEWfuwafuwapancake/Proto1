@@ -208,6 +208,7 @@ void FlailArm::StepBall(float dt)
 {
 	if (!m_Ball.IsFlying()) return;
 	const FLAIL_STATE moving = m_Ball.GetState();
+	if (moving != FLAIL_IDLE) GetFighters().SpawnEffect(EFFECT_TRAIL, m_Ball.GetPosition(), { 0.0f, 1.0f, 0.0f }); // 飛んでいる鉄球の軌跡（見た目だけ）
 	m_Ball.Step(dt, GetShoulder(), THROW_PARAMS);
 	const CAPSULE sweep{ m_Ball.GetPrevious(), m_Ball.GetPosition(), BALL_RADIUS };
 	StrikePillarsOnLine(sweep, moving == FLAIL_OUT ? OUT_DAMAGE : BACK_DAMAGE, m_Ball.GetMoveDirection());

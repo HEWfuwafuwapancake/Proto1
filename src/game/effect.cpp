@@ -12,6 +12,7 @@ namespace
 		EFFECT_SPREAD_RING, ///< 向きに垂直な面の中で、等しい間隔で外へ広げる
 		EFFECT_SPREAD_STAY, ///< その場にとどまる（広がって消える光）
 		EFFECT_SPREAD_COLUMN, ///< 向きに沿った柱の中に並べ、向きへ飛ばす（光の柱）
+		EFFECT_SPREAD_INWARD, ///< まわりの球の上に置き、中心へ向けて飛ばす（溜め。球の半径は Jitter）
 	};
 
 	/// @brief 1つの型の出し方
@@ -82,6 +83,13 @@ namespace
 		{ 1, EFFECT_SPREAD_STAY, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.2f, 0.2f, 0.2f, 1.0f, { 0.6f, 0.95f, 1.0f, 0.9f }, { 0.6f, 0.95f, 1.0f, 0.0f }, PARTICLE_SHAPE_SPHERE }, // 砲口の光
 		{ 16, EFFECT_SPREAD_CONE, PI, 3.0f, 7.0f, 0.0f, 4.0f, 0.2f, 0.35f, 0.28f, 0.06f, { 1.0f, 0.7f, 0.2f, 1.0f }, { 1.0f, 0.25f, 0.05f, 0.0f }, PARTICLE_SHAPE_SPHERE }, // 爆発の火の玉
 		{ 10, EFFECT_SPREAD_CONE, PI, 1.5f, 4.0f, -1.5f, 2.0f, 0.6f, 1.0f, 0.3f, 0.6f, { 0.2f, 0.2f, 0.2f, 0.6f }, { 0.15f, 0.15f, 0.15f, 0.0f }, PARTICLE_SHAPE_SPHERE }, // 爆発の煙
+		// No.231（plan/11 の 2-1・2-6・2-7 の残り）
+		{ 1, EFFECT_SPREAD_STAY, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.18f, 0.18f, 0.12f, 0.02f, { 1.0f, 1.0f, 1.0f, 0.55f }, { 1.0f, 1.0f, 1.0f, 0.0f }, PARTICLE_SHAPE_SPHERE }, // 軌跡
+		{ 1, EFFECT_SPREAD_STAY, 0.0f, 0.0f, 0.0f, -0.6f, 0.0f, 0.4f, 0.4f, 0.12f, 0.3f, { 0.75f, 0.75f, 0.75f, 0.45f }, { 0.6f, 0.6f, 0.6f, 0.0f }, PARTICLE_SHAPE_SPHERE }, // 煙の尾
+		{ 12, EFFECT_SPREAD_CONE, PI * 0.3f, 7.0f, 12.0f, 0.0f, 8.0f, 0.12f, 0.18f, 0.08f, 0.02f, { 1.0f, 1.0f, 1.0f, 0.9f }, { 0.8f, 0.9f, 1.0f, 0.0f }, PARTICLE_SHAPE_SPHERE }, // 刀の筋
+		{ 22, EFFECT_SPREAD_CONE, PI * 0.4f, 9.0f, 16.0f, 0.0f, 7.0f, 0.15f, 0.22f, 0.11f, 0.02f, { 1.0f, 1.0f, 1.0f, 0.95f }, { 0.8f, 0.9f, 1.0f, 0.0f }, PARTICLE_SHAPE_SPHERE }, // 刀の大きな筋
+		{ 3, EFFECT_SPREAD_INWARD, 0.0f, 2.5f, 3.5f, 0.0f, 0.0f, 0.2f, 0.25f, 0.03f, 0.07f, { 0.5f, 0.95f, 1.0f, 0.0f }, { 0.6f, 1.0f, 1.0f, 0.9f }, PARTICLE_SHAPE_SPHERE, 0.0f, 0.7f }, // 溜めの粒
+		{ 18, EFFECT_SPREAD_COLUMN, 0.0f, 8.0f, 13.0f, 0.0f, 2.0f, 0.3f, 0.45f, 0.12f, 0.03f, { 0.6f, 1.0f, 0.9f, 0.9f }, { 0.6f, 1.0f, 0.9f, 0.0f }, PARTICLE_SHAPE_SPHERE, 0.6f, 0.45f }, // ジャンプ台の光
 	};
 	constexpr uint32_t EFFECT_SEED = 20261127u; // 粒のばらつき専用の乱数の種
 
@@ -155,6 +163,12 @@ void EffectManager::Spawn(EFFECT_ID id, const VEC3& position, const VEC3& direct
 			particle.Position = Vec3Add(Vec3Add(position, Vec3Scale(axis, m_Random.NextFloat(0.0f, desc.Height))),
 				Vec3Add(Vec3Scale(side, cosf(around) * offset), Vec3Scale(up, sinf(around) * offset)));
 			heading = axis;
+		}
+		else if (desc.Spread == EFFECT_SPREAD_INWARD) {
+			// まわりの球の上から、中心へ向かう。
+			const VEC3 outward = RandomInCone(axis, PI);
+			particle.Position = Vec3Add(position, Vec3Scale(outward, desc.Jitter));
+			heading = Vec3Scale(outward, -1.0f);
 		}
 		else if (desc.Spread == EFFECT_SPREAD_RING) {
 			const float angle = 2.0f * PI * (float)i / (float)desc.Count;

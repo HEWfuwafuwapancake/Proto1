@@ -50,6 +50,10 @@ static constexpr int SMOKE_SPARK_EVERY = 4;		// 黒い煙の何回に1回、小�
 static constexpr float SMOKE_HEIGHT = 0.8f;		// 煙を出す高さ（背の高さに対する割合）
 static constexpr float RESPAWN_PILLAR_HEIGHT = 4.0f;	// 復活の光の柱が降り始める高さ
 static constexpr float SHAKE_HEAVY_LAND = 0.2f;	// 重い着地の画面の揺れ（その人だけ）
+static constexpr float TRAIL_SPEED = 9.0f;		// 吹っ飛び中、これより速ければ体の後ろに煙の尾を出す
+static constexpr float TRAIL_SECONDS = 0.05f;		// 煙の尾を出す間隔（% が 100 以上ならこの半分）
+static constexpr int WALL_HIT_HITSTOP_FRAMES = 4;	// 吹っ飛び中に壁にぶつかったとき止めるフレーム数
+static constexpr float SHAKE_WALL_HIT = 0.3f;		// そのときの画面の揺れ（その人だけ）
 static constexpr float DUST_HEIGHT = 0.05f;		// 足元の土ぼこりを出す高さ（背の高さに対する割合）
 static constexpr float AIR_RING_HEIGHT = 0.1f;		// 空中ジャンプの輪を出す高さ
 static constexpr float AIR_DASH_HEIGHT = 0.5f;		// 空中ダッシュの輪を出す高さ
@@ -360,10 +364,26 @@ void FighterManager::SpawnMoveEffects(int index)
 	// 地上のダッシュは足元から後ろへ土ぼこり、空中のダッシュは後ろに空気の輪。
 	if (events & FIGHTER_MOVE_DASH) SpawnEffect(EFFECT_DUST_KICK, feet, { -dash.X, 0.35f, -dash.Z });
 	if (events & FIGHTER_MOVE_AIR_DASH) SpawnEffect(EFFECT_AIR_RING, GetBodyPoint(index, AIR_DASH_HEIGHT), dash);
+	if (events & FIGHTER_MOVE_WALL_HIT) {
+		SpawnEffect(EFFECT_DUST_RING_LARGE, GetBodyPoint(index, HIT_EFFECT_HEIGHT), { 0.0f, 1.0f, 0.0f });
+		SpawnEffect(EFFECT_HIT_SPARK_MEDIUM, GetBodyPoint(index, HIT_EFFECT_HEIGHT), { 0.0f, 1.0f, 0.0f });
+		StartHitstop(index, WALL_HIT_HITSTOP_FRAMES, true);
+		AddShake(index, SHAKE_WALL_HIT);
+	}
 }
 
 void FighterManager::UpdateDamageEffects(int index, float dt)
 {
+	// 強く吹っ飛んでいる間は、体の後ろに煙の尾を残す（% が高いほど濃く）。
+	const Fighter& fighter = m_Fighters[index];
+	if (fighter.IsActive() && fighter.IsLaunched() && fighter.GetSpeed() > TRAIL_SPEED) {
+		m_TrailSeconds[index] -= dt;
+		if (m_TrailSeconds[index] <= 0.0f) {
+			m_TrailSeconds[index] = fighter.GetPercent() >= 100.0f ? TRAIL_SECONDS * 0.5f : TRAIL_SECONDS;
+			SpawnEffect(EFFECT_TRAIL_SMOKE, GetBodyPoint(index, HIT_EFFECT_HEIGHT), { 0.0f, 1.0f, 0.0f });
+		}
+	}
+	else m_TrailSeconds[index] = 0.0f;
 	const DAMAGE_SMOKE smoke = DamageColorCalcSmoke(m_Fighters[index].GetPercent());
 	if (smoke == DAMAGE_SMOKE_NONE || !m_Fighters[index].IsActive()) {
 		m_SmokeSeconds[index] = 0.0f;

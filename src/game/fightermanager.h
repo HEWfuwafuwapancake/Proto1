@@ -141,6 +141,7 @@ private:
 	EffectManager* m_Effects = nullptr; // 当たりの火花などを出すエフェクトの管理（Game が持つ）
 	float m_SmokeSeconds[FIGHTER_COUNT] = {}; // % の煙を次に出すまでの秒数（見た目だけ）
 	int m_SmokeCount[FIGHTER_COUNT] = {}; // % の煙を出した回数（何回かに1回火花も出す）
+	float m_TrailSeconds[FIGHTER_COUNT] = {}; // 吹っ飛び中の煙の尾を次に出すまでの秒数（見た目だけ）
 	SCREEN_FLASH m_PendingFlash[FIGHTER_COUNT] = {}; // HUD へ渡す前の画面の光（描画だけ）
 	float m_PendingShake[FIGHTER_COUNT] = {}; // カメラへ渡す前の画面の揺れ（描画だけ。通信の確かめに入れない）
 	void PushBodies();

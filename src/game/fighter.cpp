@@ -75,6 +75,8 @@ static constexpr float HEAVY_LAND_AIR_SECONDS = 0.9f; // これより長く宙�
 static constexpr float GHOST_SECONDS = 0.18f; // ダッシュの残像が消えるまでの秒数
 static constexpr int GHOST_EVERY_FRAMES = 3; // ダッシュ中に残像を置く間隔（フレーム）
 static constexpr float GHOST_ALPHA = 0.35f; // 置いたときの残像の濃さ
+static constexpr float WALL_HIT_SPEED = 8.0f; // 吹っ飛び中にこれより速く横へ飛んでいて
+static constexpr float WALL_HIT_KEEP = 0.35f; // 1フレームで横の速さがこの割合より下に落ちたら「壁にぶつかった」
 static constexpr int STUN_STAR_COUNT = 3; // 頭の上を回る星の数
 static constexpr float STUN_STAR_RADIUS = 0.09f; // 星の球の半径
 static constexpr float STUN_STAR_ORBIT = 0.4f; // 星が回る輪の半径
@@ -262,7 +264,10 @@ DUMMY_EVENT Fighter::Update(const Camera* camera, const ArmManager* arms)
 				CancelLaunchAnimation();
 			}
 			m_Dash.Step(dt, m_Body.GetOnGround(), dashParams);
+			const float sideBefore = sqrtf(m_Body.GetVelocityX() * m_Body.GetVelocityX() + m_Body.GetVelocityZ() * m_Body.GetVelocityZ());
 			m_Launched = KnockbackCalcStep(m_Body, dt, KnockbackParams(), stage, moveX, moveZ);
+			const float sideAfter = sqrtf(m_Body.GetVelocityX() * m_Body.GetVelocityX() + m_Body.GetVelocityZ() * m_Body.GetVelocityZ());
+			if (sideBefore > WALL_HIT_SPEED && sideAfter < sideBefore * WALL_HIT_KEEP && !m_Body.GetOnGround()) m_MoveEvents |= FIGHTER_MOVE_WALL_HIT;
 			// ダッシュ板で飛んだときは移動なので、着地したらすべらずにふつうの歩きへ戻す。
 			if (m_Boosted && m_Body.GetOnGround()) {
 				m_Launched = false;
@@ -497,6 +502,12 @@ void Fighter::Draw(bool highlighted) const
 		const XMFLOAT3 p = GetPosition();
 		ShapeDrawSphere({ p.x, p.y + BODY_HEIGHT + TARGET_MARKER_HEIGHT, p.z }, TARGET_MARKER_RADIUS, TARGET_COLOR);
 	}
+}
+
+float Fighter::GetSpeed() const
+{
+	return sqrtf(m_Body.GetVelocityX() * m_Body.GetVelocityX() + m_Body.GetVelocityY() * m_Body.GetVelocityY()
+		+ m_Body.GetVelocityZ() * m_Body.GetVelocityZ());
 }
 
 void Fighter::UpdateGhosts(float dt)

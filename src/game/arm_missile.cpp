@@ -187,6 +187,10 @@ void MissileArm::StepEffects(float dt)
 {
 	for (BLAST& blast : m_Blasts) blast.Seconds -= dt;
 	if (dt <= 0.0f || m_Shots.GetCount() == 0) return;
+	// 飛んでいる弾の後ろに煙の尾を残す（見た目だけ）。
+	for (int i = 0; i < PROJECTILE_MAX; ++i) {
+		if (m_Shots.Get(i).Active) GetFighters().SpawnEffect(EFFECT_TRAIL_SMOKE, m_Shots.Get(i).Position, { 0.0f, 1.0f, 0.0f });
+	}
 	TENTACLE_TARGET targets[FIGHTER_COUNT];
 	for (int i = 0; i < FIGHTER_COUNT; ++i) targets[i] = GetFighters().GetTarget(i, GetSlot());
 	PROJECTILE_EVENT events[PROJECTILE_MAX];
