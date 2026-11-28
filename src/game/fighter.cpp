@@ -154,6 +154,7 @@ void Fighter::PlaceAt(const VEC3& feet, float yaw)
 	m_Frozen = false;
 	m_AirSeconds = 0.0f;
 	for (float& age : m_GhostAges) age = GHOST_SECONDS;
+	m_GhostRequested = false;
 	m_HitstopShake = false;
 }
 
@@ -513,7 +514,9 @@ float Fighter::GetSpeed() const
 void Fighter::UpdateGhosts(float dt)
 {
 	for (float& age : m_GhostAges) age = fminf(GHOST_SECONDS, age + dt);
-	if (!m_Dash.IsDashing() || !IsActive()) {
+	const bool requested = m_GhostRequested;
+	m_GhostRequested = false;
+	if ((!m_Dash.IsDashing() && !requested) || !IsActive()) {
 		m_GhostFrame = 0;
 		return;
 	}

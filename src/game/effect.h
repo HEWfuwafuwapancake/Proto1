@@ -43,6 +43,8 @@ enum EFFECT_ID
 	EFFECT_SLASH_LARGE, ///< 刀の3振り目の大きな白い筋
 	EFFECT_CHARGE_IN, ///< まわりから吸い込まれる水色の粒（レーザーの溜め）
 	EFFECT_PAD_BURST, ///< ジャンプ台で足元から上へ吹き上がる光
+	EFFECT_PUNCH_RING, ///< ナックルの単押しで、拳の先に広がる小さな白い輪（向きは殴った向き）
+	EFFECT_MUZZLE_SMOKE, ///< ミサイルを撃った所から撃った向きへ出る小さな煙
 	EFFECT_COUNT, ///< 型の数
 };
 

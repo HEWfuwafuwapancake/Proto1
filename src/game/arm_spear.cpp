@@ -168,6 +168,7 @@ void SpearArm::StepRush(float dt)
 		if (!victim.IsLaunched()) EndRush();
 		return;
 	}
+	GetPlayer().RequestGhosts(); // 刺さった所へ飛ぶ間は体の後ろに残像（見た目だけ）。
 	const XMFLOAT3 own = GetPlayer().GetPosition();
 	VEC3 feet{ own.x, own.y, own.z };
 	const bool arrived = GrappleCalcPull(feet, targetFeet, RUSH_SPEED, RUSH_ARRIVE_DISTANCE, dt);
@@ -190,6 +191,8 @@ void SpearArm::StepSpear(float dt)
 		TENTACLE_TARGET targets[FIGHTER_COUNT];
 		for (int i = 0; i < FIGHTER_COUNT; ++i) targets[i] = GetFighters().GetTarget(i, GetSlot());
 		const VEC3 from = m_Spear.GetTip();
+		// 飛んでいる槍の後ろに細い軌跡（見た目だけ）。
+		GetFighters().SpawnEffect(EFFECT_TRAIL, from, { 0.0f, 1.0f, 0.0f });
 		const SPEAR_THROW_EVENT event = m_Spear.Step(dt, THROW, targets, FIGHTER_COUNT);
 		StrikePillarsOnLine({ from, m_Spear.GetTip(), THROW.Radius }, THROW_DAMAGE, m_Spear.GetDirection());
 		if (event == SPEAR_THROW_STUCK) OnStuck();

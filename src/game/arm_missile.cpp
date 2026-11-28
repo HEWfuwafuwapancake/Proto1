@@ -162,6 +162,8 @@ void MissileArm::FireVolley(bool all)
 		ConsumeDurability(EMPTY_COST);
 	}
 	else ConsumeDurability(SHOT_COST);
+	// 撃った所に小さな煙（見た目だけ）。
+	if (count > 0) GetFighters().SpawnEffect(EFFECT_MUZZLE_SMOKE, GetShoulder(), ArmCalcPitchDirection(flat, FIRE_UP_ANGLE));
 	if (all) Rumble(HOLD_RUMBLE, HOLD_RUMBLE, HOLD_RUMBLE_SECONDS);
 	else Rumble(TAP_RUMBLE, TAP_RUMBLE, TAP_RUMBLE_SECONDS);
 	PlaySe(SE_MISSILE_FIRE);

@@ -165,7 +165,13 @@ void KnuckleArm::Update(const ARM_INPUT& input)
 	if (step.Entered == KNUCKLE_STRIKE) {
 		m_Direction = GetAim(false);
 		if (m_Rush) PlaySe(SE_KNUCKLE_HOLD);
+		// 地上の突進は、足元から後ろへ土ぼこり（見た目だけ）。
+		if (m_Rush && GetPlayer().IsOnGround()) {
+			GetFighters().SpawnEffect(EFFECT_DUST_KICK, GetFighters().GetBodyPoint(GetSlot(), 0.05f), Vec3Scale(m_Direction, -1.0f));
+		}
 		if (!m_Rush) {
+			// 拳の先に小さな白い輪（空振りでも出す。見た目だけ）。
+			GetFighters().SpawnEffect(EFFECT_PUNCH_RING, Vec3Add(GetShoulder(), Vec3Scale(GetPunchDirection(), PUNCH_REACH)), GetPunchDirection());
 			StrikePillarsOnPunch(PUNCH_REACH, PUNCH_RADIUS, PUNCH_DAMAGE[m_TapStep]);
 			const int target = FindTarget(PUNCH_REACH, PUNCH_RADIUS);
 			if (target >= 0) Strike(target, PUNCH_UP[m_TapStep], PUNCH_DAMAGE[m_TapStep], PUNCH_POWER[m_TapStep]);
@@ -193,6 +199,7 @@ void KnuckleArm::Update(const ARM_INPUT& input)
 		else StopAirRush();
 	}
 	if (m_Rush && m_Phase.GetPhase() == KNUCKLE_STRIKE) {
+		GetPlayer().RequestGhosts(); // 突進の間は体の後ろに残像（見た目だけ）。
 		StrikePillarsOnPunch(RUSH_REACH, RUSH_RADIUS, RUSH_DAMAGE);
 		const int target = FindTarget(RUSH_REACH, RUSH_RADIUS);
 		if (target >= 0) {
