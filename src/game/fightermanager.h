@@ -148,6 +148,7 @@ private:
 	void UpdateEscape();
 	void SpawnHitEffects(int index, int attacker, const VEC3& direction, int frames);
 	void UpdateDamageEffects(int index, float dt); // % が高い人から煙と火花を出す（見た目だけ）
+	void SpawnMoveEffects(int index); // 跳んだ・着地した・ダッシュした瞬間の土ぼこりや輪（見た目だけ）
 	PARTICLE_COLOR GetEffectColor(int index) const; // その人の色（光の柱などに使う）
 	EscapeCalc m_Escapes[FIGHTER_COUNT];
 	SkinnedModel m_Models[CHARACTER_COUNT];

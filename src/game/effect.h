@@ -26,6 +26,10 @@ enum EFFECT_ID
 	EFFECT_SMOKE_GRAY, ///< 体から上がる灰色の煙（% が高い）
 	EFFECT_SMOKE_BLACK, ///< 体から上がる黒い煙（% がとても高い）
 	EFFECT_PARRY_SPARK, ///< パリィした所から大きく放射する黄色い火花
+	EFFECT_DUST_RING, ///< 足元から横へ広がる土ぼこりの輪（地上のジャンプ・軽い着地）
+	EFFECT_DUST_RING_LARGE, ///< 大きな土ぼこりの輪（重い着地・叩きつけ・衝撃）
+	EFFECT_AIR_RING, ///< 空気を蹴った白い輪（空中ジャンプ・空中ダッシュ。向きは輪の面の向き）
+	EFFECT_DUST_KICK, ///< 足元から向きへ飛ぶ土ぼこり（地上のダッシュの始まりなど）
 	EFFECT_COUNT, ///< 型の数
 };
 

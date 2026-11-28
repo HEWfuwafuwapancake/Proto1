@@ -70,6 +70,11 @@ static constexpr float HITSTOP_SHAKE_SPEED = 110.0f; // その速さ（ラジア
 static constexpr XMFLOAT4 DAMAGE_TINT_COLOR{ 1.0f, 0.08f, 0.05f, 1.0f }; // % が高いほど体に混ぜる赤（描画だけ）
 static constexpr float DAMAGE_BLINK_AMOUNT = 0.2f; // 150% 以上で、赤みを点滅させて足す量
 static constexpr float DAMAGE_BLINK_SPEED = 10.0f; // その点滅の速さ（ラジアン／秒）
+// 動きのエフェクト（plan/11 の 2-4。見た目だけ）
+static constexpr float HEAVY_LAND_AIR_SECONDS = 0.9f; // これより長く宙にいてから着地したら「重い着地」（ふつうのジャンプは約 0.6 秒）
+static constexpr float GHOST_SECONDS = 0.18f; // ダッシュの残像が消えるまでの秒数
+static constexpr int GHOST_EVERY_FRAMES = 3; // ダッシュ中に残像を置く間隔（フレーム）
+static constexpr float GHOST_ALPHA = 0.35f; // 置いたときの残像の濃さ
 static constexpr int STUN_STAR_COUNT = 3; // 頭の上を回る星の数
 static constexpr float STUN_STAR_RADIUS = 0.09f; // 星の球の半径
 static constexpr float STUN_STAR_ORBIT = 0.4f; // 星が回る輪の半径
@@ -145,6 +150,8 @@ void Fighter::PlaceAt(const VEC3& feet, float yaw)
 	m_DashAnimElapsed = -1.0f;
 	m_Hitstop.Reset();
 	m_Frozen = false;
+	m_AirSeconds = 0.0f;
+	for (float& age : m_GhostAges) age = GHOST_SECONDS;
 	m_HitstopShake = false;
 }
 
@@ -194,6 +201,7 @@ void Fighter::SetInput(const PLAYER_INPUT& current, const PLAYER_INPUT& previous
 DUMMY_EVENT Fighter::Update(const Camera* camera, const ArmManager* arms)
 {
 	m_Respawned = false;
+	m_MoveEvents = 0;
 	m_Frozen = m_Hitstop.Step();
 	if (m_Frozen) return DUMMY_EVENT_NONE;
 	m_HitstopShake = false;
@@ -233,6 +241,7 @@ DUMMY_EVENT Fighter::Update(const Camera* camera, const ArmManager* arms)
 		const bool hasMove = moveX != 0.0f || moveZ != 0.0f;
 		const VEC3 dashDirection = hasMove ? VEC3{ moveX, 0.0f, moveZ } : VEC3{ sinf(m_Yaw), 0.0f, cosf(m_Yaw) };
 		const bool onGround = m_Body.GetOnGround();
+		const int airJumpsBefore = m_Body.GetAirJumpsUsed();
 		// 吹っ飛び中のダッシュは、吹っ飛びの速度をすべて 0 にして（吹っ飛びを終わらせて）ふつうのダッシュをする。
 		if (m_Launched && dash && m_Dash.TryStart(dashDirection, onGround, dashParams, true)) {
 			m_Launched = false;
@@ -241,6 +250,8 @@ DUMMY_EVENT Fighter::Update(const Camera* camera, const ArmManager* arms)
 			m_Body.SetVelocity({});
 			CancelLaunchAnimation();
 			StartDashAnimation(onGround);
+			m_MoveEvents |= onGround ? FIGHTER_MOVE_DASH : FIGHTER_MOVE_AIR_DASH;
+			m_DashDirection = dashDirection;
 			dash = false;
 		}
 		if (m_Launched) {
@@ -263,7 +274,11 @@ DUMMY_EVENT Fighter::Update(const Camera* camera, const ArmManager* arms)
 			}
 		}
 		else {
-			if (dash && m_Dash.TryStart(dashDirection, onGround, dashParams, true)) StartDashAnimation(onGround);
+			if (dash && m_Dash.TryStart(dashDirection, onGround, dashParams, true)) {
+				StartDashAnimation(onGround);
+				m_MoveEvents |= onGround ? FIGHTER_MOVE_DASH : FIGHTER_MOVE_AIR_DASH;
+				m_DashDirection = dashDirection;
+			}
 			// ジャンプを押したらダッシュをやめて跳ぶ（ダッシュのクリップもやめる）。
 			if ((jump || rushVelocity.X != 0.0f || rushVelocity.Z != 0.0f) && m_Dash.IsDashing()) {
 				m_Dash.Cancel();
@@ -278,8 +293,16 @@ DUMMY_EVENT Fighter::Update(const Camera* camera, const ArmManager* arms)
 			}
 			m_Body.Step(moveX, moveZ, jump, dt, params, stage, rushVelocity);
 		}
+		// 跳んだ・着地した瞬間を覚える（エフェクトに使う。見た目だけ）。
+		if (jump) {
+			if (onGround && !m_Body.GetOnGround()) m_MoveEvents |= FIGHTER_MOVE_JUMP;
+			else if (m_Body.GetAirJumpsUsed() > airJumpsBefore) m_MoveEvents |= FIGHTER_MOVE_AIR_JUMP;
+		}
+		if (!onGround && m_Body.GetOnGround()) m_MoveEvents |= m_AirSeconds >= HEAVY_LAND_AIR_SECONDS ? FIGHTER_MOVE_LAND_HEAVY : FIGHTER_MOVE_LAND;
+		m_AirSeconds = m_Body.GetOnGround() ? 0.0f : m_AirSeconds + dt;
 	}
 	else m_Dash.Step(dt, m_Body.GetOnGround(), dashParams);
+	UpdateGhosts(dt);
 	// 下の線より下に落ちても、横の壁を越えても、同じ場外にする。
 	const VEC3 feet{ m_Body.GetX(), m_Body.GetY(), m_Body.GetZ() };
 	const DUMMY_EVENT event = m_Life.Update(StageCalcIsRingOut(stage, feet), RESPAWN_SECONDS, dt);
@@ -448,6 +471,14 @@ void Fighter::Draw(bool highlighted) const
 	const XMFLOAT4 color{ base.x + (DAMAGE_TINT_COLOR.x - base.x) * tint, base.y + (DAMAGE_TINT_COLOR.y - base.y) * tint,
 		base.z + (DAMAGE_TINT_COLOR.z - base.z) * tint, base.w };
 	if (m_Models[m_Character].IsLoaded()) {
+		// ダッシュの残像：今の姿勢を、置いた場所へ薄く描く。
+		const XMFLOAT3 now = GetPosition();
+		for (int i = 0; i < 3; ++i) {
+			if (m_GhostAges[i] >= GHOST_SECONDS) continue;
+			const VEC3& at = m_GhostPositions[i];
+			const XMFLOAT4 ghostColor{ color.x, color.y, color.z, GHOST_ALPHA * (1.0f - m_GhostAges[i] / GHOST_SECONDS) };
+			m_Models[m_Character].Draw(m_Pose, GetModelWorld() * XMMatrixTranslation(at.X - now.x, at.Y - now.y, at.Z - now.z), ghostColor);
+		}
 		m_Models[m_Character].Draw(m_Pose, GetModelWorld(), color);
 	} else {
 		const XMFLOAT3 p = GetPosition();
@@ -466,6 +497,19 @@ void Fighter::Draw(bool highlighted) const
 		const XMFLOAT3 p = GetPosition();
 		ShapeDrawSphere({ p.x, p.y + BODY_HEIGHT + TARGET_MARKER_HEIGHT, p.z }, TARGET_MARKER_RADIUS, TARGET_COLOR);
 	}
+}
+
+void Fighter::UpdateGhosts(float dt)
+{
+	for (float& age : m_GhostAges) age = fminf(GHOST_SECONDS, age + dt);
+	if (!m_Dash.IsDashing() || !IsActive()) {
+		m_GhostFrame = 0;
+		return;
+	}
+	if (m_GhostFrame++ % GHOST_EVERY_FRAMES != 0) return;
+	m_GhostPositions[m_GhostNext] = { m_Body.GetX(), m_Body.GetY(), m_Body.GetZ() };
+	m_GhostAges[m_GhostNext] = 0.0f;
+	m_GhostNext = (m_GhostNext + 1) % 3;
 }
 
 XMMATRIX Fighter::GetModelWorld() const
